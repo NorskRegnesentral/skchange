@@ -1,3 +1,8 @@
+# TODOs:
+#   - Add documentation through readthedocs (automate).
+#   - Add codecov tests (automate).
+#   - Add pre-commit?
+
 [project]
 name = "skchange"
 version = "0.0.1"
