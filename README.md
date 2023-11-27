@@ -5,7 +5,7 @@ Sktime-compatible change detection and changepoint-based collective/pattern/stru
 A playground for now.
 
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
-[![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml/badge.svg)]
+[![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml/badge.svg)](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
