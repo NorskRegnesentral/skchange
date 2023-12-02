@@ -1,5 +1,7 @@
 #!/usr/bin/env python3 -u
 # copyright: sktime developers, BSD-3-Clause License (see LICENSE file)
+# TODO: Adapt this script to skchange when it's time for its first release.
+
 """Do-nothing script for making a release.
 
 This idea comes from here:
@@ -335,8 +337,8 @@ def main():
         GitTagRelease(),
         PushTagToGitHub(),
         CheckCIStatus(),
-        CheckOnlineDocs(),
-        CheckPyPIFiles(),
+        # CheckOnlineDocs(),
+        # CheckPyPIFiles(),
     ]
     context = dict()
     context["package_name"] = PACKAGE_NAME
