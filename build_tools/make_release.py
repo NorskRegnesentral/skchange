@@ -9,8 +9,7 @@ This idea comes from here:
 -gradual-automation/
 
 The script is adapted from:
-- https://github.com/alan-turing-institute/CleverCSV/blob/master
-/make_release.py
+- https://github.com/sktime/sktime/blob/main/build_tools/make_release.py
 """
 
 __author__ = ["mloning"]
