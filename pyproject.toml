@@ -58,8 +58,6 @@ dev = [
     "pre-commit",
     "pytest",
     "pytest-cov",
-    "ipykernel",
-    "nbformat",
 ]
 
 
