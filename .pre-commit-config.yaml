@@ -78,3 +78,9 @@ repos:
     hooks:
       - id: shellcheck
         name: shellcheck
+
+exclude: |
+  (?x)^(
+    build_tools/.*|
+    interactive/.*
+  )$
