@@ -54,11 +54,12 @@ all_extras = [
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"
 dev = [
-    "black>=23.1.0",
+    "black",
     "pre-commit",
-    "pytest>=7.2.1",
-    "ipykernel>=6.23.0",
-    "nbformat>=5.7.3",
+    "pytest",
+    "pytest-cov",
+    "ipykernel",
+    "nbformat",
 ]
 
 
