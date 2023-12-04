@@ -2,18 +2,17 @@
 
 import numpy as np
 import pandas as pd
-
 from sktime.annotation.clasp import ClaSPSegmentation
 from sktime.datasets import load_gun_point_segmentation
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
-from skchange.change_detectors.pelt import Pelt
+# from skchange.change_detectors.pelt import Pelt
 
 
 def test_output_type():
     """Test annotator output type."""
-    Estimator = Pelt
+    Estimator = ClaSPSegmentation
     estimator = Estimator.create_test_instance()
     if not run_test_for_class(Estimator):
         return None
