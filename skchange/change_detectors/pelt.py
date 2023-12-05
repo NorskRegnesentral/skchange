@@ -1,48 +1,85 @@
-"""Extension template for series annotation.
+__author__ = ["mtveten"]
+__all__ = ["Pelt"]
 
-Purpose of this implementation template:
-    quick implementation of new estimators following the template
-    NOT a concrete class to import! This is NOT a base class or concrete class!
-    This is to be used as a "fill-in" coding template.
 
-How to use this implementation template to implement a new estimator:
-- make a copy of the template in a suitable location, give it a descriptive name.
-- work through all the "todo" comments below
-- fill in code for mandatory methods, and optionally for optional methods
-- you can add more private methods, but do not override BaseEstimator's private methods
-    an easy way to be safe is to prefix your methods with "_custom"
-- change docstrings for functions and the file
-- ensure interface compatibility by sktime.utils.estimator_checks.check_estimator
-- once complete: use as a local library, or contribute to sktime via PR
-- more details:
-  https://www.sktime.net/en/stable/developer_guide/add_estimators.html
+from typing import Callable, Optional, Union
 
-Mandatory implements:
-    fitting         - _fit(self, X, Y=None)
-    annotating     - _predict(self, X)
-
-Optional implements:
-    updating        - _update(self, X, Y=None)
-
-Testing - required for sktime test framework and check_estimator usage:
-    get default parameters for test instance(s) - get_test_params()
-
-copyright: sktime developers, BSD-3-Clause License (see LICENSE file)
-"""
-
+import numpy as np
+import pandas as pd
+from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
-# todo: add any necessary imports here
+from skchange.costs.cost_factory import cost_factory
+
+
+def BIC_penalty(n: int, n_params: int):
+    return n_params * np.log(n)
+
+
+def changepoints_to_labels(changepoints: list):
+    n = changepoints[-1] + 1  # Last changepoint is always the last index.
+    changepoints = [-1] + changepoints  # To simplify the loop.
+    labels = np.zeros(n)
+    for i in range(len(changepoints) - 1):
+        labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
+    return labels
+
+
+def changepoints_to_indicator(changepoints: list):
+    n = changepoints[-1]  # Last changepoint is always the number of samples.
+    indicator = np.zeros(n)
+    indicator[changepoints] = 1
+    return indicator
+
+
+@njit
+def get_changepoints(prev_cpts: list) -> list:
+    changepoints = []
+    i = len(prev_cpts) - 1
+    while i >= 0:
+        cpt_i = prev_cpts[i]
+        changepoints.append(i)
+        i = cpt_i
+    return changepoints[::-1]
+
+
+@njit
+def run_pelt(X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length):
+    params = cost_init_func(X)
+
+    admissible = np.array([0])
+    opt_cost = np.zeros(len(X) + 1)
+    opt_cost[: min_segment_length - 1] = -penalty
+
+    # Store the previous changepoint for each t.
+    # Used to get the final set of changepoints after the loop.
+    prev_cpts = [-1] * (min_segment_length - 1)
+
+    ts = np.arange(min_segment_length - 1, len(X)).reshape(-1, 1)
+    for t in ts:
+        new_admissible = t - min_segment_length + 1
+        admissible = np.concatenate((admissible, new_admissible))
+        admissible_opt_costs = (
+            opt_cost[admissible] + cost_func(params, admissible, t) + penalty
+        )
+        admissible_argmin = np.argmin(admissible_opt_costs)
+        opt_cost[t] = admissible_opt_costs[admissible_argmin]
+        prev_cpts.append(admissible[admissible_argmin] - 1)
+
+        # trimming the admissible set
+        admissible = admissible[admissible_opt_costs - penalty <= opt_cost[t]]
+
+    return get_changepoints(prev_cpts)
 
 
 class Pelt(BaseSeriesAnnotator):
-    """Custom series annotator.
+    """Pruned exact linear time changepoint detection.
 
-    todo: write docstring, describing your custom forecaster
+    An efficient implementation of the PELT algorithm [1]_ for changepoint detection.
 
     Parameters
     ----------
-    fmt : str {"dense", "sparse"}, optional (default="dense")
+    fmt : str {"dense", "sparse"}, optional (default="sparse")
         Annotation output format:
         * If "sparse", a sub-series of labels for only the outliers in X is returned,
         * If "dense", a series of labels for all values in X is returned.
@@ -51,68 +88,53 @@ class Pelt(BaseSeriesAnnotator):
         * If "indicator", returned values are boolean, indicating whether a value is an
         outlier,
         * If "score", returned values are floats, giving the outlier score.
+    cost : str or callable, optional (default="l2")
+        Cost function to use for changepoint detection.
+        * If "l2", the l2-norm is used,
+        * ...
+    penalty : float, optional (default=None)
+        Penalty to use for changepoint detection.
+        * If None, the penalty is set to log(n) * p, where n is the number of samples
+        and p is the number of dimensions in X.
+    min_segment_length : int, optional (default=2)
+        Minimum length of a segment.
 
-    parama : int
-        descriptive explanation of parama
-    paramb : string, optional (default='default')
-        descriptive explanation of paramb
-    paramc : boolean, optional (default= whether paramb is not the default)
-        descriptive explanation of paramc
-    and so on
-
-    Components
+    References
     ----------
-    est : sktime.estimator, BaseEstimator descendant
-        descriptive explanation of est
-    est2: another estimator
-        descriptive explanation of est2
-    and so on
+    .. [1] Killick, R., Fearnhead, P., & Eckley, I. A. (2012). Optimal detection of
+    changepoints with a linear computational cost. Journal of the American Statistical
+    Association, 107(500), 1590-1598.
+
+    Examples
+    --------
+
     """
 
-    # todo: add any hyper-parameters and components to constructor
+    _tags = {
+        "capability:missing_values": False,
+        "capability:multivariate": True,
+        "fit_is_empty": True,
+    }
+
     def __init__(
         self,
-        est,
-        parama,
-        est2=None,
-        paramb="default",
-        paramc=None,
-        fmt="dense",
-        labels="indicator",
+        cost: Union[str, Callable] = "l2",
+        penalty: Optional[float] = None,
+        min_segment_length: int = 2,
+        fmt: str = "sparse",
+        labels: str = "indicator",
     ):
-        # estimators should precede parameters
-        #  if estimators have default values, set None and initialize below
+        self.cost = cost
+        self.penalty = penalty
+        self.min_segment_length = min_segment_length
 
-        # todo: write any hyper-parameters and components to self
-        self.est = est
-        self.parama = parama
-        self.paramb = paramb
-        self.paramc = paramc
-
-        # leave this as is
         super().__init__(fmt=fmt, labels=labels)
 
-        # todo: optional, parameter checking logic (if applicable) should happen here
-        # if writes derived values to self, should *not* overwrite self.parama etc
-        # instead, write to self._parama, self._newparam (starting with _)
+        self.cost_func, self.cost_init_func = cost_factory(self.cost)
 
-        # todo: default estimators should have None arg defaults
-        #  and be initialized here
-        #  do this only with default estimators, not with parameters
-        # if est2 is None:
-        #     self.estimator = MyDefaultEstimator()
+        if self.min_segment_length < 1:
+            raise ValueError("min_segment_length must be at least 1.")
 
-        # todo: if tags of estimator depend on component tags, set these here
-        #  only needed if estimator is a composite
-        #  tags set in the constructor apply to the object and override the class
-        #
-        # example 1: conditional setting of a tag
-        # if est.foo == 42:
-        #   self.set_tags(handles-missing-data=True)
-        # example 2: cloning tags from component
-        #   self.clone_tags(est2, ["enforce_index_type", "handles-missing-data"])
-
-    # todo: implement this, mandatory
     def _fit(self, X, Y=None):
         """Fit to training data.
 
@@ -133,55 +155,59 @@ class Pelt(BaseSeriesAnnotator):
         creates fitted model (attributes ending in "_")
         """
 
-        # implement here
-        # IMPORTANT: avoid side effects to y, X, fh
+        return self
 
-    # todo: implement this, mandatory
+    def _get_penalty(self, X: pd.DataFrame) -> float:
+        n = X.shape[0]
+        p = X.shape[1]
+        penalty = self.penalty if self.penalty else BIC_penalty(n, p)
+        if penalty < 0:
+            raise ValueError(f"penalty must be non-negative (penalty={self.penalty}).")
+        return penalty
+
+    def _format_predict_output(self, changepoints, X_index):
+        if self.fmt == "sparse":
+            return changepoints
+        else:
+            labels = changepoints_to_labels(changepoints)
+            return pd.Series(labels, index=X_index)
+
     def _predict(self, X):
-        """Create annotations on test/deployment data.
-
-        core logic
-
-        Parameters
-        ----------
-        X : pd.DataFrame - data to annotate, time series
-
-        Returns
-        -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
-        """
-
-        # implement here
-        # IMPORTANT: avoid side effects to X, fh
+        self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
+        changepoints = run_pelt(
+            X.values,
+            self.cost_func,
+            self.cost_init_func,
+            self._penalty,
+            self.min_segment_length,
+        )
+        return self._format_predict_output(changepoints, X.index)
 
     # todo: consider implementing this, optional
     # if not implementing, delete the _update method
-    def _update(self, X, Y=None):
-        """Update model with new data and optional ground truth annotations.
+    # def _update(self, X, Y=None):
+    #     """Update model with new data and optional ground truth annotations.
 
-        core logic
+    #     core logic
 
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to update model with, time series
-        Y : pd.Series, optional
-            ground truth annotations for training if annotator is supervised
-        Returns
-        -------
-        self : returns a reference to self
+    #     Parameters
+    #     ----------
+    #     X : pd.DataFrame
+    #         training data to update model with, time series
+    #     Y : pd.Series, optional
+    #         ground truth annotations for training if annotator is supervised
+    #     Returns
+    #     -------
+    #     self : returns a reference to self
 
-        State change
-        ------------
-        updates fitted model (attributes ending in "_")
-        """
+    #     State change
+    #     ------------
+    #     updates fitted model (attributes ending in "_")
+    #     """
 
-        # implement here
-        # IMPORTANT: avoid side effects to X, fh
+    # implement here
+    # IMPORTANT: avoid side effects to X, fh
 
-    # todo: return default parameters, so that a test instance can be created
-    #   required for automated unit and integration testing of estimator
     @classmethod
     def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
@@ -202,46 +228,8 @@ class Pelt(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
 
-        # todo: set the testing parameters for the estimators
-        # Testing parameters can be dictionary or list of dictionaries
-        # Testing parameter choice should cover internal cases well.
-        #
-        # this method can, if required, use:
-        #   class properties (e.g., inherited); parent class test case
-        #   imported objects such as estimators from sktime or sklearn
-        # important: all such imports should be *inside get_test_params*, not at the top
-        #            since imports are used only at testing time
-        #
-        # The parameter_set argument is not used for automated, module level tests.
-        #   It can be used in custom, estimator specific tests, for "special" settings.
-        # A parameter dictionary must be returned *for all values* of parameter_set,
-        #   i.e., "parameter_set not available" errors should never be raised.
-        #
-        # A good parameter set should primarily satisfy two criteria,
-        #   1. Chosen set of parameters should have a low testing time,
-        #      ideally in the magnitude of few seconds for the entire test suite.
-        #       This is vital for the cases where default values result in
-        #       "big" models which not only increases test time but also
-        #       run into the risk of test workers crashing.
-        #   2. There should be a minimum two such parameter sets with different
-        #      sets of values to ensure a wide range of code coverage is provided.
-        #
-        # example 1: specify params as dictionary
-        # any number of params can be specified
-        # params = {"est": value0, "parama": value1, "paramb": value2}
-        #
-        # example 2: specify params as list of dictionary
-        # note: Only first dictionary will be used by create_test_instance
-        # params = [{"est": value1, "parama": value2},
-        #           {"est": value3, "parama": value4}]
-        # return params
-        #
-        # example 3: parameter set depending on param_set value
-        #   note: only needed if a separate parameter set is needed in tests
-        # if parameter_set == "special_param_set":
-        #     params = {"est": value1, "parama": value2}
-        #     return params
-        #
-        # # "default" params - always returned except for "special_param_set" value
-        # params = {"est": value3, "parama": value4}
-        # return params
+        params = [
+            {"cost": "l2", "penalty": None, "min_segment_length": 2},
+            {"cost": "l2", "penalty": 0, "min_segment_length": 1},
+        ]
+        return params
