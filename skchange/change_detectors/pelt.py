@@ -46,21 +46,23 @@ def get_changepoints(prev_cpts: list) -> list:
 @njit
 def run_pelt(X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length):
     params = cost_init_func(X)
+    n = len(X)
 
     admissible = np.array([0])
-    opt_cost = np.zeros(len(X) + 1)
+    opt_cost = np.zeros(n + 1)
     opt_cost[: min_segment_length - 1] = -penalty
 
     # Store the previous changepoint for each t.
     # Used to get the final set of changepoints after the loop.
     prev_cpts = [-1] * (min_segment_length - 1)
 
-    ts = np.arange(min_segment_length - 1, len(X)).reshape(-1, 1)
+    ts = np.arange(min_segment_length - 1, n).reshape(-1, 1)
     for t in ts:
         new_admissible = t - min_segment_length + 1
         admissible = np.concatenate((admissible, new_admissible))
+        ends = np.repeat(t, len(admissible))
         admissible_opt_costs = (
-            opt_cost[admissible] + cost_func(params, admissible, t) + penalty
+            opt_cost[admissible] + cost_func(params, admissible, ends) + penalty
         )
         admissible_argmin = np.argmin(admissible_opt_costs)
         opt_cost[t] = admissible_opt_costs[admissible_argmin]

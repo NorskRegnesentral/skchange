@@ -48,11 +48,7 @@ def l2_cost(
     starts: np.ndarray,
     ends: np.ndarray,
 ) -> np.ndarray:
-    if len(ends) == 1:
-        ends = np.repeat(ends, len(starts))
-
     sums, sums2, weights = precomputed_params
-
     partial_sums = sums[ends + 1] - sums[starts]
     partial_sums2 = sums2[ends + 1] - sums2[starts]
     weights = weights[ends - starts + 1]
