@@ -6,6 +6,7 @@ from sktime.utils.estimator_checks import check_estimator
 
 from skchange.change_detectors.pelt import Pelt
 
+# todo:
 # ALL_ANNOTATORS = all_estimators(
 #     estimator_types="series-annotator", return_names=False
 # )
