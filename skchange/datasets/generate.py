@@ -1,6 +1,5 @@
-import pandas as pd
 import numpy as np
-
+import pandas as pd
 from sktime.annotation.datagen import piecewise_normal_multivariate
 
 
