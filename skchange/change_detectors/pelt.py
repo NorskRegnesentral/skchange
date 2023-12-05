@@ -1,3 +1,5 @@
+"""The pruned exact linear time (PELT) algorithm."""
+
 __author__ = ["mtveten"]
 __all__ = ["Pelt"]
 
@@ -101,6 +103,7 @@ class Pelt(BaseSeriesAnnotator):
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
 
+
     References
     ----------
     .. [1] Killick, R., Fearnhead, P., & Eckley, I. A. (2012). Optimal detection of
@@ -109,7 +112,15 @@ class Pelt(BaseSeriesAnnotator):
 
     Examples
     --------
+    from skchange.change_detectors.pelt import Pelt
+    from skchange.datasets.generate import teeth
 
+    # Generate data
+    df = teeth(n_segments=2, mean_size=10, segment_length=100000, p=5, random_state=2)
+
+    # skchange method
+    detector = Pelt()
+    detector.fit_predict(df)
     """
 
     _tags = {
@@ -156,7 +167,6 @@ class Pelt(BaseSeriesAnnotator):
         ------------
         creates fitted model (attributes ending in "_")
         """
-
         return self
 
     def _get_penalty(self, X: pd.DataFrame) -> float:
@@ -169,12 +179,28 @@ class Pelt(BaseSeriesAnnotator):
 
     def _format_predict_output(self, changepoints, X_index):
         if self.fmt == "sparse":
-            return changepoints
+            return np.array(changepoints)
         else:
             labels = changepoints_to_labels(changepoints)
             return pd.Series(labels, index=X_index)
 
     def _predict(self, X):
+        """Create annotations on test/deployment data.
+
+        core logic
+
+        Parameters
+        ----------
+        X : pd.DataFrame - data to annotate, time series
+
+        Returns
+        -------
+        Y : pd.Series - annotations for sequence X
+            exact format depends on annotation type
+        """
+        if X.ndim < 2:
+            X = X.to_frame()
+
         self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
         changepoints = run_pelt(
             X.values,
@@ -229,7 +255,6 @@ class Pelt(BaseSeriesAnnotator):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-
         params = [
             {"cost": "l2", "penalty": None, "min_segment_length": 2},
             {"cost": "l2", "penalty": 0, "min_segment_length": 1},
