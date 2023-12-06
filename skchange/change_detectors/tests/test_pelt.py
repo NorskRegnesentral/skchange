@@ -2,17 +2,16 @@
 
 import numpy as np
 import pandas as pd
-from sktime.annotation.clasp import ClaSPSegmentation
-from sktime.datasets import load_gun_point_segmentation
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
-# from skchange.change_detectors.pelt import Pelt
+from skchange.change_detectors.pelt import Pelt
+from skchange.datasets.generate import teeth
 
 
 def test_output_type():
     """Test annotator output type."""
-    Estimator = ClaSPSegmentation
+    Estimator = Pelt
     estimator = Estimator.create_test_instance()
     if not run_test_for_class(Estimator):
         return None
@@ -29,36 +28,31 @@ def test_output_type():
 
 
 def test_pelt_sparse():
-    """Test ClaSP sparse segmentation.
+    """Test PELT sparse segmentation.
 
     Check if the predicted change points match.
     """
-    # load the test dataset
-    ts, period_size, cps = load_gun_point_segmentation()
-
-    # compute a ClaSP segmentation
-    clasp = ClaSPSegmentation(period_size, n_cps=1)
-    clasp.fit(ts)
-    found_cps = clasp.predict(ts)
-    scores = clasp.predict_scores(ts)
-
-    assert len(found_cps) == 1 and found_cps[0] == 893
-    assert len(scores) == 1 and scores[0] > 0.74
+    n_cpts = 1
+    seg_len = 10
+    df = teeth(
+        n_segments=n_cpts + 1, mean=10, segment_length=seg_len, p=1, random_state=2
+    )
+    detector = Pelt(fmt="sparse")
+    cpts = detector.fit_predict(df)
+    # End point also included as a changepoint
+    assert len(cpts) == n_cpts + 1 and cpts[0] == seg_len - 1
 
 
 def test_pelt_dense():
-    """Tests ClaSP dense segmentation.
+    """Tests PELT dense segmentation.
 
     Check if the predicted segmentation matches.
     """
-    # load the test dataset
-    ts, period_size, cps = load_gun_point_segmentation()
-
-    # compute a ClaSP segmentation
-    clasp = ClaSPSegmentation(period_size, n_cps=1, fmt="dense")
-    clasp.fit(ts)
-    segmentation = clasp.predict(ts)
-    scores = clasp.predict_scores(ts)
-
-    assert len(segmentation) == 2 and segmentation[0].right == 893
-    assert np.argmax(scores) == 893
+    n_cpts = 1
+    seg_len = 10
+    df = teeth(
+        n_segments=n_cpts + 1, mean=10, segment_length=seg_len, p=1, random_state=2
+    )
+    detector = Pelt(fmt="dense")
+    labels = detector.fit_predict(df)
+    assert labels.nunique() == n_cpts + 1 and labels[9] == 0.0 and labels[10] == 1.0

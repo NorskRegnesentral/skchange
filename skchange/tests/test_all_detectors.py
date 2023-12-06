@@ -1,16 +1,16 @@
 import pytest
-from sktime.annotation.clasp import ClaSPSegmentation
 
 # from sktime.registry import all_estimators
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils.estimator_checks import check_estimator
 
-# from skchange.change_detectors.pelt import Pelt
+from skchange.change_detectors.pelt import Pelt
 
+# todo:
 # ALL_ANNOTATORS = all_estimators(
 #     estimator_types="series-annotator", return_names=False
 # )
-ALL_ANNOTATORS = [ClaSPSegmentation]
+ALL_ANNOTATORS = [Pelt]
 
 
 @pytest.mark.parametrize("Estimator", ALL_ANNOTATORS)
