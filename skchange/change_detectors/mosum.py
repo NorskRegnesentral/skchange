@@ -199,6 +199,9 @@ class Mosum(BaseSeriesAnnotator):
         if self.fmt == "sparse":
             return np.array(changepoints)
         else:
+            if self.labels == "score":
+                return self.scores
+
             labels = changepoints_to_labels(changepoints)
             return pd.Series(labels, index=X_index)
 
