@@ -11,7 +11,7 @@ def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     Parameters
     ----------
     x : np.ndarray
-        2D array.
+        1D array.
     """
     expanded_x = np.zeros((x.shape[0], n))
     for j in prange(n):
@@ -26,7 +26,7 @@ def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     Parameters
     ----------
     x : np.ndarray
-        2D array.
+        1D array.
     """
     expanded_x = np.zeros((x.shape[0], n))
     for i in prange(n):
