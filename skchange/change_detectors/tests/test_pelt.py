@@ -40,7 +40,7 @@ def test_pelt_sparse():
     detector = Pelt(fmt="sparse")
     cpts = detector.fit_predict(df)
     # End point also included as a changepoint
-    assert len(cpts) == n_cpts + 1 and cpts[0] == seg_len - 1
+    assert len(cpts) == n_cpts and cpts.index[0] == seg_len - 1
 
 
 def test_pelt_dense():

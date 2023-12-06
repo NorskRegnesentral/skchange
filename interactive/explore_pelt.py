@@ -9,7 +9,7 @@ from skchange.costs.l2_cost import init_l2_cost, l2_cost
 from skchange.datasets.generate import teeth
 
 # Compare skchange output to streamchange
-df = teeth(n_segments=2, mean=10, segment_length=100000, p=5, random_state=2)
+df = teeth(n_segments=2, mean=10, segment_length=100, p=1, random_state=2)
 streamchange_detector = OfflinePelt(
     OfflineL2Cost(),
     penalty=ConstantPenalty(BIC_penalty(df.shape[0], df.shape[1])),

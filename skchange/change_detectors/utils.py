@@ -1,24 +1,63 @@
 """Utility functions for change detection."""
 
 import numpy as np
+import pandas as pd
 
 
-def changepoints_to_labels(changepoints: list):
+def changepoints_to_labels(changepoints: list, n: int) -> np.ndarray:
     """Convert a list of changepoints to a list of labels.
 
     Parameters
     ----------
     changepoints : list
         List of changepoint indices.
+    n: int
+        Sample size.
 
     Returns
     -------
-    labels : list
-        List of labels: 0 for the first segment, 1 for the second, etc.
+    labels : np.ndarray
+        1D array of labels: 0 for the first segment, 1 for the second, etc.
     """
-    n = changepoints[-1] + 1  # Last changepoint is always the last index.
-    changepoints = [-1] + changepoints  # To simplify the loop.
+    changepoints = [-1] + changepoints + [n - 1]
     labels = np.zeros(n)
     for i in range(len(changepoints) - 1):
         labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
     return labels
+
+
+def format_changepoint_output(
+    fmt: str,
+    labels: str,
+    changepoints: list,
+    X_index: pd.Index,
+    scores: np.ndarray = None,
+) -> pd.Series:
+    """Format the predict method output of change detectors.
+
+    Parameters
+    ----------
+    fmt : str
+    labels : str
+    changepoints : list
+    X_index : pd.Index
+    scores : np.ndarray
+
+    Returns
+    -------
+    pd.Series :
+
+    """
+    if labels == "indicator":
+        out = pd.Series(False, index=X_index)
+        out.iloc[changepoints] = True
+    elif labels == "score":
+        out = pd.Series(scores, index=X_index)
+    elif labels == "int_label":
+        out = changepoints_to_labels(changepoints, X_index.size)
+        out = pd.Series(out, index=X_index)
+
+    if fmt == "sparse":
+        out = out.iloc[changepoints]
+
+    return out

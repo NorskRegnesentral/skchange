@@ -11,7 +11,7 @@ import pandas as pd
 from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.change_detectors.utils import changepoints_to_labels
+from skchange.change_detectors.utils import format_changepoint_output
 from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
 
@@ -31,13 +31,13 @@ def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01)
 
 
 @njit
-def get_mosum_changepoints(mosum_stats, threshold) -> list:
-    detection_intervals = where(mosum_stats > threshold)
+def get_mosum_changepoints(mosums: np.ndarray, threshold: float) -> list:
+    detection_intervals = where(mosums > threshold)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
         end = interval[1]
-        cpt = np.argmax(mosum_stats[start : end + 1]) + start
+        cpt = np.argmax(mosums[start : end + 1]) + start
         changepoints.append(cpt)
     return changepoints
 
@@ -73,11 +73,13 @@ class Mosum(BaseSeriesAnnotator):
         Annotation output format:
         * If "sparse", a sub-series of labels for only the outliers in X is returned,
         * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score"}, optional (default="indicator")
+    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
         Annotation output labels:
         * If "indicator", returned values are boolean, indicating whether a value is an
         outlier,
         * If "score", returned values are floats, giving the outlier score.
+        * If "int_label", returned values are integer, indicating which segment a value
+        belongs to.
     score: str (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
@@ -125,7 +127,7 @@ class Mosum(BaseSeriesAnnotator):
         threshold: Optional[float] = None,
         alpha: float = 0.01,
         fmt: str = "sparse",
-        labels: str = "indicator",
+        labels: str = "int_label",
     ):
         self.score = score
         self.bandwidth = bandwidth
@@ -150,6 +152,7 @@ class Mosum(BaseSeriesAnnotator):
             training data to fit model to, time series
         Y : pd.Series, optional
             ground truth annotations for training if annotator is supervised
+
         Returns
         -------
         self : returns a reference to self
@@ -179,17 +182,7 @@ class Mosum(BaseSeriesAnnotator):
             raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
         return threshold
 
-    def _format_predict_output(self, changepoints, X_index):
-        if self.fmt == "sparse":
-            return np.array(changepoints)
-        else:
-            if self.labels == "score":
-                return self.scores
-
-            labels = changepoints_to_labels(changepoints)
-            return pd.Series(labels, index=X_index)
-
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]):
+    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
 
         core logic
@@ -203,16 +196,18 @@ class Mosum(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        X = self._check_X(X)
+        self.X = self._check_X(X)
         self._threshold = self._get_threshold(X)
-        self.scores = mosum_transform(
+        self._scores = mosum_transform(
             X.values,
             self.score_f,
             self.score_init_f,
             self.bandwidth,
         )
-        changepoints = get_mosum_changepoints(self.scores, self._threshold)
-        return self._format_predict_output(changepoints, X.index)
+        self._changepoints = get_mosum_changepoints(self._scores, self._threshold)
+        return format_changepoint_output(
+            self.fmt, self.labels, self._changepoints, X.index, self._scores
+        )
 
     # todo: consider implementing this, optional
     # if not implementing, delete the _update method
