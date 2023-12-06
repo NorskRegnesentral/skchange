@@ -13,6 +13,7 @@ from sktime.annotation.base import BaseSeriesAnnotator
 
 from skchange.change_detectors.utils import changepoints_to_labels
 from skchange.scores.score_factory import score_factory
+from skchange.utils.numba.general import where
 
 
 def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01):
@@ -30,25 +31,8 @@ def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01)
 
 
 @njit
-def get_true_intervals(vector: np.ndarray) -> list:
-    intervals = []
-    start, end = None, None
-    for i, val in enumerate(vector):
-        if val and start is None:
-            start = i
-        elif not val and start is not None:
-            end = i - 1
-            intervals.append((start, end))
-            start, end = None, None
-    if start is not None:
-        intervals.append((start, len(vector) - 1))
-    return intervals
-
-
-@njit
 def get_mosum_changepoints(mosum_stats, threshold) -> list:
-    is_detected = mosum_stats > threshold
-    detection_intervals = get_true_intervals(is_detected)
+    detection_intervals = where(mosum_stats > threshold)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
