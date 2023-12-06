@@ -196,7 +196,7 @@ class Mosum(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        self.X = self._check_X(X)
+        X = self._check_X(X)
         self._threshold = self._get_threshold(X)
         self._scores = mosum_transform(
             X.values,
@@ -254,7 +254,7 @@ class Mosum(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"cost": "l2", "penalty": None, "min_segment_length": 2},
-            {"cost": "l2", "penalty": 0, "min_segment_length": 1},
+            {"score": "mean", "bandwidth": 10, "alpha": 0.01},
+            {"score": "mean", "bandwidth": 10, "threshold": 0},
         ]
         return params
