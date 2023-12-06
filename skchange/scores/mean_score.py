@@ -9,8 +9,8 @@ from skchange.utils.numba.stats import col_cumsum
 
 
 @njit
-def init_mean_test_stat(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """Precompute sums for mean_test_stat.
+def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Precompute sums for mean_score.
 
     Parameters
     ----------
@@ -24,14 +24,14 @@ def init_mean_test_stat(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     n = X.shape[0]
     p = X.shape[1]
-    # 0.0 as first row to make calculations work also for start = 0 in mean_test_stat
+    # 0.0 as first row to make calculations work also for start = 0 in mean_score
     sums = np.zeros((n + 1, p))
     sums[1:] = col_cumsum(X)
     return sums
 
 
 @njit
-def mean_test_stat(
+def mean_score(
     precomputed_params: np.ndarray, start: int, end: int, split: int
 ) -> float:
     """Calculate the mean test statistic for a given interval and split.
@@ -42,7 +42,7 @@ def mean_test_stat(
     Parameters
     ----------
     precomputed_params : np.ndarray
-        Precomputed parameters from init_mean_test_stat.
+        Precomputed parameters from init_mean_score.
     start : int
         Start index of the interval. Must be < end, split.
     end : int

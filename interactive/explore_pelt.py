@@ -22,7 +22,8 @@ detector.fit_predict(df)
 
 
 # Profiling
-df = teeth(n_segments=2, mean=10, segment_length=100000, p=1)
+n = int(1e6)
+df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
 detector = Pelt()
 profiler = Profiler()
 profiler.start()

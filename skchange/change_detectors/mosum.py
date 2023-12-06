@@ -4,7 +4,7 @@ __author__ = ["mtveten"]
 __all__ = ["Mosum"]
 
 
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
 from skchange.change_detectors.utils import changepoints_to_labels
-from skchange.test_stats.test_stat_factory import test_stat_factory
+from skchange.scores.score_factory import score_factory
 
 
 def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01):
@@ -35,22 +35,20 @@ def get_mosum_changepoints(mosum_stats, threshold) -> list:
 
 
 # Parallelizable??
-@njit(parallel=True, fastmath=True)
-def run_mosum(
+@njit
+def mosum_transform(
     X: np.ndarray,
-    test_stat_f: Callable,
-    test_stat_init_f: Callable,
+    score_f: Callable,
+    score_init_f: Callable,
     bandwidth: int,
-    threshold: float,
-):
-    params = test_stat_init_f(X)
+) -> Tuple[list, np.ndarray]:
+    params = score_init_f(X)
     n = len(X)
     mosums = np.zeros(n)
     for k in range(bandwidth - 1, n - bandwidth):
         start = k - bandwidth + 1
         end = k + bandwidth
-        mosums[k] = test_stat_f(params, start, end, k)
-    # return get_mosum_changepoints(mosums, threshold)
+        mosums[k] = score_f(params, start, end, k)
     return mosums
 
 
@@ -72,7 +70,7 @@ class Mosum(BaseSeriesAnnotator):
         * If "indicator", returned values are boolean, indicating whether a value is an
         outlier,
         * If "score", returned values are floats, giving the outlier score.
-    test_stat: str (default="mean")
+    score: str (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * More to come.
@@ -114,21 +112,21 @@ class Mosum(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        test_stat: str = "mean",
+        score: str = "mean",
         bandwidth: int = 30,
         threshold: Optional[float] = None,
         alpha: float = 0.01,
         fmt: str = "sparse",
         labels: str = "indicator",
     ):
-        self.test_stat = test_stat
+        self.score = score
         self.bandwidth = bandwidth
         self.threshold = threshold
         self.alpha = alpha
 
         super().__init__(fmt=fmt, labels=labels)
 
-        self.test_stat_f, self.test_stat_init_f = test_stat_factory(self.test_stat)
+        self.score_f, self.score_init_f = score_factory(self.score)
 
         if self.bandwidth < 1:
             raise ValueError("bandwidth must be at least 1.")
@@ -196,14 +194,13 @@ class Mosum(BaseSeriesAnnotator):
         """
         X = self._check_X(X)
         self._threshold = self._get_threshold(X)
-        changepoints = run_mosum(
+        self.scores = mosum_transform(
             X.values,
-            self.test_stat_f,
-            self.test_stat_init_f,
+            self.score_f,
+            self.score_init_f,
             self.bandwidth,
-            self._threshold,
         )
-        return changepoints
+        # changepoints = get_mosum_changepoints(self.scores, self._threshold)
         # return self._format_predict_output(changepoints, X.index)
 
     # todo: consider implementing this, optional

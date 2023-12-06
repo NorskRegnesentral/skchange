@@ -14,17 +14,31 @@ Recipe for adding new test statistics (replace "cost" with "test statistic" belo
 
 """
 
-from skchange.test_stats.mean_test_stat import init_mean_test_stat, mean_test_stat
+from skchange.scores.mean_score import init_mean_score, mean_score
 
-VALID_TEST_STATS = ["mean"]
+VALID_SCORES = ["mean"]
 
 
-def test_stat_factory(test_stat_name: str):
-    if test_stat_name == "mean":
-        return mean_test_stat, init_mean_test_stat
+def score_factory(score_name: str):
+    """Return score function and its initializer.
+
+    Parameters
+    ----------
+    score_name : str
+        Name of score function. Must be one of 'mean'.
+
+    Returns
+    -------
+    score_func : Callable
+        Score function.
+    init_score_func : Callable
+        Score function initializer.
+    """
+    if score_name == "mean":
+        return mean_score, init_mean_score
     else:
         message = (
-            f"test_stat_name={test_stat_name} not recognized."
-            + f" Must be one of {', '.join(VALID_TEST_STATS)}"
+            f"score_name={score_name} not recognized."
+            + f" Must be one of {', '.join(VALID_SCORES)}"
         )
         raise ValueError(message)
