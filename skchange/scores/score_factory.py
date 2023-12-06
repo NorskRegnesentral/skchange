@@ -6,8 +6,8 @@ Recipe for adding new scores (replace "score" with "score" below):
         init_<score_name>_score, which precomputes quantities that should be
         precomputed, often partial sums and such.
         <score_name>_score, which takes in the output of init_<score_name>_score as its
-        first argument, and starts and ends indices of the scores to be computed as its
-        second and third arguments.
+        first argument, and start, end and split indices as the second, third and
+        fourth arguments.
     3. Add the name of the score to VALID_SCORES below.
     4. Add the name of the score to the docstring of score_factory below.
     4. Add a new if-statement in score_factory below.
