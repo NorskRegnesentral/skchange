@@ -30,8 +30,32 @@ def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01)
 
 
 @njit
+def get_true_intervals(vector: np.ndarray) -> list:
+    intervals = []
+    start, end = None, None
+    for i, val in enumerate(vector):
+        if val and start is None:
+            start = i
+        elif not val and start is not None:
+            end = i - 1
+            intervals.append((start, end))
+            start, end = None, None
+    if start is not None:
+        intervals.append((start, len(vector) - 1))
+    return intervals
+
+
+@njit
 def get_mosum_changepoints(mosum_stats, threshold) -> list:
-    pass
+    is_detected = mosum_stats > threshold
+    detection_intervals = get_true_intervals(is_detected)
+    changepoints = []
+    for interval in detection_intervals:
+        start = interval[0]
+        end = interval[1]
+        cpt = np.argmax(mosum_stats[start : end + 1]) + start
+        changepoints.append(cpt)
+    return changepoints
 
 
 # Parallelizable??
@@ -200,8 +224,8 @@ class Mosum(BaseSeriesAnnotator):
             self.score_init_f,
             self.bandwidth,
         )
-        # changepoints = get_mosum_changepoints(self.scores, self._threshold)
-        # return self._format_predict_output(changepoints, X.index)
+        changepoints = get_mosum_changepoints(self.scores, self._threshold)
+        return self._format_predict_output(changepoints, X.index)
 
     # todo: consider implementing this, optional
     # if not implementing, delete the _update method
