@@ -12,6 +12,10 @@ def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     ----------
     x : np.ndarray
         1D array.
+
+    Returns
+    -------
+    2D array : (x.size, n)-matrix with x in each column
     """
     expanded_x = np.zeros((x.shape[0], n))
     for j in prange(n):
@@ -27,6 +31,10 @@ def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     ----------
     x : np.ndarray
         1D array.
+
+    Returns
+    -------
+    2D array : (n, x.size) matrix with x in each row
     """
     expanded_x = np.zeros((x.shape[0], n))
     for i in prange(n):
