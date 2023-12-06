@@ -11,27 +11,12 @@ import pandas as pd
 from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
+from skchange.change_detectors.utils import changepoints_to_labels
 from skchange.costs.cost_factory import cost_factory
 
 
 def BIC_penalty(n: int, n_params: int):
     return n_params * np.log(n)
-
-
-def changepoints_to_labels(changepoints: list):
-    n = changepoints[-1] + 1  # Last changepoint is always the last index.
-    changepoints = [-1] + changepoints  # To simplify the loop.
-    labels = np.zeros(n)
-    for i in range(len(changepoints) - 1):
-        labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
-    return labels
-
-
-def changepoints_to_indicator(changepoints: list):
-    n = changepoints[-1]  # Last changepoint is always the number of samples.
-    indicator = np.zeros(n)
-    indicator[changepoints] = 1
-    return indicator
 
 
 @njit
