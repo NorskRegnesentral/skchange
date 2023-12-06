@@ -35,7 +35,7 @@ def test_pelt_sparse():
     n_cpts = 1
     seg_len = 10
     df = teeth(
-        n_segments=n_cpts + 1, mean_size=10, segment_length=seg_len, p=1, random_state=2
+        n_segments=n_cpts + 1, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Pelt(fmt="sparse")
     cpts = detector.fit_predict(df)
@@ -51,7 +51,7 @@ def test_pelt_dense():
     n_cpts = 1
     seg_len = 10
     df = teeth(
-        n_segments=n_cpts + 1, mean_size=10, segment_length=seg_len, p=1, random_state=2
+        n_segments=n_cpts + 1, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Pelt(fmt="dense")
     labels = detector.fit_predict(df)

@@ -116,7 +116,7 @@ class Pelt(BaseSeriesAnnotator):
     from skchange.datasets.generate import teeth
 
     # Generate data
-    df = teeth(n_segments=2, mean_size=10, segment_length=100000, p=5, random_state=2)
+    df = teeth(n_segments=2, mean=10, segment_length=100000, p=5, random_state=2)
 
     # skchange method
     detector = Pelt()
