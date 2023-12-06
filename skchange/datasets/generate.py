@@ -40,8 +40,8 @@ def teeth(
     """
     means = []
     for i in range(n_segments):
-        mean = [0] * p if i % 2 == 0 else [mean] * p
-        means.append(mean)
+        mean_vec = [0] * p if i % 2 == 0 else [mean] * p
+        means.append(mean_vec)
     segment_lengths = [segment_length] * n_segments
     x = piecewise_normal_multivariate(
         means, segment_lengths, variances, covariances, random_state
