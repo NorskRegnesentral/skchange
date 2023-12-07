@@ -237,14 +237,18 @@ class Mosum(BaseSeriesAnnotator):
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold if `tune` is True. Otherwise, it does nothing.
+        Trains the threshold on the input data if `tune` is True. Otherwise, the
+        threshold is set to the input `threshold` value if provided. If not,
+        it is set to the default value for the test statistic, which depends on
+        the dimension of X.
 
         Parameters
         ----------
         X : pd.DataFrame
-            training data to fit model to, time series
+            training data to fit the threshold to.
         Y : pd.Series, optional
-            ground truth annotations for training if annotator is supervised
+            Does nothing. Only here to make the fit method compatible with sktime
+            and scikit-learn.
 
         Returns
         -------
