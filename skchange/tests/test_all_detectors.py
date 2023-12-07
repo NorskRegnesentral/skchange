@@ -14,7 +14,7 @@ all_annotators = change_detectors
 
 
 @pytest.mark.parametrize("Estimator", all_annotators)
-def test_output_type(Estimator):
+def check_sktime_annotator_compatibility(Estimator):
     """Test annotator output type."""
     if not run_test_for_class(Estimator):
         return None
