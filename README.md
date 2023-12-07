@@ -1,5 +1,5 @@
 # skchange
-skchange provies sktime-compatible change detection and changepoint-based anomaly detection algorithms. Methods implement the annotator interface of sktime.
+`skchange` provies sktime-compatible change detection and changepoint-based anomaly detection algorithms. Methods implement the annotator interface of sktime.
 
 A playground for now.
 
@@ -11,6 +11,43 @@ A playground for now.
 
 ## Quickstart
 ```python
+from skchange.change_detectors.mosum import Mosum
+from skchange.datasets.generate import teeth
+
+# Predict the segment membership of each observation
+df = teeth(n_segments=2, mean=10, segment_length=10, p=1, random_state=2)
+detector = Mosum(bandwidth=5, fmt="dense")
+detector.fit_predict(df)
+>>>
+0     0.0
+1     0.0
+2     0.0
+3     0.0
+4     0.0
+5     0.0
+6     0.0
+7     0.0
+8     0.0
+9     0.0
+10    1.0
+11    1.0
+12    1.0
+13    1.0
+14    1.0
+15    1.0
+16    1.0
+17    1.0
+18    1.0
+19    1.0
+dtype: float64
+
+# Predict the changepoints (the last index of each segment)
+detector = Mosum(bandwidth=5, fmt="sparse")
+detector.fit_predict(df)
+>>>
+9     0.0
+19    1.0
+dtype: float64
 ```
 
 ## Installation
@@ -33,4 +70,4 @@ Optional dependencies:
 
 ## License
 
-Skchange is a free and open-source software licensed under the [BSD 3-clause license](https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE).
+`skchange` is a free and open-source software licensed under the [BSD 3-clause license](https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE).
