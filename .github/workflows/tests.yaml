@@ -32,9 +32,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[dev]
           python -m pip install pytest
-      - name: Disable numba JIT to get coverage
+      - name: Disable numba JIT
         run: |
-          echo "NUMBA_DISABLE_JIT=1{name}={value}" >> $GITHUB_ENV
+          echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
       - name: Test with pytest
         run: |
           pytest --cov --cov-report=xml
