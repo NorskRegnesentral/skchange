@@ -39,6 +39,7 @@ def get_mosum_changepoints(mosums: np.ndarray, threshold: float) -> list:
         end = interval[1]
         cpt = np.argmax(mosums[start : end + 1]) + start
         changepoints.append(cpt)
+    changepoints.append(len(mosums) - 1)  # The last index is defined as a changepoint.
     return changepoints
 
 

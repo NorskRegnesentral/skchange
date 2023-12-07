@@ -37,15 +37,15 @@ def test_pelt_sparse(Estimator):
 
     Check if the predicted change points match.
     """
-    n_cpts = 1
+    n_segments = 2
     seg_len = 50
     df = teeth(
-        n_segments=n_cpts + 1, mean=10, segment_length=seg_len, p=1, random_state=2
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Estimator(fmt="sparse")
-    cpts = detector.fit_predict(df)
+    labels = detector.fit_predict(df)
     # End point also included as a changepoint
-    assert len(cpts) == n_cpts and cpts.index[0] == seg_len - 1
+    assert len(labels) == n_segments and labels.index[0] == seg_len - 1
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
@@ -54,12 +54,12 @@ def test_pelt_dense(Estimator):
 
     Check if the predicted segmentation matches.
     """
-    n_cpts = 1
+    n_segments = 2
     seg_len = 50
     df = teeth(
-        n_segments=n_cpts + 1, mean=10, segment_length=seg_len, p=1, random_state=2
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Estimator(fmt="dense")
     labels = detector.fit_predict(df)
-    assert labels.nunique() == n_cpts + 1
+    assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0

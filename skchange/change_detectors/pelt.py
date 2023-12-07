@@ -27,7 +27,7 @@ def get_changepoints(prev_cpts: list) -> list:
         cpt_i = prev_cpts[i]
         changepoints.append(i)
         i = cpt_i
-    return changepoints[:0:-1]  # Remove the artificial changepoint at the end
+    return changepoints[::-1]  # Remove the artificial changepoint at the end
 
 
 @njit
