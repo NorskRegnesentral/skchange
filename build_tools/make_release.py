@@ -175,7 +175,7 @@ class UpdateVersion(Step):
 
     def action(self, context):
         """Carry out action."""
-        self.instruct("Update __init__.py with new version")
+        self.instruct("Update pyproject.toml and skchange/__init__.py with new version")
 
     def post(self, context):
         """Post-action step."""
@@ -317,14 +317,14 @@ def main():
     steps = [
         # prepare and run final checks
         ConfirmGitStatus(branch="main"),
-        MakeClean(),
+        # MakeClean(),
         UpdateVersion(),
         CheckVersionNumber(),
-        UpdateReadme(),
-        UpdateChangelog(),
-        MakeDocs(),
-        CheckLocalDocs(),
-        MakeDist(),
+        # UpdateReadme(),
+        # UpdateChangelog(),
+        # MakeDocs(),
+        # CheckLocalDocs(),
+        # MakeDist(),
         # UploadToTestPyPI(),
         # InstallFromTestPyPI(),
         PushToGitHub(),
