@@ -14,40 +14,40 @@ A playground for now.
 from skchange.change_detectors.mosum import Mosum
 from skchange.datasets.generate import teeth
 
-# Predict the segment membership of each observation
+# Segment a time series
 df = teeth(n_segments=2, mean=10, segment_length=10, p=1, random_state=2)
 detector = Mosum(bandwidth=5, fmt="dense")
 detector.fit_predict(df)
 >>>
-0     0.0
-1     0.0
-2     0.0
-3     0.0
-4     0.0
-5     0.0
-6     0.0
-7     0.0
-8     0.0
-9     0.0
-10    1.0
-11    1.0
-12    1.0
-13    1.0
-14    1.0
-15    1.0
-16    1.0
-17    1.0
-18    1.0
-19    1.0
-dtype: float64
+0     0
+1     0
+2     0
+3     0
+4     0
+5     0
+6     0
+7     0
+8     0
+9     0
+10    1
+11    1
+12    1
+13    1
+14    1
+15    1
+16    1
+17    1
+18    1
+19    1
+Name: segment_id, dtype: int32
 
-# Predict the changepoints (the last index of each segment)
+# Get the changepoints only (defined as the last index of a segment)
 detector = Mosum(bandwidth=5, fmt="sparse")
 detector.fit_predict(df)
 >>>
-9     0.0
-19    1.0
-dtype: float64
+9     0
+19    1
+Name: segment_id, dtype: int32
 ```
 
 ## Installation
