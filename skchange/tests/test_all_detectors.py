@@ -1,3 +1,5 @@
+"""Tests for all annotators/detectors in skchange."""
+
 import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils.estimator_checks import check_estimator
