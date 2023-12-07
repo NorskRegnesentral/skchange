@@ -16,20 +16,6 @@ from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
 
 
-def default_mosum_threshold(n: int, p: int, bandwidth: int, level: float = 0.01):
-    u = n / bandwidth
-    a = np.sqrt(2 * np.log(u))
-    b = (
-        2 * np.log(u)
-        + 1 / 2 * np.log(np.log(u))
-        + np.log(3 / 2)
-        - 1 / 2 * np.log(np.pi)
-    )
-    c = -np.log(np.log(1 / np.sqrt(1 - level)))
-    threshold = p * (b + c) / a
-    return threshold
-
-
 @njit
 def get_mosum_changepoints(
     mosums: np.ndarray, threshold: float, min_detection_interval: int
@@ -186,13 +172,48 @@ class Mosum(BaseSeriesAnnotator):
             )
         return X
 
+    @staticmethod
+    def get_default_threshold(n: int, p: int, bandwidth: int, level: float = 0.01):
+        """Get the default threshold for the MOSUM algorithm.
+
+        It is the asymptotic critical value of the univariate 'mean' test statitic,
+        multiplied by `p` to account for the multivariate case.
+
+        Parameters
+        ----------
+        n : int
+            Sample size.
+        p : int
+            Number of variables.
+        bandwidth : int
+            Bandwidth of the MOSUM algorithm.
+        level : float, optional (default=0.01)
+            Significance level for the test statistic.
+
+        Returns
+        -------
+        threshold : float
+            Threshold for the MOSUM algorithm.
+        """
+        u = n / bandwidth
+        a = np.sqrt(2 * np.log(u))
+        b = (
+            2 * np.log(u)
+            + 1 / 2 * np.log(np.log(u))
+            + np.log(3 / 2)
+            - 1 / 2 * np.log(np.pi)
+        )
+        c = -np.log(np.log(1 / np.sqrt(1 - level)))
+        threshold = p * (b + c) / a
+        return threshold
+
     def _get_threshold(self, X: pd.DataFrame) -> float:
         n = X.shape[0]
         p = X.shape[1]
         threshold = (
             self.threshold
             if self.threshold
-            else default_mosum_threshold(n, p, self.bandwidth, self.level)
+            else self.get_default_threshold(n, p, self.bandwidth, self.level)
         )
         if threshold < 0:
             raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
