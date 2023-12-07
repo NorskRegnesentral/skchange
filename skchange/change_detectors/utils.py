@@ -38,15 +38,20 @@ def format_changepoint_output(
     Parameters
     ----------
     fmt : str
+        Format of the output. Either "sparse" or "dense".
     labels : str
+        Labels of the output. Either "indicator", "score" or "int_label".
     changepoints : list
+        List of changepoint indices.
     X_index : pd.Index
-    scores : np.ndarray
+        Index of the input data.
+    scores : np.ndarray, optional (default=None)
+        Array of scores.
 
     Returns
     -------
-    pd.Series :
-
+    pd.Series
+        Either a sparse or dense pd.Series of boolean labels, integer labels or scores.
     """
     if labels == "indicator":
         out = pd.Series(False, index=X_index)
