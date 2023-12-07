@@ -16,7 +16,7 @@ from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
 
 
-def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01):
+def default_mosum_threshold(n: int, p: int, bandwidth: int, level: float = 0.01):
     u = n / bandwidth
     a = np.sqrt(2 * np.log(u))
     b = (
@@ -25,7 +25,7 @@ def default_mosum_threshold(n: int, p: int, bandwidth: int, alpha: float = 0.01)
         + np.log(3 / 2)
         - 1 / 2 * np.log(np.pi)
     )
-    c = -np.log(np.log(1 / np.sqrt(1 - alpha)))
+    c = -np.log(np.log(1 / np.sqrt(1 - level)))
     threshold = p * (b + c) / a
     return threshold
 
@@ -93,7 +93,7 @@ class Mosum(BaseSeriesAnnotator):
         Threshold to use for changepoint detection.
         * If None, the threshold is set to the default value for the test statistic
         derived in [1]_.
-    alpha : float, optional (default=0.01)
+    level : float, optional (default=0.01)
         Significance level for the test statistic. Only used in the default threshold if
         `threshold` is not provided.
 
@@ -126,14 +126,14 @@ class Mosum(BaseSeriesAnnotator):
         score: str = "mean",
         bandwidth: int = 30,
         threshold: Optional[float] = None,
-        alpha: float = 0.01,
+        level: float = 0.01,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
         self.score = score
         self.bandwidth = bandwidth
         self.threshold = threshold
-        self.alpha = alpha
+        self.level = level
 
         super().__init__(fmt=fmt, labels=labels)
 
@@ -177,7 +177,7 @@ class Mosum(BaseSeriesAnnotator):
         threshold = (
             self.threshold
             if self.threshold
-            else default_mosum_threshold(n, p, self.bandwidth, self.alpha)
+            else default_mosum_threshold(n, p, self.bandwidth, self.level)
         )
         if threshold < 0:
             raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
@@ -255,7 +255,7 @@ class Mosum(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean", "bandwidth": 10, "alpha": 0.01},
+            {"score": "mean", "bandwidth": 10, "level": 0.01},
             {"score": "mean", "bandwidth": 10, "threshold": 0},
         ]
         return params
