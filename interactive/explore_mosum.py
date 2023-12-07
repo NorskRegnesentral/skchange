@@ -10,7 +10,7 @@ from skchange.scores.mean_score import init_mean_score, mean_score
 df = teeth(n_segments=2, mean=10, segment_length=100, p=1, random_state=2)
 detector = Mosum()
 changepoints = detector.fit_predict(df)
-px.scatter(detector._scores)
+px.scatter(detector.scores)
 
 
 # Profiling
