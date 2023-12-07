@@ -31,14 +31,17 @@ def default_mosum_threshold(n: int, p: int, bandwidth: int, level: float = 0.01)
 
 
 @njit
-def get_mosum_changepoints(mosums: np.ndarray, threshold: float) -> list:
+def get_mosum_changepoints(
+    mosums: np.ndarray, threshold: float, min_detection_interval: int
+) -> list:
     detection_intervals = where(mosums > threshold)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
         end = interval[1]
-        cpt = np.argmax(mosums[start : end + 1]) + start
-        changepoints.append(cpt)
+        if end - start + 1 >= min_detection_interval:
+            cpt = np.argmax(mosums[start : end + 1]) + start
+            changepoints.append(cpt)
     changepoints.append(len(mosums) - 1)  # The last index is defined as a changepoint.
     return changepoints
 
@@ -96,6 +99,9 @@ class Mosum(BaseSeriesAnnotator):
     level : float, optional (default=0.01)
         Significance level for the test statistic. Only used in the default threshold if
         `threshold` is not provided.
+    min_detection_interval : int, optional (default=1)
+        Minimum number of consecutive scores above the threshold to be considered a
+        changepoint. Must be between 1 and `bandwidth`/2.
 
     References
     ----------
@@ -127,6 +133,7 @@ class Mosum(BaseSeriesAnnotator):
         bandwidth: int = 30,
         threshold: Optional[float] = None,
         level: float = 0.01,
+        min_detection_interval: int = 1,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
@@ -134,6 +141,7 @@ class Mosum(BaseSeriesAnnotator):
         self.bandwidth = bandwidth
         self.threshold = threshold
         self.level = level
+        self.min_detection_interval = min_detection_interval
 
         super().__init__(fmt=fmt, labels=labels)
 
@@ -141,6 +149,13 @@ class Mosum(BaseSeriesAnnotator):
 
         if self.bandwidth < 1:
             raise ValueError("bandwidth must be at least 1.")
+        if (
+            self.min_detection_interval <= 0
+            or self.min_detection_interval >= self.bandwidth / 2
+        ):
+            raise ValueError(
+                "min_detection_interval must be between 0 and bandwidth/2."
+            )
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -205,7 +220,9 @@ class Mosum(BaseSeriesAnnotator):
             self.score_init_f,
             self.bandwidth,
         )
-        self._changepoints = get_mosum_changepoints(self._scores, self._threshold)
+        self._changepoints = get_mosum_changepoints(
+            self._scores, self._threshold, self.min_detection_interval
+        )
         return format_changepoint_output(
             self.fmt, self.labels, self._changepoints, X.index, self._scores
         )
