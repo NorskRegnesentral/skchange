@@ -184,7 +184,7 @@ class Pelt(BaseSeriesAnnotator):
             X = X.to_frame()
 
         self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
-        self._scores, self._changepoints = run_pelt(
+        self.scores, self.changepoints = run_pelt(
             X.values,
             self.cost_func,
             self.cost_init_func,
@@ -192,7 +192,7 @@ class Pelt(BaseSeriesAnnotator):
             self.min_segment_length,
         )
         return format_changepoint_output(
-            self.fmt, self.labels, self._changepoints, X.index, self._scores
+            self.fmt, self.labels, self.changepoints, X.index, self.scores
         )
 
     # todo: consider implementing this, optional

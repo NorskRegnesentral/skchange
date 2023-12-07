@@ -273,17 +273,17 @@ class Mosum(BaseSeriesAnnotator):
             exact format depends on annotation type
         """
         X = self._check_X(X)
-        self._scores = mosum_transform(
+        self.scores = mosum_transform(
             X.values,
             self.score_f,
             self.score_init_f,
             self.bandwidth,
         )
-        self._changepoints = get_mosum_changepoints(
-            self._scores, self.threshold_, self.min_detection_interval
+        self.changepoints = get_mosum_changepoints(
+            self.scores, self.threshold_, self.min_detection_interval
         )
         return format_changepoint_output(
-            self.fmt, self.labels, self._changepoints, X.index, self._scores
+            self.fmt, self.labels, self.changepoints, X.index, self.scores
         )
 
     # todo: consider implementing this, optional
