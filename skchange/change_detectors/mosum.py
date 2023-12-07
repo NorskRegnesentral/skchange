@@ -139,7 +139,7 @@ class Mosum(BaseSeriesAnnotator):
 
         if self.bandwidth < 1:
             raise ValueError("bandwidth must be at least 1.")
-        if threshold < 0:
+        if threshold is not None and threshold < 0:
             raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
         if (
             self.min_detection_interval <= 0
