@@ -4,34 +4,19 @@ __author__ = ["mtveten"]
 __all__ = ["Pelt"]
 
 
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
+from skchange.change_detectors.utils import format_changepoint_output
 from skchange.costs.cost_factory import cost_factory
 
 
 def BIC_penalty(n: int, n_params: int):
     return n_params * np.log(n)
-
-
-def changepoints_to_labels(changepoints: list):
-    n = changepoints[-1] + 1  # Last changepoint is always the last index.
-    changepoints = [-1] + changepoints  # To simplify the loop.
-    labels = np.zeros(n)
-    for i in range(len(changepoints) - 1):
-        labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
-    return labels
-
-
-def changepoints_to_indicator(changepoints: list):
-    n = changepoints[-1]  # Last changepoint is always the number of samples.
-    indicator = np.zeros(n)
-    indicator[changepoints] = 1
-    return indicator
 
 
 @njit
@@ -42,11 +27,13 @@ def get_changepoints(prev_cpts: list) -> list:
         cpt_i = prev_cpts[i]
         changepoints.append(i)
         i = cpt_i
-    return changepoints[::-1]
+    return changepoints[::-1]  # Remove the artificial changepoint at the end
 
 
 @njit
-def run_pelt(X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length):
+def run_pelt(
+    X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length
+) -> Tuple[np.ndarray, list]:
     params = cost_init_func(X)
     n = len(X)
 
@@ -73,7 +60,7 @@ def run_pelt(X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_leng
         # trimming the admissible set
         admissible = admissible[admissible_opt_costs - penalty <= opt_cost[t]]
 
-    return get_changepoints(prev_cpts)
+    return opt_cost[1:], get_changepoints(prev_cpts)
 
 
 class Pelt(BaseSeriesAnnotator):
@@ -87,11 +74,13 @@ class Pelt(BaseSeriesAnnotator):
         Annotation output format:
         * If "sparse", a sub-series of labels for only the outliers in X is returned,
         * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score"}, optional (default="indicator")
+    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
         Annotation output labels:
         * If "indicator", returned values are boolean, indicating whether a value is an
         outlier,
         * If "score", returned values are floats, giving the outlier score.
+        * If "int_label", returned values are integer, indicating which segment a value
+        belongs to.
     cost : str or callable, optional (default="l2")
         Cost function to use for changepoint detection.
         * If "l2", the l2-norm is used,
@@ -135,7 +124,7 @@ class Pelt(BaseSeriesAnnotator):
         penalty: Optional[float] = None,
         min_segment_length: int = 2,
         fmt: str = "sparse",
-        labels: str = "indicator",
+        labels: str = "int_label",
     ):
         self.cost = cost
         self.penalty = penalty
@@ -148,7 +137,7 @@ class Pelt(BaseSeriesAnnotator):
         if self.min_segment_length < 1:
             raise ValueError("min_segment_length must be at least 1.")
 
-    def _fit(self, X, Y=None):
+    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         core logic
@@ -177,14 +166,7 @@ class Pelt(BaseSeriesAnnotator):
             raise ValueError(f"penalty must be non-negative (penalty={self.penalty}).")
         return penalty
 
-    def _format_predict_output(self, changepoints, X_index):
-        if self.fmt == "sparse":
-            return np.array(changepoints)
-        else:
-            labels = changepoints_to_labels(changepoints)
-            return pd.Series(labels, index=X_index)
-
-    def _predict(self, X):
+    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
 
         core logic
@@ -202,14 +184,16 @@ class Pelt(BaseSeriesAnnotator):
             X = X.to_frame()
 
         self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
-        changepoints = run_pelt(
+        self._scores, self._changepoints = run_pelt(
             X.values,
             self.cost_func,
             self.cost_init_func,
             self._penalty,
             self.min_segment_length,
         )
-        return self._format_predict_output(changepoints, X.index)
+        return format_changepoint_output(
+            self.fmt, self.labels, self._changepoints, X.index, self._scores
+        )
 
     # todo: consider implementing this, optional
     # if not implementing, delete the _update method
