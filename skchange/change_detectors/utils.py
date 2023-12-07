@@ -55,13 +55,13 @@ def format_changepoint_output(
         Either a sparse or dense pd.Series of boolean labels, integer labels or scores.
     """
     if labels == "indicator":
-        out = pd.Series(False, index=X_index)
+        out = pd.Series(False, index=X_index, name="is_changepoint")
         out.iloc[changepoints] = True
     elif labels == "score":
-        out = pd.Series(scores, index=X_index)
+        out = pd.Series(scores, index=X_index, name="change_score")
     elif labels == "int_label":
         out = changepoints_to_labels(changepoints)
-        out = pd.Series(out, index=X_index)
+        out = pd.Series(out, index=X_index, name="segment_id")
 
     if fmt == "sparse":
         out = out.iloc[changepoints]
