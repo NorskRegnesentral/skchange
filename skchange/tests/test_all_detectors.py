@@ -4,16 +4,16 @@ import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils.estimator_checks import check_estimator
 
-from skchange.change_detectors.pelt import Pelt
+from skchange.change_detectors.tests.test_change_detectors import change_detectors
 
 # todo:
 # ALL_ANNOTATORS = all_estimators(
 #     estimator_types="series-annotator", return_names=False
 # )
-ALL_ANNOTATORS = [Pelt]
+all_annotators = change_detectors
 
 
-@pytest.mark.parametrize("Estimator", ALL_ANNOTATORS)
+@pytest.mark.parametrize("Estimator", all_annotators)
 def test_output_type(Estimator):
     """Test annotator output type."""
     if not run_test_for_class(Estimator):
