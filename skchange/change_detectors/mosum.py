@@ -82,12 +82,16 @@ class Mosum(BaseSeriesAnnotator):
         Threshold to use for changepoint detection.
         * If None, the threshold is set to the default value for the test statistic
         derived in [1]_.
+        * If tune = True, the `threshold` input is ignored as it is tuned instead.
     level : float, optional (default=0.01)
         Significance level for the test statistic. Only used in the default threshold if
         `threshold` is not provided.
     min_detection_interval : int, optional (default=1)
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
+    tune : bool, optional (default=False)
+        Whether to tune the threshold in the fit method or not. Takes precedence over
+        the `threshold` input.
 
     References
     ----------
@@ -110,7 +114,7 @@ class Mosum(BaseSeriesAnnotator):
     _tags = {
         "capability:missing_values": False,
         "capability:multivariate": True,
-        "fit_is_empty": True,
+        "fit_is_empty": False,
     }
 
     def __init__(
@@ -120,21 +124,23 @@ class Mosum(BaseSeriesAnnotator):
         threshold: Optional[float] = None,
         level: float = 0.01,
         min_detection_interval: int = 1,
+        tune: bool = False,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
         self.score = score
         self.bandwidth = bandwidth
-        self.threshold = threshold
+        self.threshold = threshold  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
-
+        self.tune = tune
         super().__init__(fmt=fmt, labels=labels)
-
         self.score_f, self.score_init_f = score_factory(self.score)
 
         if self.bandwidth < 1:
             raise ValueError("bandwidth must be at least 1.")
+        if threshold < 0:
+            raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
         if (
             self.min_detection_interval <= 0
             or self.min_detection_interval >= self.bandwidth / 2
@@ -143,25 +149,7 @@ class Mosum(BaseSeriesAnnotator):
                 "min_detection_interval must be between 0 and bandwidth/2."
             )
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
-        """Fit to training data.
-
-        Does nothing. To comply with scikit-learn and sktime API.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to fit model to, time series
-        Y : pd.Series, optional
-            ground truth annotations for training if annotator is supervised
-
-        Returns
-        -------
-        self : returns a reference to self
-        """
-        return self
-
-    def _check_X(self, X: Union[pd.DataFrame, pd.Series]):
+    def _check_X(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
         if X.ndim < 2:
             X = X.to_frame()
 
@@ -172,8 +160,35 @@ class Mosum(BaseSeriesAnnotator):
             )
         return X
 
+    def _tune_threshold(self, X: pd.DataFrame) -> float:
+        """Tune the threshold for the MOSUM algorithm.
+
+        The threshold is set to the (1-`level`)-quantile of the score on the training
+        data `X`. For this to be correct, the training data must contain no
+        changepoints.
+
+        TODO: Find the threshold given an input number `k` of "permitted" changepoints
+        in the training data. This can be achieved by filtering out the top `k` peaks
+        of the score.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Training data to tune the threshold on.
+        """
+        scores = mosum_transform(
+            X.values,
+            self.score_f,
+            self.score_init_f,
+            self.bandwidth,
+        )
+        tuned_threshold = np.quantile(scores, 1 - self.level)
+        return tuned_threshold
+
     @staticmethod
-    def get_default_threshold(n: int, p: int, bandwidth: int, level: float = 0.01):
+    def get_default_threshold(
+        n: int, p: int, bandwidth: int, level: float = 0.01
+    ) -> float:
         """Get the default threshold for the MOSUM algorithm.
 
         It is the asymptotic critical value of the univariate 'mean' test statitic,
@@ -205,20 +220,39 @@ class Mosum(BaseSeriesAnnotator):
         )
         c = -np.log(np.log(1 / np.sqrt(1 - level)))
         # TODO: Check if it's correct to multiply by p.
-        threshold = p * (b + c) / a
-        return threshold
+        return p * (b + c) / a
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
-        n = X.shape[0]
-        p = X.shape[1]
-        threshold = (
-            self.threshold
-            if self.threshold
-            else self.get_default_threshold(n, p, self.bandwidth, self.level)
-        )
-        if threshold < 0:
-            raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
-        return threshold
+        if self.tune:
+            return self._tune_threshold(X)
+
+        if self.threshold:
+            return self.threshold
+        else:
+            # The default threshold is used.
+            return self.get_default_threshold(
+                X.shape[0], X.shape[1], self.bandwidth, self.level
+            )
+
+    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+        """Fit to training data.
+
+        Trains the threshold if `tune` is True. Otherwise, it does nothing.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            training data to fit model to, time series
+        Y : pd.Series, optional
+            ground truth annotations for training if annotator is supervised
+
+        Returns
+        -------
+        self : returns a reference to self
+        """
+        X = self._check_X(X)
+        self.threshold_ = self._get_threshold(X)
+        return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
@@ -235,7 +269,6 @@ class Mosum(BaseSeriesAnnotator):
             exact format depends on annotation type
         """
         X = self._check_X(X)
-        self._threshold = self._get_threshold(X)
         self._scores = mosum_transform(
             X.values,
             self.score_f,
@@ -243,7 +276,7 @@ class Mosum(BaseSeriesAnnotator):
             self.bandwidth,
         )
         self._changepoints = get_mosum_changepoints(
-            self._scores, self._threshold, self.min_detection_interval
+            self._scores, self.threshold_, self.min_detection_interval
         )
         return format_changepoint_output(
             self.fmt, self.labels, self._changepoints, X.index, self._scores
