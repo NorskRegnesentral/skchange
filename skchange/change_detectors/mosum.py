@@ -204,6 +204,7 @@ class Mosum(BaseSeriesAnnotator):
             - 1 / 2 * np.log(np.pi)
         )
         c = -np.log(np.log(1 / np.sqrt(1 - level)))
+        # TODO: Check if it's correct to multiply by p.
         threshold = p * (b + c) / a
         return threshold
 
