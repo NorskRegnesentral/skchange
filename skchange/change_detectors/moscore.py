@@ -1,7 +1,7 @@
-"""The MOSUM algorithm for multiple changepoint detection."""
+"""The Moving Score algorithm for multiple changepoint detection."""
 
 __author__ = ["mtveten"]
-__all__ = ["Mosum"]
+__all__ = ["Moscore"]
 
 
 from typing import Callable, Optional, Tuple, Union
@@ -17,24 +17,26 @@ from skchange.utils.numba.general import where
 
 
 @njit
-def get_mosum_changepoints(
-    mosums: np.ndarray, threshold: float, min_detection_interval: int
+def get_moscore_changepoints(
+    moscores: np.ndarray, threshold: float, min_detection_interval: int
 ) -> list:
-    detection_intervals = where(mosums > threshold)
+    detection_intervals = where(moscores > threshold)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
         end = interval[1]
         if end - start + 1 >= min_detection_interval:
-            cpt = np.argmax(mosums[start : end + 1]) + start
+            cpt = np.argmax(moscores[start : end + 1]) + start
             changepoints.append(cpt)
-    changepoints.append(len(mosums) - 1)  # The last index is defined as a changepoint.
+    changepoints.append(
+        len(moscores) - 1
+    )  # The last index is defined as a changepoint.
     return changepoints
 
 
 # Parallelizable??
 @njit
-def mosum_transform(
+def moscore_transform(
     X: np.ndarray,
     score_f: Callable,
     score_init_f: Callable,
@@ -42,20 +44,21 @@ def mosum_transform(
 ) -> Tuple[list, np.ndarray]:
     params = score_init_f(X)
     n = len(X)
-    mosums = np.zeros(n)
+    moscores = np.zeros(n)
     for k in range(bandwidth - 1, n - bandwidth):
         start = k - bandwidth + 1
         end = k + bandwidth
-        mosums[k] = score_f(params, start, end, k)
-    return mosums
+        moscores[k] = score_f(params, start, end, k)
+    return moscores
 
 
-class Mosum(BaseSeriesAnnotator):
-    """Moving sum (MOSUM) algorithm for multiple changepoint detection.
+class Moscore(BaseSeriesAnnotator):
+    """Moving score algorithm for multiple changepoint detection.
 
-    An efficient implementation of the MOSUM algorithm [1]_ for changepoint detection.
-    It runs a test statistic for a single changepoint at the midpoint in a moving window
-    of length `2*bandwidth` over the data.
+    A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
+    detection. It runs a test statistic for a single changepoint at the midpoint in a
+    moving window of length `2*bandwidth` over the data. Efficently implemented using
+    numba.
 
     Parameters
     ----------
@@ -100,14 +103,14 @@ class Mosum(BaseSeriesAnnotator):
 
     Examples
     --------
-    from skchange.change_detectors.mosum import Mosum
+    from skchange.change_detectors.moscore import Moscore
     from skchange.datasets.generate import teeth
 
     # Generate data
     df = teeth(n_segments=2, mean=10, segment_length=100000, p=5, random_state=2)
 
     # Detect changepoints
-    detector = Mosum()
+    detector = Moscore()
     detector.fit_predict(df)
     """
 
@@ -161,7 +164,7 @@ class Mosum(BaseSeriesAnnotator):
         return X
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
-        """Tune the threshold for the MOSUM algorithm.
+        """Tune the threshold for the Moscore algorithm.
 
         The threshold is set to the (1-`level`)-quantile of the score on the training
         data `X`. For this to be correct, the training data must contain no
@@ -176,7 +179,7 @@ class Mosum(BaseSeriesAnnotator):
         X : pd.DataFrame
             Training data to tune the threshold on.
         """
-        scores = mosum_transform(
+        scores = moscore_transform(
             X.values,
             self.score_f,
             self.score_init_f,
@@ -189,7 +192,7 @@ class Mosum(BaseSeriesAnnotator):
     def get_default_threshold(
         n: int, p: int, bandwidth: int, level: float = 0.01
     ) -> float:
-        """Get the default threshold for the MOSUM algorithm.
+        """Get the default threshold for the Moscore algorithm.
 
         It is the asymptotic critical value of the univariate 'mean' test statitic,
         multiplied by `p` to account for the multivariate case.
@@ -201,14 +204,14 @@ class Mosum(BaseSeriesAnnotator):
         p : int
             Number of variables.
         bandwidth : int
-            Bandwidth of the MOSUM algorithm.
+            Bandwidth of the Moscore algorithm.
         level : float, optional (default=0.01)
             Significance level for the test statistic.
 
         Returns
         -------
         threshold : float
-            Threshold for the MOSUM algorithm.
+            Threshold for the Moscore algorithm.
         """
         u = n / bandwidth
         a = np.sqrt(2 * np.log(u))
@@ -273,13 +276,13 @@ class Mosum(BaseSeriesAnnotator):
             exact format depends on annotation type
         """
         X = self._check_X(X)
-        self.scores = mosum_transform(
+        self.scores = moscore_transform(
             X.values,
             self.score_f,
             self.score_init_f,
             self.bandwidth,
         )
-        self.changepoints = get_mosum_changepoints(
+        self.changepoints = get_moscore_changepoints(
             self.scores, self.threshold_, self.min_detection_interval
         )
         return format_changepoint_output(

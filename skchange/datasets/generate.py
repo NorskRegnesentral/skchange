@@ -6,13 +6,13 @@ from sktime.annotation.datagen import piecewise_normal_multivariate
 
 
 def teeth(
-    n_segments,
-    mean,
-    segment_length,
-    p=1,
-    variances=1.0,
-    covariances=None,
-    random_state=None,
+    n_segments: int,
+    segment_length: int,
+    p: int = 1,
+    mean: float = 0.0,
+    variance: float = 1.0,
+    covariances: np.ndarray = None,
+    random_state: int = None,
 ) -> pd.DataFrame:
     """
     Generate a DataFrame with teeth-shaped segments.
@@ -21,14 +21,14 @@ def teeth(
     ----------
         n_segments : int
             Number of segments to generate.
-        mean : float
-            Mean of each alternating segment.
-        segment_length : float
+        segment_length : int
             Length of each segment.
         p : int, optional
             Number of dimensions. Defaults to 1.
-        variances : float or array-like, optional
-            Variances of the segments. Defaults to 1.0.
+        mean : float, optional
+            Mean of each alternating segment.
+        variance : float, optional
+            Variances of each alternating segment. Defaults to 1.0.
         covariances : array-like, optional
             Covariances between dimensions. Defaults to None.
         random_state : int or RandomState, optional
@@ -39,12 +39,16 @@ def teeth(
         pd.DataFrame: DataFrame with teeth-shaped segments.
     """
     means = []
+    vars = []
     for i in range(n_segments):
         mean_vec = [0] * p if i % 2 == 0 else [mean] * p
         means.append(mean_vec)
+        vars_vec = [1] * p if i % 2 == 0 else [variance] * p
+        vars.append(vars_vec)
+
     segment_lengths = [segment_length] * n_segments
     x = piecewise_normal_multivariate(
-        means, segment_lengths, variances, covariances, random_state
+        means, segment_lengths, vars, covariances, random_state
     )
     df = pd.DataFrame(x, index=range(len(x)))
     return df

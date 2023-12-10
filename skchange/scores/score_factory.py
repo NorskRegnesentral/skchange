@@ -15,8 +15,9 @@ Recipe for adding new scores (replace "score" with "score" below):
 """
 
 from skchange.scores.mean_score import init_mean_score, mean_score
+from skchange.scores.var_score import init_var_score, var_score
 
-VALID_SCORES = ["mean"]
+VALID_SCORES = ["mean", "var"]
 
 
 def score_factory(score_name: str):
@@ -25,7 +26,7 @@ def score_factory(score_name: str):
     Parameters
     ----------
     score_name : str
-        Name of score function. Must be one of 'mean'.
+        Name of score function. Must be one of 'mean' or 'var'.
 
     Returns
     -------
@@ -36,6 +37,8 @@ def score_factory(score_name: str):
     """
     if score_name == "mean":
         return mean_score, init_mean_score
+    elif score_name == "var":
+        return var_score, init_var_score
     else:
         message = (
             f"score_name={score_name} not recognized."
