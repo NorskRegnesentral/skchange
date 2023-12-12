@@ -14,34 +14,46 @@ Recipe for adding new scores (replace "score" with "score" below):
 
 """
 
+from numba.extending import is_jitted
+
 from skchange.scores.mean_score import init_mean_score, mean_score
 from skchange.scores.var_score import init_var_score, var_score
 
 VALID_SCORES = ["mean", "var"]
 
 
-def score_factory(score_name: str):
+def score_factory(score: str):
     """Return score function and its initializer.
 
     Parameters
     ----------
-    score_name : str
-        Name of score function. Must be one of 'mean' or 'var'.
+    score: str, Tuple[Callable, Callable], optional (default="mean")
+        Test statistic to use for changepoint detection.
+        * If "mean", the difference-in-mean statistic is used,
+        * If "var", the difference-in-variance statistic is used,
+        * If a tuple, it must contain two functions: The first function is the scoring
+        function, which takes in the output of the second function as its first
+        argument, and start, end and split indices as the second, third and fourth
+        arguments. The second function is the initializer, which precomputes quantities
+        that should be precomputed. See skchange/scores/score_factory.py for examples.
 
     Returns
     -------
-    score_func : Callable
+    score_func : Numba jitted Callable
         Score function.
-    init_score_func : Callable
+    init_score_func : Numba jitted Callable
         Score function initializer.
     """
-    if score_name == "mean":
+    if isinstance(score, str) and score == "mean":
         return mean_score, init_mean_score
-    elif score_name == "var":
+    elif isinstance(score, str) and score == "var":
         return var_score, init_var_score
+    elif len(score) == 2 and all([is_jitted(s) for s in score]):
+        return score[0], score[1]
     else:
         message = (
-            f"score_name={score_name} not recognized."
+            f"score={score} not recognized."
             + f" Must be one of {', '.join(VALID_SCORES)}"
+            + " or a tuple of two numba jitted functions."
         )
         raise ValueError(message)

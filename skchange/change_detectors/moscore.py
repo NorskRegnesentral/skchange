@@ -73,10 +73,15 @@ class Moscore(BaseSeriesAnnotator):
         * If "score", returned values are floats, giving the outlier score.
         * If "int_label", returned values are integer, indicating which segment a value
         belongs to.
-    score: str (default="mean")
+    score: str, Tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
-        * More to come.
+        * If "var", the difference-in-variance statistic is used,
+        * If a tuple, it must contain two functions: The first function is the scoring
+        function, which takes in the output of the second function as its first
+        argument, and start, end and split indices as the second, third and fourth
+        arguments. The second function is the initializer, which precomputes quantities
+        that should be precomputed. See skchange/scores/score_factory.py for examples.
     bandwidth : int, optional (default=30)
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
@@ -122,7 +127,7 @@ class Moscore(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: str = "mean",
+        score: Union[str, Tuple[Callable, Callable]] = "mean",
         bandwidth: int = 30,
         threshold: Optional[float] = None,
         level: float = 0.01,
