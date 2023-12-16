@@ -158,7 +158,7 @@ class Moscore(BaseSeriesAnnotator):
             )
 
     def _check_X(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
-        if X.isna().any():
+        if X.isna().any(axis=None):
             raise ValueError("X must not contain missing values.")
 
         if X.ndim < 2:
