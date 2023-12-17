@@ -36,7 +36,7 @@ def test_custom_score():
         def score_f(params: np.ndarray, start: int, end: int, split: int) -> float:
             return 10.0
 
-        score_factory(score_f, init_score_f)
+        score_factory((score_f, init_score_f))
 
     @njit
     def jit_init_score_f(X: np.ndarray) -> np.ndarray:
