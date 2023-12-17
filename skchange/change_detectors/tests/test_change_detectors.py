@@ -1,4 +1,4 @@
-"""Simple PELT test."""
+"""Basic tests for all change detectors."""
 
 import numpy as np
 import pandas as pd
@@ -33,7 +33,7 @@ def test_output_type(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_pelt_sparse(Estimator):
-    """Test PELT sparse segmentation.
+    """Test sparse segmentation.
 
     Check if the predicted change points match.
     """
@@ -50,7 +50,7 @@ def test_pelt_sparse(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_pelt_dense(Estimator):
-    """Tests PELT dense segmentation.
+    """Tests dense segmentation.
 
     Check if the predicted segmentation matches.
     """
