@@ -14,6 +14,8 @@ Recipe for adding new scores (replace "score" with "score" below):
 
 """
 
+from typing import Callable, Tuple, Union
+
 from numba.extending import is_jitted
 
 from skchange.scores.mean_score import init_mean_score, mean_score
@@ -22,12 +24,12 @@ from skchange.scores.meanvar_score import init_meanvar_score, meanvar_score
 VALID_SCORES = ["mean", "meanvar"]
 
 
-def score_factory(score: str):
+def score_factory(score: Union[str, Tuple[Callable, Callable]]):
     """Return score function and its initializer.
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, Tuple[Callable, Callable]
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "meanvar", the difference-in-mean-and-variance statistic is used,
