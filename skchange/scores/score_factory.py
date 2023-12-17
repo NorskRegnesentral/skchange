@@ -17,9 +17,9 @@ Recipe for adding new scores (replace "score" with "score" below):
 from numba.extending import is_jitted
 
 from skchange.scores.mean_score import init_mean_score, mean_score
-from skchange.scores.var_score import init_var_score, var_score
+from skchange.scores.meanvar_score import init_meanvar_score, meanvar_score
 
-VALID_SCORES = ["mean", "var"]
+VALID_SCORES = ["mean", "meanvar"]
 
 
 def score_factory(score: str):
@@ -30,7 +30,7 @@ def score_factory(score: str):
     score: str, Tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
-        * If "var", the difference-in-variance statistic is used,
+        * If "meanvar", the difference-in-mean-and-variance statistic is used,
         * If a tuple, it must contain two functions: The first function is the scoring
         function, which takes in the output of the second function as its first
         argument, and start, end and split indices as the second, third and fourth
@@ -46,8 +46,8 @@ def score_factory(score: str):
     """
     if isinstance(score, str) and score == "mean":
         return mean_score, init_mean_score
-    elif isinstance(score, str) and score == "var":
-        return var_score, init_var_score
+    elif isinstance(score, str) and score == "meanvar":
+        return meanvar_score, init_meanvar_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
         return score[0], score[1]
     else:
