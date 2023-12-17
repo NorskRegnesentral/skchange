@@ -32,7 +32,7 @@ def test_output_type(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
-def test_pelt_sparse(Estimator):
+def test_change_detector_sparse(Estimator):
     """Test sparse segmentation.
 
     Check if the predicted change points match.
@@ -49,7 +49,7 @@ def test_pelt_sparse(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
-def test_pelt_dense(Estimator):
+def test_change_detector_dense(Estimator):
     """Tests dense segmentation.
 
     Check if the predicted segmentation matches.
