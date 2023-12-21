@@ -1,6 +1,6 @@
 """Factory for getting test statistic functions and their initializers from strings.
 
-Recipe for adding new scores (replace "score" with "score" below):
+Recipe for adding new scores:
     1. Add a new module in skchange.score: <score_name>_score.py
     2. Add two functions:
         init_<score_name>_score, which precomputes quantities that should be
