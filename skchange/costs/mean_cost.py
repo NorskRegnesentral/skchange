@@ -1,4 +1,4 @@
-"""L2 cost function for change point detection."""
+"""Gaussian mean likelihood cost function for change point detection."""
 
 from typing import Tuple
 
