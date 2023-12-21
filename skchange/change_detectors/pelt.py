@@ -240,7 +240,7 @@ class Pelt(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"cost": "l2", "penalty": None, "min_segment_length": 2},
-            {"cost": "l2", "penalty": 0, "min_segment_length": 1},
+            {"cost": "mean", "penalty": None, "min_segment_length": 2},
+            {"cost": "mean", "penalty": 0, "min_segment_length": 1},
         ]
         return params

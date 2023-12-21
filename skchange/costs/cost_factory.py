@@ -34,7 +34,7 @@ def cost_factory(cost_name: str):
     init_cost_func : Callable
         Cost function initializer.
     """
-    if cost_name == "l2":
+    if cost_name == "mean":
         return mean_cost, init_mean_cost
     else:
         message = (
