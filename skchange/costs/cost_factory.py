@@ -14,9 +14,9 @@ Recipe for adding new costs:
 
 """
 
-from skchange.costs.l2_cost import init_l2_cost, l2_cost
+from skchange.costs.mean_cost import init_mean_cost, mean_cost
 
-VALID_COSTS = ["l2"]
+VALID_COSTS = ["mean"]
 
 
 def cost_factory(cost_name: str):
@@ -25,7 +25,7 @@ def cost_factory(cost_name: str):
     Parameters
     ----------
     cost_name : str
-        Name of cost function. Must be one of 'l2'.
+        Name of cost function. Must be one of 'mean'.
 
     Returns
     -------
@@ -35,7 +35,7 @@ def cost_factory(cost_name: str):
         Cost function initializer.
     """
     if cost_name == "l2":
-        return l2_cost, init_l2_cost
+        return mean_cost, init_mean_cost
     else:
         message = (
             f"cost_name={cost_name} not recognized."
