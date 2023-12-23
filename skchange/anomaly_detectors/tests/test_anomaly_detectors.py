@@ -27,7 +27,7 @@ def test_output_type(Estimator):
         n_timepoints=30, estimator_type=estimator.get_tag("distribution_type")
     )
     y_pred = estimator.predict(arg)
-    assert isinstance(y_pred, (pd.Series, np.ndarray))
+    assert isinstance(y_pred, (pd.DataFrame, pd.Series, np.ndarray))
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -46,8 +46,8 @@ def test_anomaly_detector_sparse(Estimator):
     # End point also included as a changepoint
     assert (
         len(anomalies) == 1
-        and anomalies[0].left == seg_len
-        and anomalies[0].right == 2 * seg_len - 1
+        and anomalies.loc[0, "start"] == seg_len
+        and anomalies.loc[0, "end"] == 2 * seg_len - 1
     )
 
 
@@ -64,5 +64,5 @@ def test_anomaly_detector_dense(Estimator):
     )
     detector = Estimator(fmt="dense", labels="int_label")
     labels = detector.fit_predict(df)
-    assert labels.nunique() == n_segments
-    assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
+    assert labels.nunique().iloc[0] == n_segments
+    assert labels.iloc[seg_len - 1, 0] == 0.0 and labels.iloc[seg_len, 0] == 1.0

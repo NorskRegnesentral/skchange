@@ -26,9 +26,9 @@ anomalies = capa.fit_predict(df)
 px.scatter(x=df.index, y=df.values[:, 0], color=anomalies)
 
 # Multivariate
-# TODO: Include inference on the affected subset.
 # TODO: Add support for subset multivariate anomaly detection in output format.
 # TODO: Add plotting functionality to assess the affected subset.
+# TODO: Add data generation for subset anomalies.
 df = teeth(n_segments=4, mean=10, segment_length=10, p=10, random_state=2)
 capa = Capa(fmt="sparse", max_segment_length=20)
 anomalies = capa.fit_predict(df)

@@ -20,6 +20,6 @@ def test_capa_anomalies(saving):
     # End point also included as a changepoint
     assert (
         len(anomalies) == 1
-        and anomalies[0].left == seg_len
-        and anomalies[0].right == 2 * seg_len - 1
+        and anomalies.loc[0, "start"] == seg_len
+        and anomalies.loc[0, "end"] == 2 * seg_len - 1
     )

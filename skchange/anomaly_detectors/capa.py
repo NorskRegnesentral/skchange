@@ -3,7 +3,7 @@
 __author__ = ["mtveten"]
 __all__ = ["Capa"]
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,7 @@ from numba import njit
 from scipy.stats import chi2
 from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.anomaly_detectors.utils import format_anomaly_output
+from skchange.anomaly_detectors.utils import format_multivariate_anomaly_output
 from skchange.costs.saving_factory import saving_factory
 
 
@@ -185,21 +185,25 @@ def capa_penalty_factory(penalty: Union[str, Callable] = "combined") -> Callable
 
 
 @njit
-def get_collective_anomalies(anomaly_starts: np.ndarray) -> list:
+def get_collective_anomalies(
+    anomaly_starts: np.ndarray, affected_components: List[np.ndarray]
+) -> List[Tuple[int, int, np.ndarray]]:
     anomalies = []
     i = anomaly_starts.size - 1
     while i >= 0:
         start_i = anomaly_starts[i]
         size = i - start_i + 1
         if size > 1:
-            anomalies.append((int(start_i), i))
+            anomalies.append((int(start_i), i, np.sort(affected_components[i])))
             i = int(start_i)
         i -= 1
     return anomalies[::-1]
 
 
 @njit
-def get_point_anomalies(anomaly_starts: np.ndarray) -> list:
+def get_point_anomalies(
+    anomaly_starts: np.ndarray, affected_components: List[np.ndarray]
+) -> List[Tuple[int, np.ndarray]]:
     anomalies = []
     i = anomaly_starts.size - 1
     while i >= 0:
@@ -208,7 +212,7 @@ def get_point_anomalies(anomaly_starts: np.ndarray) -> list:
         if size > 1:
             i = int(start_i)
         if size == 1:
-            anomalies.append(i)
+            anomalies.append((i, np.sort(affected_components[i])))
         i -= 1
     return anomalies[::-1]
 
@@ -216,17 +220,17 @@ def get_point_anomalies(anomaly_starts: np.ndarray) -> list:
 @njit
 def penalise_savings(
     savings: np.ndarray, alpha: float, betas: np.ndarray
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, List[np.ndarray]]:
     penalised_savings = np.zeros(savings.shape[0])
-    opt_subsets = []
+    opt_components = []
     for i in range(savings.shape[0]):
         saving_i = savings[i]
         saving_order = (saving_i).argsort(kind="mergesort")
         penalised_saving = np.cumsum(saving_i[saving_order] - betas) - alpha
         argmax_penalised_saving = np.argmax(penalised_saving)
         penalised_savings[i] = penalised_saving[argmax_penalised_saving]
-        opt_subsets.append(saving_order[: argmax_penalised_saving + 1])
-    return penalised_savings, opt_subsets
+        opt_components.append(saving_order[: argmax_penalised_saving + 1])
+    return penalised_savings, opt_components
 
 
 @njit
@@ -248,6 +252,8 @@ def run_capa(
     # Store the previous start of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
     anomaly_starts = np.repeat(np.nan, n)
+    collective_affected_components = [np.array([-1])] * (min_segment_length - 1)
+    point_affected_components = [np.array([-1])] * (min_segment_length - 1)
 
     ts = np.arange(min_segment_length - 1, n)
     for t in ts:
@@ -257,22 +263,22 @@ def run_capa(
         )
         ends = np.repeat(t, len(starts))
         collective_savings = saving_func(params, starts, ends)
-        penalised_collective_saving, collective_subsets = penalise_savings(
+        penalised_collective_saving, collective_components = penalise_savings(
             collective_savings, collective_alpha, collective_betas
         )
         candidate_collective_savings = opt_savings[starts] + penalised_collective_saving
         argmax_collective = np.argmax(candidate_collective_savings)
         opt_collective_saving = candidate_collective_savings[argmax_collective]
-        # opt_collective_subset = collective_subsets[argmax_collective]
+        collective_affected_components.append(collective_components[argmax_collective])
 
         # Point anomalies
         t_array = np.array([t])
         point_savings = saving_func(params, t_array, t_array)
-        penalised_point_saving, point_subsets = penalise_savings(
+        penalised_point_saving, point_components = penalise_savings(
             point_savings, point_alpha, point_betas
         )
         point_saving = opt_savings[t] + penalised_point_saving[0]
-        # opt_point_subset = point_subsets[0]
+        point_affected_components.append(point_components[0])
 
         # Combine
         savings = np.array([opt_savings[t], opt_collective_saving, point_saving])
@@ -285,8 +291,8 @@ def run_capa(
 
     return (
         opt_savings[1:],
-        get_collective_anomalies(anomaly_starts),
-        get_point_anomalies(anomaly_starts),
+        get_collective_anomalies(anomaly_starts, collective_affected_components),
+        get_point_anomalies(anomaly_starts, point_affected_components),
     )
 
 
@@ -473,13 +479,15 @@ class Capa(BaseSeriesAnnotator):
             self.max_segment_length,
         )
         self.scores = np.diff(opt_savings, prepend=0.0)
-        anomalies = format_anomaly_output(
+        anomalies = format_multivariate_anomaly_output(
             self.fmt,
             self.labels,
             X.shape[0],
+            X.shape[1],
             self.collective_anomalies,
             self.point_anomalies if not self.ignore_point_anomalies else None,
             X.index,
+            X.columns,
             self.scores,
         )
         return anomalies
