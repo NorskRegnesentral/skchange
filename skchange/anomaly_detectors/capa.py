@@ -225,7 +225,7 @@ def penalise_savings(
     opt_components = []
     for i in range(savings.shape[0]):
         saving_i = savings[i]
-        saving_order = (saving_i).argsort(kind="mergesort")
+        saving_order = (-saving_i).argsort(kind="mergesort")  # Decreasing order.
         penalised_saving = np.cumsum(saving_i[saving_order] - betas) - alpha
         argmax_penalised_saving = np.argmax(penalised_saving)
         penalised_savings[i] = penalised_saving[argmax_penalised_saving]
