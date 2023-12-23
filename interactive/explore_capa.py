@@ -26,11 +26,9 @@ anomalies = capa.fit_predict(df)
 px.scatter(x=df.index, y=df.values[:, 0], color=anomalies)
 
 # Multivariate
-# TODO: Add support for subset multivariate anomaly detection in output format.
 # TODO: Add plotting functionality to assess the affected subset.
-# TODO: Add data generation for subset anomalies.
-df = teeth(n_segments=4, mean=10, segment_length=10, p=10, random_state=2)
-capa = Capa(fmt="sparse", max_segment_length=20)
+df = teeth(5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2)
+capa = Capa(collective_penalty_scale=5, fmt="sparse", max_segment_length=20)
 anomalies = capa.fit_predict(df)
 
 capa = Capa(labels="score", fmt="dense", max_segment_length=20)
@@ -44,6 +42,7 @@ px.scatter(x=df.index, y=df.values[:, 0], color=anomalies)
 
 # Profiling
 # TODO: Add a dedicated univariate version. Currently Capa is x10 slower than strchange
+# TODO: Add pruning?
 n = int(1e4)
 df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
 detector = Capa(
