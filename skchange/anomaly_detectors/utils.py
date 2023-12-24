@@ -118,13 +118,15 @@ def format_anomaly_output(
             anomaly_labels = anomalies_to_labels(anomalies, n)
             out = pd.Series(anomaly_labels, index=X_index, name="int_label", dtype=int)
         elif fmt == "sparse":
-            out = pd.Series([pd.Interval(*anom, closed="both") for anom in anomalies])
+            out = pd.DataFrame(anomalies, columns=["start", "end"])
+            # out = pd.Series([pd.Interval(*anom, closed="both") for anom in anomalies])
     elif labels == "indicator":
         if fmt == "dense":
             anomaly_labels = anomalies_to_labels(anomalies, n)
             out = pd.Series(anomaly_labels > 0, index=X_index, name="indicator")
         elif fmt == "sparse":
-            out = pd.Series([pd.Interval(*anom, closed="both") for anom in anomalies])
+            out = pd.DataFrame(anomalies, columns=["start", "end"])
+            # out = pd.Series([pd.Interval(*anom, closed="both") for anom in anomalies])
     elif labels == "score":
         if fmt == "dense":
             out = pd.Series(scores, index=X_index, name="score", dtype=float)

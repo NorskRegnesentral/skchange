@@ -7,9 +7,10 @@ from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
 from skchange.anomaly_detectors.capa import Capa
+from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.datasets.generate import teeth
 
-anomaly_detectors = [Capa]
+anomaly_detectors = [Capa, Mvcapa]
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -64,5 +65,9 @@ def test_anomaly_detector_dense(Estimator):
     )
     detector = Estimator(fmt="dense", labels="int_label")
     labels = detector.fit_predict(df)
-    assert labels.nunique().iloc[0] == n_segments
-    assert labels.iloc[seg_len - 1, 0] == 0.0 and labels.iloc[seg_len, 0] == 1.0
+    if isinstance(labels, pd.Series):
+        assert labels.nunique() == n_segments
+        assert labels.iloc[seg_len - 1] == 0.0 and labels.iloc[seg_len] == 1.0
+    else:
+        assert labels.nunique().iloc[0] == n_segments
+        assert labels.iloc[seg_len - 1, 0] == 0.0 and labels.iloc[seg_len, 0] == 1.0
