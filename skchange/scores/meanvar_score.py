@@ -8,7 +8,7 @@ from numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
+@njit(cache=True)
 def init_meanvar_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Precompute sums and squared sums for 'meanvar_score'.
 
@@ -32,7 +32,7 @@ def init_meanvar_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return sums, sums2
 
 
-@njit
+@njit(cache=True)
 def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: int, j: int):
     """Calculate variance from precomputed sums.
 
@@ -61,7 +61,7 @@ def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: int, j: int):
     return var
 
 
-@njit
+@njit(cache=True)
 def meanvar_score(
     precomputed_params: np.ndarray, start: int, end: int, split: int
 ) -> float:

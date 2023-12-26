@@ -8,7 +8,7 @@ from numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
+@njit(cache=True)
 def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Precompute sums for mean_score.
 
@@ -30,7 +30,7 @@ def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return sums
 
 
-@njit
+@njit(cache=True)
 def mean_score(
     precomputed_params: np.ndarray, start: int, end: int, split: int
 ) -> float:

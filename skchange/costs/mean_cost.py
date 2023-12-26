@@ -9,7 +9,7 @@ from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
+@njit(cache=True)
 def init_mean_cost(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Precompute sums and weights for mean_cost.
 
@@ -39,7 +39,7 @@ def init_mean_cost(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return sums, sums2, weights
 
 
-@njit
+@njit(cache=True)
 def mean_cost(
     precomputed_params: Tuple[np.ndarray, np.ndarray, np.ndarray],
     starts: np.ndarray,
