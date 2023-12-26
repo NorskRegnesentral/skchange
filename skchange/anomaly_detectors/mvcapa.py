@@ -458,21 +458,6 @@ class Mvcapa(BaseSeriesAnnotator):
         if self.max_segment_length < self.min_segment_length:
             raise ValueError("max_segment_length must be at least min_segment_length.")
 
-    def _check_X(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
-        if X.isna().any(axis=None):
-            raise ValueError("X must not contain missing values.")
-
-        if X.ndim < 2:
-            X = X.to_frame()
-
-        n = X.shape[0]
-        if n < self.min_segment_length:
-            raise ValueError(
-                f"X must have at least min_segment_length samples "
-                f"(X.shape[0]={n}, min_segment_length={self.min_segment_length})."
-            )
-        return X
-
     def _get_penalty_components(self, X: pd.DataFrame) -> Tuple[np.ndarray, float]:
         # TODO: Add penalty tuning.
         # if self.tune:
