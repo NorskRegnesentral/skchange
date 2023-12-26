@@ -269,12 +269,12 @@ def optimise_savings(
     next_savings: np.ndarray,
     alpha: float,
     betas: np.ndarray,
-) -> Tuple[float, int]:
+) -> Tuple[float, int, np.ndarray]:
     penalised_saving = penalise_savings(next_savings, alpha, betas)
     candidate_savings = opt_savings[starts] + penalised_saving
     argmax = np.argmax(candidate_savings)
     opt_start = starts[0] + argmax
-    return candidate_savings[argmax], opt_start
+    return candidate_savings[argmax], opt_start, candidate_savings
 
 
 @njit
@@ -294,23 +294,22 @@ def run_base_capa(
     # Store the optimal start and affected components of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
     opt_anomaly_starts = np.repeat(np.nan, n)
+    starts = np.array([0])
 
     ts = np.arange(min_segment_length - 1, n)
     for t in ts:
         # Collective anomalies
-        lower_start = max(0, t - max_segment_length + 1)
-        upper_start = t - min_segment_length + 2
-        starts = np.arange(lower_start, upper_start)
+        t_array = np.array([t])
+        starts = np.concatenate((starts, t_array - min_segment_length + 1))
         ends = np.repeat(t, len(starts))
         collective_savings = saving_func(params, starts, ends)
-        opt_collective_saving, opt_start = optimise_savings(
+        opt_collective_saving, opt_start, candidate_savings = optimise_savings(
             starts, opt_savings, collective_savings, collective_alpha, collective_betas
         )
 
         # Point anomalies
-        t_array = np.array([t])
         point_savings = saving_func(params, t_array, t_array)
-        opt_point_saving, _ = optimise_savings(
+        opt_point_saving, _, _ = optimise_savings(
             t_array, opt_savings, point_savings, point_alpha, point_betas
         )
 
@@ -322,6 +321,13 @@ def run_base_capa(
             opt_anomaly_starts[t] = opt_start
         elif argmax == 2:
             opt_anomaly_starts[t] = t
+
+        # Pruning the admissible starts
+        penalty_sum = collective_alpha + collective_betas.sum()
+        saving_too_low = candidate_savings + penalty_sum < opt_savings[t + 1]
+        too_long_segment = starts < t - max_segment_length + 2
+        prune = saving_too_low | too_long_segment
+        starts = starts[~prune]
 
     collective_anomalies, point_anomalies = get_anomalies(opt_anomaly_starts)
     return opt_savings[1:], collective_anomalies, point_anomalies

@@ -29,11 +29,7 @@ px.scatter(x=df.index, y=df.values[:, 0], color=anomalies)
 # Multivariate
 # TODO: Add plotting functionality to assess the affected subset.
 df = teeth(5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2)
-capa = Mvcapa(
-    collective_penalty_scale=3,
-    collective_penalty="sparse",
-    fmt="sparse",
-)
+capa = Mvcapa(collective_penalty="sparse", fmt="sparse")
 anomalies = capa.fit_predict(df)
 
 capa = Mvcapa(labels="score", fmt="dense", max_segment_length=20)
@@ -46,9 +42,6 @@ anomalies.plot(kind="line", backend="plotly")
 
 
 # Profiling
-# TODO: Find optimal subset in Mvcapa after detecting temporal position of anomaly.
-#       Waste of resources to find and store all optimisers along the way.
-#       Also more accurate to always rerun with 'sparse' penalty.
 # TODO: Add pruning?
 n = int(1e5)
 df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
