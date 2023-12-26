@@ -516,16 +516,14 @@ class Mvcapa(BaseSeriesAnnotator):
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
 
-        core logic
-
         Parameters
         ----------
         X : pd.DataFrame - data to annotate, time series
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
+        Y : pd.Series or pd.DataFrame
+            Annotations for sequence X, exact format depends on annotation type.
         """
         X = check_capa_input(X, self.min_segment_length)
         opt_savings, self.collective_anomalies, self.point_anomalies = run_mvcapa(
