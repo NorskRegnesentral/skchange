@@ -138,13 +138,8 @@ def format_anomaly_output(
         elif fmt == "sparse":
             out = pd.DataFrame(anomalies, columns=["start", "end"])
     elif labels == "score":
-        if fmt == "dense":
-            out = pd.Series(scores, index=X_index, name="score", dtype=float)
-        elif fmt == "sparse":
-            out = pd.Series(
-                index=pd.IntervalIndex.from_tuples(anomalies, closed="both"),
-                data=scores[[end for _, end in anomalies]],
-            )
+        # There is no sparse version of 'score'.
+        out = pd.Series(scores, index=X_index, name="score", dtype=float)
     return out
 
 
@@ -204,11 +199,5 @@ def format_multivariate_anomaly_output(
         elif fmt == "sparse":
             out = pd.DataFrame(anomalies, columns=["start", "end", "components"])
     elif labels == "score":
-        if fmt == "dense":
-            out = pd.Series(scores, index=X_index, name="score", dtype=float)
-        elif fmt == "sparse":
-            out = pd.Series(
-                index=pd.IntervalIndex.from_tuples(anomalies, closed="both"),
-                data=scores[[end for _, end in anomalies]],
-            )
+        out = pd.Series(scores, index=X_index, name="score", dtype=float)
     return out
