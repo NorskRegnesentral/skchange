@@ -58,9 +58,9 @@ class Capa(BaseSeriesAnnotator):
     ----------
     saving : str (default="mean")
         Saving function to use for anomaly detection.
-    collective_penalty_scale : float, optional (default=1.0)
+    collective_penalty_scale : float, optional (default=2.0)
         Scaling factor for the collective penalty.
-    point_penalty_scale : float, optional (default=1.0)
+    point_penalty_scale : float, optional (default=2.0)
         Scaling factor for the point penalty.
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
@@ -109,8 +109,8 @@ class Capa(BaseSeriesAnnotator):
     def __init__(
         self,
         saving: Union[str, Tuple[Callable, Callable]] = "mean",
-        collective_penalty_scale: float = 1.0,
-        point_penalty_scale: float = 1.0,
+        collective_penalty_scale: float = 2.0,
+        point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
@@ -144,10 +144,10 @@ class Capa(BaseSeriesAnnotator):
         # The default penalty is inflated by a factor of 2 as it is based on Gaussian
         # data. Most data is more heavy-tailed, so we use a bigger penalty.
         # In addition, false positive control is often more important than higher power.
-        collective_scale = 2 * self.collective_penalty_scale
-        collective_penalty = dense_capa_penalty(n, p, n_params, collective_scale)[0]
-        point_scale = 2 * self.point_penalty_scale
-        point_penalty = point_scale * n_params * p * np.log(n)
+        collective_penalty = dense_capa_penalty(
+            n, p, n_params, self.collective_penalty_scale
+        )[0]
+        point_penalty = self.point_penalty_scale * n_params * p * np.log(n)
         return collective_penalty, point_penalty
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
