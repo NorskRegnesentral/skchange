@@ -193,9 +193,7 @@ def format_multivariate_anomaly_output(
     elif labels == "indicator":
         if fmt == "dense":
             anomaly_labels = anomalies_to_labels(anomalies, n, p)
-            out = pd.DataFrame(
-                anomaly_labels > 0, index=X_index, columns=X_columns, dtype=int
-            )
+            out = pd.DataFrame(anomaly_labels > 0, index=X_index, columns=X_columns)
         elif fmt == "sparse":
             out = pd.DataFrame(anomalies, columns=["start", "end", "components"])
     elif labels == "score":

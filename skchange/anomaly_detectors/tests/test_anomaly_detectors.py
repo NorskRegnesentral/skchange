@@ -32,8 +32,8 @@ def test_output_type(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
-def test_anomaly_detector_sparse(Estimator):
-    """Test sparse anomaly detector output.
+def test_anomaly_detector_sparse_int(Estimator):
+    """Test sparse int label anomaly detector output.
 
     Check if the predicted anomalies match.
     """
@@ -42,9 +42,8 @@ def test_anomaly_detector_sparse(Estimator):
     df = teeth(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
-    detector = Estimator(fmt="sparse")
+    detector = Estimator(fmt="sparse", labels="int_label")
     anomalies = detector.fit_predict(df)
-    # End point also included as a changepoint
     assert (
         len(anomalies) == 1
         and anomalies.loc[0, "start"] == seg_len
@@ -53,8 +52,44 @@ def test_anomaly_detector_sparse(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
-def test_anomaly_detector_dense(Estimator):
-    """Tests dense anomaly detector output.
+def test_anomaly_detector_sparse_indicator(Estimator):
+    """Test sparse indicator anomaly detector output.
+
+    Check if the predicted anomalies match.
+    """
+    n_segments = 2
+    seg_len = 20
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
+    )
+    detector = Estimator(fmt="sparse", labels="indicator")
+    anomalies = detector.fit_predict(df)
+    assert (
+        len(anomalies) == 1
+        and anomalies.loc[0, "start"] == seg_len
+        and anomalies.loc[0, "end"] == 2 * seg_len - 1
+    )
+
+
+@pytest.mark.parametrize("Estimator", anomaly_detectors)
+def test_anomaly_detector_score(Estimator):
+    """Test score anomaly detector output."""
+    n_segments = 2
+    seg_len = 20
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
+    )
+    sparse_detector = Estimator(fmt="sparse", labels="score")
+    dense_detector = Estimator(fmt="dense", labels="score")
+    sparse_scores = sparse_detector.fit_predict(df)
+    dense_scores = dense_detector.fit_predict(df)
+    assert sparse_scores.size == df.size
+    assert (sparse_scores == dense_scores).all()
+
+
+@pytest.mark.parametrize("Estimator", anomaly_detectors)
+def test_anomaly_detector_dense_int(Estimator):
+    """Tests dense int label anomaly detector output.
 
     Check if the predicted anomalies matches.
     """
@@ -71,3 +106,22 @@ def test_anomaly_detector_dense(Estimator):
     else:
         assert labels.nunique().iloc[0] == n_segments
         assert labels.iloc[seg_len - 1, 0] == 0.0 and labels.iloc[seg_len, 0] == 1.0
+
+
+@pytest.mark.parametrize("Estimator", anomaly_detectors)
+def test_anomaly_detector_dense_indicator(Estimator):
+    """Tests dense indicator anomaly detector output.
+
+    Check if the predicted anomalies matches.
+    """
+    n_segments = 2
+    seg_len = 50
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
+    )
+    detector = Estimator(fmt="dense", labels="indicator")
+    labels = detector.fit_predict(df)
+    if isinstance(labels, pd.Series):
+        assert not labels.iloc[seg_len - 1] and labels.iloc[seg_len]
+    else:
+        assert not labels.iloc[seg_len - 1, 0] and labels.iloc[seg_len, 0]
