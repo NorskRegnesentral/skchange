@@ -4,7 +4,7 @@ import numpy as np
 from numba import njit
 
 
-@njit
+@njit(cache=True)
 def col_cumsum(x: np.ndarray):
     """Calculate the cumulative sum of each column in a 2D array.
 

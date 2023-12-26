@@ -4,7 +4,7 @@ import numpy as np
 from numba import njit, prange
 
 
-@njit
+@njit(cache=True)
 def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     """Repeat each column of a 2D array n times.
 
@@ -23,7 +23,7 @@ def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     return expanded_x
 
 
-@njit
+@njit(cache=True)
 def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     """Repeat each row of a 2D array n times.
 
@@ -42,7 +42,7 @@ def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     return expanded_x
 
 
-@njit
+@njit(cache=True)
 def where(indicator: np.ndarray) -> list:
     """
     Identify consecutive intervals of True values in the input array.
