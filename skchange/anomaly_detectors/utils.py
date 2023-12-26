@@ -1,14 +1,21 @@
 """Utility functions for anomaly detection."""
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 
 def merge_anomalies(
-    collective_anomalies: List[Tuple[int, int, np.ndarray]] = None,
-    point_anomalies: List[Tuple[int, np.ndarray]] = None,
+    collective_anomalies: Union[
+        List[Tuple[int, int]], List[Tuple[int, int, np.ndarray]]
+    ] = None,
+    point_anomalies: Union[
+        List[int],
+        List[Tuple[int, int]],
+        List[Tuple[int, np.ndarray]],
+        List[Tuple[int, int, np.ndarray]],
+    ] = None,
 ) -> List[Tuple[int, int, np.ndarray]]:
     """Merge collective and point anomalies into a single list of intervals.
 
@@ -35,12 +42,17 @@ def merge_anomalies(
     if collective_anomalies:
         anomalies += collective_anomalies
     if point_anomalies:
-        if isinstance(point_anomalies[0], tuple):
-            # Multivariate
+        # Convert point anomalies to the same format as collective anomalies
+        anomalies += point_anomalies
+        if isinstance(point_anomalies[0], int):
+            anomalies += [(i, i) for i in point_anomalies]
+        elif len(point_anomalies[0]) == 2 and isinstance(
+            point_anomalies[0][-1], np.ndarray
+        ):
             anomalies += [(i, i, components) for (i, components) in point_anomalies]
         else:
-            # Univariate
-            anomalies += [(i, i) for i in point_anomalies]
+            anomalies += point_anomalies
+
     anomalies = sorted(anomalies)
     return anomalies
 
@@ -52,13 +64,13 @@ def anomalies_to_labels(
 
     Parameters
     ----------
+    anomalies : list
+        List of tuples containing inclusive start and end indices of  collective
+        anomalies and point anomalies.
     n : int
         Sample size.
     p : int
         Dimensionality of the data input to the anomaly detector.
-    anomalies : list
-        List of tuples containing inclusive start and end indices of collective
-        anomalies and point anomalies.
 
     Returns
     -------
@@ -82,8 +94,8 @@ def format_anomaly_output(
     fmt: str,
     labels: str,
     n: int,
-    collective_anomalies: List[dict] = None,
-    point_anomalies: List[dict] = None,
+    collective_anomalies: List[tuple] = None,
+    point_anomalies: List[tuple] = None,
     X_index: pd.Index = None,
     scores: np.ndarray = None,
 ) -> pd.Series:
@@ -119,14 +131,12 @@ def format_anomaly_output(
             out = pd.Series(anomaly_labels, index=X_index, name="int_label", dtype=int)
         elif fmt == "sparse":
             out = pd.DataFrame(anomalies, columns=["start", "end"])
-            # out = pd.Series([pd.Interval(*anom, closed="both") for anom in anomalies])
     elif labels == "indicator":
         if fmt == "dense":
             anomaly_labels = anomalies_to_labels(anomalies, n)
             out = pd.Series(anomaly_labels > 0, index=X_index, name="indicator")
         elif fmt == "sparse":
             out = pd.DataFrame(anomalies, columns=["start", "end"])
-            # out = pd.Series([pd.Interval(*anom, closed="both") for anom in anomalies])
     elif labels == "score":
         if fmt == "dense":
             out = pd.Series(scores, index=X_index, name="score", dtype=float)
