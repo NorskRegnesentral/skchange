@@ -36,7 +36,7 @@ def init_mean_saving(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 @njit
 def mean_saving(
-    precomputed_params: Tuple[np.ndarray, np.ndarray, np.ndarray],
+    precomputed_params: Tuple[np.ndarray, np.ndarray],
     starts: np.ndarray,
     ends: np.ndarray,
 ) -> np.ndarray:
