@@ -1,6 +1,6 @@
 """Factory for getting test statistic functions and their initializers from strings.
 
-Recipe for adding new scores (replace "score" with "score" below):
+Recipe for adding new scores:
     1. Add a new module in skchange.score: <score_name>_score.py
     2. Add two functions:
         init_<score_name>_score, which precomputes quantities that should be
@@ -14,31 +14,48 @@ Recipe for adding new scores (replace "score" with "score" below):
 
 """
 
+from typing import Callable, Tuple, Union
+
+from numba.extending import is_jitted
+
 from skchange.scores.mean_score import init_mean_score, mean_score
+from skchange.scores.meanvar_score import init_meanvar_score, meanvar_score
 
-VALID_SCORES = ["mean"]
+VALID_SCORES = ["mean", "meanvar"]
 
 
-def score_factory(score_name: str):
+def score_factory(score: Union[str, Tuple[Callable, Callable]]):
     """Return score function and its initializer.
 
     Parameters
     ----------
-    score_name : str
-        Name of score function. Must be one of 'mean'.
+    score: str, Tuple[Callable, Callable]
+        Test statistic to use for changepoint detection.
+        * If "mean", the difference-in-mean statistic is used,
+        * If "meanvar", the difference-in-mean-and-variance statistic is used,
+        * If a tuple, it must contain two functions: The first function is the scoring
+        function, which takes in the output of the second function as its first
+        argument, and start, end and split indices as the second, third and fourth
+        arguments. The second function is the initializer, which precomputes quantities
+        that should be precomputed. See skchange/scores/score_factory.py for examples.
 
     Returns
     -------
-    score_func : Callable
+    score_func : Numba jitted Callable
         Score function.
-    init_score_func : Callable
+    init_score_func : Numba jitted Callable
         Score function initializer.
     """
-    if score_name == "mean":
+    if isinstance(score, str) and score == "mean":
         return mean_score, init_mean_score
+    elif isinstance(score, str) and score == "meanvar":
+        return meanvar_score, init_meanvar_score
+    elif len(score) == 2 and all([is_jitted(s) for s in score]):
+        return score[0], score[1]
     else:
         message = (
-            f"score_name={score_name} not recognized."
+            f"score={score} not recognized."
             + f" Must be one of {', '.join(VALID_SCORES)}"
+            + " or a tuple of two numba jitted functions."
         )
         raise ValueError(message)

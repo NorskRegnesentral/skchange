@@ -5,7 +5,7 @@ from streamchange.penalties import ConstantPenalty
 from streamchange.utils import Profiler
 
 from skchange.change_detectors.pelt import BIC_penalty, Pelt
-from skchange.costs.l2_cost import init_l2_cost, l2_cost
+from skchange.costs.mean_cost import init_mean_cost, mean_cost
 from skchange.datasets.generate import teeth
 
 # Compare skchange output to streamchange
@@ -36,7 +36,7 @@ segments = detector.fit_predict(df)
 
 # Various unit tests
 df = teeth(n_segments=3, mean=10, segment_length=5, p=2)
-precomputed_params = init_l2_cost(df.values)
-l2_cost(precomputed_params, starts=np.array([1, 2, 3]), ends=np.array([3, 4, 5]))
+precomputed_params = init_mean_cost(df.values)
+mean_cost(precomputed_params, starts=np.array([1, 2, 3]), ends=np.array([3, 4, 5]))
 detector = Pelt()
 detector.fit_predict(df)

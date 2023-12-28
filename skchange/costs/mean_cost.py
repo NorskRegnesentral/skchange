@@ -1,4 +1,4 @@
-"""L2 cost function for change point detection."""
+"""Gaussian mean likelihood cost function for change point detection."""
 
 from typing import Tuple
 
@@ -9,9 +9,9 @@ from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
-def init_l2_cost(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Precompute sums and weights for l2_cost.
+@njit(cache=True)
+def init_mean_cost(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Precompute sums and weights for mean_cost.
 
     Parameters
     ----------
@@ -39,18 +39,18 @@ def init_l2_cost(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     return sums, sums2, weights
 
 
-@njit
-def l2_cost(
+@njit(cache=True)
+def mean_cost(
     precomputed_params: Tuple[np.ndarray, np.ndarray, np.ndarray],
     starts: np.ndarray,
     ends: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the l2 cost for each segment.
+    """Calculate the Gaussian mean likelihood cost for each segment.
 
     Parameters
     ----------
     precomputed_params : Tuple[np.ndarray, np.ndarray, np.ndarray]
-        Precomputed parameters from init_l2_cost.
+        Precomputed parameters from init_mean_cost.
     starts : np.ndarray
         Start indices of the segments.
     ends : np.ndarray

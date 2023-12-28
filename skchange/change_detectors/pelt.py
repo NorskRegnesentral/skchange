@@ -81,9 +81,9 @@ class Pelt(BaseSeriesAnnotator):
         * If "score", returned values are floats, giving the outlier score.
         * If "int_label", returned values are integer, indicating which segment a value
         belongs to.
-    cost : str or callable, optional (default="l2")
+    cost : str or callable, optional (default="mean")
         Cost function to use for changepoint detection.
-        * If "l2", the l2-norm is used,
+        * If "mean", the Gaussian mean likelihood cost is used,
         * ...
     penalty : float, optional (default=None)
         Penalty to use for changepoint detection.
@@ -120,7 +120,7 @@ class Pelt(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        cost: Union[str, Callable] = "l2",
+        cost: Union[str, Callable] = "mean",
         penalty: Optional[float] = None,
         min_segment_length: int = 2,
         fmt: str = "sparse",
@@ -240,7 +240,7 @@ class Pelt(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"cost": "l2", "penalty": None, "min_segment_length": 2},
-            {"cost": "l2", "penalty": 0, "min_segment_length": 1},
+            {"cost": "mean", "penalty": None, "min_segment_length": 2},
+            {"cost": "mean", "penalty": 0, "min_segment_length": 1},
         ]
         return params

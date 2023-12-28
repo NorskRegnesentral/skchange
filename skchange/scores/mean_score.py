@@ -8,7 +8,7 @@ from numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
+@njit(cache=True)
 def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """Precompute sums for mean_score.
 
@@ -30,11 +30,11 @@ def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     return sums
 
 
-@njit
+@njit(cache=True)
 def mean_score(
     precomputed_params: np.ndarray, start: int, end: int, split: int
 ) -> float:
-    """Calculate the mean test statistic for a given interval and split.
+    """Calculate the score for a change in the mean.
 
     Compares the mean of the data before and after the split within the interval from
     start:end.
@@ -53,7 +53,7 @@ def mean_score(
     Returns
     -------
     stat : float
-        Test statistic for a difference in the mean.
+        Score for a difference in the mean.
 
     Notes
     -----

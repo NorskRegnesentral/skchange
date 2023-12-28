@@ -1,4 +1,4 @@
-"""Simple PELT test."""
+"""Basic tests for all change detectors."""
 
 import numpy as np
 import pandas as pd
@@ -6,11 +6,11 @@ import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
-from skchange.change_detectors.mosum import Mosum
+from skchange.change_detectors.moscore import Moscore
 from skchange.change_detectors.pelt import Pelt
 from skchange.datasets.generate import teeth
 
-change_detectors = [Pelt, Mosum]
+change_detectors = [Pelt, Moscore]
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
@@ -32,8 +32,8 @@ def test_output_type(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
-def test_pelt_sparse(Estimator):
-    """Test PELT sparse segmentation.
+def test_change_detector_sparse(Estimator):
+    """Test sparse segmentation.
 
     Check if the predicted change points match.
     """
@@ -49,8 +49,8 @@ def test_pelt_sparse(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
-def test_pelt_dense(Estimator):
-    """Tests PELT dense segmentation.
+def test_change_detector_dense(Estimator):
+    """Tests dense segmentation.
 
     Check if the predicted segmentation matches.
     """
