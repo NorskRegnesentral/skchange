@@ -236,10 +236,8 @@ class CheckVersionNumber(Step):
         self.instruct(
             f"Ensure that the following command gives version: {context['version']}"
         )
-        self.do_cmd(
-            f"python -c 'import {context['package_name']}; print("
-            f"{context['package_name']}.__version__)'"
-        )
+        p = context["package_name"]
+        self.do_cmd(f'python -c "import {p}; print({p}.__version__)"')
 
 
 class GitTagRelease(Step):
