@@ -85,10 +85,11 @@ class Pelt(BaseSeriesAnnotator):
         Cost function to use for changepoint detection.
         * If "mean", the Gaussian mean likelihood cost is used,
         * ...
-    penalty : float, optional (default=None)
-        Penalty to use for changepoint detection.
-        * If None, the penalty is set to log(n) * p, where n is the number of samples
-        and p is the number of dimensions in X.
+    penalty_scale : float, optional (default=2.0)
+        Scaling factor for the penalty. The penalty is set to
+        'penalty_scale * 2 * p * np.log(n)', where 'n' is the sample size
+        and 'p' is the number of variables. If None, the threshold is tuned on the data
+        input to .fit() (not supported yet).
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
 
@@ -121,50 +122,94 @@ class Pelt(BaseSeriesAnnotator):
     def __init__(
         self,
         cost: Union[str, Callable] = "mean",
-        penalty: Optional[float] = None,
+        penalty_scale: Optional[float] = 2.0,
         min_segment_length: int = 2,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
         self.cost = cost
-        self.penalty = penalty
+        self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
 
         super().__init__(fmt=fmt, labels=labels)
 
         self.cost_func, self.cost_init_func = cost_factory(self.cost)
 
+        if penalty_scale is not None and penalty_scale < 0:
+            raise ValueError(
+                "penalty_scale must be non-negative",
+                f" (penalty_scale={penalty_scale}).",
+            )
         if self.min_segment_length < 1:
             raise ValueError("min_segment_length must be at least 1.")
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
-        """Fit to training data.
-
-        core logic
+    def _tune_penalty(self, X: pd.DataFrame) -> float:
+        """Tune the threshold.
 
         Parameters
         ----------
         X : pd.DataFrame
-            training data to fit model to, time series
+            Training data to tune the threshold on.
+
+        Returns
+        -------
+        threshold : float
+            The tuned threshold.
+        """
+        raise ValueError(
+            "tuning of the penalty is not supported yet (penalty_scale=None)."
+        )
+
+    @staticmethod
+    def get_default_penalty(n: int, p: int) -> float:
+        """Get the default, BIC-penalty for PELT.
+
+        Parameters
+        ----------
+        n : int
+            Sample size.
+        p : int
+            Number of variables.
+
+        Returns
+        -------
+        threshold : float
+            The default threshold.
+        """
+        return 2 * p * np.log(n)
+
+    def _get_penalty(self, X: pd.DataFrame) -> float:
+        if self.penalty_scale is None:
+            return self._tune_penalty(X)
+        else:
+            n = X.shape[0]
+            p = X.shape[1]
+            return self.penalty_scale * self.get_default_penalty(n, p)
+
+    def _fit(self, X: Union[pd.Series, pd.DataFrame], Y: Optional[pd.DataFrame] = None):
+        """Fit to training data.
+
+        Trains the threshold on the input data if `tune` is True. Otherwise, the
+        threshold is set to the input `threshold` value if provided. If not,
+        it is set to the default value for the test statistic, which depends on
+        the dimension of X.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            training data to fit the threshold to.
         Y : pd.Series, optional
-            ground truth annotations for training if annotator is supervised
+            Does nothing. Only here to make the fit method compatible with sktime
+            and scikit-learn.
+
         Returns
         -------
         self : returns a reference to self
-
-        State change
-        ------------
-        creates fitted model (attributes ending in "_")
         """
+        if X.ndim < 2:
+            X = X.to_frame()
+        self.threshold_ = self._get_penalty(X)
         return self
-
-    def _get_penalty(self, X: pd.DataFrame) -> float:
-        n = X.shape[0]
-        p = X.shape[1]
-        penalty = self.penalty if self.penalty else BIC_penalty(n, p, scale=2.0)
-        if penalty < 0:
-            raise ValueError(f"penalty must be non-negative (penalty={self.penalty}).")
-        return penalty
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
@@ -195,31 +240,6 @@ class Pelt(BaseSeriesAnnotator):
             self.fmt, self.labels, self.changepoints, X.index, self.scores
         )
 
-    # todo: consider implementing this, optional
-    # if not implementing, delete the _update method
-    # def _update(self, X, Y=None):
-    #     """Update model with new data and optional ground truth annotations.
-
-    #     core logic
-
-    #     Parameters
-    #     ----------
-    #     X : pd.DataFrame
-    #         training data to update model with, time series
-    #     Y : pd.Series, optional
-    #         ground truth annotations for training if annotator is supervised
-    #     Returns
-    #     -------
-    #     self : returns a reference to self
-
-    #     State change
-    #     ------------
-    #     updates fitted model (attributes ending in "_")
-    #     """
-
-    # implement here
-    # IMPORTANT: avoid side effects to X, fh
-
     @classmethod
     def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
@@ -240,7 +260,7 @@ class Pelt(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"cost": "mean", "penalty": None, "min_segment_length": 2},
-            {"cost": "mean", "penalty": 0, "min_segment_length": 1},
+            {"cost": "mean", "min_segment_length": 2},
+            {"cost": "mean", "penalty_scale": 0, "min_segment_length": 1},
         ]
         return params
