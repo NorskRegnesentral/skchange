@@ -20,6 +20,10 @@ def check_data(
         Input data to check.
     min_length : int
         Minimum number of samples in X.
+    min_length_name : str, optional (default="min_length")
+        Name of min_length parameter to be shown in the error message.
+    allow_missing_values : bool, optional (default=False)
+        Whether to allow missing values in X.
 
     Returns
     -------
