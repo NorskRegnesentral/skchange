@@ -257,7 +257,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         threshold : float
             The default threshold.
         """
-        return 2 * p * np.sqrt(np.log(n))
+        return 4 * p * np.sqrt(np.log(n))
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
         # TODO:
@@ -322,8 +322,13 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "maximizer": maximizers, "score": scores}
         )
+        self.per_sample_scores = (
+            self.scores.groupby("maximizer")["score"]
+            .max()
+            .reindex(range(X.shape[0]), fill_value=0)
+        ).values
         return format_changepoint_output(
-            self.fmt, self.labels, self.changepoints, X.index
+            self.fmt, self.labels, self.changepoints, X.index, self.per_sample_scores
         )
 
     @classmethod
