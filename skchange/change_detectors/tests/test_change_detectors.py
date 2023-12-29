@@ -33,7 +33,7 @@ def test_output_type(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
-def test_change_detector_sparse(Estimator):
+def test_change_detector_sparse_int(Estimator):
     """Test sparse segmentation.
 
     Check if the predicted change points match.
@@ -43,14 +43,46 @@ def test_change_detector_sparse(Estimator):
     df = teeth(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
-    detector = Estimator(fmt="sparse")
+    detector = Estimator(fmt="sparse", labels="int_label")
     changepoints = detector.fit_predict(df)
-    # End point also included as a changepoint
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
-def test_change_detector_dense(Estimator):
+def test_change_detector_sparse_indicator(Estimator):
+    """Test sparse segmentation.
+
+    Check if the predicted change points match.
+    """
+    n_segments = 2
+    seg_len = 50
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
+    )
+    detector = Estimator(fmt="sparse", labels="indicator")
+    changepoints = detector.fit_predict(df)
+    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
+
+
+@pytest.mark.parametrize("Estimator", change_detectors)
+def test_change_detector_sparse_score(Estimator):
+    """Test sparse segmentation.
+
+    Check if the predicted change points match.
+    """
+    n_segments = 2
+    seg_len = 50
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
+    )
+    detector = Estimator(fmt="sparse", labels="score")
+    scores = detector.fit_predict(df)
+    assert len(scores) == n_segments - 1 and scores.index[0] == seg_len - 1
+    assert np.all(scores >= 0.0)
+
+
+@pytest.mark.parametrize("Estimator", change_detectors)
+def test_change_detector_dense_int(Estimator):
     """Tests dense segmentation.
 
     Check if the predicted segmentation matches.
@@ -60,7 +92,41 @@ def test_change_detector_dense(Estimator):
     df = teeth(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
-    detector = Estimator(fmt="dense")
+    detector = Estimator(fmt="dense", labels="int_label")
     labels = detector.fit_predict(df)
     assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
+
+
+@pytest.mark.parametrize("Estimator", change_detectors)
+def test_change_detector_dense_indicator(Estimator):
+    """Tests dense segmentation.
+
+    Check if the predicted segmentation matches.
+    """
+    n_segments = 2
+    seg_len = 50
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=8
+    )
+    detector = Estimator(fmt="dense", labels="indicator")
+    cpt_indicator = detector.fit_predict(df)
+    assert cpt_indicator.sum() == n_segments - 1
+    assert cpt_indicator[seg_len - 1]
+
+
+@pytest.mark.parametrize("Estimator", change_detectors)
+def test_change_detector_dense_score(Estimator):
+    """Tests dense segmentation.
+
+    Check if the predicted segmentation matches.
+    """
+    n_segments = 2
+    seg_len = 50
+    df = teeth(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
+    )
+    detector = Estimator(fmt="dense", labels="score")
+    scores = detector.fit_predict(df)
+    assert scores.size == df.shape[0]
+    assert np.all(scores >= 0.0)
