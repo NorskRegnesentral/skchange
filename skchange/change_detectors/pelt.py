@@ -116,7 +116,7 @@ class Pelt(BaseSeriesAnnotator):
     _tags = {
         "capability:missing_values": False,
         "capability:multivariate": True,
-        "fit_is_empty": True,
+        "fit_is_empty": False,
     }
 
     def __init__(
