@@ -129,11 +129,11 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         argument, and start, end and split indices as the second, third and fourth
         arguments. The second function is the initializer, which precomputes quantities
         that should be precomputed. See skchange/scores/score_factory.py for examples.
-    threshold : float, optional (default=None)
-        Threshold to use for changepoint detection.
-        * If None, the threshold is set to the default value for the test statistic
-        derived in [1]_.
-        * If tune = True, the `threshold` input is ignored as it is tuned instead.
+    threshold_scale : float, optional (default=2.0)
+        Scaling factor for the threshold. The threshold is set to
+        'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
+        and 'p' is the number of variables. If None, the threshold is tuned on the data
+        input to .fit().
     min_interval_length : int (default=2)
         The minimum length of an interval to estimate a changepoint in.
     max_interval_length : int (default=200)
@@ -144,9 +144,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         starting at 'interval_len'='min_interval_length'. It also governs the amount
         of overlap between intervals of the same length, as the start of each interval
         is shifted by a factor of '1 + 1 / growth_factor'. Must be a float in (1, 2].
-    tune : bool, optional (default=False)
-        Whether to tune the threshold in the fit method or not. Takes precedence over
-        the `threshold` input.
 
     References
     ----------
@@ -176,29 +173,30 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
     def __init__(
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
-        threshold: Optional[float] = None,
+        threshold_scale: Optional[float] = 2.0,
         min_interval_length: int = 2,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
-        tune: bool = False,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
         self.score = score
-        self.threshold = threshold  # Just holds the input value.
+        self.threshold_scale = threshold_scale  # Just holds the input value.
         self.min_interval_length = min_interval_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
-        self.tune = tune
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score)
 
-        if threshold is not None and threshold < 0:
-            raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
+        if threshold_scale is not None and threshold_scale < 0:
+            raise ValueError(
+                "threshold_scale must be non-negative",
+                f" (threshold_scale={threshold_scale}).",
+            )
         if self.min_interval_length < 2:
             raise ValueError(
                 "min_interval_length must be at least 2"
-                + f"(min_interval_length={self.min_interval_length})."
+                + f" (min_interval_length={self.min_interval_length})."
             )
         if self.max_interval_length < self.min_interval_length:
             raise ValueError(
@@ -239,11 +237,13 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         threshold : float
             The tuned threshold.
         """
-        return None
+        raise ValueError(
+            "tuning of the threshold is not supported yet (threshold_scale=None)."
+        )
 
     @staticmethod
-    def get_default_threshold(n: int, p: int) -> float:
-        """Get the default threshold for the Moscore algorithm.
+    def get_default_threshold(n: int, p: int, scale: float = 1.0) -> float:
+        """Get the default threshold for Seeded Binary Segmentation.
 
         Parameters
         ----------
@@ -251,24 +251,23 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             Sample size.
         p : int
             Number of variables.
+        scale : float, optional (default=1.0)
+            Scaling factor for the default threshold.
 
         Returns
         -------
         threshold : float
             The default threshold.
         """
-        return 4 * p * np.sqrt(np.log(n))
+        return scale * 2 * p * np.sqrt(np.log(n))
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
-        # TODO:
-        # if self.tune:
-        #     return self._tune_threshold(X)
-
-        if self.threshold:
-            return self.threshold
+        if self.threshold_scale is None:
+            return self._tune_threshold(X)
         else:
-            # The default threshold is used.
-            return self.get_default_threshold(X.shape[0], X.shape[1])
+            return self.get_default_threshold(
+                X.shape[0], X.shape[1], self.threshold_scale
+            )
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -352,6 +351,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         """
         params = [
             {"score": "mean"},
-            {"score": "mean", "threshold": 0},
+            {"score": "mean", "threshold_scale": 0.0},
         ]
         return params
