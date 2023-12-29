@@ -34,10 +34,7 @@ def test_output_type(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_change_detector_sparse_int(Estimator):
-    """Test sparse segmentation.
-
-    Check if the predicted change points match.
-    """
+    """Test sparse int_label segmentation."""
     n_segments = 2
     seg_len = 50
     df = teeth(
@@ -50,10 +47,7 @@ def test_change_detector_sparse_int(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_change_detector_sparse_indicator(Estimator):
-    """Test sparse segmentation.
-
-    Check if the predicted change points match.
-    """
+    """Test sparse indicator segmentation."""
     n_segments = 2
     seg_len = 50
     df = teeth(
@@ -66,10 +60,7 @@ def test_change_detector_sparse_indicator(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_change_detector_sparse_score(Estimator):
-    """Test sparse segmentation.
-
-    Check if the predicted change points match.
-    """
+    """Test sparse score segmentation."""
     n_segments = 2
     seg_len = 50
     df = teeth(
@@ -83,10 +74,7 @@ def test_change_detector_sparse_score(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_change_detector_dense_int(Estimator):
-    """Tests dense segmentation.
-
-    Check if the predicted segmentation matches.
-    """
+    """Tests dense int_label segmentation."""
     n_segments = 2
     seg_len = 50
     df = teeth(
@@ -100,10 +88,7 @@ def test_change_detector_dense_int(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_change_detector_dense_indicator(Estimator):
-    """Tests dense segmentation.
-
-    Check if the predicted segmentation matches.
-    """
+    """Tests dense indicator segmentation."""
     n_segments = 2
     seg_len = 50
     df = teeth(
@@ -117,10 +102,7 @@ def test_change_detector_dense_indicator(Estimator):
 
 @pytest.mark.parametrize("Estimator", change_detectors)
 def test_change_detector_dense_score(Estimator):
-    """Tests dense segmentation.
-
-    Check if the predicted segmentation matches.
-    """
+    """Tests dense score segmentation."""
     n_segments = 2
     seg_len = 50
     df = teeth(
