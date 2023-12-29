@@ -4,7 +4,7 @@ __author__ = ["mtveten"]
 __all__ = ["SeededBinarySegmentation"]
 
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,7 @@ def greedy_changepoint_selection(
     starts: np.ndarray,
     ends: np.ndarray,
     threshold: float,
-) -> np.ndarray:
+) -> List[int]:
     scores = scores.copy()
     cpts = []
     while np.any(scores > threshold):
@@ -57,7 +57,7 @@ def greedy_changepoint_selection(
         cpts.append(int(cpt))
         scores[(cpt >= starts) & (cpt < ends)] = 0.0
     cpts.sort()
-    return np.array(cpts)
+    return cpts
 
 
 @njit

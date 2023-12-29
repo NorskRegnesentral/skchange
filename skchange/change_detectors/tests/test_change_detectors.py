@@ -6,11 +6,12 @@ import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
+from skchange.change_detectors.binary_segmentation import SeededBinarySegmentation
 from skchange.change_detectors.moscore import Moscore
 from skchange.change_detectors.pelt import Pelt
 from skchange.datasets.generate import teeth
 
-change_detectors = [Pelt, Moscore]
+change_detectors = [Moscore, Pelt, SeededBinarySegmentation]
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
