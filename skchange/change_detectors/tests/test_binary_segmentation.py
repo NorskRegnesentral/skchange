@@ -23,6 +23,8 @@ def test_invalid_parameters():
     with pytest.raises(ValueError):
         SeededBinarySegmentation(growth_factor=1.0)
     with pytest.raises(ValueError):
+        SeededBinarySegmentation(growth_factor=None)
+    with pytest.raises(ValueError):
         SeededBinarySegmentation(growth_factor=2.01)
 
 
