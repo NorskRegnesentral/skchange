@@ -18,7 +18,6 @@ def test_moscore_changepoint(score):
     )
     detector = Moscore(score, fmt="sparse", labels="int_label")
     changepoints = detector.fit_predict(df)
-    # End point also included as a changepoint
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
 
