@@ -133,7 +133,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         Scaling factor for the threshold. The threshold is set to
         'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
         and 'p' is the number of variables. If None, the threshold is tuned on the data
-        input to .fit().
+        input to .fit() (not supported yet).
     min_interval_length : int (default=2)
         The minimum length of an interval to estimate a changepoint in.
     max_interval_length : int (default=200)
