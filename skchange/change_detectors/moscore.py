@@ -126,7 +126,7 @@ class Moscore(BaseSeriesAnnotator):
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
         bandwidth: int = 30,
-        threshold_scale: Optional[float] = None,
+        threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         min_detection_interval: int = 1,
         tune: bool = False,
