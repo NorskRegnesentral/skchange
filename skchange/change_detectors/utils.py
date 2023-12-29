@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def changepoints_to_labels(changepoints: list) -> np.ndarray:
+def changepoints_to_labels(changepoints: list, n) -> np.ndarray:
     """Convert a list of changepoints to a list of labels.
 
     Parameters
@@ -19,8 +19,7 @@ def changepoints_to_labels(changepoints: list) -> np.ndarray:
     labels : np.ndarray
         1D array of labels: 0 for the first segment, 1 for the second, etc.
     """
-    changepoints = [-1] + changepoints
-    n = changepoints[-1] + 1  # The last changepoint is always the last data index
+    changepoints = [-1] + changepoints + [n - 1]
     labels = np.zeros(n)
     for i in range(len(changepoints) - 1):
         labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
@@ -60,7 +59,7 @@ def format_changepoint_output(
     elif labels == "score":
         out = pd.Series(scores, index=X_index, name="score", dtype=float)
     elif labels == "int_label":
-        out = changepoints_to_labels(changepoints)
+        out = changepoints_to_labels(changepoints, len(X_index))
         out = pd.Series(out, index=X_index, name="int_label", dtype=int)
 
     if fmt == "sparse":

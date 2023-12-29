@@ -28,9 +28,6 @@ def get_moscore_changepoints(
         if end - start + 1 >= min_detection_interval:
             cpt = np.argmax(moscores[start : end + 1]) + start
             changepoints.append(cpt)
-    changepoints.append(
-        len(moscores) - 1
-    )  # The last index is defined as a changepoint.
     return changepoints
 
 
