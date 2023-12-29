@@ -3,7 +3,6 @@
 __author__ = ["mtveten"]
 __all__ = ["Moscore"]
 
-
 from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
@@ -14,6 +13,8 @@ from sktime.annotation.base import BaseSeriesAnnotator
 from skchange.change_detectors.utils import format_changepoint_output
 from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
+from skchange.utils.validation.data import check_data
+from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
 
 @njit
@@ -141,33 +142,14 @@ class Moscore(BaseSeriesAnnotator):
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score)
 
-        if self.bandwidth < 1:
-            raise ValueError("bandwidth must be at least 1.")
-        if threshold_scale is not None and threshold_scale < 0:
-            raise ValueError(
-                f"threshold must be non-negative (threshold_scale={threshold_scale})."
-            )
-        if (
-            self.min_detection_interval <= 0
-            or self.min_detection_interval >= self.bandwidth / 2
-        ):
-            raise ValueError(
-                "min_detection_interval must be between 0 and bandwidth/2."
-            )
-
-    def _check_X(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
-        if X.isna().any(axis=None):
-            raise ValueError("X must not contain missing values.")
-
-        if X.ndim < 2:
-            X = X.to_frame()
-
-        if X.shape[0] < 2 * self.bandwidth:
-            raise ValueError(
-                f"X must have at least 2*bandwidth samples (X.shape[0]={X.shape[0]}, "
-                f"bandwidth={self.bandwidth})."
-            )
-        return X
+        check_larger_than(1, self.bandwidth, "bandwidth")
+        check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
+        check_larger_than(0, self.level, "level")
+        check_in_interval(
+            pd.Interval(1, self.bandwidth / 2 - 1, closed="both"),
+            self.min_detection_interval,
+            "min_detection_interval",
+        )
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold for the Moscore algorithm.
@@ -261,7 +243,11 @@ class Moscore(BaseSeriesAnnotator):
         -------
         self : returns a reference to self
         """
-        X = self._check_X(X)
+        X = check_data(
+            X,
+            min_length=2 * self.bandwidth,
+            min_length_name="2*bandwidth",
+        )
         self.threshold_ = self._get_threshold(X)
         return self
 
@@ -279,7 +265,11 @@ class Moscore(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        X = self._check_X(X)
+        X = check_data(
+            X,
+            min_length=2 * self.bandwidth,
+            min_length_name="2*bandwidth",
+        )
         self.scores = moscore_transform(
             X.values,
             self.score_f,

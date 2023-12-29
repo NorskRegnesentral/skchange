@@ -13,10 +13,8 @@ from sktime.annotation.base import BaseSeriesAnnotator
 
 from skchange.change_detectors.utils import format_changepoint_output
 from skchange.costs.cost_factory import cost_factory
-
-
-def BIC_penalty(n: int, n_params: int, scale: float = 1.0):
-    return scale * n_params * np.log(n)
+from skchange.utils.validation.data import check_data
+from skchange.utils.validation.parameters import check_larger_than
 
 
 @njit
@@ -130,18 +128,11 @@ class Pelt(BaseSeriesAnnotator):
         self.cost = cost
         self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
-
         super().__init__(fmt=fmt, labels=labels)
-
         self.cost_func, self.cost_init_func = cost_factory(self.cost)
 
-        if penalty_scale is not None and penalty_scale < 0:
-            raise ValueError(
-                "penalty_scale must be non-negative",
-                f" (penalty_scale={penalty_scale}).",
-            )
-        if self.min_segment_length < 1:
-            raise ValueError("min_segment_length must be at least 1.")
+        check_larger_than(0, penalty_scale, "penalty_scale", allow_none=True)
+        check_larger_than(1, min_segment_length, "min_segment_length")
 
     def _tune_penalty(self, X: pd.DataFrame) -> float:
         """Tune the threshold.
@@ -206,8 +197,11 @@ class Pelt(BaseSeriesAnnotator):
         -------
         self : returns a reference to self
         """
-        if X.ndim < 2:
-            X = X.to_frame()
+        X = check_data(
+            X,
+            min_length=2 * self.min_segment_length,
+            min_length_name="2*min_segment_length",
+        )
         self.threshold_ = self._get_penalty(X)
         return self
 
@@ -225,9 +219,11 @@ class Pelt(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        if X.ndim < 2:
-            X = X.to_frame()
-
+        X = check_data(
+            X,
+            min_length=2 * self.min_segment_length,
+            min_length_name="2*min_segment_length",
+        )
         self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
         self.scores, self.changepoints = run_pelt(
             X.values,

@@ -1,8 +1,7 @@
-"""Binary Segmentation type algorithms for multiple changepoint detection."""
+"""Seeded binary segmentation algorithm for multiple changepoint detection."""
 
 __author__ = ["mtveten"]
 __all__ = ["SeededBinarySegmentation"]
-
 
 from typing import Callable, List, Optional, Tuple, Union
 
@@ -13,6 +12,8 @@ from sktime.annotation.base import BaseSeriesAnnotator
 
 from skchange.change_detectors.utils import format_changepoint_output
 from skchange.scores.score_factory import score_factory
+from skchange.utils.validation.data import check_data
+from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
 
 @njit
@@ -188,41 +189,21 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score)
 
-        if threshold_scale is not None and threshold_scale < 0:
-            raise ValueError(
-                "threshold_scale must be non-negative",
-                f" (threshold_scale={threshold_scale}).",
-            )
-        if self.min_interval_length < 2:
-            raise ValueError(
-                "min_interval_length must be at least 2"
-                + f" (min_interval_length={self.min_interval_length})."
-            )
-        if self.max_interval_length < self.min_interval_length:
-            raise ValueError(
-                "max_interval_length must be at least min_interval_length"
-                + f" (max_interval_length={self.max_interval_length}, "
-            )
-        if self.growth_factor <= 1 or self.growth_factor > 2:
-            raise ValueError(
-                "growth_factor must be in (1, 2]"
-                + f" (growth_factor={self.growth_factor})."
-            )
-
-    def _check_X(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
-        if X.isna().any(axis=None):
-            raise ValueError("X must not contain missing values.")
-
-        if X.ndim < 2:
-            X = X.to_frame()
-
-        if X.shape[0] < self.min_interval_length:
-            raise ValueError(
-                "X must have at least min_interval_length samples"
-                + f" (X.shape[0]={X.shape[0]},"
-                + f" min_interval_length={self.min_interval_length})."
-            )
-        return X
+        check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
+        check_larger_than(
+            2, self.min_interval_length, "min_interval_length", allow_none=False
+        )
+        check_larger_than(
+            self.min_interval_length,
+            self.max_interval_length,
+            "max_interval_length",
+            allow_none=False,
+        )
+        check_in_interval(
+            pd.Interval(1.0, 2.0, closed="right"),
+            self.growth_factor,
+            "growth_factor",
+        )
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold.
@@ -287,7 +268,11 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         -------
         self : returns a reference to self
         """
-        X = self._check_X(X)
+        X = check_data(
+            X,
+            min_length=self.min_interval_length,
+            min_length_name="min_interval_length",
+        )
         self.threshold_ = self._get_threshold(X)
         return self
 
@@ -305,7 +290,11 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        X = self._check_X(X)
+        X = check_data(
+            X,
+            min_length=self.min_interval_length,
+            min_length_name="min_interval_length",
+        )
         cpts, scores, maximizers, starts, ends = run_seeded_binary_segmentation(
             X.values,
             self.score_f,
