@@ -19,7 +19,7 @@ def test_moscore_changepoint(score):
     detector = Moscore(score, fmt="sparse", labels="int_label")
     changepoints = detector.fit_predict(df)
     # End point also included as a changepoint
-    assert len(changepoints) == n_segments - 1 and changepoints.index[0] == seg_len - 1
+    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
 
 @pytest.mark.parametrize("score", VALID_SCORES)
