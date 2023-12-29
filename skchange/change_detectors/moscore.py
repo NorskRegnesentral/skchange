@@ -83,20 +83,19 @@ class Moscore(BaseSeriesAnnotator):
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
         test statistic. For "mean", the minimum bandwidth is 1.
-    threshold : float, optional (default=None)
-        Threshold to use for changepoint detection.
-        * If None, the threshold is set to the default value for the test statistic
-        derived in [1]_.
-        * If tune = True, the `threshold` input is ignored as it is tuned instead.
+    threshold_scale : float, optional (default=2.0)
+        Scaling factor for the threshold. The threshold is set to
+        'threshold_scale * default_threshold', where the default threshold depends on
+        the number of samples, the number of variables, `bandwidth` and `level`.
+        If None, the threshold is tuned on the data input to .fit().
     level : float, optional (default=0.01)
-        Significance level for the test statistic. Only used in the default threshold if
-        `threshold` is not provided.
+        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
+        of the changepoint score on the training data. For this to be correct, the
+        training data must contain no changepoints. If `threshold_scale` is a number,
+        `level` is used in the default threshold, _before_ scaling.
     min_detection_interval : int, optional (default=1)
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
-    tune : bool, optional (default=False)
-        Whether to tune the threshold in the fit method or not. Takes precedence over
-        the `threshold` input.
 
     References
     ----------
@@ -126,7 +125,7 @@ class Moscore(BaseSeriesAnnotator):
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
         bandwidth: int = 30,
-        threshold: Optional[float] = None,
+        threshold_scale: Optional[float] = None,
         level: float = 0.01,
         min_detection_interval: int = 1,
         tune: bool = False,
@@ -135,7 +134,7 @@ class Moscore(BaseSeriesAnnotator):
     ):
         self.score = score
         self.bandwidth = bandwidth
-        self.threshold = threshold  # Just holds the input value.
+        self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
         self.tune = tune
@@ -144,8 +143,10 @@ class Moscore(BaseSeriesAnnotator):
 
         if self.bandwidth < 1:
             raise ValueError("bandwidth must be at least 1.")
-        if threshold is not None and threshold < 0:
-            raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
+        if threshold_scale is not None and threshold_scale < 0:
+            raise ValueError(
+                f"threshold must be non-negative (threshold_scale={threshold_scale})."
+            )
         if (
             self.min_detection_interval <= 0
             or self.min_detection_interval >= self.bandwidth / 2
@@ -231,15 +232,13 @@ class Moscore(BaseSeriesAnnotator):
         return p * (b + c) / a
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
-        if self.tune:
+        if self.threshold_scale is None:
             return self._tune_threshold(X)
-
-        if self.threshold:
-            return self.threshold
         else:
-            # The default threshold is used.
-            return self.get_default_threshold(
-                X.shape[0], X.shape[1], self.bandwidth, self.level
+            n = X.shape[0]
+            p = X.shape[1]
+            return self.threshold_scale * self.get_default_threshold(
+                n, p, self.bandwidth, self.level
             )
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
@@ -340,6 +339,6 @@ class Moscore(BaseSeriesAnnotator):
         """
         params = [
             {"score": "mean", "bandwidth": 10, "level": 0.01},
-            {"score": "mean", "bandwidth": 10, "threshold": 0},
+            {"score": "mean", "bandwidth": 10, "threshold_scale": 0},
         ]
         return params
