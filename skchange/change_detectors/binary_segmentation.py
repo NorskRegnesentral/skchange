@@ -242,7 +242,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         )
 
     @staticmethod
-    def get_default_threshold(n: int, p: int, scale: float = 1.0) -> float:
+    def get_default_threshold(n: int, p: int) -> float:
         """Get the default threshold for Seeded Binary Segmentation.
 
         Parameters
@@ -251,23 +251,21 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             Sample size.
         p : int
             Number of variables.
-        scale : float, optional (default=1.0)
-            Scaling factor for the default threshold.
 
         Returns
         -------
         threshold : float
             The default threshold.
         """
-        return scale * 2 * p * np.sqrt(np.log(n))
+        return 2 * p * np.sqrt(np.log(n))
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
         if self.threshold_scale is None:
             return self._tune_threshold(X)
         else:
-            return self.get_default_threshold(
-                X.shape[0], X.shape[1], self.threshold_scale
-            )
+            n = X.shape[0]
+            p = X.shape[1]
+            return self.threshold_scale * self.get_default_threshold(n, p)
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
