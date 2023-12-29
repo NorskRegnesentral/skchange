@@ -15,8 +15,8 @@ from skchange.change_detectors.utils import format_changepoint_output
 from skchange.costs.cost_factory import cost_factory
 
 
-def BIC_penalty(n: int, n_params: int):
-    return n_params * np.log(n)
+def BIC_penalty(n: int, n_params: int, scale: float = 1.0):
+    return scale * n_params * np.log(n)
 
 
 @njit
@@ -161,7 +161,7 @@ class Pelt(BaseSeriesAnnotator):
     def _get_penalty(self, X: pd.DataFrame) -> float:
         n = X.shape[0]
         p = X.shape[1]
-        penalty = self.penalty if self.penalty else BIC_penalty(n, p)
+        penalty = self.penalty if self.penalty else BIC_penalty(n, p, scale=2.0)
         if penalty < 0:
             raise ValueError(f"penalty must be non-negative (penalty={self.penalty}).")
         return penalty
