@@ -34,10 +34,10 @@ def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 def mean_score(
     precomputed_params: np.ndarray, start: int, end: int, split: int
 ) -> float:
-    """Calculate the score for a change in the mean.
+    """Calculate the CUSUM score for a change in the mean.
 
     Compares the mean of the data before and after the split within the interval from
-    start:end.
+    start:end (both inclusive).
 
     Parameters
     ----------
@@ -61,7 +61,7 @@ def mean_score(
     """
     sums = precomputed_params
     before_sum = sums[split + 1] - sums[start]
-    before_stat = before_sum / np.sqrt(split - start + 1)
+    before_weight = np.sqrt((end - split) / ((end - start + 1) * (split - start + 1)))
     after_sum = sums[end + 1] - sums[split + 1]
-    after_stat = after_sum / np.sqrt(end - split)
-    return np.sum(np.abs(after_stat - before_stat))
+    after_weight = np.sqrt((split - start + 1) / ((end - start + 1) * (end - split)))
+    return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum))
