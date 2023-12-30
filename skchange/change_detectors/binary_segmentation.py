@@ -83,7 +83,6 @@ def run_seeded_binary_segmentation(
     maximizers = np.zeros(starts.size)
     for i, (start, end) in enumerate(zip(starts, ends)):
         scores = np.zeros(end - start)
-        # TODO: Add min_segment_length
         splits_lower = start + min_segment_length - 1
         splits = range(splits_lower, end - min_segment_length + 1)
         for k, split in enumerate(splits):
