@@ -18,27 +18,25 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 
 @njit
 def make_seeded_intervals(
-    n: int,
-    min_interval_length: int,
-    max_interval_length: int,
-    growth_factor: float = 1.5,
+    n: int, min_length: int, max_length: int, growth_factor: float = 1.5
 ) -> Tuple[np.ndarray, np.ndarray]:
-    starts = [int(0)]  # For numba to be able to compile type.
-    ends = [int(0)]  # For numba to be able to compile type.
-    interval_len = min_interval_length
-    max_interval_length = min(max_interval_length, n)
+    starts = [0]  # For numba to be able to compile type.
+    ends = [0]  # For numba to be able to compile type.
     step_factor = 1 - 1 / growth_factor
-    while interval_len <= max_interval_length:
-        level_starts = [int(0)]
-        level_ends = [int(interval_len - 1)]
-        step = max(1, np.floor(step_factor * interval_len))
-        while level_ends[-1] < n - 1:
-            start = level_starts[-1] + step
-            level_starts.append(int(start))
-            level_ends.append(int(min(start + interval_len - 1, n - 1)))
-        interval_len = max(interval_len + 1, np.floor(growth_factor * interval_len))
-        starts += level_starts
-        ends += level_ends
+    max_length = min(max_length, n)
+    n_lengths = int(np.ceil(np.log(max_length / min_length) / np.log(growth_factor)))
+    interval_lens = np.unique(np.round(np.geomspace(min_length, max_length, n_lengths)))
+    for interval_len in interval_lens:
+        step = max(1, np.round(step_factor * interval_len))
+        n_steps = int(np.ceil((n - interval_len) / step))
+        new_starts = [int(i * step) for i in range(n_steps + 1)]
+        starts += new_starts
+        new_ends = [
+            int(min(i * step + interval_len - 1, n - 1)) for i in range(n_steps + 1)
+        ]
+        ends += new_ends
+        if ends[-1] - starts[-1] + 1 < min_length:
+            starts[-1] = n - min_length
     return np.array(starts[1:]), np.array(ends[1:])
 
 
