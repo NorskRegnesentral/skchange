@@ -16,7 +16,7 @@ px.scatter(detector.scores, x="maximizer", y="score", hover_data=["start", "end"
 # Profiling
 n = int(1e6)
 df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
-detector = SeededBinarySegmentation("mean", growth_factor=1.5)
+detector = SeededBinarySegmentation("mean", growth_factor=1.5, min_segment_length=10)
 profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)

@@ -15,11 +15,11 @@ def test_invalid_parameters():
     with pytest.raises(ValueError):
         SeededBinarySegmentation(threshold_scale=-0.1)
     with pytest.raises(ValueError):
-        SeededBinarySegmentation(min_interval_length=1)
+        SeededBinarySegmentation(min_segment_length=0)
     with pytest.raises(ValueError):
-        SeededBinarySegmentation(min_interval_length=None)
+        SeededBinarySegmentation(min_segment_length=None)
     with pytest.raises(ValueError):
-        SeededBinarySegmentation(min_interval_length=10, max_interval_length=9)
+        SeededBinarySegmentation(min_segment_length=5, max_interval_length=9)
     with pytest.raises(ValueError):
         SeededBinarySegmentation(growth_factor=1.0)
     with pytest.raises(ValueError):

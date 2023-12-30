@@ -67,13 +67,13 @@ def run_seeded_binary_segmentation(
     score_func: Callable,
     score_init_func: Callable,
     threshold: float,
-    min_interval_length: int,
+    min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     starts, ends = make_seeded_intervals(
         X.shape[0],
-        min_interval_length,
+        2 * min_segment_length,
         max_interval_length,
         growth_factor,
     )
@@ -84,11 +84,13 @@ def run_seeded_binary_segmentation(
     for i, (start, end) in enumerate(zip(starts, ends)):
         scores = np.zeros(end - start)
         # TODO: Add min_segment_length
-        for k, split in enumerate(range(start, end)):
+        splits_lower = start + min_segment_length - 1
+        splits = range(splits_lower, end - min_segment_length + 1)
+        for k, split in enumerate(splits):
             scores[k] = score_func(params, start, end, split)
         argmax = np.argmax(scores)
         amoc_scores[i] = scores[argmax]
-        maximizers[i] = start + argmax
+        maximizers[i] = splits_lower + argmax
 
     cpts = greedy_changepoint_selection(
         amoc_scores, maximizers, starts, ends, threshold
@@ -135,10 +137,11 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
         and 'p' is the number of variables. If None, the threshold is tuned on the data
         input to .fit() (not supported yet).
-    min_interval_length : int (default=2)
-        The minimum length of an interval to estimate a changepoint in.
+    min_segment_length : int, optional (default=5)
+        Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int (default=200)
-        The maximum length of an interval to estimate a changepoint in.
+        The maximum length of an interval to estimate a changepoint in. Must be greater
+        than or equal to '2 * min_segment_length'.
     growth_factor : float (default = 1.5)
         The growth factor for the seeded intervals. Intervals grow in size according to
         'interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))',
@@ -175,7 +178,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
         threshold_scale: Optional[float] = 2.0,
-        min_interval_length: int = 2,
+        min_segment_length: int = 5,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
         fmt: str = "sparse",
@@ -183,18 +186,16 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
     ):
         self.score = score
         self.threshold_scale = threshold_scale  # Just holds the input value.
-        self.min_interval_length = min_interval_length
+        self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
+        check_larger_than(1.0, self.min_segment_length, "min_segment_length")
         check_larger_than(
-            2, self.min_interval_length, "min_interval_length", allow_none=False
-        )
-        check_larger_than(
-            self.min_interval_length,
+            2 * self.min_segment_length,
             self.max_interval_length,
             "max_interval_length",
             allow_none=False,
@@ -270,7 +271,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         """
         X = check_data(
             X,
-            min_length=self.min_interval_length,
+            min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
         self.threshold_ = self._get_threshold(X)
@@ -292,7 +293,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         """
         X = check_data(
             X,
-            min_length=self.min_interval_length,
+            min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binary_segmentation(
@@ -300,7 +301,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             self.score_f,
             self.score_init_f,
             self.threshold_,
-            self.min_interval_length,
+            self.min_segment_length,
             self.max_interval_length,
             self.growth_factor,
         )
