@@ -531,12 +531,10 @@ class Mvcapa(BaseSeriesAnnotator):
         anomalies = format_multivariate_anomaly_output(
             self.fmt,
             self.labels,
-            X.shape[0],
-            X.shape[1],
-            self.collective_anomalies,
-            self.point_anomalies if not self.ignore_point_anomalies else None,
             X.index,
             X.columns,
+            self.collective_anomalies,
+            self.point_anomalies if not self.ignore_point_anomalies else None,
             self.scores,
         )
         return anomalies

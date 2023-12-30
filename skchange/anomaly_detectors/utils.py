@@ -43,7 +43,6 @@ def merge_anomalies(
         anomalies += collective_anomalies
     if point_anomalies:
         # Convert point anomalies to the same format as collective anomalies
-        anomalies += point_anomalies
         if isinstance(point_anomalies[0], int):
             anomalies += [(i, i) for i in point_anomalies]
         elif len(point_anomalies[0]) == 2 and isinstance(
@@ -93,10 +92,9 @@ def anomalies_to_labels(
 def format_anomaly_output(
     fmt: str,
     labels: str,
-    n: int,
+    X_index: pd.Index,
     collective_anomalies: List[tuple] = None,
     point_anomalies: List[tuple] = None,
-    X_index: pd.Index = None,
     scores: np.ndarray = None,
 ) -> pd.Series:
     """Format the predict method output of change detectors.
@@ -124,6 +122,7 @@ def format_anomaly_output(
     pd.Series
         Either a sparse or dense pd.Series of boolean labels, integer labels or scores.
     """
+    n = X_index.size
     anomalies = merge_anomalies(collective_anomalies, point_anomalies)
     if labels == "int_label":
         if fmt == "dense":
@@ -146,12 +145,10 @@ def format_anomaly_output(
 def format_multivariate_anomaly_output(
     fmt: str,
     labels: str,
-    n: int,
-    p: int,
+    X_index: pd.Index,
+    X_columns: pd.Index,
     collective_anomalies: List[dict] = None,
     point_anomalies: List[dict] = None,
-    X_index: pd.Index = None,
-    X_columns: pd.Index = None,
     scores: np.ndarray = None,
 ) -> pd.Series:
     """Format the predict method output of change detectors.
@@ -181,6 +178,8 @@ def format_multivariate_anomaly_output(
     pd.Series
         Either a sparse or dense pd.Series of boolean labels, integer labels or scores.
     """
+    n = X_index.size
+    p = X_columns.size
     anomalies = merge_anomalies(collective_anomalies, point_anomalies)
     if labels == "int_label":
         if fmt == "dense":

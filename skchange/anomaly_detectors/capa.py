@@ -210,10 +210,9 @@ class Capa(BaseSeriesAnnotator):
         anomalies = format_anomaly_output(
             self.fmt,
             self.labels,
-            X.shape[0],
+            X.index,
             self.collective_anomalies,
             self.point_anomalies if not self.ignore_point_anomalies else None,
-            X.index,
             self.scores,
         )
         return anomalies
