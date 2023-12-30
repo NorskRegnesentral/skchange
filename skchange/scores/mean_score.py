@@ -67,7 +67,7 @@ def mean_score(
     return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum))
 
 
-# @njit(cache=True)
+@njit(cache=True)
 def mean_anomaly_score(
     precomputed_params: np.ndarray,
     interval_start: int,
