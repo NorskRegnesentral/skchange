@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skchange.change_detectors.binary_segmentation import SeededBinarySegmentation
+from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
 from skchange.datasets.generate import teeth
 from skchange.scores.score_factory import VALID_SCORES
 
