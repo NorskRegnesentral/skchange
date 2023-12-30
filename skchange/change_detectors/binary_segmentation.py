@@ -135,7 +135,11 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         Scaling factor for the threshold. The threshold is set to
         'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
         and 'p' is the number of variables. If None, the threshold is tuned on the data
-        input to .fit() (not supported yet).
+        input to .fit().
+    level : float, optional (default=0.01)
+        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
+        of the changepoint scores of all the seeded intervals on the training data.
+        For this to be correct, the training data must contain no changepoints.
     min_segment_length : int, optional (default=5)
         Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int (default=200)
@@ -177,6 +181,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
         threshold_scale: Optional[float] = 2.0,
+        level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
@@ -185,6 +190,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
     ):
         self.score = score
         self.threshold_scale = threshold_scale  # Just holds the input value.
+        self.level = level
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
@@ -192,12 +198,10 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
+        check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
         check_larger_than(1.0, self.min_segment_length, "min_segment_length")
         check_larger_than(
-            2 * self.min_segment_length,
-            self.max_interval_length,
-            "max_interval_length",
-            allow_none=False,
+            2 * self.min_segment_length, self.max_interval_length, "max_interval_length"
         )
         check_in_interval(
             pd.Interval(1.0, 2.0, closed="right"),
@@ -207,6 +211,10 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold.
+
+        The threshold is set to the (1-`level`)-quantile of the changepoint scores from
+        all the seeded intervals on the training data `X`. For this to be correct, the
+        training data must contain no changepoints.
 
         Parameters
         ----------
@@ -218,9 +226,16 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         threshold : float
             The tuned threshold.
         """
-        raise ValueError(
-            "tuning of the threshold is not supported yet (threshold_scale=None)."
+        _, scores, _, _, _ = run_seeded_binary_segmentation(
+            X.values,
+            self.score_f,
+            self.score_init_f,
+            np.inf,
+            self.min_segment_length,
+            self.max_interval_length,
+            self.growth_factor,
         )
+        return np.quantile(scores, 1 - self.level)
 
     @staticmethod
     def get_default_threshold(n: int, p: int) -> float:

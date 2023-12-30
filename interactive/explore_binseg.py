@@ -21,3 +21,13 @@ profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
 profiler.stop()
+
+
+# Test tuning
+df_train = teeth(n_segments=1, mean=0, segment_length=10000, p=1, random_state=9)
+df_test = teeth(n_segments=10, mean=5, segment_length=1000, p=1, random_state=5)
+detector = SeededBinarySegmentation(
+    score="mean", threshold_scale=None, min_segment_length=10
+)
+detector.fit(df_train)
+changepoints = detector.predict(df_test)
