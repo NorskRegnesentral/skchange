@@ -6,7 +6,7 @@ import pytest
 
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
 from skchange.datasets.generate import teeth
-from skchange.scores.score_factory import VALID_SCORES
+from skchange.scores.score_factory import VALID_CHANGE_SCORES
 
 
 def test_invalid_parameters():
@@ -43,7 +43,7 @@ def test_invalid_data():
         detector.fit(pd.Series([1.0, np.nan, 1.0, 1.0]))
 
 
-@pytest.mark.parametrize("score", VALID_SCORES)
+@pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
 def test_binseg_tuning(score):
     """Test SeededBinarySegmentation tuning."""
     n_segments = 2
