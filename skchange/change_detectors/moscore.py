@@ -60,17 +60,6 @@ class Moscore(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
     score: str, Tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
@@ -97,6 +86,17 @@ class Moscore(BaseSeriesAnnotator):
     min_detection_interval : int, optional (default=1)
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
+    fmt : str {"dense", "sparse"}, optional (default="sparse")
+        Annotation output format:
+        * If "sparse", a sub-series of labels for only the outliers in X is returned,
+        * If "dense", a series of labels for all values in X is returned.
+    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
+        Annotation output labels:
+        * If "indicator", returned values are boolean, indicating whether a value is an
+        outlier,
+        * If "score", returned values are floats, giving the outlier score.
+        * If "int_label", returned values are integer, indicating which segment a value
+        belongs to.
 
     References
     ----------
@@ -253,8 +253,6 @@ class Moscore(BaseSeriesAnnotator):
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
-
-        core logic
 
         Parameters
         ----------

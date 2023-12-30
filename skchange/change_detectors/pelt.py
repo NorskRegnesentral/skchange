@@ -68,17 +68,6 @@ class Pelt(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
     cost : str or callable, optional (default="mean")
         Cost function to use for changepoint detection.
         * If "mean", the Gaussian mean likelihood cost is used,
@@ -90,6 +79,17 @@ class Pelt(BaseSeriesAnnotator):
         input to .fit() (not supported yet).
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
+    fmt : str {"dense", "sparse"}, optional (default="sparse")
+        Annotation output format:
+        * If "sparse", a sub-series of labels for only the outliers in X is returned,
+        * If "dense", a series of labels for all values in X is returned.
+    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
+        Annotation output labels:
+        * If "indicator", returned values are boolean, indicating whether a value is an
+        outlier,
+        * If "score", returned values are floats, giving the outlier score.
+        * If "int_label", returned values are integer, indicating which segment a value
+        belongs to.
 
 
     References
@@ -207,8 +207,6 @@ class Pelt(BaseSeriesAnnotator):
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
-
-        core logic
 
         Parameters
         ----------

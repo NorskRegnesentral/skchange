@@ -183,8 +183,6 @@ class Capa(BaseSeriesAnnotator):
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
 
-        core logic
-
         Parameters
         ----------
         X : pd.DataFrame - data to annotate, time series
