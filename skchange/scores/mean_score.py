@@ -75,7 +75,7 @@ def mean_anomaly_score(
     anomaly_start: int,
     anomaly_end: int,
 ) -> float:
-    """Calculate the CUSUM score for a change in the mean.
+    """Calculate the CUSUM score for difference in the mean of a subinterval.
 
     Compares the mean of the data in anomaly_start:anomaly_end (both inclusive)
     to the mean of the complement of interval_start:interval_end (both inclusive) and
