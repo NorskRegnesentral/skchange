@@ -62,7 +62,7 @@ def greedy_changepoint_selection(
 
 
 @njit
-def run_seeded_binary_segmentation(
+def run_seeded_binseg(
     X: np.ndarray,
     score_func: Callable,
     score_init_func: Callable,
@@ -226,7 +226,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         threshold : float
             The tuned threshold.
         """
-        _, scores, _, _, _ = run_seeded_binary_segmentation(
+        _, scores, _, _, _ = run_seeded_binseg(
             X.values,
             self.score_f,
             self.score_init_f,
@@ -308,7 +308,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
-        cpts, scores, maximizers, starts, ends = run_seeded_binary_segmentation(
+        cpts, scores, maximizers, starts, ends = run_seeded_binseg(
             X.values,
             self.score_f,
             self.score_init_f,
