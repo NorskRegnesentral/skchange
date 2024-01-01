@@ -15,13 +15,13 @@ anomalies = detector.fit_predict(df)
 
 df.plot(kind="line", backend="plotly")
 
-px.scatter(detector.scores, x="maximizer", y="score", hover_data=["start", "end"])
+px.scatter(detector.scores, x="argmax_anomaly_start", y="score")
 
 # Test anomaly intervals
 anomaly_intervals = make_anomaly_intervals(0, 5, 2)
 
 # Profiling
-n = int(1e4)
+n = int(1e5)
 df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
 detector = CircularBinarySegmentation("mean", growth_factor=1.5)
 profiler = Profiler()
