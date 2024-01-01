@@ -56,5 +56,5 @@ def test_binseg_tuning(score):
     )
     detector.fit(df)
     scores = detector.predict(df)
-    assert detector.threshold_ >= scores.mean()
-    assert detector.threshold_ <= scores.max()
+    assert detector.threshold_ >= scores["score"].mean()
+    assert detector.threshold_ <= scores["score"].max()

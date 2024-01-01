@@ -268,15 +268,16 @@ class Moscore(BaseSeriesAnnotator):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self.scores = moscore_transform(
+        scores = moscore_transform(
             X.values,
             self.score_f,
             self.score_init_f,
             self.bandwidth,
         )
         self.changepoints = get_moscore_changepoints(
-            self.scores, self.threshold_, self.min_detection_interval
+            scores, self.threshold_, self.min_detection_interval
         )
+        self.scores = pd.Series(scores, index=X.index, name="score")
         return format_changepoint_output(
             self.fmt, self.labels, self.changepoints, X.index, self.scores
         )

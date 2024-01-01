@@ -223,13 +223,14 @@ class Pelt(BaseSeriesAnnotator):
             min_length_name="2*min_segment_length",
         )
         self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
-        self.scores, self.changepoints = run_pelt(
+        opt_costs, self.changepoints = run_pelt(
             X.values,
             self.cost_func,
             self.cost_init_func,
             self._penalty,
             self.min_segment_length,
         )
+        self.scores = pd.Series(opt_costs, index=X.index, name="score")
         return format_changepoint_output(
             self.fmt, self.labels, self.changepoints, X.index, self.scores
         )

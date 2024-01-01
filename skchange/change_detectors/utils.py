@@ -1,5 +1,7 @@
 """Utility functions for change detection."""
 
+from typing import Union
+
 import numpy as np
 import pandas as pd
 
@@ -31,7 +33,7 @@ def format_changepoint_output(
     labels: str,
     changepoints: list,
     X_index: pd.Index,
-    scores: np.ndarray = None,
+    scores: Union[pd.Series, pd.DataFrame] = None,
 ) -> pd.Series:
     """Format the predict method output of change detectors.
 
@@ -45,8 +47,9 @@ def format_changepoint_output(
         List of changepoint indices.
     X_index : pd.Index
         Index of the input data.
-    scores : np.ndarray, optional (default=None)
-        Array of scores.
+    scores : pd.Series or pd.DataFrame, optional (default=None)
+        Series or DataFrame of scores. If Series, it must be named 'score', and if
+        DataFrame, it must have a column named 'score'.
 
     Returns
     -------
@@ -55,16 +58,15 @@ def format_changepoint_output(
     """
     if fmt == "sparse" and labels in ["int_label", "indicator"]:
         out = pd.Series(changepoints, name="changepoints", dtype=int)
-    elif fmt == "sparse" and labels == "score":
-        out = pd.Series(
-            scores[changepoints], index=changepoints, name="score", dtype=float
-        )
     elif fmt == "dense" and labels == "int_label":
         out = changepoints_to_labels(changepoints, len(X_index))
         out = pd.Series(out, index=X_index, name="int_label", dtype=int)
     elif fmt == "dense" and labels == "indicator":
         out = pd.Series(False, index=X_index, name="indicator", dtype=bool)
         out.iloc[changepoints] = True
-    elif fmt == "dense" and labels == "score":
-        out = pd.Series(scores, index=X_index, name="score", dtype=float)
+    elif labels == "score":
+        # There is no sparse version of 'score'.
+        # The scores are formatted in each class' _predict method, as what is a good
+        # format for the scores is method dependent.
+        out = scores
     return out

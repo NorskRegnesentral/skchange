@@ -317,15 +317,10 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         )
         self.changepoints = cpts
         self.scores = pd.DataFrame(
-            {"start": starts, "end": ends, "maximizer": maximizers, "score": scores}
+            {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
         )
-        self.per_sample_scores = (
-            self.scores.groupby("maximizer")["score"]
-            .max()
-            .reindex(range(X.shape[0]), fill_value=0)
-        ).values
         return format_changepoint_output(
-            self.fmt, self.labels, self.changepoints, X.index, self.per_sample_scores
+            self.fmt, self.labels, self.changepoints, X.index, self.scores
         )
 
     @classmethod
