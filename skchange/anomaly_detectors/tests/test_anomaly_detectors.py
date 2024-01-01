@@ -1,16 +1,16 @@
 """Basic tests for all anomaly detectors."""
 
-import numpy as np
 import pandas as pd
 import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
 from skchange.anomaly_detectors.capa import Capa
+from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
 from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.datasets.generate import teeth
 
-anomaly_detectors = [Capa, Mvcapa]
+anomaly_detectors = [Capa, Mvcapa, CircularBinarySegmentation]
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -28,7 +28,7 @@ def test_output_type(Estimator):
         n_timepoints=30, estimator_type=estimator.get_tag("distribution_type")
     )
     y_pred = estimator.predict(arg)
-    assert isinstance(y_pred, (pd.DataFrame, pd.Series, np.ndarray))
+    assert isinstance(y_pred, (pd.DataFrame, pd.Series))
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -83,8 +83,11 @@ def test_anomaly_detector_score(Estimator):
     dense_detector = Estimator(fmt="dense", labels="score")
     sparse_scores = sparse_detector.fit_predict(df)
     dense_scores = dense_detector.fit_predict(df)
-    assert sparse_scores.size == df.size
-    assert (sparse_scores == dense_scores).all()
+    assert (sparse_scores == dense_scores).all(axis=None)
+    if isinstance(sparse_scores, pd.DataFrame):
+        assert "score" in sparse_scores.columns
+    else:
+        assert sparse_scores.name == "score"
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)

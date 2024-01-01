@@ -206,14 +206,14 @@ class Capa(BaseSeriesAnnotator):
             self.min_segment_length,
             self.max_segment_length,
         )
-        self.scores = np.diff(opt_savings, prepend=0.0)
+        self.scores = pd.Series(opt_savings, name="score")
         anomalies = format_anomaly_output(
             self.fmt,
             self.labels,
             X.index,
             self.collective_anomalies,
             self.point_anomalies if not self.ignore_point_anomalies else None,
-            self.scores,
+            scores=self.scores,
         )
         return anomalies
 

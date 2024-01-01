@@ -309,17 +309,14 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
             {
                 "interval_start": starts,
                 "interval_end": ends,
-                "maximizing_anom_start": maximizers[:, 0],
-                "maximizing_anom_end": maximizers[:, 1],
+                "argmax_anomaly_start": maximizers[:, 0],
+                "argmax_anomaly_end": maximizers[:, 1],
                 "score": scores,
             }
         )
-        # self.per_sample_scores = (
-        #     self.scores.groupby("maximizer")["score"]
-        #     .max()
-        #     .reindex(range(X.shape[0]), fill_value=0)
-        # ).values
-        return format_anomaly_output(self.fmt, self.labels, X.index, self.anomalies)
+        return format_anomaly_output(
+            self.fmt, self.labels, X.index, self.anomalies, scores=self.scores
+        )
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
