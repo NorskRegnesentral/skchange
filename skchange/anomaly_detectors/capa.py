@@ -9,13 +9,11 @@ import pandas as pd
 from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.anomaly_detectors.mvcapa import (
-    check_capa_input,
-    dense_capa_penalty,
-    run_base_capa,
-)
+from skchange.anomaly_detectors.mvcapa import dense_capa_penalty, run_base_capa
 from skchange.anomaly_detectors.utils import format_anomaly_output
 from skchange.costs.saving_factory import saving_factory
+from skchange.utils.validation.data import check_data
+from skchange.utils.validation.parameters import check_larger_than
 
 
 @njit
@@ -127,10 +125,10 @@ class Capa(BaseSeriesAnnotator):
 
         self.saving_func, self.saving_init_func = saving_factory(self.saving)
 
-        if self.min_segment_length < 2:
-            raise ValueError("min_segment_length must be at least 2.")
-        if self.max_segment_length < self.min_segment_length:
-            raise ValueError("max_segment_length must be at least min_segment_length.")
+        check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
+        check_larger_than(0, point_penalty_scale, "point_penalty_scale")
+        check_larger_than(2, min_segment_length, "min_segment_length")
+        check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
     def _get_penalty_components(self, X: pd.DataFrame) -> Tuple[np.ndarray, float]:
         # TODO: Add penalty tuning.
@@ -174,14 +172,16 @@ class Capa(BaseSeriesAnnotator):
         ------------
         creates fitted model (attributes ending in "_")
         """
-        X = check_capa_input(X, self.min_segment_length)
+        X = check_data(
+            X,
+            min_length=self.min_segment_length,
+            min_length_name="min_segment_length",
+        )
         self.collective_penalty_, self.point_penalty_ = self._get_penalty_components(X)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
-
-        core logic
 
         Parameters
         ----------
@@ -192,7 +192,11 @@ class Capa(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        X = check_capa_input(X, self.min_segment_length)
+        X = check_data(
+            X,
+            min_length=self.min_segment_length,
+            min_length_name="min_segment_length",
+        )
         opt_savings, self.collective_anomalies, self.point_anomalies = run_capa(
             X.values,
             self.saving_func,
@@ -202,15 +206,14 @@ class Capa(BaseSeriesAnnotator):
             self.min_segment_length,
             self.max_segment_length,
         )
-        self.scores = np.diff(opt_savings, prepend=0.0)
+        self.scores = pd.Series(opt_savings, index=X.index, name="score")
         anomalies = format_anomaly_output(
             self.fmt,
             self.labels,
-            X.shape[0],
+            X.index,
             self.collective_anomalies,
             self.point_anomalies if not self.ignore_point_anomalies else None,
-            X.index,
-            self.scores,
+            scores=self.scores,
         )
         return anomalies
 

@@ -3,7 +3,6 @@
 __author__ = ["mtveten"]
 __all__ = ["Moscore"]
 
-
 from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
@@ -14,6 +13,8 @@ from sktime.annotation.base import BaseSeriesAnnotator
 from skchange.change_detectors.utils import format_changepoint_output
 from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
+from skchange.utils.validation.data import check_data
+from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
 
 @njit
@@ -28,9 +29,6 @@ def get_moscore_changepoints(
         if end - start + 1 >= min_detection_interval:
             cpt = np.argmax(moscores[start : end + 1]) + start
             changepoints.append(cpt)
-    changepoints.append(
-        len(moscores) - 1
-    )  # The last index is defined as a changepoint.
     return changepoints
 
 
@@ -62,17 +60,6 @@ class Moscore(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
     score: str, Tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
@@ -86,20 +73,30 @@ class Moscore(BaseSeriesAnnotator):
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
         test statistic. For "mean", the minimum bandwidth is 1.
-    threshold : float, optional (default=None)
-        Threshold to use for changepoint detection.
-        * If None, the threshold is set to the default value for the test statistic
-        derived in [1]_.
-        * If tune = True, the `threshold` input is ignored as it is tuned instead.
+    threshold_scale : float, optional (default=2.0)
+        Scaling factor for the threshold. The threshold is set to
+        'threshold_scale * default_threshold', where the default threshold depends on
+        the number of samples, the number of variables, `bandwidth` and `level`.
+        If None, the threshold is tuned on the data input to .fit().
     level : float, optional (default=0.01)
-        Significance level for the test statistic. Only used in the default threshold if
-        `threshold` is not provided.
+        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
+        of the changepoint score on the training data. For this to be correct, the
+        training data must contain no changepoints. If `threshold_scale` is a number,
+        `level` is used in the default threshold, _before_ scaling.
     min_detection_interval : int, optional (default=1)
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
-    tune : bool, optional (default=False)
-        Whether to tune the threshold in the fit method or not. Takes precedence over
-        the `threshold` input.
+    fmt : str {"dense", "sparse"}, optional (default="sparse")
+        Annotation output format:
+        * If "sparse", a sub-series of labels for only the outliers in X is returned,
+        * If "dense", a series of labels for all values in X is returned.
+    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
+        Annotation output labels:
+        * If "indicator", returned values are boolean, indicating whether a value is an
+        outlier,
+        * If "score", returned values are floats, giving the outlier score.
+        * If "int_label", returned values are integer, indicating which segment a value
+        belongs to.
 
     References
     ----------
@@ -129,7 +126,7 @@ class Moscore(BaseSeriesAnnotator):
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
         bandwidth: int = 30,
-        threshold: Optional[float] = None,
+        threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         min_detection_interval: int = 1,
         tune: bool = False,
@@ -138,38 +135,21 @@ class Moscore(BaseSeriesAnnotator):
     ):
         self.score = score
         self.bandwidth = bandwidth
-        self.threshold = threshold  # Just holds the input value.
+        self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
         self.tune = tune
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score)
 
-        if self.bandwidth < 1:
-            raise ValueError("bandwidth must be at least 1.")
-        if threshold is not None and threshold < 0:
-            raise ValueError(f"threshold must be non-negative (threshold={threshold}).")
-        if (
-            self.min_detection_interval <= 0
-            or self.min_detection_interval >= self.bandwidth / 2
-        ):
-            raise ValueError(
-                "min_detection_interval must be between 0 and bandwidth/2."
-            )
-
-    def _check_X(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
-        if X.isna().any(axis=None):
-            raise ValueError("X must not contain missing values.")
-
-        if X.ndim < 2:
-            X = X.to_frame()
-
-        if X.shape[0] < 2 * self.bandwidth:
-            raise ValueError(
-                f"X must have at least 2*bandwidth samples (X.shape[0]={X.shape[0]}, "
-                f"bandwidth={self.bandwidth})."
-            )
-        return X
+        check_larger_than(1, self.bandwidth, "bandwidth")
+        check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
+        check_larger_than(0, self.level, "level")
+        check_in_interval(
+            pd.Interval(1, self.bandwidth / 2 - 1, closed="both"),
+            self.min_detection_interval,
+            "min_detection_interval",
+        )
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold for the Moscore algorithm.
@@ -234,15 +214,13 @@ class Moscore(BaseSeriesAnnotator):
         return p * (b + c) / a
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
-        if self.tune:
+        if self.threshold_scale is None:
             return self._tune_threshold(X)
-
-        if self.threshold:
-            return self.threshold
         else:
-            # The default threshold is used.
-            return self.get_default_threshold(
-                X.shape[0], X.shape[1], self.bandwidth, self.level
+            n = X.shape[0]
+            p = X.shape[1]
+            return self.threshold_scale * self.get_default_threshold(
+                n, p, self.bandwidth, self.level
             )
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
@@ -265,14 +243,16 @@ class Moscore(BaseSeriesAnnotator):
         -------
         self : returns a reference to self
         """
-        X = self._check_X(X)
+        X = check_data(
+            X,
+            min_length=2 * self.bandwidth,
+            min_length_name="2*bandwidth",
+        )
         self.threshold_ = self._get_threshold(X)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Create annotations on test/deployment data.
-
-        core logic
 
         Parameters
         ----------
@@ -283,16 +263,21 @@ class Moscore(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
-        X = self._check_X(X)
-        self.scores = moscore_transform(
+        X = check_data(
+            X,
+            min_length=2 * self.bandwidth,
+            min_length_name="2*bandwidth",
+        )
+        scores = moscore_transform(
             X.values,
             self.score_f,
             self.score_init_f,
             self.bandwidth,
         )
         self.changepoints = get_moscore_changepoints(
-            self.scores, self.threshold_, self.min_detection_interval
+            scores, self.threshold_, self.min_detection_interval
         )
+        self.scores = pd.Series(scores, index=X.index, name="score")
         return format_changepoint_output(
             self.fmt, self.labels, self.changepoints, X.index, self.scores
         )
@@ -343,6 +328,6 @@ class Moscore(BaseSeriesAnnotator):
         """
         params = [
             {"score": "mean", "bandwidth": 10, "level": 0.01},
-            {"score": "mean", "bandwidth": 10, "threshold": 0},
+            {"score": "mean", "bandwidth": 10, "threshold_scale": 0},
         ]
         return params

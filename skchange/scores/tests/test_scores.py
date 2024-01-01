@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 from skchange.datasets.generate import teeth
-from skchange.scores.score_factory import VALID_SCORES, score_factory
+from skchange.scores.score_factory import VALID_CHANGE_SCORES, score_factory
 
 
-@pytest.mark.parametrize("score", VALID_SCORES)
+@pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
 def test_scores(score):
     """Test all available changepoint scores."""
     n = 50

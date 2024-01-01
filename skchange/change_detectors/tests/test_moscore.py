@@ -5,10 +5,10 @@ import pytest
 
 from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import teeth
-from skchange.scores.score_factory import VALID_SCORES
+from skchange.scores.score_factory import VALID_CHANGE_SCORES
 
 
-@pytest.mark.parametrize("score", VALID_SCORES)
+@pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
 def test_moscore_changepoint(score):
     """Test Moscore changepoints."""
     n_segments = 2
@@ -17,12 +17,11 @@ def test_moscore_changepoint(score):
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Moscore(score, fmt="sparse", labels="int_label")
-    labels = detector.fit_predict(df)
-    # End point also included as a changepoint
-    assert len(labels) == n_segments and labels.index[0] == seg_len - 1
+    changepoints = detector.fit_predict(df)
+    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
 
-@pytest.mark.parametrize("score", VALID_SCORES)
+@pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
 def test_moscore_scores(score):
     """Test Moscore scores."""
     n_segments = 2
@@ -35,7 +34,7 @@ def test_moscore_scores(score):
     assert np.all(scores >= 0.0)
 
 
-@pytest.mark.parametrize("score", VALID_SCORES)
+@pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
 def test_moscore_tuning(score):
     """Test Moscore tuning."""
     n_segments = 2
