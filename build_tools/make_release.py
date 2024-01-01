@@ -146,7 +146,7 @@ class ConfirmGitStatus(Step):
     def action(self, context):
         """Carry out action."""
         self.instruct(
-            f"Make sure you're on: {self.branch}, you're local "
+            f"Make sure you're on: {self.branch}, your local "
             f"branch is up-to-date, and all new changes are merged "
             f"in."
         )
