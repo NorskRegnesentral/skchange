@@ -527,7 +527,7 @@ class Mvcapa(BaseSeriesAnnotator):
             self.min_segment_length,
             self.max_segment_length,
         )
-        self.scores = pd.Series(opt_savings, name="score")
+        self.scores = pd.Series(opt_savings, index=X.index, name="score")
         anomalies = format_multivariate_anomaly_output(
             self.fmt,
             self.labels,
