@@ -70,11 +70,16 @@ def mean_score(
 @njit(cache=True)
 def mean_anomaly_score(
     precomputed_params: np.ndarray,
-    interval_start: int,
-    interval_end: int,
-    anomaly_start: int,
-    anomaly_end: int,
-) -> float:
+    # interval_start: int,
+    # interval_end: int,
+    # anomaly_start: int,
+    # anomaly_end: int,
+    interval_start: np.ndarray,
+    interval_end: np.ndarray,
+    anomaly_start: np.ndarray,
+    anomaly_end: np.ndarray,
+    # ) -> float:
+) -> np.ndarray:
     """Calculate the CUSUM score for difference in the mean of a subinterval.
 
     Compares the mean of the data in anomaly_start:anomaly_end (both inclusive)
@@ -114,9 +119,10 @@ def mean_anomaly_score(
         - sums[interval_start]
     )
     baseline_n = interval_end - anomaly_end + anomaly_start - interval_start
+    baseline_n = baseline_n.reshape(-1, 1)
     baseline_mean = baseline_sum / baseline_n
     anomaly_sum = sums[anomaly_end + 1] - sums[anomaly_start]
-    anomaly_n = anomaly_end - anomaly_start + 1
+    anomaly_n = (anomaly_end - anomaly_start + 1).reshape(-1, 1)
     anomaly_mean = anomaly_sum / anomaly_n
     weight = (1 / anomaly_n + 1 / baseline_n) ** (-1 / 2)
-    return np.sum(np.abs(weight * (baseline_mean - anomaly_mean)))
+    return np.sum(np.abs(weight * (baseline_mean - anomaly_mean)), axis=1)
