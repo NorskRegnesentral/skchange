@@ -36,7 +36,7 @@ anomalies.plot(kind="line", backend="plotly")
 n = int(1e5)
 df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
 detector = Capa(
-    max_segment_length=1000, collective_penalty_scale=5, point_penalty_scale=5
+    max_segment_length=100, collective_penalty_scale=5, point_penalty_scale=5
 )
 detector = Mvcapa(
     max_segment_length=1000,
