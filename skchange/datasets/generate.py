@@ -1,7 +1,11 @@
 """Data generators."""
 
+from numbers import Number
+from typing import List, Tuple, Union
+
 import numpy as np
 import pandas as pd
+from scipy.stats import multivariate_normal
 from sktime.annotation.datagen import piecewise_normal_multivariate
 
 
@@ -58,6 +62,69 @@ def teeth(
     x = piecewise_normal_multivariate(
         means, segment_lengths, vars, covariances, random_state
     )
+    df = pd.DataFrame(x, index=range(len(x)))
+    return df
+
+
+def generate_anomalous_data(
+    n: int = 100,
+    anomalies: Union[Tuple[int, int], List[Tuple[int, int]]] = (71, 80),
+    means: Union[float, List[float], List[np.ndarray]] = 3.0,
+    variances: Union[float, List[float], List[np.ndarray]] = 1.0,
+    random_state: int = None,
+) -> pd.DataFrame:
+    """
+    Generate multivariate normal data with anomalies.
+
+    Parameters
+    ----------
+        n : int, optional (default=100)
+            Number of observations.
+        anomalies : list of tuples, optional (default=[(71, 80)])
+            List of tuples of the form (start, end) indicating the start and end of an
+            anomaly.
+        means : list of floats or list of arrays, optional (default=[0.0])
+            List of means for each segment.
+        variances : list of floats or list of arrays, optional (default=[1.0])
+            List of variances for each segment.
+        random_state : int or RandomState, optional
+            Seed or random state for reproducible results. Defaults to None.
+
+    Returns
+    -------
+        pd.DataFrame: DataFrame with teeth-shaped segments.
+    """
+    if isinstance(anomalies, Tuple):
+        anomalies = [anomalies]
+    if isinstance(means, Number):
+        means = [means]
+    if isinstance(variances, Number):
+        variances = [variances]
+
+    if isinstance(means[0], Number):
+        means = [np.array([mean]) for mean in means]
+    if isinstance(variances[0], Number):
+        variances = [np.array([variance]) for variance in variances]
+
+    if len(means) == 1:
+        means = means * len(anomalies)
+    if len(variances) == 1:
+        variances = variances * len(anomalies)
+
+    if len(anomalies) != len(means) or len(anomalies) != len(variances):
+        raise ValueError("Number of anomalies, means and variances must be the same.")
+    if any([len(anomaly) != 2 for anomaly in anomalies]):
+        raise ValueError("Anomalies must be of length 2.")
+    if any([anomaly[0] > anomaly[1] for anomaly in anomalies]):
+        raise ValueError("The start of an anomaly must be before its end.")
+    if any([anomaly[1] > n - 1 for anomaly in anomalies]):
+        raise ValueError("Anomalies must be within the range of the data.")
+
+    p = len(means[0])
+    x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
+    for anomaly, mean, variance in zip(anomalies, means, variances):
+        start, end = anomaly
+        x[start : end + 1] = mean + np.sqrt(variance) * x[start : end + 1]
     df = pd.DataFrame(x, index=range(len(x)))
     return df
 
