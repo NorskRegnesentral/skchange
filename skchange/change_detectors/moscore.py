@@ -40,14 +40,16 @@ def moscore_transform(
     score_init_f: Callable,
     bandwidth: int,
 ) -> Tuple[list, np.ndarray]:
-    params = score_init_f(X)
+    # scores = np.zeros(n)
+    # for k in range(bandwidth - 1, n - bandwidth):
     n = len(X)
-    moscores = np.zeros(n)
-    for k in range(bandwidth - 1, n - bandwidth):
-        start = k - bandwidth + 1
-        end = k + bandwidth
-        moscores[k] = score_f(params, start, end, k)
-    return moscores
+    splits = np.arange(bandwidth - 1, n - bandwidth)
+    starts = splits - bandwidth + 1
+    ends = splits + bandwidth
+    params = score_init_f(X)
+    scores = np.zeros(n)
+    scores[splits] = score_f(params, starts, ends, splits)
+    return scores
 
 
 class Moscore(BaseSeriesAnnotator):
