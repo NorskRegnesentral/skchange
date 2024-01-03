@@ -41,14 +41,16 @@ def greedy_anomaly_selection(
 @njit
 def make_anomaly_intervals(
     interval_start: int, interval_end: int, min_segment_length: int = 1
-) -> List[Tuple[int, int]]:
-    intervals = []
+) -> Tuple[np.ndarray, np.ndarray]:
+    starts = []
+    ends = []
     for i in range(interval_start + 1, interval_end - min_segment_length + 2):
         for j in range(i + min_segment_length - 1, interval_end + 1):
             baseline_n = interval_end - j + i - interval_start
             if baseline_n >= min_segment_length:
-                intervals.append((i, j))
-    return intervals
+                starts.append(i)
+                ends.append(j)
+    return np.array(starts, dtype=np.int64), np.array(ends, dtype=np.int64)
 
 
 @njit
@@ -70,19 +72,24 @@ def run_circular_binseg(
     params = score_init_func(X)
 
     anomaly_scores = np.zeros(starts.size)
-    anomaly_starts = np.zeros(starts.size)
-    anomaly_ends = np.zeros(starts.size)
+    anomaly_starts = np.zeros(starts.size, dtype=np.int64)
+    anomaly_ends = np.zeros(starts.size, dtype=np.int64)
     maximizers = np.zeros((starts.size, 2))
     for i, (start, end) in enumerate(zip(starts, ends)):
-        anomaly_intervals = make_anomaly_intervals(start, end, min_segment_length)
-        scores = np.zeros(len(anomaly_intervals))
-        for k, (anomaly_start, anomaly_end) in enumerate(anomaly_intervals):
-            scores[k] = score_func(params, start, end, anomaly_start, anomaly_end)
+        anomaly_start_candidates, anomaly_end_candidates = make_anomaly_intervals(
+            start, end, min_segment_length
+        )
+        scores = score_func(
+            params,
+            np.repeat(start, anomaly_start_candidates.size),
+            np.repeat(end, anomaly_start_candidates.size),
+            anomaly_start_candidates,
+            anomaly_end_candidates,
+        )
         argmax = np.argmax(scores)
         anomaly_scores[i] = scores[argmax]
-        maximizing_interval = anomaly_intervals[argmax]
-        anomaly_starts[i] = maximizing_interval[0]
-        anomaly_ends[i] = maximizing_interval[1]
+        anomaly_starts[i] = anomaly_start_candidates[argmax]
+        anomaly_ends[i] = anomaly_end_candidates[argmax]
 
     anomalies = greedy_anomaly_selection(
         anomaly_scores, anomaly_starts, anomaly_ends, starts, ends, threshold
