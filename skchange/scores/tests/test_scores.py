@@ -16,8 +16,10 @@ def test_scores(score):
     params = init_score_f(df.values)
     scores = np.zeros(n)
     for split in range(10, n - 10):
-        score_value = score_f(params, start=0, end=49, split=split)
-        assert isinstance(score_value, float)
+        score_value = score_f(
+            params, start=np.array([0]), end=np.array([49]), split=np.array([split])
+        )
+        assert isinstance(score_value, np.ndarray)
         scores[split] = score_value
 
     assert np.all(scores >= 0.0)
