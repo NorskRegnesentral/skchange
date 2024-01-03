@@ -20,7 +20,8 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 @njit
 def greedy_anomaly_selection(
     scores: np.ndarray,
-    maximizers: np.ndarray,
+    anomaly_starts: np.ndarray,
+    anomaly_ends: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
     threshold: float,
@@ -29,9 +30,8 @@ def greedy_anomaly_selection(
     anomalies = []
     while np.any(scores > threshold):
         argmax = scores.argmax()
-        anomaly = maximizers[argmax]
-        anomaly_start = int(anomaly[0])
-        anomaly_end = int(anomaly[1])
+        anomaly_start = anomaly_starts[argmax]
+        anomaly_end = anomaly_ends[argmax]
         anomalies.append((anomaly_start, anomaly_end))
         scores[(anomaly_end >= starts) & (anomaly_start < ends)] = 0.0
     anomalies.sort()
@@ -70,6 +70,8 @@ def run_circular_binseg(
     params = score_init_func(X)
 
     anomaly_scores = np.zeros(starts.size)
+    anomaly_starts = np.zeros(starts.size)
+    anomaly_ends = np.zeros(starts.size)
     maximizers = np.zeros((starts.size, 2))
     for i, (start, end) in enumerate(zip(starts, ends)):
         anomaly_intervals = make_anomaly_intervals(start, end, min_segment_length)
@@ -79,10 +81,11 @@ def run_circular_binseg(
         argmax = np.argmax(scores)
         anomaly_scores[i] = scores[argmax]
         maximizing_interval = anomaly_intervals[argmax]
-        maximizers[i] = np.array([maximizing_interval[0], maximizing_interval[1]])
+        anomaly_starts[i] = maximizing_interval[0]
+        anomaly_ends[i] = maximizing_interval[1]
 
     anomalies = greedy_anomaly_selection(
-        anomaly_scores, maximizers, starts, ends, threshold
+        anomaly_scores, anomaly_starts, anomaly_ends, starts, ends, threshold
     )
     return anomalies, anomaly_scores, maximizers, starts, ends
 
