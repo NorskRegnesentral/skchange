@@ -129,7 +129,6 @@ class Moscore(BaseSeriesAnnotator):
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         min_detection_interval: int = 1,
-        tune: bool = False,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
@@ -138,7 +137,6 @@ class Moscore(BaseSeriesAnnotator):
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
-        self.tune = tune
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score)
 
