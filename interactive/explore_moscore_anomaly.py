@@ -1,9 +1,8 @@
 import numpy as np
-import pandas as pd
 import plotly.express as px
 from streamchange.utils import Profiler
 
-from skchange.anomaly_detectors.moscore_anomaly import run_moscore_anomaly
+from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
 from skchange.datasets.generate import generate_anomalous_data
 from skchange.scores.mean_score import init_mean_score, mean_anomaly_score
 
@@ -13,22 +12,39 @@ df = generate_anomalous_data(
 )
 px.scatter(df)
 
-anomaly_lengths = np.arange(10, 100)
-anomalies, scores = run_moscore_anomaly(
-    df.values, mean_anomaly_score, init_mean_score, anomaly_lengths, 50, 50, 20.0
+detector = MoscoreAnomaly(
+    score="mean",
+    min_anomaly_length=10,
+    max_anomaly_length=100,
+    left_bandwidth=50,
 )
-scores = pd.DataFrame(scores, index=df.index, columns=anomaly_lengths)
-px.line(scores)
+anomalies = detector.fit_predict(df)
+
+detector = MoscoreAnomaly(
+    score="mean",
+    min_anomaly_length=10,
+    max_anomaly_length=1000,
+    left_bandwidth=20,
+    labels="score",
+)
+scores = detector.fit_predict(df)
+scores["length"] = scores["anomaly_end"] - scores["anomaly_start"] + 1
+px.scatter(scores, x="anomaly_start", y="score", color="length")
+
 
 # Profiling
-n = int(1e5)
+n = int(1e6)
 df = generate_anomalous_data(n, anomalies=[(100, 119), (250, 299)], means=[10.0, 5.0])
+detector = MoscoreAnomaly(
+    score="mean",
+    min_anomaly_length=10,
+    max_anomaly_length=100,
+    left_bandwidth=20,
+)
 
 profiler = Profiler()
 profiler.start()
-anomalies, scores = run_moscore_anomaly(
-    df.values, mean_anomaly_score, init_mean_score, anomaly_lengths, 50, 50, 20.0
-)
+anomalies = detector.fit_predict(df)
 profiler.stop()
 
 

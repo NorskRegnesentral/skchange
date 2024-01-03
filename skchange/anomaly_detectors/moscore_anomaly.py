@@ -3,7 +3,7 @@
 __author__ = ["mtveten"]
 __all__ = ["MoscoreAnomaly"]
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -11,9 +11,9 @@ from sktime.annotation.base import BaseSeriesAnnotator
 
 from skchange.anomaly_detectors.circular_binseg import greedy_anomaly_selection
 from skchange.anomaly_detectors.utils import format_anomaly_output
-from skchange.scores.score_factory import score_factory
+from skchange.scores.score_factory import anomaly_score_factory
 from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_larger_than
+from skchange.utils.validation.parameters import check_larger_than, check_smaller_than
 
 
 def run_moscore_anomaly(
@@ -24,12 +24,18 @@ def run_moscore_anomaly(
     left_bandwidth: int,
     right_bandwidth: int,
     threshold: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[List[Tuple[int, int]], np.ndarray, np.ndarray, np.ndarray]:
     n = len(X)
     starts = tuple(
-        np.arange(left_bandwidth, n - k - right_bandwidth) for k in anomaly_lengths
+        np.arange(left_bandwidth, n - k - right_bandwidth)
+        for k in anomaly_lengths
+        if left_bandwidth + k + right_bandwidth <= n
     )
-    ends = tuple(start + k - 1 for start, k in zip(starts, anomaly_lengths))
+    ends = tuple(
+        start + k - 1
+        for start, k in zip(starts, anomaly_lengths)
+        if left_bandwidth + k + right_bandwidth <= n
+    )
     starts = np.concatenate(starts)
     ends = np.concatenate(ends)
     background_starts = starts - left_bandwidth
@@ -127,10 +133,10 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
     def __init__(
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
-        min_segment_length: int = 2,
-        max_segment_length: int = 1000,
-        left_bandwidth: int = 30,
-        right_bandwidth: int = 30,
+        min_anomaly_length: int = 2,
+        max_anomaly_length: int = 100,
+        left_bandwidth: int = 50,
+        right_bandwidth: int = None,
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         anomaly_lengths: np.ndarray = None,
@@ -138,24 +144,30 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         labels: str = "int_label",
     ):
         self.score = score
-        self.min_segment_length = min_segment_length
-        self.max_segment_length = max_segment_length
         self.left_bandwidth = left_bandwidth
-        self.right_bandwidth = right_bandwidth
+        self.right_bandwidth = right_bandwidth if right_bandwidth else left_bandwidth
         self.threshold_scale = threshold_scale
         self.level = level
         super().__init__(fmt=fmt, labels=labels)
-        self.score_f, self.score_init_f = score_factory(score)
+
+        self.score_f, self.score_init_f = anomaly_score_factory(score)
         if anomaly_lengths is None:
-            self.anomaly_lengths = np.arange(
-                self.min_segment_length, self.max_segment_length
-            )
+            self.anomaly_lengths = np.arange(min_anomaly_length, max_anomaly_length + 1)
+            self.min_anomaly_length = min_anomaly_length
+            self.max_anomaly_length = max_anomaly_length
         else:
             self.anomaly_lengths = np.asarray(self.anomaly_lengths)
+            self.min_anomaly_length = self.anomaly_lengths.min()
+            self.max_anomaly_length = self.anomaly_lengths.max()
 
-        check_larger_than(2, self.min_segment_length, "min_segment_length")
+        check_larger_than(2, self.min_anomaly_length, "min_anomaly_length")
         check_larger_than(
-            self.min_segment_length, self.max_segment_length, "max_segment_length"
+            self.min_anomaly_length, self.max_anomaly_length, "max_anomaly_length"
+        )
+        check_smaller_than(
+            self.left_bandwidth + self.right_bandwidth,
+            self.max_anomaly_length,
+            "max_anomaly_length",
         )
         check_larger_than(1, self.left_bandwidth, "left_bandwidth")
         check_larger_than(1, self.right_bandwidth, "right_bandwidth")
@@ -244,12 +256,12 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         self : returns a reference to self
         """
         min_length = (
-            self.left_bandwidth + self.right_bandwidth + self.anomaly_lengths.max()
+            self.left_bandwidth + self.right_bandwidth + self.min_anomaly_length
         )
         X = check_data(
             X,
             min_length=min_length,
-            min_length_name="left_bandwidth + right_bandwidth + anomaly_lengths.max()",
+            min_length_name="left_bandwidth + right_bandwidth + min_anomaly_length",
         )
         self.threshold_ = self._get_threshold(X)
         return self
@@ -267,12 +279,12 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
             exact format depends on annotation type
         """
         min_length = (
-            self.left_bandwidth + self.right_bandwidth + self.anomaly_lengths.max()
+            self.left_bandwidth + self.right_bandwidth + self.min_anomaly_length
         )
         X = check_data(
             X,
             min_length=min_length,
-            min_length_name="left_bandwidth + right_bandwidth + anomaly_lengths.max()",
+            min_length_name="left_bandwidth + right_bandwidth + min_anomaly_length",
         )
         self.anomalies, scores, starts, ends = run_moscore_anomaly(
             X.values,
@@ -287,7 +299,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
             {"anomaly_start": starts, "anomaly_end": ends, "score": scores}
         )
         return format_anomaly_output(
-            self.fmt, self.labels, self.anomalies, X.index, self.scores
+            self.fmt, self.labels, X.index, self.anomalies, scores=self.scores
         )
 
     @classmethod
