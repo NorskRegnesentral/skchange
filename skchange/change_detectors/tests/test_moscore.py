@@ -42,6 +42,6 @@ def test_moscore_tuning(score):
     df = teeth(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
-    detector = Moscore(score, tune=True, fmt="dense", labels="indicator")
+    detector = Moscore(score, threshold_scale=None, fmt="dense", labels="indicator")
     detector.fit(df)
     assert detector.threshold_ > 0.0
