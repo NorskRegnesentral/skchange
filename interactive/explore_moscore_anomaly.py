@@ -33,13 +33,13 @@ px.scatter(scores, x="anomaly_start", y="score", color="length")
 
 
 # Profiling
-n = int(1e6)
+n = int(1e5)
 df = generate_anomalous_data(n, anomalies=[(100, 119), (250, 299)], means=[10.0, 5.0])
 detector = MoscoreAnomaly(
     score="mean",
     min_anomaly_length=10,
     max_anomaly_length=100,
-    left_bandwidth=20,
+    left_bandwidth=50,
 )
 
 profiler = Profiler()
