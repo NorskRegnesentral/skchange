@@ -70,15 +70,10 @@ def mean_score(
 @njit(cache=True)
 def mean_anomaly_score(
     precomputed_params: np.ndarray,
-    # interval_start: int,
-    # interval_end: int,
-    # anomaly_start: int,
-    # anomaly_end: int,
     interval_start: np.ndarray,
     interval_end: np.ndarray,
     anomaly_start: np.ndarray,
     anomaly_end: np.ndarray,
-    # ) -> float:
 ) -> np.ndarray:
     """Calculate the CUSUM score for difference in the mean of a subinterval.
 
