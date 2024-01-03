@@ -23,7 +23,7 @@ anomaly_intervals = make_anomaly_intervals(0, 5, 2)
 # Profiling
 n = int(1e5)
 df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
-detector = CircularBinarySegmentation("mean", growth_factor=1.5)
+detector = CircularBinarySegmentation("mean", growth_factor=2)
 profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
