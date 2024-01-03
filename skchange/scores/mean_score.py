@@ -32,8 +32,11 @@ def init_mean_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 @njit(cache=True)
 def mean_score(
-    precomputed_params: np.ndarray, start: int, end: int, split: int
-) -> float:
+    precomputed_params: np.ndarray,
+    start: np.ndarray,
+    end: np.ndarray,
+    split: np.ndarray,
+) -> np.ndarray:
     """Calculate the CUSUM score for a change in the mean.
 
     Compares the mean of the data before and after the split within the interval from
@@ -43,17 +46,17 @@ def mean_score(
     ----------
     precomputed_params : np.ndarray
         Precomputed parameters from init_mean_score.
-    start : int
-        Start index of the interval. Must be < end, split.
-    end : int
-        End index of the interval. Must be > start, split
-    split : int
-        Split index of the interval. Must be > start and < end.
+    start : np.ndarray
+        Start indices of the intervals to test for a change in the mean.
+    end : np.ndarray
+        End indices of the intervals to test for a change in the mean.
+    split : np.ndarray
+        Split indices of the intervals to test for a change in the mean.
 
     Returns
     -------
-    score : float
-        Score for a difference in the mean.
+    score : np.ndarray
+        Scores for a difference in the mean at the given intervals and splits
 
     Notes
     -----
@@ -62,9 +65,11 @@ def mean_score(
     sums = precomputed_params
     before_sum = sums[split + 1] - sums[start]
     before_weight = np.sqrt((end - split) / ((end - start + 1) * (split - start + 1)))
+    before_weight = before_weight.reshape(-1, 1)
     after_sum = sums[end + 1] - sums[split + 1]
     after_weight = np.sqrt((split - start + 1) / ((end - start + 1) * (end - split)))
-    return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum))
+    after_weight = after_weight.reshape(-1, 1)
+    return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
 
 
 @njit(cache=True)
@@ -88,14 +93,14 @@ def mean_anomaly_score(
     ----------
     precomputed_params : np.ndarray
         Precomputed parameters from init_mean_score.
-    interval_start : int
-        Start index of the interval to test for an anomaly in.
-    interval_end : int
-        End index of the interval to test for an anomaly in.
-    anomaly_start : int
-        Start index of the anomaly.
-    anomaly_end : int
-        End index of the anomaly.
+    interval_start : np.ndarray
+        Start indices of the intervals to test for an anomaly in.
+    interval_end : np.ndarray
+        End indices of the intervals to test for an anomaly in.
+    anomaly_start : np.ndarray
+        Start indices of the anomalies.
+    anomaly_end : np.ndarray
+        End indices of the anomalies.
 
     Returns
     -------
