@@ -25,7 +25,7 @@ def get_changepoints(prev_cpts: np.ndarray) -> list:
         cpt_i = prev_cpts[i]
         changepoints.append(i)
         i = cpt_i
-    return changepoints[:0:-1]  # Remove the artificial changepoint at the end
+    return changepoints[:0:-1]  # Remove the artifical changepoint at the last index.
 
 
 @njit
@@ -35,7 +35,7 @@ def run_pelt(
     params = cost_init_func(X)
     n = len(X)
 
-    starts = np.array([], dtype=np.int64)  # Evolving set of admissible segment starts.
+    starts = np.array((), dtype=np.int64)  # Evolving set of admissible segment starts.
     init_starts = np.zeros(min_segment_length - 1, dtype=np.int64)
     init_ends = np.arange(min_segment_length - 1)
     opt_cost = np.zeros(n + 1) - penalty
@@ -56,7 +56,7 @@ def run_pelt(
         opt_cost[t + 1] = candidate_opt_costs[argmin]
         prev_cpts[t] = starts[argmin] - 1
 
-        # trimming the starts set
+        # Trimming the admissible starts set
         starts = starts[candidate_opt_costs - penalty <= opt_cost[t]]
 
     return opt_cost[1:], get_changepoints(prev_cpts)
