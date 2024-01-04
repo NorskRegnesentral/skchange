@@ -128,7 +128,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         For this to be correct, the training data must contain no changepoints.
     min_segment_length : int, optional (default=5)
         Minimum length between two changepoints. Must be greater than or equal to 1.
-    max_interval_length : int (default=200)
+    max_interval_length : int (default=100)
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to '2 * min_segment_length'.
     growth_factor : float (default = 1.5)
@@ -182,7 +182,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
-        max_interval_length: int = 200,
+        max_interval_length: int = 100,
         growth_factor: float = 1.5,
         fmt: str = "sparse",
         labels: str = "int_label",

@@ -376,7 +376,7 @@ class Mvcapa(BaseSeriesAnnotator):
         Scaling factor for the point penalty.
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
-    max_segment_length : int, optional (default=10000)
+    max_segment_length : int, optional (default=100)
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional (default=False)
         If True, detected point anomalies are not returned by .predict(). I.e., only
@@ -424,7 +424,7 @@ class Mvcapa(BaseSeriesAnnotator):
         point_penalty: Union[str, Callable] = "sparse",
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
-        max_segment_length: int = 1000,
+        max_segment_length: int = 100,
         ignore_point_anomalies: bool = False,
         fmt: str = "sparse",
         labels: str = "int_label",
