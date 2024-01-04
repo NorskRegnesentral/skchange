@@ -276,31 +276,6 @@ class Moscore(BaseSeriesAnnotator):
             self.fmt, self.labels, self.changepoints, X.index, self.scores
         )
 
-    # todo: consider implementing this, optional
-    # if not implementing, delete the _update method
-    # def _update(self, X, Y=None):
-    #     """Update model with new data and optional ground truth annotations.
-
-    #     core logic
-
-    #     Parameters
-    #     ----------
-    #     X : pd.DataFrame
-    #         training data to update model with, time series
-    #     Y : pd.Series, optional
-    #         ground truth annotations for training if annotator is supervised
-    #     Returns
-    #     -------
-    #     self : returns a reference to self
-
-    #     State change
-    #     ------------
-    #     updates fitted model (attributes ending in "_")
-    #     """
-
-    # implement here
-    # IMPORTANT: avoid side effects to X, fh
-
     @classmethod
     def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
