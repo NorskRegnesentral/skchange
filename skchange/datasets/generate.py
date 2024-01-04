@@ -9,7 +9,7 @@ from scipy.stats import multivariate_normal
 from sktime.annotation.datagen import piecewise_normal_multivariate
 
 
-def generate_generate_teeth_data_data(
+def generate_teeth_data(
     n_segments: int,
     segment_length: int,
     p: int = 1,
