@@ -77,13 +77,12 @@ def anomalies_to_labels(
         Array of labels, where 0 is the normal class, and 1, 2, ... are labels for each
         distinct collective and/or point_anomaly.
     """
+    labels = np.zeros(n, dtype=int) if p is None else np.zeros((n, p), dtype=int)
     if len(anomalies[0]) == 2:
-        labels = np.zeros(n, dtype=int)
         for i, (start, end) in enumerate(anomalies):
             labels[start : end + 1] = i + 1
     elif len(anomalies[0]) == 3:
         # Multivariate
-        labels = np.zeros((n, p), dtype=int)
         for i, (start, end, components) in enumerate(anomalies):
             labels[start : end + 1, components] = i + 1
     return labels
