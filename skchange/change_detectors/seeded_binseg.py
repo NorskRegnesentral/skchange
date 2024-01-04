@@ -159,12 +159,9 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.change_detectors.binary_segmentation import SeededBinarySegmentation
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
-    # Generate data
-    df = teeth(n_segments=2, mean=10, segment_length=100000, p=5, random_state=2)
-
-    # Detect changepoints
+    df = generate_teeth_data(n_segments=2, mean=10, segment_length=10000, p=5)
     detector = SeededBinarySegmentation()
     detector.fit_predict(df)
     """

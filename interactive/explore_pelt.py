@@ -6,10 +6,10 @@ from streamchange.utils import Profiler
 
 from skchange.change_detectors.pelt import BIC_penalty, Pelt
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
-from skchange.datasets.generate import teeth
+from skchange.datasets.generate import generate_teeth_data
 
 # Compare skchange output to streamchange
-df = teeth(n_segments=2, mean=10, segment_length=100, p=1, random_state=2)
+df = generate_teeth_data(n_segments=2, mean=10, segment_length=100, p=1, random_state=2)
 streamchange_detector = OfflinePelt(
     OfflineL2Cost(),
     penalty=ConstantPenalty(BIC_penalty(df.shape[0], df.shape[1])),
@@ -23,7 +23,7 @@ detector.fit_predict(df)
 
 # Profiling
 n = int(1e6)
-df = teeth(n_segments=1, mean=0, segment_length=n, p=1)
+df = generate_teeth_data(n_segments=1, mean=0, segment_length=n, p=1)
 detector = Pelt()
 profiler = Profiler()
 profiler.start()
@@ -35,7 +35,7 @@ segments = detector.fit_predict(df)
 
 
 # Various unit tests
-df = teeth(n_segments=3, mean=10, segment_length=5, p=2)
+df = generate_teeth_data(n_segments=3, mean=10, segment_length=5, p=2)
 precomputed_params = init_mean_cost(df.values)
 mean_cost(precomputed_params, starts=np.array([1, 2, 3]), ends=np.array([3, 4, 5]))
 detector = Pelt()

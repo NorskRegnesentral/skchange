@@ -12,10 +12,10 @@ A playground for now.
 ## Quickstart
 ```python
 from skchange.change_detectors.moscore import Moscore
-from skchange.datasets.generate import teeth
+from skchange.datasets.generate import generate_teeth_data
 
 # Segment a time series
-df = teeth(n_segments=2, mean=10, segment_length=10, p=1, random_state=2)
+df = generate_teeth_data(n_segments=2, mean=10, segment_length=10, p=1, random_state=2)
 detector = Moscore(bandwidth=5, fmt="dense")
 detector.fit_predict(df)
 >>>

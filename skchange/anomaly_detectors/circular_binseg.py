@@ -158,10 +158,12 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
     # Generate data
-    df = teeth(n_segments=3, mean=10, segment_length=100000, p=5, random_state=2)
+    df = generate_teeth_data(
+        n_segments=3, mean=10, segment_length=100000, p=5, random_state=2
+    )
 
     # Detect changepoints
     detector = CircularBinarySegmentation()

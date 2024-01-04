@@ -9,7 +9,7 @@ from scipy.stats import multivariate_normal
 from sktime.annotation.datagen import piecewise_normal_multivariate
 
 
-def teeth(
+def generate_generate_teeth_data_data(
     n_segments: int,
     segment_length: int,
     p: int = 1,
@@ -20,7 +20,7 @@ def teeth(
     random_state: int = None,
 ) -> pd.DataFrame:
     """
-    Generate a DataFrame with teeth-shaped segments.
+    Generate a DataFrame with generate_teeth_data-shaped segments.
 
     Parameters
     ----------
@@ -43,7 +43,7 @@ def teeth(
 
     Returns
     -------
-        pd.DataFrame: DataFrame with teeth-shaped segments.
+        pd.DataFrame: DataFrame with generate_teeth_data-shaped segments.
     """
     means = []
     vars = []
@@ -92,7 +92,7 @@ def generate_anomalous_data(
 
     Returns
     -------
-        pd.DataFrame: DataFrame with teeth-shaped segments.
+        pd.DataFrame: DataFrame with generate_teeth_data-shaped segments.
     """
     if isinstance(anomalies, Tuple):
         anomalies = [anomalies]

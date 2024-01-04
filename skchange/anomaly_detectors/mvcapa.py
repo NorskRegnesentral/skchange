@@ -403,9 +403,9 @@ class Mvcapa(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.anomaly_detectors.capa import Capa
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
-    df = teeth(5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2)
+    df = generate_teeth_data(5, 10, p=10, mean=10, affected_proportion=0.2)
     capa = Capa(collective_penalty_scale=5, fmt="sparse", max_segment_length=20)
     capa.fit_predict(df)
     """

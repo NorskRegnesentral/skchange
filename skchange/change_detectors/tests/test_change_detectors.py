@@ -8,7 +8,7 @@ from sktime.utils._testing.annotation import make_annotation_problem
 from skchange.change_detectors.moscore import Moscore
 from skchange.change_detectors.pelt import Pelt
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
-from skchange.datasets.generate import teeth
+from skchange.datasets.generate import generate_teeth_data
 
 change_detectors = [Moscore, Pelt, SeededBinarySegmentation]
 
@@ -36,7 +36,7 @@ def test_change_detector_sparse_int(Estimator):
     """Test sparse int_label segmentation."""
     n_segments = 2
     seg_len = 50
-    df = teeth(
+    df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Estimator(fmt="sparse", labels="int_label")
@@ -49,7 +49,7 @@ def test_change_detector_sparse_indicator(Estimator):
     """Test sparse indicator segmentation."""
     n_segments = 2
     seg_len = 50
-    df = teeth(
+    df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
     detector = Estimator(fmt="sparse", labels="indicator")
@@ -62,7 +62,7 @@ def test_change_detector_score(Estimator):
     """Test sparse score segmentation."""
     n_segments = 2
     seg_len = 50
-    df = teeth(
+    df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
     sparse_detector = Estimator(fmt="sparse", labels="score")
@@ -81,7 +81,7 @@ def test_change_detector_dense_int(Estimator):
     """Tests dense int_label segmentation."""
     n_segments = 2
     seg_len = 50
-    df = teeth(
+    df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
     detector = Estimator(fmt="dense", labels="int_label")
@@ -95,7 +95,7 @@ def test_change_detector_dense_indicator(Estimator):
     """Tests dense indicator segmentation."""
     n_segments = 2
     seg_len = 50
-    df = teeth(
+    df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=8
     )
     detector = Estimator(fmt="dense", labels="indicator")

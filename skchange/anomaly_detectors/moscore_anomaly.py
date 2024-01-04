@@ -113,14 +113,12 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
 
     Examples
     --------
-    from skchange.change_detectors.moscore import Moscore
-    from skchange.datasets.generate import teeth
+    from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
+    from skchange.datasets.generate import generate_teeth_data
 
-    # Generate data
-    df = teeth(n_segments=2, mean=10, segment_length=100000, p=5, random_state=2)
-
-    # Detect changepoints
-    detector = Moscore()
+    anomalies = [(100, 119), (250, 299)]
+    df = generate_anomalous_data(500, anomalies=anomalies, means=[10.0, 5.0])
+    detector = MoscoreAnomaly()
     detector.fit_predict(df)
     """
 

@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skchange.datasets.generate import teeth
+from skchange.datasets.generate import generate_teeth_data
 from skchange.scores.score_factory import VALID_CHANGE_SCORES, score_factory
 
 
@@ -11,7 +11,7 @@ from skchange.scores.score_factory import VALID_CHANGE_SCORES, score_factory
 def test_scores(score):
     """Test all available changepoint scores."""
     n = 50
-    df = teeth(n_segments=1, segment_length=n, p=1, random_state=5)
+    df = generate_teeth_data(n_segments=1, segment_length=n, p=1, random_state=5)
     score_f, init_score_f = score_factory(score)
     params = init_score_f(df.values)
     scores = np.zeros(n)

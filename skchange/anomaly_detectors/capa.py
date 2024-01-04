@@ -91,9 +91,9 @@ class Capa(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.anomaly_detectors.capa import Capa
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
-    df = teeth(n_segments=5, mean=10, segment_length=100, p=1, random_state=2)
+    df = generate_teeth_data(n_segments=5, mean=10, segment_length=100)
     detector = Capa()
     detector.fit_predict(df)
     """
