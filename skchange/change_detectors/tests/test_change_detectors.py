@@ -39,7 +39,8 @@ def test_change_detector_sparse_int(Estimator):
     df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
-    detector = Estimator(fmt="sparse", labels="int_label")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="sparse", labels="int_label")
     changepoints = detector.fit_predict(df)
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
@@ -52,7 +53,8 @@ def test_change_detector_sparse_indicator(Estimator):
     df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
-    detector = Estimator(fmt="sparse", labels="indicator")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="sparse", labels="indicator")
     changepoints = detector.fit_predict(df)
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
@@ -65,8 +67,10 @@ def test_change_detector_score(Estimator):
     df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
-    sparse_detector = Estimator(fmt="sparse", labels="score")
-    dense_detector = Estimator(fmt="dense", labels="score")
+    sparse_detector = Estimator.create_test_instance()
+    sparse_detector.set_params(fmt="sparse", labels="score")
+    dense_detector = Estimator.create_test_instance()
+    dense_detector.set_params(fmt="dense", labels="score")
     sparse_scores = sparse_detector.fit_predict(df)
     dense_scores = dense_detector.fit_predict(df)
     assert (sparse_scores == dense_scores).all(axis=None)
@@ -84,7 +88,8 @@ def test_change_detector_dense_int(Estimator):
     df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
     )
-    detector = Estimator(fmt="dense", labels="int_label")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="dense", labels="int_label")
     labels = detector.fit_predict(df)
     assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
@@ -98,7 +103,8 @@ def test_change_detector_dense_indicator(Estimator):
     df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=8
     )
-    detector = Estimator(fmt="dense", labels="indicator")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="dense", labels="indicator")
     cpt_indicator = detector.fit_predict(df)
     assert cpt_indicator.sum() == n_segments - 1
     assert cpt_indicator[seg_len - 1]

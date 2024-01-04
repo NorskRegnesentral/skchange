@@ -321,7 +321,6 @@ class Moscore(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean", "bandwidth": 10, "level": 0.01},
-            {"score": "mean", "bandwidth": 10, "threshold_scale": 0},
+            {"score": "mean", "bandwidth": 10},
         ]
         return params

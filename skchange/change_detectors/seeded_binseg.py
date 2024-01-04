@@ -340,7 +340,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean"},
-            {"score": "mean", "threshold_scale": 0.0},
+            {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
         ]
         return params

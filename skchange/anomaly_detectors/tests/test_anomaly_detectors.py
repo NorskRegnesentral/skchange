@@ -5,13 +5,20 @@ import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
+from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
 from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
 from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.datasets.generate import generate_anomalous_data
 
-anomaly_detectors = [Capa, CircularBinarySegmentation, MoscoreAnomaly, Mvcapa]
+anomaly_detectors = [
+    Capa,
+    CircularBinarySegmentation,
+    MoscoreAnomaly,
+    Mvcapa,
+    StatThresholdAnomaliser,
+]
 
 true_anomalies = [(50, 59), (120, 129)]
 anomaly_data = generate_anomalous_data(
@@ -43,7 +50,9 @@ def test_anomaly_detector_sparse_int(Estimator):
 
     Check if the predicted anomalies match.
     """
-    detector = Estimator(fmt="sparse", labels="int_label")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="sparse", labels="int_label")
+    # detector = Estimator(fmt="sparse", labels="int_label")
     anomalies = detector.fit_predict(anomaly_data)
     assert len(anomalies) == len(true_anomalies)
     for i, (start, end) in enumerate(true_anomalies):
@@ -56,7 +65,8 @@ def test_anomaly_detector_sparse_indicator(Estimator):
 
     Check if the predicted anomalies match.
     """
-    detector = Estimator(fmt="sparse", labels="int_label")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="sparse", labels="indicator")
     anomalies = detector.fit_predict(anomaly_data)
     assert len(anomalies) == len(true_anomalies)
     for i, (start, end) in enumerate(true_anomalies):
@@ -66,8 +76,10 @@ def test_anomaly_detector_sparse_indicator(Estimator):
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
 def test_anomaly_detector_score(Estimator):
     """Test score anomaly detector output."""
-    sparse_detector = Estimator(fmt="sparse", labels="score")
-    dense_detector = Estimator(fmt="dense", labels="score")
+    sparse_detector = Estimator.create_test_instance()
+    sparse_detector.set_params(fmt="sparse", labels="score")
+    dense_detector = Estimator.create_test_instance()
+    dense_detector.set_params(fmt="dense", labels="score")
     sparse_scores = sparse_detector.fit_predict(anomaly_data)
     dense_scores = dense_detector.fit_predict(anomaly_data)
     assert (sparse_scores == dense_scores).all(axis=None)
@@ -83,7 +95,8 @@ def test_anomaly_detector_dense_int(Estimator):
 
     Check if the predicted anomalies matches.
     """
-    detector = Estimator(fmt="dense", labels="int_label")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="dense", labels="int_label")
     labels = detector.fit_predict(anomaly_data)
     if isinstance(labels, pd.DataFrame):
         labels = labels.iloc[:, 0]
@@ -99,7 +112,8 @@ def test_anomaly_detector_dense_indicator(Estimator):
 
     Check if the predicted anomalies matches.
     """
-    detector = Estimator(fmt="dense", labels="indicator")
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="dense", labels="indicator")
     labels = detector.fit_predict(anomaly_data)
     if isinstance(labels, pd.DataFrame):
         labels = labels.iloc[:, 0]

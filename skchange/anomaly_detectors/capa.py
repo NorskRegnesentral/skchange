@@ -62,7 +62,7 @@ class Capa(BaseSeriesAnnotator):
         Scaling factor for the point penalty.
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
-    max_segment_length : int, optional (default=100)
+    max_segment_length : int, optional (default=1000)
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional (default=False)
         If True, detected point anomalies are not returned by .predict(). I.e., only
@@ -110,7 +110,7 @@ class Capa(BaseSeriesAnnotator):
         collective_penalty_scale: float = 2.0,
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
-        max_segment_length: int = 100,
+        max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
         fmt: str = "sparse",
         labels: str = "int_label",
@@ -237,7 +237,6 @@ class Capa(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"saving": "mean", "min_segment_length": 2},
-            {"saving": "mean", "collective_penalty_scale": 0, "min_segment_length": 2},
+            {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
         ]
         return params

@@ -13,7 +13,7 @@ n_runs = [100, 10, 1, 1]
 timings = {}
 for detector_class in detector_classes:
     detector_name = detector_class.__name__
-    detector = detector_class()
+    detector = detector_class.create_test_instance().set_params(fmt="sparse")
     setup_data = pd.DataFrame(np.random.normal(0, 1, size=1000))
     detector.fit_predict(setup_data)  # Compile numba
     timings[detector_name] = []

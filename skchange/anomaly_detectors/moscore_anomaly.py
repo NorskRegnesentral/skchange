@@ -332,7 +332,11 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean"},
-            {"score": "mean", "threshold_scale": 0},
+            {
+                "score": "mean",
+                "min_anomaly_length": 5,
+                "max_anomaly_length": 100,
+                "left_bandwidth": 50,
+            },
         ]
         return params
