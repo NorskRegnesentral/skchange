@@ -248,10 +248,13 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold on the input data if `tune` is True. Otherwise, the
-        threshold is set to the input `threshold` value if provided. If not,
-        it is set to the default value for the test statistic, which depends on
-        the dimension of X.
+        Sets the threshold of the detector.
+        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
+        of the change/anomaly scores on the training data. For this to be correct,
+        the training data must contain no changepoints. If `threshold_scale` is a
+        number, the threshold is set to `threshold_scale` times the default threshold
+        for the detector. The default threshold depends at least on the data's shape,
+        but could also depend on more parameters.
 
         Parameters
         ----------

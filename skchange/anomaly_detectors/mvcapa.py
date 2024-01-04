@@ -466,10 +466,13 @@ class Mvcapa(BaseSeriesAnnotator):
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold on the input data if `tune` is True. Otherwise, the
-        threshold is set to the input `threshold` value if provided. If not,
-        it is set to the default value for the test statistic, which depends on
-        the dimension of X.
+        Sets the penalty of the detector.
+        If `penalty_scale` is None, the penalty is set to the (1-`level`)-quantile
+        of the change/anomaly scores on the training data. For this to be correct,
+        the training data must contain no changepoints. If `penalty_scale` is a
+        number, the penalty is set to `penalty_scale` times the default penalty
+        for the detector. The default penalty depends at least on the data's shape,
+        but could also depend on more parameters.
 
         Parameters
         ----------

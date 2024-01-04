@@ -51,7 +51,7 @@ class StatThresholdAnomaliser(BaseSeriesAnnotator):
             raise ValueError(message)
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
-        """Fit to training data.
+        """Fits the change detector to training data.
 
         Parameters
         ----------
