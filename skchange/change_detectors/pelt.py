@@ -18,7 +18,7 @@ from skchange.utils.validation.parameters import check_larger_than
 
 
 @njit
-def get_changepoints(prev_cpts: list) -> list:
+def get_changepoints(prev_cpts: np.ndarray) -> list:
     changepoints = []
     i = len(prev_cpts) - 1
     while i >= 0:
@@ -28,35 +28,36 @@ def get_changepoints(prev_cpts: list) -> list:
     return changepoints[:0:-1]  # Remove the artificial changepoint at the end
 
 
-@njit
+# @njit
 def run_pelt(
     X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length
 ) -> Tuple[np.ndarray, list]:
     params = cost_init_func(X)
     n = len(X)
 
-    admissible = np.array([0])
-    opt_cost = np.zeros(n + 1)
-    opt_cost[: min_segment_length - 1] = -penalty
+    starts = np.array([], dtype=np.int64)  # Evolving set of admissible segment starts.
+    init_starts = np.zeros(min_segment_length - 1, dtype=np.int64)
+    init_ends = np.arange(min_segment_length - 1)
+    opt_cost = np.zeros(n + 1) - penalty
+    opt_cost[1:min_segment_length] = cost_func(params, init_starts, init_ends)
 
     # Store the previous changepoint for each t.
     # Used to get the final set of changepoints after the loop.
-    prev_cpts = [-1] * (min_segment_length - 1)
+    prev_cpts = np.repeat(-1, n)
 
     ts = np.arange(min_segment_length - 1, n).reshape(-1, 1)
     for t in ts:
-        new_admissible = t - min_segment_length + 1
-        admissible = np.concatenate((admissible, new_admissible))
-        ends = np.repeat(t, len(admissible))
-        admissible_opt_costs = (
-            opt_cost[admissible] + cost_func(params, admissible, ends) + penalty
+        starts = np.concatenate((starts, t - min_segment_length + 1))
+        ends = np.repeat(t, len(starts))
+        candidate_opt_costs = (
+            opt_cost[starts] + cost_func(params, starts, ends) + penalty
         )
-        admissible_argmin = np.argmin(admissible_opt_costs)
-        opt_cost[t] = admissible_opt_costs[admissible_argmin]
-        prev_cpts.append(admissible[admissible_argmin] - 1)
+        argmin = np.argmin(candidate_opt_costs)
+        opt_cost[t + 1] = candidate_opt_costs[argmin]
+        prev_cpts[t] = starts[argmin] - 1
 
-        # trimming the admissible set
-        admissible = admissible[admissible_opt_costs - penalty <= opt_cost[t]]
+        # trimming the starts set
+        starts = starts[candidate_opt_costs - penalty <= opt_cost[t]]
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
@@ -75,7 +76,7 @@ class Pelt(BaseSeriesAnnotator):
     penalty_scale : float, optional (default=2.0)
         Scaling factor for the penalty. The penalty is set to
         'penalty_scale * 2 * p * np.log(n)', where 'n' is the sample size
-        and 'p' is the number of variables. If None, the threshold is tuned on the data
+        and 'p' is the number of variables. If None, the penalty is tuned on the data
         input to .fit() (not supported yet).
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
@@ -132,17 +133,17 @@ class Pelt(BaseSeriesAnnotator):
         check_larger_than(1, min_segment_length, "min_segment_length")
 
     def _tune_penalty(self, X: pd.DataFrame) -> float:
-        """Tune the threshold.
+        """Tune the penalty.
 
         Parameters
         ----------
         X : pd.DataFrame
-            Training data to tune the threshold on.
+            Training data to tune the penalty on.
 
         Returns
         -------
-        threshold : float
-            The tuned threshold.
+        penalty : float
+            The tuned penalty.
         """
         raise ValueError(
             "tuning of the penalty is not supported yet (penalty_scale=None)."
@@ -161,8 +162,8 @@ class Pelt(BaseSeriesAnnotator):
 
         Returns
         -------
-        threshold : float
-            The default threshold.
+        penalty : float
+            The default penalty.
         """
         return 2 * p * np.log(n)
 
@@ -177,15 +178,15 @@ class Pelt(BaseSeriesAnnotator):
     def _fit(self, X: Union[pd.Series, pd.DataFrame], Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold on the input data if `tune` is True. Otherwise, the
-        threshold is set to the input `threshold` value if provided. If not,
+        Trains the penalty on the input data if `tune` is True. Otherwise, the
+        penalty is set to the input `penalty` value if provided. If not,
         it is set to the default value for the test statistic, which depends on
         the dimension of X.
 
         Parameters
         ----------
         X : pd.DataFrame
-            training data to fit the threshold to.
+            training data to fit the penalty to.
         Y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
@@ -199,7 +200,7 @@ class Pelt(BaseSeriesAnnotator):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self.threshold_ = self._get_penalty(X)
+        self.penalty_ = self._get_penalty(X)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -219,12 +220,11 @@ class Pelt(BaseSeriesAnnotator):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self._penalty = self._get_penalty(X)  # In case no penalty yet, use default.
         opt_costs, self.changepoints = run_pelt(
             X.values,
             self.cost_func,
             self.cost_init_func,
-            self._penalty,
+            self.penalty_,
             self.min_segment_length,
         )
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
