@@ -13,9 +13,10 @@ df = generate_anomalous_data(
 px.scatter(df)
 
 detector = MoscoreAnomaly(
-    score="mean",
+    score="meanvar",
     min_anomaly_length=10,
     max_anomaly_length=100,
+    threshold_scale=3.0,
     left_bandwidth=50,
 )
 anomalies = detector.fit_predict(df)
