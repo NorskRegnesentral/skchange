@@ -70,3 +70,29 @@ def where(indicator: np.ndarray) -> list:
     if start is not None:
         intervals.append((start, len(indicator) - 1))
     return intervals
+
+
+@njit(cache=True)
+def truncate_below(x: np.ndarray, lower_bound: float) -> np.ndarray:
+    """Truncate values below a lower bound.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        2D array.
+    lower_bound : float
+        Lower bound.
+
+    Returns
+    -------
+    x : np.ndarray
+        2D array with values below lower_bound replaced by lower_bound.
+    """
+    if x.ndim == 1:
+        x[x < lower_bound] = lower_bound
+    else:
+        p = x.shape[1]
+        for j in range(p):
+            # Numba doesn't support multidimensional index.
+            x[x[:, j] < lower_bound, j] = lower_bound  # To avoid zero division
+    return x
