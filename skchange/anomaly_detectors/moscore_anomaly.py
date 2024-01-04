@@ -56,7 +56,7 @@ def run_moscore_anomaly(
 class MoscoreAnomaly(BaseSeriesAnnotator):
     """Moving score algorithm for multiple collective anomaly detection.
 
-    A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
+    A custom version of the MOSUM (moving sum) algorithm [1]_ for collective anomaly
     detection. It runs a test statistic for a single anomaly of user-specified lengths
     across all the data, and compared the values in the anomaly window with
     `left_bandwidth` values to the left and `right_bandwidth` samples to the right of
@@ -75,12 +75,17 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         argument, and start, end and split indices as the second, third and fourth
         arguments. The second function is the initializer, which precomputes quantities
         that should be precomputed. See skchange/scores/score_factory.py for examples.
-    anomaly_lengths : np.ndarray (default=np.arange(5, 100))
-
-    bandwidth : int, optional (default=30)
-        The bandwidth is the number of samples on either side of a candidate
-        changepoint. The minimum bandwidth depends on the
-        test statistic. For "mean", the minimum bandwidth is 1.
+    min_anomaly_length : int, optional (default=2)
+        Minimum length of a collective anomaly.
+    max_anomaly_length : int, optional (default=100)
+        Maximum length of a collective anomaly. Must be no larger than
+        `left_bandwidth + right_bandwidth`.
+    left_bandwidth : int, optional (default=50)
+        Number of samples to the left of the anomaly window to use in the test
+        statistic.
+    right_bandwidth : int, optional (default=left_bandwidth)
+        Number of samples to the right of the anomaly window to use in the test
+        statistic. If None, set to `left_bandwidth`.
     threshold_scale : float, optional (default=2.0)
         Scaling factor for the threshold. The threshold is set to
         'threshold_scale * default_threshold', where the default threshold depends on
@@ -88,12 +93,13 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         If None, the threshold is tuned on the data input to .fit().
     level : float, optional (default=0.01)
         If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
-        of the changepoint score on the training data. For this to be correct, the
-        training data must contain no changepoints. If `threshold_scale` is a number,
-        `level` is used in the default threshold, _before_ scaling.
-    min_detection_interval : int, optional (default=1)
-        Minimum number of consecutive scores above the threshold to be considered a
-        changepoint. Must be between 1 and `bandwidth`/2.
+        of the anomaly score on the training data. For this to be correct, the
+        training data must contain no anomalies.
+    anomaly_lengths : np.ndarray, optional (default=None)
+        Lengths of anomalies to consider. If None, all lengths between
+        `min_anomaly_length` and `max_anomaly_length` are considered. If it is not
+        important to consider all candidates, just a sparse subset for example,
+        customising the anomaly lengths can significantly speed up the algorithm.
     fmt : str {"dense", "sparse"}, optional (default="sparse")
         Annotation output format:
         * If "sparse", a sub-series of labels for only the outliers in X is returned,
