@@ -7,6 +7,7 @@ import plotly.express as px
 from skchange.anomaly_detectors.tests.test_anomaly_detectors import anomaly_detectors
 from skchange.change_detectors.tests.test_change_detectors import change_detectors
 
+# TODO: Add all the different scores and costs.
 detector_classes = anomaly_detectors + change_detectors
 ns = [1000, 10000, 100000, 1000000]
 n_runs = [100, 10, 1, 1]
