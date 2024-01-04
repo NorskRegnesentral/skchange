@@ -32,7 +32,6 @@ def get_moscore_changepoints(
     return changepoints
 
 
-# Parallelizable??
 @njit
 def moscore_transform(
     X: np.ndarray,
@@ -40,8 +39,6 @@ def moscore_transform(
     score_init_f: Callable,
     bandwidth: int,
 ) -> Tuple[list, np.ndarray]:
-    # scores = np.zeros(n)
-    # for k in range(bandwidth - 1, n - bandwidth):
     n = len(X)
     splits = np.arange(bandwidth - 1, n - bandwidth)
     starts = splits - bandwidth + 1
