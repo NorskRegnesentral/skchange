@@ -78,6 +78,9 @@ def anomalies_to_labels(
         distinct collective and/or point_anomaly.
     """
     labels = np.zeros(n, dtype=int) if p is None else np.zeros((n, p), dtype=int)
+    if len(anomalies) == 0:
+        return labels
+
     if len(anomalies[0]) == 2:
         for i, (start, end) in enumerate(anomalies):
             labels[start : end + 1] = i + 1
