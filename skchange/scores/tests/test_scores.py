@@ -15,9 +15,9 @@ def test_scores(score):
     score_f, init_score_f = score_factory(score)
     params = init_score_f(df.values)
     scores = np.zeros(n)
-    for split in range(10, n - 10):
+    for split in np.arange(10, n - 10).reshape(-1, 1):
         score_value = score_f(
-            params, start=np.array([0]), end=np.array([49]), split=np.array([split])
+            params, start=np.array([0]), end=np.array([49]), split=split
         )
         assert isinstance(score_value, np.ndarray)
         scores[split] = score_value
