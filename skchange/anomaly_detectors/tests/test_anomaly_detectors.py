@@ -52,7 +52,6 @@ def test_anomaly_detector_sparse_int(Estimator):
     """
     detector = Estimator.create_test_instance()
     detector.set_params(fmt="sparse", labels="int_label")
-    # detector = Estimator(fmt="sparse", labels="int_label")
     anomalies = detector.fit_predict(anomaly_data)
     assert len(anomalies) == len(true_anomalies)
     for i, (start, end) in enumerate(true_anomalies):
