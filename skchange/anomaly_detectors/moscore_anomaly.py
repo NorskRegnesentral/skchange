@@ -170,7 +170,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
             self._min_anomaly_length = anomaly_lengths.min()
             self._max_anomaly_length = anomaly_lengths.max()
 
-        check_larger_than(2, self._min_anomaly_length, "_min_anomaly_length")
+        check_larger_than(1, self._min_anomaly_length, "_min_anomaly_length")
         check_larger_than(
             self._min_anomaly_length, self._max_anomaly_length, "_max_anomaly_length"
         )
