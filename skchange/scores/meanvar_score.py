@@ -164,7 +164,7 @@ def meanvar_anomaly_score(
     the overall interval.
 
     The overall and anomalous intervals must satisfy
-    `interval_start > anomaly_start <= anomaly_end <= interval_end`
+    `interval_start > anomaly_start <= anomaly_end <= interval_end`.
 
     Parameters
     ----------
@@ -182,7 +182,7 @@ def meanvar_anomaly_score(
     Returns
     -------
     score : float
-        Score for a an anomaly in the mean and/or variance.
+        Score for an anomaly in the mean and/or variance.
 
     Notes
     -----
