@@ -20,7 +20,8 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 @njit
 def greedy_anomaly_selection(
     scores: np.ndarray,
-    maximizers: np.ndarray,
+    anomaly_starts: np.ndarray,
+    anomaly_ends: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
     threshold: float,
@@ -29,9 +30,8 @@ def greedy_anomaly_selection(
     anomalies = []
     while np.any(scores > threshold):
         argmax = scores.argmax()
-        anomaly = maximizers[argmax]
-        anomaly_start = int(anomaly[0])
-        anomaly_end = int(anomaly[1])
+        anomaly_start = anomaly_starts[argmax]
+        anomaly_end = anomaly_ends[argmax]
         anomalies.append((anomaly_start, anomaly_end))
         scores[(anomaly_end >= starts) & (anomaly_start < ends)] = 0.0
     anomalies.sort()
@@ -41,14 +41,16 @@ def greedy_anomaly_selection(
 @njit
 def make_anomaly_intervals(
     interval_start: int, interval_end: int, min_segment_length: int = 1
-) -> List[Tuple[int, int]]:
-    intervals = []
+) -> Tuple[np.ndarray, np.ndarray]:
+    starts = []
+    ends = []
     for i in range(interval_start + 1, interval_end - min_segment_length + 2):
         for j in range(i + min_segment_length - 1, interval_end + 1):
             baseline_n = interval_end - j + i - interval_start
             if baseline_n >= min_segment_length:
-                intervals.append((i, j))
-    return intervals
+                starts.append(i)
+                ends.append(j)
+    return np.array(starts, dtype=np.int64), np.array(ends, dtype=np.int64)
 
 
 @njit
@@ -70,19 +72,27 @@ def run_circular_binseg(
     params = score_init_func(X)
 
     anomaly_scores = np.zeros(starts.size)
+    anomaly_starts = np.zeros(starts.size, dtype=np.int64)
+    anomaly_ends = np.zeros(starts.size, dtype=np.int64)
     maximizers = np.zeros((starts.size, 2))
     for i, (start, end) in enumerate(zip(starts, ends)):
-        anomaly_intervals = make_anomaly_intervals(start, end, min_segment_length)
-        scores = np.zeros(len(anomaly_intervals))
-        for k, (anomaly_start, anomaly_end) in enumerate(anomaly_intervals):
-            scores[k] = score_func(params, start, end, anomaly_start, anomaly_end)
+        anomaly_start_candidates, anomaly_end_candidates = make_anomaly_intervals(
+            start, end, min_segment_length
+        )
+        scores = score_func(
+            params,
+            np.repeat(start, anomaly_start_candidates.size),
+            np.repeat(end, anomaly_start_candidates.size),
+            anomaly_start_candidates,
+            anomaly_end_candidates,
+        )
         argmax = np.argmax(scores)
         anomaly_scores[i] = scores[argmax]
-        maximizing_interval = anomaly_intervals[argmax]
-        maximizers[i] = np.array([maximizing_interval[0], maximizing_interval[1]])
+        anomaly_starts[i] = anomaly_start_candidates[argmax]
+        anomaly_ends[i] = anomaly_end_candidates[argmax]
 
     anomalies = greedy_anomaly_selection(
-        anomaly_scores, maximizers, starts, ends, threshold
+        anomaly_scores, anomaly_starts, anomaly_ends, starts, ends, threshold
     )
     return anomalies, anomaly_scores, maximizers, starts, ends
 
@@ -118,7 +128,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         For this to be correct, the training data must contain no changepoints.
     min_segment_length : int, optional (default=5)
         Minimum length between two changepoints. Must be greater than or equal to 1.
-    max_interval_length : int (default=200)
+    max_interval_length : int (default=100)
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to '2 * min_segment_length'.
     growth_factor : float (default = 1.5)
@@ -148,10 +158,12 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
     # Generate data
-    df = teeth(n_segments=3, mean=10, segment_length=100000, p=5, random_state=2)
+    df = generate_teeth_data(
+        n_segments=3, mean=10, segment_length=100000, p=5, random_state=2
+    )
 
     # Detect changepoints
     detector = CircularBinarySegmentation()
@@ -170,7 +182,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
-        max_interval_length: int = 200,
+        max_interval_length: int = 100,
         growth_factor: float = 1.5,
         fmt: str = "sparse",
         labels: str = "int_label",
@@ -253,10 +265,13 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold on the input data if `tune` is True. Otherwise, the
-        threshold is set to the input `threshold` value if provided. If not,
-        it is set to the default value for the test statistic, which depends on
-        the dimension of X.
+        Sets the threshold of the detector.
+        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
+        of the change/anomaly scores on the training data. For this to be correct,
+        the training data must contain no changepoints. If `threshold_scale` is a
+        number, the threshold is set to `threshold_scale` times the default threshold
+        for the detector. The default threshold depends at least on the data's shape,
+        but could also depend on more parameters.
 
         Parameters
         ----------
@@ -338,7 +353,6 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean"},
-            {"score": "mean", "threshold_scale": 0.0},
+            {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
         ]
         return params

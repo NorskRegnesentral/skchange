@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
-from skchange.datasets.generate import teeth
+from skchange.datasets.generate import generate_teeth_data
 from skchange.scores.score_factory import VALID_CHANGE_SCORES
 
 
@@ -48,7 +48,7 @@ def test_binseg_tuning(score):
     """Test SeededBinarySegmentation tuning."""
     n_segments = 2
     seg_len = 50
-    df = teeth(
+    df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
     detector = SeededBinarySegmentation(

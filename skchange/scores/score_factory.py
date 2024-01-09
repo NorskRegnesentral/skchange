@@ -19,10 +19,14 @@ from typing import Callable, Tuple, Union
 from numba.extending import is_jitted
 
 from skchange.scores.mean_score import init_mean_score, mean_anomaly_score, mean_score
-from skchange.scores.meanvar_score import init_meanvar_score, meanvar_score
+from skchange.scores.meanvar_score import (
+    init_meanvar_score,
+    meanvar_anomaly_score,
+    meanvar_score,
+)
 
 VALID_CHANGE_SCORES = ["mean", "meanvar"]
-VALID_ANOMALY_SCORES = ["mean"]
+VALID_ANOMALY_SCORES = ["mean", "meanvar"]
 
 
 def score_factory(score: Union[str, Tuple[Callable, Callable]]):
@@ -85,6 +89,8 @@ def anomaly_score_factory(score: Union[str, Tuple[Callable, Callable]]):
     """
     if isinstance(score, str) and score == "mean":
         return mean_anomaly_score, init_mean_score
+    elif isinstance(score, str) and score == "meanvar":
+        return meanvar_anomaly_score, init_meanvar_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
         return score[0], score[1]
     else:

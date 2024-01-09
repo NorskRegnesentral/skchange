@@ -5,12 +5,25 @@ import pytest
 from sktime.tests.test_switch import run_test_for_class
 from sktime.utils._testing.annotation import make_annotation_problem
 
+from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
+from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
 from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.datasets.generate import teeth
+from skchange.datasets.generate import generate_anomalous_data
 
-anomaly_detectors = [Capa, Mvcapa, CircularBinarySegmentation]
+anomaly_detectors = [
+    Capa,
+    CircularBinarySegmentation,
+    MoscoreAnomaly,
+    Mvcapa,
+    StatThresholdAnomaliser,
+]
+
+true_anomalies = [(50, 59), (120, 129)]
+anomaly_data = generate_anomalous_data(
+    200, anomalies=true_anomalies, means=[10.0, 5.0], random_state=39
+)
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -21,11 +34,11 @@ def test_output_type(Estimator):
         return None
 
     arg = make_annotation_problem(
-        n_timepoints=50, estimator_type=estimator.get_tag("distribution_type")
+        n_timepoints=500, estimator_type=estimator.get_tag("distribution_type")
     )
     estimator.fit(arg)
     arg = make_annotation_problem(
-        n_timepoints=30, estimator_type=estimator.get_tag("distribution_type")
+        n_timepoints=200, estimator_type=estimator.get_tag("distribution_type")
     )
     y_pred = estimator.predict(arg)
     assert isinstance(y_pred, (pd.DataFrame, pd.Series))
@@ -37,18 +50,12 @@ def test_anomaly_detector_sparse_int(Estimator):
 
     Check if the predicted anomalies match.
     """
-    n_segments = 2
-    seg_len = 20
-    df = teeth(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
-    )
-    detector = Estimator(fmt="sparse", labels="int_label")
-    anomalies = detector.fit_predict(df)
-    assert (
-        len(anomalies) == 1
-        and anomalies.loc[0, "start"] == seg_len
-        and anomalies.loc[0, "end"] == 2 * seg_len - 1
-    )
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="sparse", labels="int_label")
+    anomalies = detector.fit_predict(anomaly_data)
+    assert len(anomalies) == len(true_anomalies)
+    for i, (start, end) in enumerate(true_anomalies):
+        assert anomalies.loc[i, "start"] == start and anomalies.loc[i, "end"] == end
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -57,32 +64,23 @@ def test_anomaly_detector_sparse_indicator(Estimator):
 
     Check if the predicted anomalies match.
     """
-    n_segments = 2
-    seg_len = 20
-    df = teeth(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
-    )
-    detector = Estimator(fmt="sparse", labels="indicator")
-    anomalies = detector.fit_predict(df)
-    assert (
-        len(anomalies) == 1
-        and anomalies.loc[0, "start"] == seg_len
-        and anomalies.loc[0, "end"] == 2 * seg_len - 1
-    )
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="sparse", labels="indicator")
+    anomalies = detector.fit_predict(anomaly_data)
+    assert len(anomalies) == len(true_anomalies)
+    for i, (start, end) in enumerate(true_anomalies):
+        assert anomalies.loc[i, "start"] == start and anomalies.loc[i, "end"] == end
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
 def test_anomaly_detector_score(Estimator):
     """Test score anomaly detector output."""
-    n_segments = 2
-    seg_len = 20
-    df = teeth(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
-    )
-    sparse_detector = Estimator(fmt="sparse", labels="score")
-    dense_detector = Estimator(fmt="dense", labels="score")
-    sparse_scores = sparse_detector.fit_predict(df)
-    dense_scores = dense_detector.fit_predict(df)
+    sparse_detector = Estimator.create_test_instance()
+    sparse_detector.set_params(fmt="sparse", labels="score")
+    dense_detector = Estimator.create_test_instance()
+    dense_detector.set_params(fmt="dense", labels="score")
+    sparse_scores = sparse_detector.fit_predict(anomaly_data)
+    dense_scores = dense_detector.fit_predict(anomaly_data)
     assert (sparse_scores == dense_scores).all(axis=None)
     if isinstance(sparse_scores, pd.DataFrame):
         assert "score" in sparse_scores.columns
@@ -96,19 +94,15 @@ def test_anomaly_detector_dense_int(Estimator):
 
     Check if the predicted anomalies matches.
     """
-    n_segments = 2
-    seg_len = 50
-    df = teeth(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
-    )
-    detector = Estimator(fmt="dense", labels="int_label")
-    labels = detector.fit_predict(df)
-    if isinstance(labels, pd.Series):
-        assert labels.nunique() == n_segments
-        assert labels.iloc[seg_len - 1] == 0.0 and labels.iloc[seg_len] == 1.0
-    else:
-        assert labels.nunique().iloc[0] == n_segments
-        assert labels.iloc[seg_len - 1, 0] == 0.0 and labels.iloc[seg_len, 0] == 1.0
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="dense", labels="int_label")
+    labels = detector.fit_predict(anomaly_data)
+    if isinstance(labels, pd.DataFrame):
+        labels = labels.iloc[:, 0]
+
+    assert labels.nunique() == len(true_anomalies) + 1
+    for i, (start, end) in enumerate(true_anomalies):
+        assert (labels.iloc[start : end + 1] == i + 1).all()
 
 
 @pytest.mark.parametrize("Estimator", anomaly_detectors)
@@ -117,14 +111,12 @@ def test_anomaly_detector_dense_indicator(Estimator):
 
     Check if the predicted anomalies matches.
     """
-    n_segments = 2
-    seg_len = 50
-    df = teeth(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
-    )
-    detector = Estimator(fmt="dense", labels="indicator")
-    labels = detector.fit_predict(df)
-    if isinstance(labels, pd.Series):
-        assert not labels.iloc[seg_len - 1] and labels.iloc[seg_len]
-    else:
-        assert not labels.iloc[seg_len - 1, 0] and labels.iloc[seg_len, 0]
+    detector = Estimator.create_test_instance()
+    detector.set_params(fmt="dense", labels="indicator")
+    labels = detector.fit_predict(anomaly_data)
+    if isinstance(labels, pd.DataFrame):
+        labels = labels.iloc[:, 0]
+
+    for start, end in true_anomalies:
+        assert labels.iloc[start : end + 1].all()
+        assert not labels.iloc[start - 1] and not labels.iloc[end + 1]
