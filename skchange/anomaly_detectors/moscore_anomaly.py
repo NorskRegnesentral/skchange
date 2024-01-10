@@ -1,61 +1,70 @@
-"""The Moving Score algorithm for multiple changepoint detection."""
+"""The Moving Score algorithm for multiple collective anomaly detection."""
 
 __author__ = ["mtveten"]
-__all__ = ["Moscore"]
+__all__ = ["MoscoreAnomaly"]
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
 from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.change_detectors.utils import format_changepoint_output
-from skchange.scores.score_factory import score_factory
-from skchange.utils.numba.general import where
+from skchange.anomaly_detectors.circular_binseg import greedy_anomaly_selection
+from skchange.anomaly_detectors.utils import format_anomaly_output
+from skchange.scores.score_factory import anomaly_score_factory
 from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_in_interval, check_larger_than
+from skchange.utils.validation.parameters import check_larger_than, check_smaller_than
 
 
-@njit
-def get_moscore_changepoints(
-    moscores: np.ndarray, threshold: float, min_detection_interval: int
-) -> list:
-    detection_intervals = where(moscores > threshold)
-    changepoints = []
-    for interval in detection_intervals:
-        start = interval[0]
-        end = interval[1]
-        if end - start + 1 >= min_detection_interval:
-            cpt = np.argmax(moscores[start : end + 1]) + start
-            changepoints.append(cpt)
-    return changepoints
-
-
-@njit
-def moscore_transform(
+def run_moscore_anomaly(
     X: np.ndarray,
     score_f: Callable,
     score_init_f: Callable,
-    bandwidth: int,
-) -> Tuple[list, np.ndarray]:
+    anomaly_lengths: np.ndarray,
+    left_bandwidth: int,
+    right_bandwidth: int,
+    threshold: float,
+) -> Tuple[List[Tuple[int, int]], np.ndarray, np.ndarray, np.ndarray]:
     n = len(X)
-    splits = np.arange(bandwidth - 1, n - bandwidth)
-    starts = splits - bandwidth + 1
-    ends = splits + bandwidth
+    starts = tuple(
+        np.arange(left_bandwidth, n - k - right_bandwidth)
+        for k in anomaly_lengths
+        if left_bandwidth + k + right_bandwidth <= n
+    )
+    ends = tuple(
+        start + k - 1
+        for start, k in zip(starts, anomaly_lengths)
+        if left_bandwidth + k + right_bandwidth <= n
+    )
+    starts = np.concatenate(starts)
+    ends = np.concatenate(ends)
+    background_starts = starts - left_bandwidth
+    background_ends = ends + right_bandwidth
     params = score_init_f(X)
-    scores = np.zeros(n)
-    scores[splits] = score_f(params, starts, ends, splits)
-    return scores
+    scores = score_f(params, background_starts, background_ends, starts, ends)
+    anomalies = greedy_anomaly_selection(
+        scores,
+        starts,
+        ends,
+        background_starts,
+        background_ends,
+        threshold,
+    )
+    return anomalies, scores, starts, ends
 
 
-class Moscore(BaseSeriesAnnotator):
-    """Moving score algorithm for multiple changepoint detection.
+class MoscoreAnomaly(BaseSeriesAnnotator):
+    """Moving score algorithm for multiple collective anomaly detection.
 
-    A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
-    detection. It runs a test statistic for a single changepoint at the midpoint in a
-    moving window of length `2*bandwidth` over the data. Efficently implemented using
-    numba.
+    A custom version of the MOSUM (moving sum) algorithm [1]_ for collective anomaly
+    detection. It runs a test statistic for a single anomaly of user-specified lengths
+    across all the data, and compares the values in the anomaly window with
+    `left_bandwidth` values to the left and `right_bandwidth` samples to the right of
+    the anomaly window.
+
+    Experimental for now.
+
+    Efficently implemented using numba.
 
     Parameters
     ----------
@@ -68,10 +77,17 @@ class Moscore(BaseSeriesAnnotator):
         argument, and start, end and split indices as the second, third and fourth
         arguments. The second function is the initializer, which precomputes quantities
         that should be precomputed. See skchange/scores/score_factory.py for examples.
-    bandwidth : int, optional (default=30)
-        The bandwidth is the number of samples on either side of a candidate
-        changepoint. The minimum bandwidth depends on the
-        test statistic. For "mean", the minimum bandwidth is 1.
+    min_anomaly_length : int, optional (default=2)
+        Minimum length of a collective anomaly.
+    max_anomaly_length : int, optional (default=100)
+        Maximum length of a collective anomaly. Must be no larger than
+        `left_bandwidth + right_bandwidth`.
+    left_bandwidth : int, optional (default=50)
+        Number of samples to the left of the anomaly window to use in the test
+        statistic.
+    right_bandwidth : int, optional (default=left_bandwidth)
+        Number of samples to the right of the anomaly window to use in the test
+        statistic. If None, set to `left_bandwidth`.
     threshold_scale : float, optional (default=2.0)
         Scaling factor for the threshold. The threshold is set to
         'threshold_scale * default_threshold', where the default threshold depends on
@@ -79,12 +95,13 @@ class Moscore(BaseSeriesAnnotator):
         If None, the threshold is tuned on the data input to .fit().
     level : float, optional (default=0.01)
         If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
-        of the changepoint score on the training data. For this to be correct, the
-        training data must contain no changepoints. If `threshold_scale` is a number,
-        `level` is used in the default threshold, _before_ scaling.
-    min_detection_interval : int, optional (default=1)
-        Minimum number of consecutive scores above the threshold to be considered a
-        changepoint. Must be between 1 and `bandwidth`/2.
+        of the anomaly score on the training data. For this to be correct, the
+        training data must contain no anomalies.
+    anomaly_lengths : np.ndarray, optional (default=None)
+        Lengths of anomalies to consider. If None, all lengths between
+        `min_anomaly_length` and `max_anomaly_length` are considered. If it is not
+        important to consider all candidates, just a sparse subset for example,
+        customising the anomaly lengths can significantly speed up the algorithm.
     fmt : str {"dense", "sparse"}, optional (default="sparse")
         Annotation output format:
         * If "sparse", a sub-series of labels for only the outliers in X is returned,
@@ -104,11 +121,12 @@ class Moscore(BaseSeriesAnnotator):
 
     Examples
     --------
-    from skchange.change_detectors.moscore import Moscore
+    from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
     from skchange.datasets.generate import generate_teeth_data
 
-    df = generate_teeth_data(n_segments=2, mean=10, segment_length=100000, p=5)
-    detector = Moscore()
+    anomalies = [(100, 119), (250, 299)]
+    df = generate_anomalous_data(500, anomalies=anomalies, means=[10.0, 5.0])
+    detector = MoscoreAnomaly()
     detector.fit_predict(df)
     """
 
@@ -121,29 +139,52 @@ class Moscore(BaseSeriesAnnotator):
     def __init__(
         self,
         score: Union[str, Tuple[Callable, Callable]] = "mean",
-        bandwidth: int = 30,
+        min_anomaly_length: int = 2,
+        max_anomaly_length: int = 100,
+        left_bandwidth: int = 50,
+        right_bandwidth: int = None,
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
-        min_detection_interval: int = 1,
+        anomaly_lengths: np.ndarray = None,
         fmt: str = "sparse",
         labels: str = "int_label",
     ):
         self.score = score
-        self.bandwidth = bandwidth
-        self.threshold_scale = threshold_scale  # Just holds the input value.
+        self.min_anomaly_length = min_anomaly_length
+        self.max_anomaly_length = max_anomaly_length
+        self.left_bandwidth = left_bandwidth
+        self.right_bandwidth = right_bandwidth
+        self.threshold_scale = threshold_scale
         self.level = level
-        self.min_detection_interval = min_detection_interval
+        self.anomaly_lengths = anomaly_lengths
         super().__init__(fmt=fmt, labels=labels)
-        self.score_f, self.score_init_f = score_factory(self.score)
 
-        check_larger_than(1, self.bandwidth, "bandwidth")
+        self.score_f, self.score_init_f = anomaly_score_factory(score)
+        self._right_bandwidth = right_bandwidth if right_bandwidth else left_bandwidth
+        if anomaly_lengths is None:
+            self._anomaly_lengths = np.arange(
+                min_anomaly_length, max_anomaly_length + 1
+            )
+            self._min_anomaly_length = min_anomaly_length
+            self._max_anomaly_length = max_anomaly_length
+        else:
+            self._anomaly_lengths = np.asarray(anomaly_lengths)
+            self._min_anomaly_length = anomaly_lengths.min()
+            self._max_anomaly_length = anomaly_lengths.max()
+
+        check_larger_than(1, self._min_anomaly_length, "_min_anomaly_length")
+        check_larger_than(
+            self._min_anomaly_length, self._max_anomaly_length, "_max_anomaly_length"
+        )
+        check_smaller_than(
+            self.left_bandwidth + self._right_bandwidth,
+            self._max_anomaly_length,
+            "_max_anomaly_length",
+        )
+        check_larger_than(1, self.left_bandwidth, "left_bandwidth")
+        check_larger_than(1, self._right_bandwidth, "_right_bandwidth")
         check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
         check_larger_than(0, self.level, "level")
-        check_in_interval(
-            pd.Interval(1, self.bandwidth / 2 - 1, closed="both"),
-            self.min_detection_interval,
-            "min_detection_interval",
-        )
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold for the Moscore algorithm.
@@ -161,20 +202,21 @@ class Moscore(BaseSeriesAnnotator):
         X : pd.DataFrame
             Training data to tune the threshold on.
         """
-        scores = moscore_transform(
+        _, scores, _, _ = run_moscore_anomaly(
             X.values,
             self.score_f,
             self.score_init_f,
-            self.bandwidth,
+            self._anomaly_lengths,
+            self.left_bandwidth,
+            self._right_bandwidth,
+            np.inf,
         )
         tuned_threshold = np.quantile(scores, 1 - self.level)
         return tuned_threshold
 
     @staticmethod
-    def get_default_threshold(
-        n: int, p: int, bandwidth: int, level: float = 0.01
-    ) -> float:
-        """Get the default threshold for the Moscore algorithm.
+    def get_default_threshold(n: int, p: int) -> float:
+        """Get the default threshold for the MoscoreAnomaly algorithm.
 
         It is the asymptotic critical value of the univariate 'mean' test statitic,
         multiplied by `p` to account for the multivariate case.
@@ -195,17 +237,7 @@ class Moscore(BaseSeriesAnnotator):
         threshold : float
             Threshold for the Moscore algorithm.
         """
-        u = n / bandwidth
-        a = np.sqrt(2 * np.log(u))
-        b = (
-            2 * np.log(u)
-            + 1 / 2 * np.log(np.log(u))
-            + np.log(3 / 2)
-            - 1 / 2 * np.log(np.pi)
-        )
-        c = -np.log(np.log(1 / np.sqrt(1 - level)))
-        # TODO: Check if it's correct to multiply by p.
-        return p * (b + c) / a
+        return 2 * p * np.sqrt(np.log(n))
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
         if self.threshold_scale is None:
@@ -213,9 +245,7 @@ class Moscore(BaseSeriesAnnotator):
         else:
             n = X.shape[0]
             p = X.shape[1]
-            return self.threshold_scale * self.get_default_threshold(
-                n, p, self.bandwidth, self.level
-            )
+            return self.threshold_scale * self.get_default_threshold(n, p)
 
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -227,8 +257,6 @@ class Moscore(BaseSeriesAnnotator):
         number, the threshold is set to `threshold_scale` times the default threshold
         for the detector. The default threshold depends at least on the data's shape,
         but could also depend on more parameters.
-        In the case of the Moscore algorithm, the default threshold depends on the
-        sample size, the number of variables, `bandwidth` and `level`.
 
         Parameters
         ----------
@@ -241,15 +269,14 @@ class Moscore(BaseSeriesAnnotator):
         Returns
         -------
         self : returns a reference to self
-
-        State change
-        ------------
-        Creates the threshold_ attribute.
         """
+        min_length = (
+            self.left_bandwidth + self._right_bandwidth + self._min_anomaly_length
+        )
         X = check_data(
             X,
-            min_length=2 * self.bandwidth,
-            min_length_name="2*bandwidth",
+            min_length=min_length,
+            min_length_name="left_bandwidth + _right_bandwidth + _min_anomaly_length",
         )
         self.threshold_ = self._get_threshold(X)
         return self
@@ -266,23 +293,28 @@ class Moscore(BaseSeriesAnnotator):
         Y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
+        min_length = (
+            self.left_bandwidth + self._right_bandwidth + self._min_anomaly_length
+        )
         X = check_data(
             X,
-            min_length=2 * self.bandwidth,
-            min_length_name="2*bandwidth",
+            min_length=min_length,
+            min_length_name="left_bandwidth + _right_bandwidth + _min_anomaly_length",
         )
-        scores = moscore_transform(
+        self.anomalies, scores, starts, ends = run_moscore_anomaly(
             X.values,
             self.score_f,
             self.score_init_f,
-            self.bandwidth,
+            self._anomaly_lengths,
+            self.left_bandwidth,
+            self._right_bandwidth,
+            self.threshold_,
         )
-        self.changepoints = get_moscore_changepoints(
-            scores, self.threshold_, self.min_detection_interval
+        self.scores = pd.DataFrame(
+            {"anomaly_start": starts, "anomaly_end": ends, "score": scores}
         )
-        self.scores = pd.Series(scores, index=X.index, name="score")
-        return format_changepoint_output(
-            self.fmt, self.labels, self.changepoints, X.index, self.scores
+        return format_anomaly_output(
+            self.fmt, self.labels, X.index, self.anomalies, scores=self.scores
         )
 
     @classmethod
@@ -305,6 +337,11 @@ class Moscore(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean", "bandwidth": 10},
+            {
+                "score": "mean",
+                "min_anomaly_length": 5,
+                "max_anomaly_length": 100,
+                "left_bandwidth": 50,
+            },
         ]
         return params

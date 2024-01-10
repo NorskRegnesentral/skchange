@@ -80,11 +80,11 @@ def run_seeded_binseg(
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size)
     for i, (start, end) in enumerate(zip(starts, ends)):
-        scores = np.zeros(end - start)
         splits_lower = start + min_segment_length - 1
-        splits = range(splits_lower, end - min_segment_length + 1)
-        for k, split in enumerate(splits):
-            scores[k] = score_func(params, start, end, split)
+        splits = np.arange(splits_lower, end - min_segment_length + 1)
+        scores = score_func(
+            params, np.repeat(start, splits.size), np.repeat(end, splits.size), splits
+        )
         argmax = np.argmax(scores)
         amoc_scores[i] = scores[argmax]
         maximizers[i] = splits_lower + argmax
@@ -159,12 +159,9 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.change_detectors.binary_segmentation import SeededBinarySegmentation
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
-    # Generate data
-    df = teeth(n_segments=2, mean=10, segment_length=100000, p=5, random_state=2)
-
-    # Detect changepoints
+    df = generate_teeth_data(n_segments=2, mean=10, segment_length=10000, p=5)
     detector = SeededBinarySegmentation()
     detector.fit_predict(df)
     """
@@ -264,10 +261,13 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold on the input data if `tune` is True. Otherwise, the
-        threshold is set to the input `threshold` value if provided. If not,
-        it is set to the default value for the test statistic, which depends on
-        the dimension of X.
+        Sets the threshold of the detector.
+        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
+        of the change/anomaly scores on the training data. For this to be correct,
+        the training data must contain no changepoints. If `threshold_scale` is a
+        number, the threshold is set to `threshold_scale` times the default threshold
+        for the detector. The default threshold depends at least on the data's shape,
+        but could also depend on more parameters.
 
         Parameters
         ----------
@@ -343,7 +343,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean"},
-            {"score": "mean", "threshold_scale": 0.0},
+            {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
         ]
         return params

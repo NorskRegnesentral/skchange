@@ -62,7 +62,7 @@ class Capa(BaseSeriesAnnotator):
         Scaling factor for the point penalty.
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
-    max_segment_length : int, optional (default=10000)
+    max_segment_length : int, optional (default=1000)
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional (default=False)
         If True, detected point anomalies are not returned by .predict(). I.e., only
@@ -91,9 +91,9 @@ class Capa(BaseSeriesAnnotator):
     Examples
     --------
     from skchange.anomaly_detectors.capa import Capa
-    from skchange.datasets.generate import teeth
+    from skchange.datasets.generate import generate_teeth_data
 
-    df = teeth(n_segments=5, mean=10, segment_length=100, p=1, random_state=2)
+    df = generate_teeth_data(n_segments=5, mean=10, segment_length=100)
     detector = Capa()
     detector.fit_predict(df)
     """
@@ -151,10 +151,13 @@ class Capa(BaseSeriesAnnotator):
     def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
-        Trains the threshold on the input data if `tune` is True. Otherwise, the
-        threshold is set to the input `threshold` value if provided. If not,
-        it is set to the default value for the test statistic, which depends on
-        the dimension of X.
+        Sets the penalty of the detector.
+        If `penalty_scale` is None, the penalty is set to the (1-`level`)-quantile
+        of the change/anomaly scores on the training data. For this to be correct,
+        the training data must contain no changepoints. If `penalty_scale` is a
+        number, the penalty is set to `penalty_scale` times the default penalty
+        for the detector. The default penalty depends at least on the data's shape,
+        but could also depend on more parameters.
 
         Parameters
         ----------
@@ -237,7 +240,6 @@ class Capa(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"saving": "mean", "min_segment_length": 2},
-            {"saving": "mean", "collective_penalty_scale": 0, "min_segment_length": 2},
+            {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
         ]
         return params
