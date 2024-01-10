@@ -58,9 +58,11 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
 
     A custom version of the MOSUM (moving sum) algorithm [1]_ for collective anomaly
     detection. It runs a test statistic for a single anomaly of user-specified lengths
-    across all the data, and compared the values in the anomaly window with
+    across all the data, and compares the values in the anomaly window with
     `left_bandwidth` values to the left and `right_bandwidth` samples to the right of
     the anomaly window.
+
+    Experimental for now.
 
     Efficently implemented using numba.
 
