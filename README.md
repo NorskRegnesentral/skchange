@@ -14,40 +14,20 @@ A playground for now.
 from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import generate_teeth_data
 
-# Segment a time series
-df = generate_teeth_data(n_segments=2, mean=10, segment_length=10, p=1, random_state=2)
-detector = Moscore(bandwidth=5, fmt="dense")
+df = generate_teeth_data(n_segments=10, mean=5, segment_length=50, p=1, random_state=1)
+detector = Moscore(bandwidth=10, fmt="sparse")
 detector.fit_predict(df)
 >>>
-0     0
-1     0
-2     0
-3     0
-4     0
-5     0
-6     0
-7     0
-8     0
-9     0
-10    1
-11    1
-12    1
-13    1
-14    1
-15    1
-16    1
-17    1
-18    1
-19    1
-Name: segment_id, dtype: int32
-
-# Get the changepoints only (defined as the last index of a segment)
-detector = Moscore(bandwidth=5, fmt="sparse")
-detector.fit_predict(df)
->>>
-9     0
-19    1
-Name: segment_id, dtype: int32
+0     49
+1     99
+2    149
+3    199
+4    249
+5    299
+6    349
+7    399
+8    449
+Name: changepoints, dtype: int32
 ```
 
 ## Installation
@@ -63,9 +43,9 @@ pip install git+https://github.com/NorskRegnesentral/skchange
 
 You also need Python >= 3.8.
 
-Optional dependencies:
+<!-- Optional dependencies:
 - Penalty tuning: `optuna` >= 3.1.1
-- Plotting: `plotly` >= 5.13.0.
+- Plotting: `plotly` >= 5.13.0. -->
 
 
 ## License
