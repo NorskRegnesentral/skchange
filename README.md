@@ -10,11 +10,13 @@ A playground for now.
 
 
 ## Quickstart
+
+### Changepoint detection / time series segmentation
 ```python
 from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import generate_teeth_data
 
-df = generate_teeth_data(n_segments=10, mean=5, segment_length=50, p=1, random_state=1)
+df = generate_teeth_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 detector = Moscore(bandwidth=10, fmt="sparse")
 detector.fit_predict(df)
 >>>
@@ -28,6 +30,27 @@ detector.fit_predict(df)
 7    399
 8    449
 Name: changepoints, dtype: int32
+```
+
+### Multivariate anomaly detection
+```python
+from skchange.anomaly_detectors.mvcapa import Mvcapa
+from skchange.datasets.generate import generate_teeth_data
+
+df = generate_teeth_data(
+    n_segments=5,
+    segment_length=50,
+    p=10,
+    mean=10,
+    affected_proportion=0.2,
+    random_state=2,
+)
+detector = Mvcapa(collective_penalty="sparse", fmt="sparse")
+detector.fit_predict(df)
+>>>
+   start  end components
+0     50   99     [0, 1]
+1    150  199     [0, 1]
 ```
 
 ## Installation
