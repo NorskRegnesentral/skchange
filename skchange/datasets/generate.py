@@ -20,7 +20,7 @@ def generate_teeth_data(
     random_state: int = None,
 ) -> pd.DataFrame:
     """
-    Generate a DataFrame with generate_teeth_data-shaped segments.
+    Generate a DataFrame with a teeth-shaped or square wave mean signal.
 
     Parameters
     ----------
