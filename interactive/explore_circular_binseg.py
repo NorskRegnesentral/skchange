@@ -1,11 +1,11 @@
 import plotly.express as px
-from streamchange.utils import Profiler
 
 from skchange.anomaly_detectors.circular_binseg import (
     CircularBinarySegmentation,
     make_anomaly_intervals,
 )
 from skchange.datasets.generate import generate_teeth_data
+from skchange.utils.benchmarking.profiler import Profiler
 
 df = generate_teeth_data(n_segments=3, mean=10, segment_length=20, p=1, random_state=7)
 detector = CircularBinarySegmentation(

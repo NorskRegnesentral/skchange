@@ -1,13 +1,13 @@
 import numpy as np
 import plotly.express as px
 from numba import njit
-from streamchange.utils import Profiler
 
 from skchange.change_detectors.moscore import Moscore, where
 from skchange.datasets.generate import add_linspace_outliers, generate_teeth_data
 from skchange.scores.mean_score import init_mean_score, mean_score
+from skchange.utils.benchmarking.profiler import Profiler
 
-# Compare skchange output to streamchange
+# Simple univariate example
 df = generate_teeth_data(n_segments=2, mean=10, segment_length=100, p=1, random_state=2)
 detector = Moscore()
 changepoints = detector.fit_predict(df)

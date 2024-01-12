@@ -1,8 +1,8 @@
 import plotly.express as px
-from streamchange.utils import Profiler
 
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
 from skchange.datasets.generate import generate_teeth_data
+from skchange.utils.benchmarking.profiler import Profiler
 
 df = generate_teeth_data(n_segments=2, mean=10, segment_length=20, p=1, random_state=7)
 detector = SeededBinarySegmentation(score="mean", growth_factor=2)

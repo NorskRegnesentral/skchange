@@ -1,11 +1,11 @@
 import numpy as np
-from streamchange.utils import Profiler
 
 from skchange.change_detectors.pelt import Pelt
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
 from skchange.datasets.generate import generate_teeth_data
+from skchange.utils.benchmarking.profiler import Profiler
 
-# Compare skchange output to streamchange
+# Simple univariate example
 df = generate_teeth_data(n_segments=2, mean=10, segment_length=100, p=1, random_state=2)
 detector = Pelt(min_segment_length=1)
 detector.fit_predict(df)

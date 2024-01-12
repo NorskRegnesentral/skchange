@@ -1,10 +1,10 @@
 import numpy as np
 import plotly.express as px
-from streamchange.utils import Profiler
 
 from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
 from skchange.datasets.generate import generate_anomalous_data
 from skchange.scores.mean_score import init_mean_score, mean_anomaly_score
+from skchange.utils.benchmarking.profiler import Profiler
 
 n = 500
 df = generate_anomalous_data(
