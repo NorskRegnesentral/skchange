@@ -1,9 +1,9 @@
 import plotly.express as px
-from streamchange.utils import Profiler
 
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.datasets.generate import generate_teeth_data
+from skchange.utils.benchmarking.profiler import Profiler
 
 # Unviariate
 df = generate_teeth_data(n_segments=5, mean=10, segment_length=10, p=1, random_state=2)
@@ -44,7 +44,6 @@ detector = Mvcapa(
     collective_penalty_scale=5,
     point_penalty_scale=5,
 )
-profiler = Profiler()
-profiler.start()
+profiler = Profiler().start()
 detector.fit_predict(df)
 profiler.stop()
