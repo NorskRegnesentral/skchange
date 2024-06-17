@@ -1,5 +1,5 @@
 # skchange
-`skchange` provies sktime-compatible change detection and changepoint-based anomaly detection algorithms. Methods implement the annotator interface of sktime.
+`skchange` provides sktime-compatible change detection and changepoint-based anomaly detection algorithms. Methods implement the annotator interface of sktime.
 
 A playground for now.
 
