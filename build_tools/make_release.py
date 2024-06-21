@@ -204,7 +204,16 @@ class MakeDist(Step):
 
     def action(self, context):
         """Carry out action."""
-        self.do_cmd("make dist")
+        self.do_cmd("python -m build")
+
+
+class CheckDist(Step):
+    """Check dist."""
+
+    def action(self, context):
+        """Carry out action."""
+        self.instruct("Check dist")
+        self.do_cmd("twine check dist/*")
 
 
 class UploadToTestPyPI(Step):
@@ -213,8 +222,7 @@ class UploadToTestPyPI(Step):
     def action(self, context):
         """Carry out action."""
         self.instruct("Upload to TestPyPI")
-        cmd = "twine upload --repository-url https://test.pypi.org/legacy/ dist/*"
-        self.do_cmd(cmd)
+        self.do_cmd("twine upload -r testpypi dist/*")
 
 
 class InstallFromTestPyPI(Step):
@@ -226,6 +234,15 @@ class InstallFromTestPyPI(Step):
         self.do_cmd(
             f"sh build_tools/check_install_from_test_pypi.sh {context['version']}"
         )
+
+
+class UploadToPyPI(Step):
+    """Upload to pypi."""
+
+    def action(self, context):
+        """Carry out action."""
+        self.instruct("Upload to PyPI")
+        self.do_cmd("twine upload dist/*")
 
 
 class CheckVersionNumber(Step):
@@ -318,13 +335,14 @@ def main():
         # MakeClean(),
         UpdateVersion(),
         CheckVersionNumber(),
-        # UpdateReadme(),
+        UpdateReadme(),
         # UpdateChangelog(),
         # MakeDocs(),
         # CheckLocalDocs(),
-        # MakeDist(),
-        # UploadToTestPyPI(),
-        # InstallFromTestPyPI(),
+        MakeDist(),
+        CheckDist(),
+        UploadToTestPyPI(),
+        InstallFromTestPyPI(),
         PushToGitHub(),
         CheckCIStatus(),
         # check pre-release online
@@ -335,7 +353,8 @@ def main():
         PushTagToGitHub(),
         CheckCIStatus(),
         # CheckOnlineDocs(),
-        # CheckPyPIFiles(),
+        UploadToPyPI(),
+        CheckPyPIFiles(),
     ]
     context = dict()
     context["package_name"] = PACKAGE_NAME
