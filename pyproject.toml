@@ -1,6 +1,6 @@
 [project]
 name = "skchange"
-version = "0.5.1"
+version = "0.5.2"
 description = "Sktime-compatible change and anomaly detection"
 authors = [
     {name = "Martin Tveten", email = "tveten@nr.no"},
@@ -20,8 +20,7 @@ keywords = [
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "Intended Audience :: Scientists/Engineers",
-    "License :: BSD License",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
     "Topic :: Scientific/Engineering",
     "Operating System :: Microsoft :: Windows",

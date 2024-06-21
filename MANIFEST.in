@@ -1,0 +1,6 @@
+include *.rst
+recursive-include docs *
+include *.md
+recursive-include interactive *
+recursive-include sktime *.py
+include LICENSE

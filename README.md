@@ -9,6 +9,19 @@ A playground for now.
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 
+## Installation
+```sh
+pip install skchange
+```
+
+## Dependencies
+- `pandas` >= 1.3
+- `numpy` >= 1.19
+- `numba` >= 0.56
+- `sktime` >= 0.24
+
+You also need Python >= 3.8.
+
 ## Quickstart
 
 ### Changepoint detection / time series segmentation
@@ -53,18 +66,6 @@ detector.fit_predict(df)
 1    150  199     [0, 1]
 ```
 
-## Installation
-```sh
-pip install git+https://github.com/NorskRegnesentral/skchange
-```
-
-## Dependencies
-- `pandas` >= 1.3
-- `numpy` >= 1.19
-- `numba` >= 0.56
-- `sktime` >= 0.24
-
-You also need Python >= 3.8.
 
 <!-- Optional dependencies:
 - Penalty tuning: `optuna` >= 3.1.1
