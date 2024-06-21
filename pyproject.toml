@@ -20,8 +20,7 @@ keywords = [
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "Intended Audience :: Scientists/Engineers",
-    "License :: BSD License",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
     "Topic :: Scientific/Engineering",
     "Operating System :: Microsoft :: Windows",
