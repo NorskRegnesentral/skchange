@@ -332,7 +332,7 @@ def main():
     steps = [
         # prepare and run final checks
         ConfirmGitStatus(branch="main"),
-        # MakeClean(),
+        MakeClean(),
         UpdateVersion(),
         CheckVersionNumber(),
         UpdateReadme(),
@@ -345,9 +345,6 @@ def main():
         InstallFromTestPyPI(),
         PushToGitHub(),
         CheckCIStatus(),
-        # check pre-release online
-        # GitTagPreRelease(),
-        # PushTagToGitHub(),
         # make release
         GitTagRelease(),
         PushTagToGitHub(),
