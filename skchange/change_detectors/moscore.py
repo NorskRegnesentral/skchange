@@ -40,9 +40,35 @@ def moscore_transform(
     bandwidth: int,
 ) -> Tuple[list, np.ndarray]:
     n = len(X)
-    splits = np.arange(bandwidth - 1, n - bandwidth)
-    starts = splits - bandwidth + 1
-    ends = splits + bandwidth
+    # splits = np.arange(bandwidth - 1, n - bandwidth)
+    # starts = splits - bandwidth + 1
+    # ends = splits + bandwidth
+    # When accessing data, access as:
+    # X[starts[i]:(splits[i] + 1)]
+    # Get 'bandwidth' elements before the split.
+    # X[splits[i]:(ends[i] + 1)]
+    # Get 'bandwidth + 1'elements after the split:
+    # Or: X[splits[i]:ends[i]], but this excludes last data point. 
+
+    # Split up into equal sized windows:
+    # Each window: [start[i], split[i] - 1] (inclusive)
+    #              [split[i], end[i]] (inclusive)
+    # Total of 'bandwidth' elements in each window.
+
+    # Shifted 'splits' up by one:
+    splits = np.arange(bandwidth, n - bandwidth + 1)
+    # Exactly the same 'starts' as above:
+    starts = splits - bandwidth
+    # Exactly the same 'ends' as above:
+    ends = splits + bandwidth - 1
+
+    # Access as:
+    # X[starts[i]:splits[i]]
+    # Get 'bandwidth' elements before the split.
+    # X[splits[i]:(ends[i] + 1)]
+    # Get 'bandwidth' elements after the split.
+    # Includes the last data point in the second window.
+
     params = score_init_f(X)
     scores = np.zeros(n)
     scores[splits] = score_f(params, starts, ends, splits)
