@@ -1,7 +1,5 @@
 """Covariance change point detection"""
 
-from typing import Tuple
-
 import numpy as np
 from numba import njit
 

@@ -29,7 +29,7 @@ VALID_CHANGE_SCORES = ["mean", "meanvar"]
 VALID_ANOMALY_SCORES = ["mean", "meanvar"]
 
 
-def score_factory(score: Union[str, Tuple[Callable, Callable]]):
+def score_factory(score: Union[str, Tuple[Callable, Callable]], require_jitted: bool = True):
     """Return score function and its initializer.
 
     Parameters
@@ -55,7 +55,7 @@ def score_factory(score: Union[str, Tuple[Callable, Callable]]):
         return mean_score, init_mean_score
     elif isinstance(score, str) and score == "meanvar":
         return meanvar_score, init_meanvar_score
-    elif len(score) == 2 and all([is_jitted(s) for s in score]):
+    elif len(score) == 2 and (all([is_jitted(s) for s in score]) or not require_jitted):
         return score[0], score[1]
     else:
         message = (
