@@ -3,7 +3,7 @@
 __author__ = ["mtveten"]
 __all__ = ["MoscoreAnomaly"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -24,7 +24,7 @@ def run_moscore_anomaly(
     left_bandwidth: int,
     right_bandwidth: int,
     threshold: float,
-) -> Tuple[List[Tuple[int, int]], np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[list[tuple[int, int]], np.ndarray, np.ndarray, np.ndarray]:
     n = len(X)
     starts = tuple(
         np.arange(left_bandwidth, n - k - right_bandwidth)
@@ -68,7 +68,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -138,7 +138,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         min_anomaly_length: int = 2,
         max_anomaly_length: int = 100,
         left_bandwidth: int = 50,
