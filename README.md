@@ -13,7 +13,7 @@ A playground for now.
 ```sh
 pip install skchange
 ```
-Requires Python >= 3.8, < 3.13.
+Requires Python >= 3.9, < 3.13.
 
 ## Quickstart
 

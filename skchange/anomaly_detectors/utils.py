@@ -1,6 +1,6 @@
 """Utility functions for anomaly detection."""
 
-from typing import List, Tuple, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -8,15 +8,15 @@ import pandas as pd
 
 def merge_anomalies(
     collective_anomalies: Union[
-        List[Tuple[int, int]], List[Tuple[int, int, np.ndarray]]
+        list[tuple[int, int]], list[tuple[int, int, np.ndarray]]
     ] = None,
     point_anomalies: Union[
-        List[int],
-        List[Tuple[int, int]],
-        List[Tuple[int, np.ndarray]],
-        List[Tuple[int, int, np.ndarray]],
+        list[int],
+        list[tuple[int, int]],
+        list[tuple[int, np.ndarray]],
+        list[tuple[int, int, np.ndarray]],
     ] = None,
-) -> List[Tuple[int, int, np.ndarray]]:
+) -> list[tuple[int, int, np.ndarray]]:
     """Merge collective and point anomalies into a single list of intervals.
 
     Parameters
@@ -57,7 +57,7 @@ def merge_anomalies(
 
 
 def anomalies_to_labels(
-    anomalies: List[Tuple[int, int]], n: int, p: int = None
+    anomalies: list[tuple[int, int]], n: int, p: int = None
 ) -> np.ndarray:
     """Convert anomaly indices to labels.
 
@@ -95,8 +95,8 @@ def format_anomaly_output(
     fmt: str,
     labels: str,
     X_index: pd.Index,
-    collective_anomalies: List[tuple] = None,
-    point_anomalies: List[tuple] = None,
+    collective_anomalies: list[tuple] = None,
+    point_anomalies: list[tuple] = None,
     scores: Union[pd.Series, pd.DataFrame] = None,
 ) -> pd.Series:
     """Format the predict method output of change detectors.
@@ -150,8 +150,8 @@ def format_multivariate_anomaly_output(
     labels: str,
     X_index: pd.Index,
     X_columns: pd.Index,
-    collective_anomalies: List[dict] = None,
-    point_anomalies: List[dict] = None,
+    collective_anomalies: list[dict] = None,
+    point_anomalies: list[dict] = None,
     scores: Union[pd.Series, pd.DataFrame] = None,
 ) -> pd.Series:
     """Format the predict method output of change detectors.

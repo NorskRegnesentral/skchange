@@ -3,7 +3,7 @@
 __author__ = ["mtveten"]
 __all__ = ["Mvcapa"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ from skchange.utils.validation.parameters import check_larger_than
 
 def dense_capa_penalty(
     n: int, p: int, n_params: int = 1, scale: float = 1.0
-) -> Tuple[float, np.ndarray]:
+) -> tuple[float, np.ndarray]:
     """Penalty function for dense anomalies in CAPA.
 
     Parameters
@@ -47,7 +47,7 @@ def dense_capa_penalty(
 
 def sparse_capa_penalty(
     n: int, p: int, n_params: int = 1, scale: float = 1.0
-) -> Tuple[float, np.ndarray]:
+) -> tuple[float, np.ndarray]:
     """Penalty function for sparse anomalies in CAPA.
 
     Parameters
@@ -76,7 +76,7 @@ def sparse_capa_penalty(
 
 def intermediate_capa_penalty(
     n: int, p: int, n_params: int = 1, scale: float = 1.0
-) -> Tuple[float, np.ndarray]:
+) -> tuple[float, np.ndarray]:
     """Penalty function balancing both dense and sparse anomalies in CAPA.
 
     Parameters
@@ -118,7 +118,7 @@ def intermediate_capa_penalty(
 
 def combined_capa_penalty(
     n: int, p: int, n_params: int = 1, scale: float = 1.0
-) -> Tuple[float, np.ndarray]:
+) -> tuple[float, np.ndarray]:
     """Pointwise minimum of dense, sparse and intermediate penalties in CAPA.
 
     Parameters
@@ -189,7 +189,7 @@ def capa_penalty_factory(penalty: Union[str, Callable] = "combined") -> Callable
 @njit
 def get_anomalies(
     anomaly_starts: np.ndarray,
-) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
     collective_anomalies = []
     point_anomalies = []
     i = anomaly_starts.size - 1
@@ -230,10 +230,10 @@ def penalise_savings(
 def find_affected_components(
     params: Union[np.ndarray, tuple],
     saving_func: Callable,
-    anomalies: List[Tuple[int, int]],
+    anomalies: list[tuple[int, int]],
     alpha: float,
     betas: np.ndarray,
-) -> List[Tuple[int, int, np.ndarray]]:
+) -> list[tuple[int, int, np.ndarray]]:
     new_anomalies = []
     for start, end in anomalies:
         saving = saving_func(params, np.array([start]), np.array([end]))[0]
@@ -251,7 +251,7 @@ def optimise_savings(
     next_savings: np.ndarray,
     alpha: float,
     betas: np.ndarray,
-) -> Tuple[float, int, np.ndarray]:
+) -> tuple[float, int, np.ndarray]:
     penalised_saving = penalise_savings(next_savings, alpha, betas)
     candidate_savings = opt_savings[starts] + penalised_saving
     argmax = np.argmax(candidate_savings)
@@ -270,7 +270,7 @@ def run_base_capa(
     point_betas: np.ndarray,
     min_segment_length: int,
     max_segment_length: int,
-) -> Tuple[np.ndarray, List[Tuple[int, int]], List[Tuple[int, int]]]:
+) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
     n = X.shape[0]
     opt_savings = np.zeros(n + 1)
     # Store the optimal start and affected components of an anomaly for each t.
@@ -326,8 +326,8 @@ def run_mvcapa(
     point_betas: np.ndarray,
     min_segment_length: int,
     max_segment_length: int,
-) -> Tuple[
-    np.ndarray, List[Tuple[int, int, np.ndarray]], List[Tuple[int, int, np.ndarray]]
+) -> tuple[
+    np.ndarray, list[tuple[int, int, np.ndarray]], list[tuple[int, int, np.ndarray]]
 ]:
     params = saving_init_func(X)
     opt_savings, collective_anomalies, point_anomalies = run_base_capa(
@@ -418,7 +418,7 @@ class Mvcapa(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        saving: Union[str, Tuple[Callable, Callable]] = "mean",
+        saving: Union[str, tuple[Callable, Callable]] = "mean",
         collective_penalty: Union[str, Callable] = "combined",
         collective_penalty_scale: float = 2.0,
         point_penalty: Union[str, Callable] = "sparse",
@@ -446,7 +446,7 @@ class Mvcapa(BaseSeriesAnnotator):
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
-    def _get_penalty_components(self, X: pd.DataFrame) -> Tuple[np.ndarray, float]:
+    def _get_penalty_components(self, X: pd.DataFrame) -> tuple[np.ndarray, float]:
         # TODO: Add penalty tuning.
         # if self.tune:
         #     return self._tune_threshold(X)

@@ -1,8 +1,9 @@
 """The collective and point anomalies (CAPA) algorithm."""
+
 __author__ = ["mtveten"]
 __all__ = ["Capa"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -25,7 +26,7 @@ def run_capa(
     point_alpha: float,
     min_segment_length: int,
     max_segment_length: int,
-) -> Tuple[np.ndarray, List[Tuple[int, int]], List[Tuple[int, int]]]:
+) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
     params = saving_init_func(X)
     collective_betas = np.zeros(1)
     point_betas = np.zeros(1)
@@ -106,7 +107,7 @@ class Capa(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        saving: Union[str, Tuple[Callable, Callable]] = "mean",
+        saving: Union[str, tuple[Callable, Callable]] = "mean",
         collective_penalty_scale: float = 2.0,
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
@@ -130,7 +131,7 @@ class Capa(BaseSeriesAnnotator):
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
-    def _get_penalty_components(self, X: pd.DataFrame) -> Tuple[np.ndarray, float]:
+    def _get_penalty_components(self, X: pd.DataFrame) -> tuple[np.ndarray, float]:
         # TODO: Add penalty tuning.
         # if self.tune:
         #     return self._tune_threshold(X)

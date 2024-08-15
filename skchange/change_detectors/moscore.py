@@ -3,7 +3,7 @@
 __author__ = ["mtveten"]
 __all__ = ["Moscore"]
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -38,7 +38,7 @@ def moscore_transform(
     score_f: Callable,
     score_init_f: Callable,
     bandwidth: int,
-) -> Tuple[list, np.ndarray]:
+) -> tuple[list, np.ndarray]:
     n = len(X)
     splits = np.arange(bandwidth - 1, n - bandwidth)
     starts = splits - bandwidth + 1
@@ -59,7 +59,7 @@ class Moscore(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -120,7 +120,7 @@ class Moscore(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         bandwidth: int = 30,
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
