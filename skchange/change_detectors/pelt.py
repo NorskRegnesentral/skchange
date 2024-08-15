@@ -4,7 +4,7 @@ __author__ = ["mtveten"]
 __all__ = ["Pelt"]
 
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -31,7 +31,7 @@ def get_changepoints(prev_cpts: np.ndarray) -> list:
 @njit
 def run_pelt(
     X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length
-) -> Tuple[np.ndarray, list]:
+) -> tuple[np.ndarray, list]:
     params = cost_init_func(X)
     n = len(X)
 

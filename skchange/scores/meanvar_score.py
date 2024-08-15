@@ -1,7 +1,5 @@
 """Test statistic for differences in the mean and/or variance."""
 
-from typing import Tuple
-
 import numpy as np
 from numba import njit
 
@@ -10,7 +8,7 @@ from skchange.utils.numba.stats import col_cumsum
 
 
 @njit(cache=True)
-def init_meanvar_score(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def init_meanvar_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Precompute sums and squared sums for 'meanvar_score'.
 
     Parameters

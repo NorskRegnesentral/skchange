@@ -1,7 +1,5 @@
 """Mean saving for CAPA type anomaly detection."""
 
-from typing import Tuple
-
 import numpy as np
 from numba import njit
 
@@ -10,7 +8,7 @@ from skchange.utils.numba.stats import col_cumsum
 
 
 @njit(cache=True)
-def init_mean_saving(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def init_mean_saving(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Precompute sums and weights for mean_cost.
 
     Parameters
@@ -36,7 +34,7 @@ def init_mean_saving(X: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 @njit(cache=True)
 def mean_saving(
-    precomputed_params: Tuple[np.ndarray, np.ndarray],
+    precomputed_params: tuple[np.ndarray, np.ndarray],
     starts: np.ndarray,
     ends: np.ndarray,
 ) -> np.ndarray:
@@ -44,7 +42,7 @@ def mean_saving(
 
     Parameters
     ----------
-    precomputed_params : Tuple[np.ndarray, np.ndarray]
+    precomputed_params : tuple[np.ndarray, np.ndarray]
         Precomputed parameters from init_mean_saving.
     starts : np.ndarray
         Start indices of the segments.

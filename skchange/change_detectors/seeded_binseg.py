@@ -3,7 +3,7 @@
 __author__ = ["mtveten"]
 __all__ = ["SeededBinarySegmentation"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -19,7 +19,7 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 @njit
 def make_seeded_intervals(
     n: int, min_length: int, max_length: int, growth_factor: float = 1.5
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     starts = [0]  # For numba to be able to compile type.
     ends = [0]  # For numba to be able to compile type.
     step_factor = 1 - 1 / growth_factor
@@ -47,7 +47,7 @@ def greedy_changepoint_selection(
     starts: np.ndarray,
     ends: np.ndarray,
     threshold: float,
-) -> List[int]:
+) -> list[int]:
     scores = scores.copy()
     cpts = []
     while np.any(scores > threshold):
@@ -68,7 +68,7 @@ def run_seeded_binseg(
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     starts, ends = make_seeded_intervals(
         X.shape[0],
         2 * min_segment_length,
@@ -109,7 +109,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -174,7 +174,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
