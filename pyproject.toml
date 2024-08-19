@@ -34,10 +34,10 @@ classifiers = [
 ]
 requires-python = ">=3.9,<3.13"
 dependencies = [
-  "numpy<1.27,>=1.21",  # required for framework layer and base class logic
-  "pandas<2.2.0,>=1.3",  # pandas is the main in-memory data container
+  "numpy>=1.21",
+  "pandas>=1.1",
   "numba>=0.56",  # numba is used for fast computation throughout
-  "sktime>=0.23.0,<0.30.0",
+  "sktime>=0.30",
 ]
 
 [project.urls]
