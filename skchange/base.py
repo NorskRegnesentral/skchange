@@ -211,10 +211,10 @@ class BaseDetector(BaseEstimator):
         Creates fitted model that updates attributes ending in "_". Sets
         _is_fitted flag to True.
         """
-        X = check_series(X)
+        X = check_series(X, allow_index_names=True)
 
         if Y is not None:
-            Y = check_series(Y)
+            Y = check_series(Y, allow_index_names=True)
 
         self._X = X
         self._Y = Y
@@ -243,7 +243,7 @@ class BaseDetector(BaseEstimator):
         """
         self.check_is_fitted()
 
-        X = check_series(X)
+        X = check_series(X, allow_index_names=True)
 
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
 
@@ -330,7 +330,7 @@ class BaseDetector(BaseEstimator):
             Scores for sequence X exact format depends on annotation type.
         """
         self.check_is_fitted()
-        X = check_series(X)
+        X = check_series(X, allow_index_names=True)
         return self._transform_scores(X)
 
     def update(self, X, Y=None):
@@ -354,10 +354,10 @@ class BaseDetector(BaseEstimator):
         """
         self.check_is_fitted()
 
-        X = check_series(X)
+        X = check_series(X, allow_index_names=True)
 
         if Y is not None:
-            Y = check_series(Y)
+            Y = check_series(Y, allow_index_names=True)
 
         self._X = X.combine_first(self._X)
 
@@ -385,7 +385,7 @@ class BaseDetector(BaseEstimator):
         -----
         Updates fitted model that updates attributes ending in "_".
         """
-        X = check_series(X)
+        X = check_series(X, allow_index_names=True)
 
         self.update(X=X)
         Y = self.predict(X=X)
@@ -512,58 +512,3 @@ class BaseDetector(BaseEstimator):
     # @staticmethod
     # def collective_anomalies_to_point_anomalies(self, collective_anomalies):
     #     pass
-
-    # @staticmethod
-    # def change_points_to_segments(y_sparse, start, end):
-    #     """Convert a series of change point indexes to segments.
-
-    #     Parameters
-    #     ----------
-    #     y_sparse : pd.Series
-    #         A series containing the indexes of change points.
-    #     start : optional
-    #         Starting point of the first segment.
-    #     end : optional
-    #         Ending point of the last segment
-
-    #     Returns
-    #     -------
-    #     pd.Series
-    #         A series with an interval index indicating the start and end points of the
-    #         segments. The values of the series are the labels of the segments.
-
-    #     Examples
-    #     --------
-    #     >>> import pandas as pd
-    #     >>> from sktime.annotation.base._base import BaseSeriesAnnotator
-    #     >>> change_points = pd.Series([1, 2, 5])
-    #     >>> BaseSeriesAnnotator.change_points_to_segments(change_points, 0, 7)
-    #     [0, 1)   -1
-    #     [1, 2)    1
-    #     [2, 5)    2
-    #     [5, 7)    3
-    #     dtype: int64
-    #     """
-    #     breaks = y_sparse.values
-
-    #     if start > breaks.min():
-    #         raise ValueError(
-    #             "The starting index must be before the first change point."
-    #         )
-    #     first_change_point = breaks.min()
-
-    #     if start is not None:
-    #         breaks = np.insert(breaks, 0, start)
-    #     if end is not None:
-    #         breaks = np.append(breaks, end)
-
-    #     index = pd.IntervalIndex.from_breaks(breaks, copy=True, closed="left")
-    #     segments = pd.Series(0, index=index)
-
-    #     in_range = index.left >= first_change_point
-
-    #     number_of_segments = in_range.sum()
-    #     segments.loc[in_range] = range(1, number_of_segments + 1)
-    #     segments.loc[~in_range] = -1
-
-    #     return segments
