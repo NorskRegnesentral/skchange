@@ -671,7 +671,8 @@ class ChangepointDetector(BaseDetector):
         # y_dense = y_dense.reset_index(drop=True)
         # y_sparse = y_dense.iloc[y_dense.values == 1].index
         y_dense = y_dense.reset_index(drop=True)
-        is_changepoint = np.roll(y_dense.diff() > 0, -1)  # changepoint = end of segment
+        # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
+        is_changepoint = np.roll(y_dense.diff().abs() > 0, -1)
         changepoints = y_dense.index[is_changepoint]
         y_sparse = pd.Series(changepoints, name="changepoint", dtype="int64")
         return y_sparse
