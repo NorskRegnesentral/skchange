@@ -8,9 +8,8 @@ from typing import Callable, Optional, Union
 import numpy as np
 import pandas as pd
 from numba import njit
-from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.change_detectors.utils import format_changepoint_output
+from skchange.change_detectors.base import ChangepointDetector
 from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
@@ -49,7 +48,7 @@ def moscore_transform(
     return scores
 
 
-class Moscore(BaseSeriesAnnotator):
+class Moscore(ChangepointDetector):
     """Moving score algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
@@ -85,17 +84,6 @@ class Moscore(BaseSeriesAnnotator):
     min_detection_interval : int, optional (default=1)
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
 
     References
     ----------
@@ -113,6 +101,8 @@ class Moscore(BaseSeriesAnnotator):
     """
 
     _tags = {
+        "task": "change_point_detection",
+        "learning_type": "unsupervised",
         "capability:missing_values": False,
         "capability:multivariate": True,
         "fit_is_empty": False,
@@ -125,15 +115,13 @@ class Moscore(BaseSeriesAnnotator):
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         min_detection_interval: int = 1,
-        fmt: str = "sparse",
-        labels: str = "int_label",
     ):
         self.score = score
         self.bandwidth = bandwidth
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
-        super().__init__(fmt=fmt, labels=labels)
+        super().__init__()
         self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(1, self.bandwidth, "bandwidth")
@@ -254,17 +242,18 @@ class Moscore(BaseSeriesAnnotator):
         self.threshold_ = self._get_threshold(X)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+        """Return scores for predicted annotations on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Data to annotate, time series.
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
+        Y : pd.Series
+            Annotations for sequence X exact format depends on annotation type.
         """
         X = check_data(
             X,
@@ -277,13 +266,25 @@ class Moscore(BaseSeriesAnnotator):
             self.score_init_f,
             self.bandwidth,
         )
-        self.changepoints = get_moscore_changepoints(
-            scores, self.threshold_, self.min_detection_interval
+        return pd.Series(scores, index=X.index, name="score")
+
+    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+        """Create annotations on test/deployment data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame - data to annotate, time series
+
+        Returns
+        -------
+        Y : pd.Series - annotations for sequence X
+            exact format depends on annotation type
+        """
+        self.scores = self.score_transform(X)
+        changepoints = get_moscore_changepoints(
+            self.scores.values, self.threshold_, self.min_detection_interval
         )
-        self.scores = pd.Series(scores, index=X.index, name="score")
-        return format_changepoint_output(
-            self.fmt, self.labels, self.changepoints, X.index, self.scores
-        )
+        return pd.Series(changepoints, name="changepoint", dtype="int64")
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
