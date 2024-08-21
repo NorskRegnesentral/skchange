@@ -600,8 +600,10 @@ class CollectiveAnomalyDetector(BaseDetector):
 class ChangepointDetector(BaseDetector):
     """Base class for changepoint detectors.
 
-    Changepoint detectors detect the point in time where a change in the data occurs.
-    A changepoint is defined as the index of the last element before a change.
+    Changepoint detectors detect points in time where a change in the data occurs.
+    Data between two changepoints is a segment where the data is considered to be
+    homogeneous, i.e., of the same distribution. A changepoint is defined as the
+    location of the last element of a segment.
 
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
@@ -638,10 +640,6 @@ class ChangepointDetector(BaseDetector):
         -------
         pd.Series
         """
-        # TODO: Use segment labels as dense output or changepoint indicator?
-        # Segment labels probably more useful.
-        # y_dense = pd.Series(0, index=index, name="changepoint", dtype="int64")
-        # y_dense.iloc[y_sparse.values] = 1
         changepoints = y_sparse.to_list()
         n = len(index)
         changepoints = [-1] + changepoints + [n - 1]
@@ -667,10 +665,6 @@ class ChangepointDetector(BaseDetector):
         -------
         pd.Series
         """
-        # TODO: Use segment labels as dense output or changepoint indicator?
-        # Segment labels probably more useful.
-        # y_dense = y_dense.reset_index(drop=True)
-        # y_sparse = y_dense.iloc[y_dense.values == 1].index
         y_dense = y_dense.reset_index(drop=True)
         # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
         is_changepoint = np.roll(y_dense.diff().abs() > 0, -1)
