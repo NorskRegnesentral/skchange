@@ -8,8 +8,8 @@ Scitype defining methods:
     fitting                         - fit(self, X, Y=None)
     detecting, sparse format        - predict(self, X)
     detecting, dense format         - transform(self, X)
-    detection scores, dense         - score_transform(self, X)
-    updating (temporal)             - update(self, X, Y=None)
+    detection scores, dense         - score_transform(self, X)  [optional]
+    updating (temporal)             - update(self, X, Y=None)  [optional]
 
 Each detector type (e.g. anomaly detector, collective anomaly detector, changepoint
 detector) are subclasses of BaseDetector (task + learning_type tags in sktime).
@@ -17,7 +17,7 @@ They are defined by the content and format of the output of the predict method. 
 detector type therefore has the following methods for converting between sparse and
 dense output formats:
     converting sparse output to dense - sparse_to_dense(y_sparse, index)
-    converting dense output to sparse - dense_to_sparse(y_dense)
+    converting dense output to sparse - dense_to_sparse(y_dense)  [optional]
 
 Convenience methods:
     update&detect   - update_predict(self, X)
