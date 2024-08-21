@@ -56,12 +56,12 @@ class BaseDetector(BaseEstimator):
     - _fit(self, X, Y=None) -> self
     - _predict(self, X) -> pd.Series or pd.DataFrame
     - sparse_to_dense(y_sparse, index) -> pd.Series or pd.DataFrame
+        * Enables the transform method to work.
 
     Optional to implement:
     - dense_to_sparse(y_dense) -> pd.Series or pd.DataFrame
     - _score_transform(self, X) -> pd.Series or pd.DataFrame
     - _update(self, X, Y=None) -> self
-
     """
 
     _tags = {
@@ -459,7 +459,6 @@ class PointAnomalyDetector(BaseDetector):
         * "capability:multivariate": True,
         * "fit_is_empty": False,
 
-
     Needs to be implemented:
     - _fit(self, X, Y=None) -> self
     - _predict(self, X) -> pd.Series
@@ -496,7 +495,7 @@ class PointAnomalyDetector(BaseDetector):
         ----------
         y_dense : pd.Series
             The dense output from an anomaly detector's transform method.
-            0-entries are normal and 1-entries are anomalous.
+            0-entries are normal and >0-entries are anomalous.
 
         Returns
         -------
@@ -507,7 +506,7 @@ class PointAnomalyDetector(BaseDetector):
         The output from the predict method is expected to be in this format.
         """
         y_dense = y_dense.reset_index(drop=True)
-        y_sparse = y_dense.iloc[y_dense.values == 1].index
+        y_sparse = y_dense.iloc[y_dense.values > 0].index
         return pd.Series(y_sparse)
 
 
@@ -543,20 +542,22 @@ class CollectiveAnomalyDetector(BaseDetector):
         Parameters
         ----------
         y_sparse : pd.arrays.IntervalArray
-            The sparse output from a collective anomaly detector's predict method.
+            The collective anomaly intervals.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
 
         Returns
         -------
-        pd.Series
+        pd.Series where 0-entries are normal and each collective anomaly are labelled
+            from 1, ..., K.
         """
         y_dense = pd.IntervalIndex(y_sparse).get_indexer(index)
-        # get_indexer return values 0, 1, 2, ... for values inside each intervals.
-        y_dense.loc[y_dense >= 0] = 1
-        # get_indexer returns -1 for values outside any interval
-        y_dense.loc[y_dense < 0] = 0
-        return y_dense
+        # get_indexer return values 0 for the values inside the first interval, 1 to
+        # the values within the next interval and so on, and -1 for values outside any
+        # interval. The skchange convention is that 0 is normal and > 0 is anomalous,
+        # so we add 1 to the result.
+        y_dense += 1
+        return pd.Series(y_dense, index=index, name="anomaly", dtype="int64")
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.Series):
@@ -566,7 +567,8 @@ class CollectiveAnomalyDetector(BaseDetector):
         ----------
         y_dense : pd.Series
             The dense output from a collective anomaly detector's transform method:
-            A binary series where 0-entries are normal and 1-entries are anomalous.
+            An integer series where 0-entries are normal and each collective anomaly
+            are labelled from 1, ..., K.
 
         Returns
         -------
@@ -577,7 +579,7 @@ class CollectiveAnomalyDetector(BaseDetector):
         The output from the predict method is expected to be in this format.
         """
         y_dense = y_dense.reset_index(drop=True)
-        y_anomaly = y_dense.loc[y_dense.values == 1]
+        y_anomaly = y_dense.loc[y_dense.values > 0]
         anomaly_locations_diff = y_anomaly.index.diff()
 
         first_anomaly_start = y_anomaly.index[:1].to_numpy()
