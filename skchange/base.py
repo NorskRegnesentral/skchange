@@ -13,7 +13,7 @@ Scitype defining methods:
 
 Each detector type (subclass of BaseDetector in skchange, task + learning_type tags of
 BaseSeriesAnnotator in sktime) is defined by the content and format of the output of the
-predict method. Each detector type therefore needs the following methods for converting
+predict method. Each detector type therefore has the following methods for converting
 between sparse and dense output formats:
     sparse_to_dense - sparse_to_dense(y_sparse, index)
     dense_to_sparse - dense_to_sparse(y_dense)
