@@ -401,7 +401,8 @@ class BaseDetector(BaseEstimator):
         return self.sparse_to_dense(Y, index=X.index)
 
 
-# Required .predict output formats per task and capability:
+# Notes on required .predict output formats per detector type (task and capability):
+#
 # - task == "anomaly_detection":
 #     pd.Series(anomaly_indices, dtype=int, name="anomalies)
 # - task == "collective_anomaly_detection":
@@ -448,8 +449,8 @@ class PointAnomalyDetector(BaseDetector):
 
     Anomaly detectors detect individual data points that are considered anomalous.
 
-    Output format of the predict method:
-    pd.Series(anomaly_indices, dtype=int, name="anomaly")
+    Output format of the predict method: See the dense_to_sparse method.
+    Output format of the transform method: See the sparse_to_dense method.
 
     Subclasses should set the following tags for sktime compatibility:
     - task: "anomaly_detection"
@@ -469,7 +470,7 @@ class PointAnomalyDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index):
+    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series[int]:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
@@ -488,7 +489,7 @@ class PointAnomalyDetector(BaseDetector):
         return y_dense
 
     @staticmethod
-    def dense_to_sparse(y_dense: pd.Series):
+    def dense_to_sparse(y_dense: pd.Series) -> pd.Series[int]:
         """Convert the dense output from the transform method to a sparse format.
 
         Parameters
@@ -500,10 +501,6 @@ class PointAnomalyDetector(BaseDetector):
         Returns
         -------
         pd.Series of the integer locations of the anomalous data points.
-
-        Notes
-        -----
-        The output from the predict method is expected to be in this format.
         """
         y_dense = y_dense.reset_index(drop=True)
         y_sparse = y_dense.iloc[y_dense.values > 0].index
@@ -517,6 +514,7 @@ class CollectiveAnomalyDetector(BaseDetector):
     anomalous.
 
     Output format of the predict method: See the dense_to_sparse method.
+    Output format of the transform method: See the sparse_to_dense method.
 
     Subclasses should set the following tags for sktime compatibility:
     - task: "collective_anomaly_detection"
@@ -536,12 +534,14 @@ class CollectiveAnomalyDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.arrays.IntervalArray, index: pd.Index):
+    def sparse_to_dense(
+        y_sparse: pd.Series[pd.Interval], index: pd.Index
+    ) -> pd.Series[int]:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
         ----------
-        y_sparse : pd.arrays.IntervalArray
+        y_sparse : pd.Series[pd.Interval]
             The collective anomaly intervals.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
@@ -560,7 +560,7 @@ class CollectiveAnomalyDetector(BaseDetector):
         return pd.Series(y_dense, index=index, name="anomaly", dtype="int64")
 
     @staticmethod
-    def dense_to_sparse(y_dense: pd.Series):
+    def dense_to_sparse(y_dense: pd.Series) -> pd.Series[pd.Interval]:
         """Convert the dense output from the transform method to a sparse format.
 
         Parameters
@@ -572,11 +572,12 @@ class CollectiveAnomalyDetector(BaseDetector):
 
         Returns
         -------
-        pd.arrays.IntervalArray containing the collective anomaly intervals.
+        pd.Series[pd.Interval] containing the collective anomaly intervals.
 
         Notes
         -----
-        The output from the predict method is expected to be in this format.
+        The start and end points of the intervals can be accessed by
+        output.array.left and output.array.right, respectively.
         """
         y_dense = y_dense.reset_index(drop=True)
         y_anomaly = y_dense.loc[y_dense.values > 0]
@@ -590,8 +591,8 @@ class CollectiveAnomalyDetector(BaseDetector):
         anomaly_ends = y_anomaly.index[np.roll(anomaly_locations_diff > 1, -1)]
         anomaly_ends = np.insert(anomaly_ends, len(anomaly_ends), last_anomaly_end)
 
-        y_sparse = pd.arrays.IntervalArray.from_arrays(
-            anomaly_starts, anomaly_ends, closed="both"
+        y_sparse = pd.Series(
+            pd.IntervalIndex.from_arrays(anomaly_starts, anomaly_ends, closed="both")
         )
         return y_sparse
 
@@ -602,8 +603,8 @@ class ChangepointDetector(BaseDetector):
     Changepoint detectors detect the point in time where a change in the data occurs.
     A changepoint is defined as the index of the last element before a change.
 
-    Output format of the predict method:
-    pd.Series(changepoint_indices, dtype=int, name="changepoint")
+    Output format of the predict method: See the dense_to_sparse method.
+    Output format of the transform method: See the sparse_to_dense method.
 
     Subclasses should set the following tags for sktime compatibility:
     - task: "change_point_detection"
@@ -623,7 +624,7 @@ class ChangepointDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index):
+    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series[int]:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
@@ -654,7 +655,7 @@ class ChangepointDetector(BaseDetector):
         return y_dense
 
     @staticmethod
-    def dense_to_sparse(y_dense: pd.Series):
+    def dense_to_sparse(y_dense: pd.Series) -> pd.Series[int]:
         """Convert the dense output from the transform method to a sparse format.
 
         Parameters
