@@ -35,7 +35,7 @@ class ChangepointDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series[int]:
+    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
@@ -62,7 +62,7 @@ class ChangepointDetector(BaseDetector):
         return y_dense
 
     @staticmethod
-    def dense_to_sparse(y_dense: pd.Series) -> pd.Series[int]:
+    def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
         """Convert the dense output from the transform method to a sparse format.
 
         Parameters
