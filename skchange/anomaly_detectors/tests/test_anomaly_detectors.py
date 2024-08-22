@@ -3,20 +3,9 @@
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
+from skchange.anomaly_detectors import ANOMALY_DETECTORS, COLLECTIVE_ANOMALY_DETECTORS
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
-
-collective_anomaly_detectors = [
-    # Capa,
-    # CircularBinarySegmentation,
-    # MoscoreAnomaly,
-    # Mvcapa,
-    StatThresholdAnomaliser,
-]
-point_anomaly_detectors = []
-anomaly_detectors = collective_anomaly_detectors + point_anomaly_detectors
-
 
 true_anomalies = [(30, 39), (70, 75)]
 anomaly_data = generate_anomalous_data(
@@ -24,7 +13,7 @@ anomaly_data = generate_anomalous_data(
 )
 
 
-@pytest.mark.parametrize("Estimator", collective_anomaly_detectors)
+@pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
 def test_collective_anomaly_detector_predict(Estimator):
     """Test collective anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
@@ -37,7 +26,7 @@ def test_collective_anomaly_detector_predict(Estimator):
         assert anomalies.array.left[i] == start and anomalies.array.right[i] == end
 
 
-@pytest.mark.parametrize("Estimator", anomaly_detectors)
+@pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
 def test_collective_anomaly_detector_transform(Estimator):
     """Test collective anomaly detector's transform method (dense output)."""
     detector = Estimator.create_test_instance()
@@ -59,7 +48,7 @@ def test_collective_anomaly_detector_transform(Estimator):
         assert (labels.iloc[start : end + 1] == i + 1).all()
 
 
-@pytest.mark.parametrize("Estimator", anomaly_detectors)
+@pytest.mark.parametrize("Estimator", ANOMALY_DETECTORS)
 def test_anomaly_detector_sparse_to_dense(Estimator):
     """Test that predict + sparse_to_dense == transform."""
     detector = Estimator.create_test_instance()
@@ -69,7 +58,7 @@ def test_anomaly_detector_sparse_to_dense(Estimator):
     assert labels.equals(labels_transform)
 
 
-@pytest.mark.parametrize("Estimator", anomaly_detectors)
+@pytest.mark.parametrize("Estimator", ANOMALY_DETECTORS)
 def test_anomaly_detector_dense_to_sparse(Estimator):
     """Test that transform + dense_to_sparse == predict."""
     detector = Estimator.create_test_instance()

@@ -2,12 +2,8 @@
 
 import pytest
 
-from skchange.change_detectors.moscore import Moscore
-from skchange.change_detectors.pelt import Pelt
-from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
+from skchange.change_detectors import CHANGEPOINT_DETECTORS
 from skchange.datasets.generate import generate_teeth_data
-
-change_detectors = [Moscore, Pelt, SeededBinarySegmentation]
 
 n_segments = 2
 seg_len = 50
@@ -16,7 +12,7 @@ changepoint_data = generate_teeth_data(
 )
 
 
-@pytest.mark.parametrize("Estimator", change_detectors)
+@pytest.mark.parametrize("Estimator", CHANGEPOINT_DETECTORS)
 def test_change_detector_predict(Estimator):
     """Test changepoint detector predict (sparse output)."""
     detector = Estimator.create_test_instance()
@@ -24,7 +20,7 @@ def test_change_detector_predict(Estimator):
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
 
-@pytest.mark.parametrize("Estimator", change_detectors)
+@pytest.mark.parametrize("Estimator", CHANGEPOINT_DETECTORS)
 def test_change_detector_transform(Estimator):
     """Test changepoint detector transform (dense output)."""
     detector = Estimator.create_test_instance()
@@ -33,7 +29,7 @@ def test_change_detector_transform(Estimator):
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
 
 
-@pytest.mark.parametrize("Estimator", change_detectors)
+@pytest.mark.parametrize("Estimator", CHANGEPOINT_DETECTORS)
 def test_change_detector_sparse_to_dense(Estimator):
     """Test that predict + sparse_to_dense == transform."""
     detector = Estimator.create_test_instance()
@@ -43,7 +39,7 @@ def test_change_detector_sparse_to_dense(Estimator):
     assert labels.equals(labels_transform)
 
 
-@pytest.mark.parametrize("Estimator", change_detectors)
+@pytest.mark.parametrize("Estimator", CHANGEPOINT_DETECTORS)
 def test_change_detector_dense_to_sparse(Estimator):
     """Test that transform + dense_to_sparse == predict."""
     detector = Estimator.create_test_instance()
