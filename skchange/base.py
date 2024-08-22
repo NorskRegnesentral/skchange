@@ -64,7 +64,7 @@ class BaseDetector(BaseEstimator):
     """
 
     _tags = {
-        "object_type": "detector",  # type of object
+        "object_type": "estimator",  # sktime scitype of object
         "learning_type": "None",  # Tag to determine test in test_all_annotators
         "task": "None",  # Tag to determine test in test_all_annotators
         #
