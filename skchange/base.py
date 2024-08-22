@@ -36,11 +36,11 @@ State:
 __author__ = ["mtveten"]
 __all__ = ["BaseDetector"]
 
-from sktime.base import BaseEstimator
+from sktime.transformations.base import BaseTransformer
 from sktime.utils.validation.series import check_series
 
 
-class BaseDetector(BaseEstimator):
+class BaseDetector(BaseTransformer):
     """Base detector.
 
     An alternative implementation to the BaseSeriesAnnotator class from sktime,
