@@ -7,9 +7,9 @@ from skchange.anomaly_detectors import ANOMALY_DETECTORS, COLLECTIVE_ANOMALY_DET
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
 
-true_anomalies = [(30, 39), (70, 75)]
+true_anomalies = [(30, 34), (70, 75)]
 anomaly_data = generate_anomalous_data(
-    100, anomalies=true_anomalies, means=[10.0, 15.0], random_state=39
+    100, anomalies=true_anomalies, means=[10.0, 15.0], random_state=2
 )
 
 
