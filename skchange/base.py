@@ -206,19 +206,20 @@ class BaseDetector(BaseTransformer):
         return y
 
     def _predict(self, X):
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
 
         core logic
 
         Parameters
         ----------
         X : pd.DataFrame
-            Data to annotate, time series.
+            Data to detect events in (time series).
 
         Returns
         -------
-        y : pd.Series
-            Annotations for sequence X exact format depends on annotation type.
+        y : pd.Series or pd.DataFrame
+            Each element or row corresponds to a detected event. Exact format depends on
+            the specific detector type.
         """
         raise NotImplementedError("abstract method")
 
