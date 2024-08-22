@@ -5,11 +5,11 @@
     Adapted from the sktime.BaseSeriesAnnotator class.
 
 Scitype defining methods:
-    fitting                         - fit(self, X, Y=None)
+    fitting                         - fit(self, X, y=None)
     detecting, sparse format        - predict(self, X)
-    detecting, dense format         - transform(self, X)
+    detecting, dense format         - transform(self, X, y=None)
     detection scores, dense         - score_transform(self, X)  [optional]
-    updating (temporal)             - update(self, X, Y=None)  [optional]
+    updating (temporal)             - update(self, X, y=None)  [optional]
 
 Each detector type (e.g. anomaly detector, collective anomaly detector, changepoint
 detector) are subclasses of BaseDetector (task + learning_type tags in sktime).
@@ -21,8 +21,8 @@ dense output formats:
 
 Convenience methods:
     update&detect   - update_predict(self, X)
-    fit&detect      - fit_predict(self, X, Y=None)
-    fit&transform   - fit_transform(self, X, Y=None)
+    fit&detect      - fit_predict(self, X, y=None)
+    fit&transform   - fit_transform(self, X, y=None)
 
 Inspection methods:
     hyper-parameter inspection  - get_params()
@@ -52,7 +52,7 @@ class BaseDetector(BaseTransformer):
     changepoint, or something else.
 
     Needs to be implemented:
-    - _fit(self, X, Y=None) -> self
+    - _fit(self, X, y=None) -> self
     - _predict(self, X) -> pd.Series or pd.DataFrame
     - sparse_to_dense(y_sparse, index) -> pd.Series or pd.DataFrame
         * Enables the transform method to work.
@@ -60,17 +60,56 @@ class BaseDetector(BaseTransformer):
     Optional to implement:
     - dense_to_sparse(y_dense) -> pd.Series or pd.DataFrame
     - _score_transform(self, X) -> pd.Series or pd.DataFrame
-    - _update(self, X, Y=None) -> self
+    - _update(self, X, y=None) -> self
     """
 
+    # _tags = {
+    #     "object_type": "transformer",  # sktime scitype of object
+    #     "learning_type": "None",  # Tag to determine test in test_all_annotators
+    #     "task": "None",  # Tag to determine test in test_all_annotators
+    #     #
+    #     # todo: distribution_type? we may have to refactor this, seems very soecufuc
+    #     "distribution_type": "None",  # Tag to determine test in test_all_annotators
+    # }  # for unit test cases
+
     _tags = {
-        "object_type": "estimator",  # sktime scitype of object
-        "learning_type": "None",  # Tag to determine test in test_all_annotators
-        "task": "None",  # Tag to determine test in test_all_annotators
-        #
-        # todo: distribution_type? we may have to refactor this, seems very soecufuc
-        "distribution_type": "None",  # Tag to determine test in test_all_annotators
-    }  # for unit test cases
+        "object_type": "transformer",  # type of object
+        "scitype:transform-input": "Series",
+        # what is the scitype of X: Series, or Panel
+        "scitype:transform-output": "Series",
+        # what scitype is returned: Primitives, Series, Panel
+        "scitype:transform-labels": "None",
+        # what is the scitype of y: None (not needed), Primitives, Series, Panel
+        "scitype:instancewise": True,  # is this an instance-wise transform?
+        "capability:inverse_transform": False,  # can the transformer inverse transform?
+        "capability:inverse_transform:range": None,
+        "capability:inverse_transform:exact": True,
+        # inverting range of inverse transform = domain of invertibility of transform
+        "univariate-only": False,  # can the transformer handle multivariate X?
+        "X_inner_mtype": "pd.DataFrame",  # which mtypes do _fit/_predict support for X?
+        # this can be a Panel mtype even if transform-input is Series, vectorized
+        "y_inner_mtype": "None",  # which mtypes do _fit/_predict support for y?
+        "requires_X": True,  # does X need to be passed in fit?
+        "requires_y": False,  # does y need to be passed in fit?
+        "enforce_index_type": None,  # index type that needs to be enforced in X/y
+        "fit_is_empty": False,  # is fit empty and can be skipped? Yes = True
+        "X-y-must-have-same-index": False,  # can estimator handle different X/y index?
+        "transform-returns-same-time-index": True,
+        # does transform return have the same time index as input X
+        "skip-inverse-transform": False,  # is inverse-transform skipped when called?
+        "capability:unequal_length": True,
+        # can the transformer handle unequal length time series (if passed Panel)?
+        "capability:unequal_length:removes": False,
+        # is transform result always guaranteed to be equal length (and series)?
+        "handles-missing-data": False,  # can estimator handle missing data?
+        # todo: rename to capability:missing_values
+        "capability:missing_values": False,
+        # is transform result always guaranteed to contain no missing values?
+        "remember_data": False,  # whether all data seen is remembered as self._X
+        "python_version": None,  # PEP 440 python version specifier to limit versions
+        "authors": "mtveten",  # author(s) of the object
+        "maintainers": "mtveten",  # current maintainer(s) of the object
+    }
 
     def __init__(self):
         self.task = self.get_class_tag("task")
@@ -79,48 +118,48 @@ class BaseDetector(BaseTransformer):
         self._is_fitted = False
 
         self._X = None
-        self._Y = None
+        self._y = None
 
         super().__init__()
 
-    def fit(self, X, Y=None):
-        """Fit to training data.
+    # def fit(self, X, y=None):
+    #     """Fit to training data.
 
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Training data to fit model to (time series).
-        Y : pd.Series, optional
-            Ground truth annotations for training if annotator is supervised.
+    #     Parameters
+    #     ----------
+    #     X : pd.DataFrame
+    #         Training data to fit model to (time series).
+    #     y : pd.Series, optional
+    #         Ground truth annotations for training if annotator is supervised.
 
-        Returns
-        -------
-        self :
-            Reference to self.
+    #     Returns
+    #     -------
+    #     self :
+    #         Reference to self.
 
-        Notes
-        -----
-        Creates fitted model that updates attributes ending in "_". Sets
-        _is_fitted flag to True.
-        """
-        X = check_series(X, allow_index_names=True)
+    #     Notes
+    #     -----
+    #     Creates fitted model that updates attributes ending in "_". Sets
+    #     _is_fitted flag to True.
+    #     """
+    #     X = check_series(X, allow_index_names=True)
 
-        if Y is not None:
-            Y = check_series(Y, allow_index_names=True)
+    #     if y is not None:
+    #         y = check_series(y, allow_index_names=True)
 
-        self._X = X
-        self._Y = Y
+    #     self._X = X
+    #     self._y = y
 
-        # fkiraly: insert checks/conversions here, after PR #1012 I suggest
+    #     # fkiraly: insert checks/conversions here, after PR #1012 I suggest
 
-        self._fit(X=X, Y=Y)
+    #     self._fit(X=X, y=y)
 
-        # this should happen last
-        self._is_fitted = True
+    #     # this should happen last
+    #     self._is_fitted = True
 
-        return self
+    #     return self
 
-    def _fit(self, X, Y=None):
+    def _fit(self, X, y=None):
         """Fit to training data.
 
         core logic
@@ -129,7 +168,7 @@ class BaseDetector(BaseTransformer):
         ----------
         X : pd.DataFrame
             Training data to fit model to time series.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Ground truth annotations for training if annotator is supervised.
 
         Returns
@@ -153,7 +192,7 @@ class BaseDetector(BaseTransformer):
 
         Returns
         -------
-        Y : pd.Series or pd.DataFrame
+        y : pd.Series or pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the specific detector type.
         """
@@ -163,9 +202,8 @@ class BaseDetector(BaseTransformer):
 
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
 
-        Y = self._predict(X=X)
-
-        return Y
+        y = self._predict(X=X)
+        return y
 
     def _predict(self, X):
         """Create annotations on test/deployment data.
@@ -179,12 +217,12 @@ class BaseDetector(BaseTransformer):
 
         Returns
         -------
-        Y : pd.Series
+        y : pd.Series
             Annotations for sequence X exact format depends on annotation type.
         """
         raise NotImplementedError("abstract method")
 
-    def transform(self, X):
+    def _transform(self, X, y=None):
         """Detect events and return the result in a dense format.
 
         Parameters
@@ -194,13 +232,21 @@ class BaseDetector(BaseTransformer):
 
         Returns
         -------
-        Y : pd.Series or pd.DataFrame
+        y : pd.Series or pd.DataFrame
             Detections for sequence X. The returned detections will be in the dense
             format, meaning that each element in X will be annotated according to the
             detection results in some meaningful way depending on the detector type.
         """
-        Y = self.predict(X)
-        return self.sparse_to_dense(Y, X.index)
+        y = self.predict(X)
+        y_dense = self.sparse_to_dense(y, X.index)
+
+        # sktime does not support transformations that change the state of the object.
+        # Some detectors store detection score information a self.scores during predict.
+        # For now remove self.scores in transform to pass tests.
+        if hasattr(self, "scores"):
+            del self.scores
+
+        return y_dense
 
     @staticmethod
     def sparse_to_dense(y_sparse, index):
@@ -246,7 +292,7 @@ class BaseDetector(BaseTransformer):
 
         Returns
         -------
-        Y : pd.Series
+        y : pd.Series
             Scores for sequence X exact format depends on annotation type.
         """
         self.check_is_fitted()
@@ -265,20 +311,20 @@ class BaseDetector(BaseTransformer):
 
         Returns
         -------
-        Y : pd.Series
+        y : pd.Series
             One score for each element in X.
             Annotations for sequence X exact format depends on annotation type.
         """
         raise NotImplementedError("abstract method")
 
-    def update(self, X, Y=None):
+    def update(self, X, y=None):
         """Update model with new data and optional ground truth annotations.
 
         Parameters
         ----------
         X : pd.DataFrame
             Training data to update model with (time series).
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Ground truth annotations for training if annotator is supervised.
 
         Returns
@@ -294,19 +340,19 @@ class BaseDetector(BaseTransformer):
 
         X = check_series(X, allow_index_names=True)
 
-        if Y is not None:
-            Y = check_series(Y, allow_index_names=True)
+        if y is not None:
+            y = check_series(y, allow_index_names=True)
 
         self._X = X.combine_first(self._X)
 
-        if Y is not None:
-            self._Y = Y.combine_first(self._Y)
+        if y is not None:
+            self._y = y.combine_first(self._y)
 
-        self._update(X=X, Y=Y)
+        self._update(X=X, y=y)
 
         return self
 
-    def _update(self, X, Y=None):
+    def _update(self, X, y=None):
         """Update model with new data and optional ground truth annotations.
 
         core logic
@@ -315,7 +361,7 @@ class BaseDetector(BaseTransformer):
         ----------
         X : pd.DataFrame
             Training data to update model with time series
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Ground truth annotations for training if annotator is supervised.
 
         Returns
@@ -328,7 +374,7 @@ class BaseDetector(BaseTransformer):
         Updates fitted model that updates attributes ending in "_".
         """
         # default/fallback: re-fit to all data
-        self._fit(self._X, self._Y)
+        self._fit(self._X, self._y)
 
         return self
 
@@ -342,7 +388,7 @@ class BaseDetector(BaseTransformer):
 
         Returns
         -------
-        Y : pd.Series
+        y : pd.Series
             Annotations for sequence X exact format depends on annotation type.
 
         Notes
@@ -352,21 +398,21 @@ class BaseDetector(BaseTransformer):
         X = check_series(X, allow_index_names=True)
 
         self.update(X=X)
-        Y = self.predict(X=X)
+        y = self.predict(X=X)
 
-        return Y
+        return y
 
-    def fit_predict(self, X, Y=None):
+    def fit_predict(self, X, y=None):
         """Fit to data, then predict it.
 
-        Fits model to X and Y with given annotation parameters
+        Fits model to X and y with given annotation parameters
         and returns the annotations made by the model.
 
         Parameters
         ----------
         X : pd.DataFrame, pd.Series or np.ndarray
             Data to be transformed
-        Y : pd.Series or np.ndarray, optional (default=None)
+        y : pd.Series or np.ndarray, optional (default=None)
             Target values of data to be predicted.
 
         Returns
@@ -376,19 +422,19 @@ class BaseDetector(BaseTransformer):
         """
         # Non-optimized default implementation; override when a better
         # method is possible for a given algorithm.
-        return self.fit(X, Y).predict(X)
+        return self.fit(X, y).predict(X)
 
-    def fit_transform(self, X, Y=None):
+    def fit_transform(self, X, y=None):
         """Fit to data, then transform it.
 
-        Fits model to X and Y with given annotation parameters
+        Fits model to X and y with given annotation parameters
         and returns the annotations made by the model.
 
         Parameters
         ----------
         X : pd.DataFrame, pd.Series or np.ndarray
             Data to be transformed
-        Y : pd.Series or np.ndarray, optional (default=None)
+        y : pd.Series or np.ndarray, optional (default=None)
             Target values of data to be predicted.
 
         Returns
@@ -396,8 +442,8 @@ class BaseDetector(BaseTransformer):
         self : pd.Series
             Annotations for sequence X exact format depends on annotation type.
         """
-        Y = self.fit_predict(X)
-        return self.sparse_to_dense(Y, index=X.index)
+        y = self.fit_predict(X)
+        return self.sparse_to_dense(y, index=X.index)
 
 
 # Notes on required .predict output formats per detector type (task and capability):

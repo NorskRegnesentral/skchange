@@ -128,7 +128,7 @@ class Moscore(ChangepointDetector):
         check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
         check_larger_than(0, self.level, "level")
         check_in_interval(
-            pd.Interval(1, self.bandwidth / 2 - 1, closed="both"),
+            pd.Interval(1, max(1, self.bandwidth / 2 - 1), closed="both"),
             self.min_detection_interval,
             "min_detection_interval",
         )
@@ -205,7 +205,7 @@ class Moscore(ChangepointDetector):
                 n, p, self.bandwidth, self.level
             )
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -222,7 +222,7 @@ class Moscore(ChangepointDetector):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -252,7 +252,7 @@ class Moscore(ChangepointDetector):
 
         Returns
         -------
-        Y : pd.Series
+        y : pd.Series
             Annotations for sequence X exact format depends on annotation type.
         """
         X = check_data(
@@ -277,7 +277,7 @@ class Moscore(ChangepointDetector):
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
+        y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
         self.scores = self.score_transform(X)
@@ -306,6 +306,7 @@ class Moscore(ChangepointDetector):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean", "bandwidth": 10},
+            {"score": "mean", "bandwidth": 5},
+            {"score": "meanvar", "bandwidth": 5},
         ]
         return params

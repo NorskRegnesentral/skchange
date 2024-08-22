@@ -23,12 +23,12 @@ class PointAnomalyDetector(BaseDetector):
         * "fit_is_empty": False,
 
     Needs to be implemented:
-    - _fit(self, X, Y=None) -> self
+    - _fit(self, X, y=None) -> self
     - _predict(self, X) -> pd.Series
 
     Optional to implement:
     - _score_transform(self, X) -> pd.Series
-    - _update(self, X, Y=None) -> self
+    - _update(self, X, y=None) -> self
     """
 
     @staticmethod
@@ -95,12 +95,12 @@ class CollectiveAnomalyDetector(BaseDetector):
         * "fit_is_empty": False,
 
     Needs to be implemented:
-    - _fit(self, X, Y=None) -> self
+    - _fit(self, X, y=None) -> self
     - _predict(self, X) -> pd.Series
 
     Optional to implement:
     - _score_transform(self, X) -> pd.Series
-    - _update(self, X, Y=None) -> self
+    - _update(self, X, y=None) -> self
     """
 
     @staticmethod
@@ -197,12 +197,12 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
         * "fit_is_empty": False,
 
     Needs to be implemented:
-    - _fit(self, X, Y=None) -> self
+    - _fit(self, X, y=None) -> self
     - _predict(self, X) -> pd.DataFrame
 
     Optional to implement:
     - _score_transform(self, X) -> pd.Series
-    - _update(self, X, Y=None) -> self
+    - _update(self, X, y=None) -> self
     """
 
     @staticmethod

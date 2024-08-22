@@ -244,7 +244,7 @@ class SeededBinarySegmentation(ChangepointDetector):
             p = X.shape[1]
             return self.threshold_scale * self.get_default_threshold(n, p)
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -259,7 +259,7 @@ class SeededBinarySegmentation(ChangepointDetector):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -284,7 +284,7 @@ class SeededBinarySegmentation(ChangepointDetector):
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
+        y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
         X = check_data(
@@ -304,7 +304,7 @@ class SeededBinarySegmentation(ChangepointDetector):
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
         )
-        return ChangepointDetector.sparse_to_dense(cpts, X.index)
+        return ChangepointDetector._format_sparse_output(cpts)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -327,5 +327,6 @@ class SeededBinarySegmentation(ChangepointDetector):
         """
         params = [
             {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
+            {"score": "mean", "min_segment_length": 1, "max_interval_length": 20},
         ]
         return params
