@@ -56,10 +56,9 @@ class ChangepointDetector(BaseDetector):
         for i in range(len(changepoints) - 1):
             segment_labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
 
-        y_dense = pd.Series(
+        return pd.Series(
             segment_labels, index=index, name="segment_label", dtype="int64"
         )
-        return y_dense
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
@@ -78,5 +77,12 @@ class ChangepointDetector(BaseDetector):
         # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
         is_changepoint = np.roll(y_dense.diff().abs() > 0, -1)
         changepoints = y_dense.index[is_changepoint]
-        y_sparse = pd.Series(changepoints, name="changepoint", dtype="int64")
-        return y_sparse
+        return ChangepointDetector._format_sparse_output(changepoints)
+
+    @staticmethod
+    def _format_sparse_output(changepoints) -> pd.Series:
+        """Format the sparse output of changepoint detectors.
+
+        Can be reused by subclasses to format the output of the _predict method.
+        """
+        return pd.Series(changepoints, name="changepoint", dtype="int64")

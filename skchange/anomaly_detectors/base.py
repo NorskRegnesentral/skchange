@@ -46,7 +46,7 @@ class PointAnomalyDetector(BaseDetector):
         -------
         pd.Series where 0-entries are normal and 1-entries are anomalous.
         """
-        y_dense = pd.Series(0, index=index, name="anomaly", dtype="int64")
+        y_dense = pd.Series(0, index=index, name="anomaly_label", dtype="int64")
         y_dense.iloc[y_sparse.values] = 1
         return y_dense
 
@@ -65,8 +65,16 @@ class PointAnomalyDetector(BaseDetector):
         pd.Series of the integer locations of the anomalous data points.
         """
         y_dense = y_dense.reset_index(drop=True)
-        y_sparse = y_dense.iloc[y_dense.values > 0].index
-        return pd.Series(y_sparse)
+        anomalies = y_dense.iloc[y_dense.values > 0].index
+        return PointAnomalyDetector._format_sparse_output(anomalies)
+
+    @staticmethod
+    def _format_sparse_output(anomalies) -> pd.Series:
+        """Format the sparse output of anomaly detectors.
+
+        Can be reused by subclasses to format the output of the _predict method.
+        """
+        return pd.Series(anomalies, name="anomaly", dtype="int64")
 
 
 class CollectiveAnomalyDetector(BaseDetector):
@@ -111,13 +119,13 @@ class CollectiveAnomalyDetector(BaseDetector):
         pd.Series where 0-entries are normal and each collective anomaly are labelled
             from 1, ..., K.
         """
-        y_dense = pd.IntervalIndex(y_sparse).get_indexer(index)
+        labels = pd.IntervalIndex(y_sparse).get_indexer(index)
         # get_indexer return values 0 for the values inside the first interval, 1 to
         # the values within the next interval and so on, and -1 for values outside any
         # interval. The skchange convention is that 0 is normal and > 0 is anomalous,
         # so we add 1 to the result.
-        y_dense += 1
-        return pd.Series(y_dense, index=index, name="anomaly", dtype="int64")
+        labels += 1
+        return pd.Series(labels, index=index, name="anomaly_label", dtype="int64")
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
@@ -151,10 +159,19 @@ class CollectiveAnomalyDetector(BaseDetector):
         anomaly_ends = y_anomaly.index[np.roll(anomaly_locations_diff > 1, -1)]
         anomaly_ends = np.insert(anomaly_ends, len(anomaly_ends), last_anomaly_end)
 
-        y_sparse = pd.Series(
-            pd.IntervalIndex.from_arrays(anomaly_starts, anomaly_ends, closed="both")
+        anomaly_intervals = list(zip(anomaly_starts, anomaly_ends))
+        return CollectiveAnomalyDetector._format_sparse_output(anomaly_intervals)
+
+    @staticmethod
+    def _format_sparse_output(anomaly_intervals, closed="both") -> pd.Series:
+        """Format the sparse output of collective anomaly detectors.
+
+        Can be reused by subclasses to format the output of the _predict method.
+        """
+        return pd.Series(
+            pd.IntervalIndex.from_tuples(anomaly_intervals, closed=closed),
+            name="collective_anomaly",
         )
-        return y_sparse
 
 
 class SubsetCollectiveAnomalyDetector(BaseDetector):
