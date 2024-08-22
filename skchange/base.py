@@ -396,8 +396,6 @@ class BaseDetector(BaseTransformer):
         -----
         Updates fitted model that updates attributes ending in "_".
         """
-        X = check_series(X, allow_index_names=True)
-
         self.update(X=X)
         y = self.predict(X=X)
 
