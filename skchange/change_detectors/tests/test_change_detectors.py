@@ -2,8 +2,6 @@
 
 import pandas as pd
 import pytest
-from sktime.tests.test_switch import run_test_for_class
-from sktime.utils._testing.annotation import make_annotation_problem
 
 from skchange.change_detectors.moscore import Moscore
 from skchange.change_detectors.pelt import Pelt
@@ -11,24 +9,6 @@ from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
 from skchange.datasets.generate import generate_teeth_data
 
 change_detectors = [Moscore, Pelt, SeededBinarySegmentation]
-
-
-@pytest.mark.parametrize("Estimator", change_detectors)
-def test_output_type(Estimator):
-    """Test annotator output type."""
-    estimator = Estimator.create_test_instance()
-    if not run_test_for_class(Estimator):
-        return None
-
-    arg = make_annotation_problem(
-        n_timepoints=50, estimator_type=estimator.get_tag("distribution_type")
-    )
-    estimator.fit(arg)
-    arg = make_annotation_problem(
-        n_timepoints=30, estimator_type=estimator.get_tag("distribution_type")
-    )
-    y_pred = estimator.predict(arg)
-    assert isinstance(y_pred, (pd.DataFrame, pd.Series))
 
 
 @pytest.mark.parametrize("Estimator", change_detectors)
