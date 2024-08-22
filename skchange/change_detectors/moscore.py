@@ -284,7 +284,7 @@ class Moscore(ChangepointDetector):
         changepoints = get_moscore_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )
-        return pd.Series(changepoints, name="changepoint", dtype="int64")
+        return ChangepointDetector._format_sparse_output(changepoints)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
