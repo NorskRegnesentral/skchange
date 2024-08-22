@@ -7,12 +7,13 @@ from skchange.anomaly_detectors.base import (
 )
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
+from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
 
 BASE_ANOMALY_DETECTORS = [CollectiveAnomalyDetector, PointAnomalyDetector]
 COLLECTIVE_ANOMALY_DETECTORS = [
     Capa,
     CircularBinarySegmentation,
-    # MoscoreAnomaly,
+    MoscoreAnomaly,
     # Mvcapa,
     StatThresholdAnomaliser,
 ]
