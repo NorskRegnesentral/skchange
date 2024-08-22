@@ -163,7 +163,9 @@ class CollectiveAnomalyDetector(BaseDetector):
         return CollectiveAnomalyDetector._format_sparse_output(anomaly_intervals)
 
     @staticmethod
-    def _format_sparse_output(anomaly_intervals, closed="both") -> pd.Series:
+    def _format_sparse_output(
+        anomaly_intervals: list[tuple[int, int]], closed: str = "both"
+    ) -> pd.Series:
         """Format the sparse output of collective anomaly detectors.
 
         Can be reused by subclasses to format the output of the _predict method.
