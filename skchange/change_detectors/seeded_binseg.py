@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from numba import njit
 
-from skchange.change_detectors.base import ChangepointDetector
+from skchange.change_detectors.base import ChangeDetector
 from skchange.scores.score_factory import score_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
@@ -94,7 +94,7 @@ def run_seeded_binseg(
     return cpts, amoc_scores, maximizers, starts, ends
 
 
-class SeededBinarySegmentation(ChangepointDetector):
+class SeededBinarySegmentation(ChangeDetector):
     """Seeded binary segmentation algorithm for multiple changepoint detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data
@@ -304,7 +304,7 @@ class SeededBinarySegmentation(ChangepointDetector):
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
         )
-        return ChangepointDetector._format_sparse_output(cpts)
+        return ChangeDetector._format_sparse_output(cpts)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

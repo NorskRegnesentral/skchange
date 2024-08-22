@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from numba import njit
 
-from skchange.change_detectors.base import ChangepointDetector
+from skchange.change_detectors.base import ChangeDetector
 from skchange.costs.cost_factory import cost_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -61,7 +61,7 @@ def run_pelt(
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
-class Pelt(ChangepointDetector):
+class Pelt(ChangeDetector):
     """Pruned exact linear time changepoint detection.
 
     An efficient implementation of the PELT algorithm [1]_ for changepoint detection.
@@ -221,7 +221,7 @@ class Pelt(ChangepointDetector):
         )
         # Store the scores for introspection without recomputing using score_transform
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
-        return ChangepointDetector._format_sparse_output(changepoints)
+        return ChangeDetector._format_sparse_output(changepoints)
 
     def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the pelt scores for the input data.

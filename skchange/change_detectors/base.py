@@ -6,7 +6,7 @@ import pandas as pd
 from skchange.base import BaseDetector
 
 
-class ChangepointDetector(BaseDetector):
+class ChangeDetector(BaseDetector):
     """Base class for changepoint detectors.
 
     Changepoint detectors detect points in time where a change in the data occurs.
@@ -77,7 +77,7 @@ class ChangepointDetector(BaseDetector):
         # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
         is_changepoint = np.roll(y_dense.diff().abs() > 0, -1)
         changepoints = y_dense.index[is_changepoint]
-        return ChangepointDetector._format_sparse_output(changepoints)
+        return ChangeDetector._format_sparse_output(changepoints)
 
     @staticmethod
     def _format_sparse_output(changepoints) -> pd.Series:

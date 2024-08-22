@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from numba import njit
 
-from skchange.change_detectors.base import ChangepointDetector
+from skchange.change_detectors.base import ChangeDetector
 from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
@@ -48,7 +48,7 @@ def moscore_transform(
     return scores
 
 
-class Moscore(ChangepointDetector):
+class Moscore(ChangeDetector):
     """Moving score algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
@@ -284,7 +284,7 @@ class Moscore(ChangepointDetector):
         changepoints = get_moscore_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )
-        return ChangepointDetector._format_sparse_output(changepoints)
+        return ChangeDetector._format_sparse_output(changepoints)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
