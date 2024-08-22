@@ -105,7 +105,7 @@ class BaseDetector(BaseTransformer):
         # todo: rename to capability:missing_values
         "capability:missing_values": False,
         # is transform result always guaranteed to contain no missing values?
-        "remember_data": False,  # whether all data seen is remembered as self._X
+        "remember_data": True,  # whether all data seen is remembered as self._X
         "python_version": None,  # PEP 440 python version specifier to limit versions
         "authors": "mtveten",  # author(s) of the object
         "maintainers": "mtveten",  # current maintainer(s) of the object
