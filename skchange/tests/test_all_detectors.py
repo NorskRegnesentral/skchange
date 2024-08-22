@@ -20,7 +20,7 @@ def test_sktime_compatible_estimators(obj, test_name):
 
 @pytest.mark.parametrize("Detector", all_detectors)
 def test_detector_fit(Detector):
-    """Test fit method."""
+    """Test fit method output."""
     detector = Detector.create_test_instance()
     x = make_annotation_problem(n_timepoints=50, estimator_type="None")
     fit_detector = detector.fit(x)
@@ -31,7 +31,7 @@ def test_detector_fit(Detector):
 
 @pytest.mark.parametrize("Detector", all_detectors)
 def test_detector_predict(Detector):
-    """Test fit method."""
+    """Test predict method output."""
     detector = Detector.create_test_instance()
     x = generate_anomalous_data(means=10, random_state=60)
     y = detector.fit_predict(x)
@@ -40,8 +40,21 @@ def test_detector_predict(Detector):
 
 @pytest.mark.parametrize("Detector", all_detectors)
 def test_detector_transform(Detector):
-    """Test fit method."""
+    """Test transform method output."""
     detector = Detector.create_test_instance()
-    x = generate_anomalous_data(means=10, random_state=60)
+    x = generate_anomalous_data(means=10, random_state=61)
     y = detector.fit_transform(x)
     assert isinstance(y, (pd.Series, pd.DataFrame))
+    assert len(x) == len(y)
+
+
+@pytest.mark.parametrize("Detector", all_detectors)
+def test_detector_score_transform(Detector):
+    """Test score_transform method output."""
+    detector = Detector.create_test_instance()
+    x = generate_anomalous_data(means=10, random_state=62)
+    try:
+        y = detector.fit(x).score_transform(x)
+        assert isinstance(y, (pd.Series, pd.DataFrame))
+    except NotImplementedError:
+        pass
