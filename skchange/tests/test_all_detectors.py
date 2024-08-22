@@ -5,12 +5,13 @@ import pytest
 from sktime.utils._testing.annotation import make_annotation_problem
 from sktime.utils.estimator_checks import check_estimator, parametrize_with_checks
 
+from skchange.anomaly_detectors.tests.test_anomaly_detectors import anomaly_detectors
 from skchange.base import BaseDetector
 from skchange.change_detectors.tests.test_change_detectors import change_detectors
 from skchange.datasets.generate import generate_anomalous_data
 
-# all_detectors = anomaly_detectors + change_detectors
-all_detectors = change_detectors
+# TODO: Move all detectors to __init__ files. A bit random construction now.
+all_detectors = anomaly_detectors + change_detectors
 
 
 @parametrize_with_checks(all_detectors)
