@@ -9,7 +9,7 @@ from skchange.anomaly_detectors.capa import Capa
 
 BASE_ANOMALY_DETECTORS = [CollectiveAnomalyDetector, PointAnomalyDetector]
 COLLECTIVE_ANOMALY_DETECTORS = [
-    # Capa,
+    Capa,
     # CircularBinarySegmentation,
     # MoscoreAnomaly,
     # Mvcapa,
