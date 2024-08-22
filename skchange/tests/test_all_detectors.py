@@ -58,3 +58,17 @@ def test_detector_score_transform(Detector):
         assert isinstance(y, (pd.Series, pd.DataFrame))
     except NotImplementedError:
         pass
+
+
+@pytest.mark.parametrize("Detector", ALL_DETECTORS)
+def test_detector_update(Detector):
+    """Test update method output."""
+    detector = Detector.create_test_instance()
+    x = make_annotation_problem(n_timepoints=15, estimator_type="None")
+    x_train = x[:10].to_frame()
+    x_next = x[10:].to_frame()
+    detector.fit(x_train)
+    updated_detector = detector.update(x_next)
+    assert issubclass(detector.__class__, BaseDetector)
+    assert issubclass(updated_detector.__class__, BaseDetector)
+    assert isinstance(updated_detector, Detector)
