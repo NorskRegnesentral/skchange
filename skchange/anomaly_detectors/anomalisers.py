@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
-from skchange.change_detectors.base import ChangepointDetector
+from skchange.change_detectors.base import ChangeDetector
 
 
 class StatThresholdAnomaliser(CollectiveAnomalyDetector):
@@ -14,7 +14,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    change_detector : ChangepointDetector
+    change_detector : ChangeDetector
         Change detector to use for detecting segments.
     stat : callable, optional (default=np.mean)
         Statistic to calculate per segment.
@@ -32,7 +32,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        change_detector: ChangepointDetector,
+        change_detector: ChangeDetector,
         stat: Callable = np.mean,
         stat_lower: float = -1.0,
         stat_upper: float = 1.0,
