@@ -122,43 +122,6 @@ class BaseDetector(BaseTransformer):
 
         super().__init__()
 
-    # def fit(self, X, y=None):
-    #     """Fit to training data.
-
-    #     Parameters
-    #     ----------
-    #     X : pd.DataFrame
-    #         Training data to fit model to (time series).
-    #     y : pd.Series, optional
-    #         Ground truth annotations for training if annotator is supervised.
-
-    #     Returns
-    #     -------
-    #     self :
-    #         Reference to self.
-
-    #     Notes
-    #     -----
-    #     Creates fitted model that updates attributes ending in "_". Sets
-    #     _is_fitted flag to True.
-    #     """
-    #     X = check_series(X, allow_index_names=True)
-
-    #     if y is not None:
-    #         y = check_series(y, allow_index_names=True)
-
-    #     self._X = X
-    #     self._y = y
-
-    #     # fkiraly: insert checks/conversions here, after PR #1012 I suggest
-
-    #     self._fit(X=X, y=y)
-
-    #     # this should happen last
-    #     self._is_fitted = True
-
-    #     return self
-
     def _fit(self, X, y=None):
         """Fit to training data.
 
