@@ -231,8 +231,8 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
         labels = np.zeros((len(index), len(columns)), dtype="int64")
         anomalies = zip(anomaly_starts, anomaly_ends, anomaly_columns)
-        for i, (start, end, columns) in enumerate(anomalies):
-            labels[start:end, columns] = i + 1
+        for i, (start, end, affected_columns) in enumerate(anomalies):
+            labels[start:end, affected_columns] = i + 1
 
         return pd.DataFrame(labels, index=index, columns=columns)
 

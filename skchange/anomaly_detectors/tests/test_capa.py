@@ -16,7 +16,12 @@ def test_capa_anomalies(detector_class, saving):
     n_segments = 2
     seg_len = 20
     df = generate_teeth_data(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=5, random_state=8
+        n_segments=n_segments,
+        mean=20,
+        segment_length=seg_len,
+        p=5,
+        affected_proportion=0.2,
+        random_state=8,
     )
     detector = detector_class(
         saving=saving,
