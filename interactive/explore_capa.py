@@ -1,3 +1,6 @@
+"""Interactively explore the Capa and Mvcapa anomaly detectors."""
+
+import pandas as pd
 import plotly.express as px
 
 from skchange.anomaly_detectors.capa import Capa
@@ -6,30 +9,44 @@ from skchange.datasets.generate import generate_teeth_data
 from skchange.utils.benchmarking.profiler import Profiler
 
 # Unviariate
-df = generate_teeth_data(n_segments=5, mean=10, segment_length=10, p=1, random_state=2)
-capa = Capa(fmt="sparse", max_segment_length=20)
-anomalies = capa.fit_predict(df)
+df = generate_teeth_data(n_segments=5, segment_length=10, mean=10, random_state=2)[0]
+detector = Capa(max_segment_length=20)
 
-capa = Capa(labels="score", fmt="dense", max_segment_length=20)
-scores = capa.fit_predict(df)
+anomalies = detector.fit_predict(df)
+print(anomalies)
 
-capa = Capa(labels="indicator", fmt="dense", max_segment_length=20)
-anomalies = capa.fit_predict(df)
-px.scatter(x=df.index, y=df.values[:, 0], color=anomalies)
+anomaly_labels = detector.fit_transform(df)
+px.scatter(x=df.index, y=df, color=anomaly_labels.astype(str))
+
+scores = detector.score_transform(df)
+px.scatter(scores)
 
 # Multivariate
-# TODO: Add plotting functionality to assess the affected subset.
 df = generate_teeth_data(5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2)
-capa = Mvcapa(collective_penalty="sparse", fmt="sparse")
-anomalies = capa.fit_predict(df)
+detector = Mvcapa(collective_penalty="sparse")
 
-capa = Mvcapa(labels="score", fmt="dense", max_segment_length=20)
-scores = capa.fit_predict(df)
+anomalies = detector.fit_predict(df)
+print(anomalies)
 
-capa = Mvcapa(collective_penalty_scale=5, labels="indicator", fmt="dense")
-anomalies = capa.fit_predict(df)
-df.plot(kind="line", backend="plotly")
-anomalies.plot(kind="line", backend="plotly")
+anomaly_labels = detector.fit_transform(df)
+anomaly_labels = (anomaly_labels > 0).astype(int)
+anomaly_labels[anomaly_labels == 0] = 0.1
+plot_df = pd.concat(
+    [
+        df.melt(ignore_index=False).reset_index(),
+        anomaly_labels.melt(value_name="anomaly_label")["anomaly_label"],
+    ],
+    axis=1,
+)
+plot_df["variable"] = plot_df["variable"].astype(str)
+px.scatter(plot_df, x="index", y="value", color="variable", size="anomaly_label")
+
+fig = px.line(df)
+fig.add_scatter(anomaly_labels)
+px.line(anomaly_labels)
+
+scores = detector.score_transform(df)
+px.scatter(scores)
 
 
 # Profiling
