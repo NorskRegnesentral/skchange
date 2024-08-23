@@ -63,15 +63,6 @@ class BaseDetector(BaseTransformer):
     - _update(self, X, y=None) -> self
     """
 
-    # _tags = {
-    #     "object_type": "transformer",  # sktime scitype of object
-    #     "learning_type": "None",  # Tag to determine test in test_all_annotators
-    #     "task": "None",  # Tag to determine test in test_all_annotators
-    #     #
-    #     # todo: distribution_type? we may have to refactor this, seems very soecufuc
-    #     "distribution_type": "None",  # Tag to determine test in test_all_annotators
-    # }  # for unit test cases
-
     _tags = {
         "object_type": "transformer",  # type of object
         "scitype:transform-input": "Series",
