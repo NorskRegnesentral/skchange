@@ -18,7 +18,11 @@ def test_capa_anomalies(saving):
     )
     capa_classes = [Capa]
     for detector_class in capa_classes:
-        detector = detector_class(saving=saving, collective_penalty_scale=2.0)
+        detector = detector_class(
+            saving=saving,
+            collective_penalty_scale=2.0,
+            ignore_point_anomalies=True,  # To get test coverage.
+        )
         anomalies = detector.fit_predict(df)
         if isinstance(anomalies, pd.DataFrame):
             anomalies = anomalies["location"]
