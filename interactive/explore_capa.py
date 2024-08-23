@@ -1,4 +1,4 @@
-"""Interactively explore the Capa and Mvcapa anomaly detectors."""
+"""Interactive exploration of the Capa and Mvcapa anomaly detectors."""
 
 import pandas as pd
 import plotly.express as px
