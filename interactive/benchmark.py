@@ -1,20 +1,23 @@
+"""Benchmarking the computational efficiency of the detectors."""
+
 from timeit import timeit
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 
-from skchange.anomaly_detectors.tests.test_anomaly_detectors import anomaly_detectors
-from skchange.change_detectors.tests.test_change_detectors import change_detectors
+from skchange.anomaly_detectors import ANOMALY_DETECTORS
+from skchange.change_detectors import CHANGE_DETECTORS
 
 # TODO: Add all the different scores and costs.
-detector_classes = anomaly_detectors + change_detectors
+# TODO: Make sure hyperparameters are set such that comparisons are fair.
+detector_classes = ANOMALY_DETECTORS + CHANGE_DETECTORS
 ns = [1000, 10000, 100000, 1000000]
 n_runs = [100, 10, 1, 1]
 timings = {}
 for detector_class in detector_classes:
     detector_name = detector_class.__name__
-    detector = detector_class.create_test_instance().set_params(fmt="sparse")
+    detector = detector_class.create_test_instance()
     setup_data = pd.DataFrame(np.random.normal(0, 1, size=1000))
     detector.fit_predict(setup_data)  # Compile numba
     timings[detector_name] = []
