@@ -71,3 +71,20 @@ def test_detector_update(Detector):
     detector.update_predict(x_next)
     assert issubclass(detector.__class__, BaseDetector)
     assert isinstance(detector, Detector)
+
+
+def test_detector_not_implemented_methods():
+    detector = BaseDetector()
+    x = make_annotation_problem(n_timepoints=20, estimator_type="None")
+    with pytest.raises(NotImplementedError):
+        detector.fit(x)
+
+    detector._is_fitted = True  # Required for the following functions to run
+    with pytest.raises(NotImplementedError):
+        detector.predict(x)
+    with pytest.raises(NotImplementedError):
+        detector.transform(x)
+    with pytest.raises(NotImplementedError):
+        detector.score_transform(x)
+    with pytest.raises(NotImplementedError):
+        detector.dense_to_sparse(x)
