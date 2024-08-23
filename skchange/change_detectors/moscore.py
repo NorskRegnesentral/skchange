@@ -101,8 +101,6 @@ class Moscore(ChangeDetector):
     """
 
     _tags = {
-        "task": "change_point_detection",
-        "learning_type": "unsupervised",
         "capability:missing_values": False,
         "capability:multivariate": True,
         "fit_is_empty": False,
