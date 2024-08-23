@@ -32,7 +32,9 @@ class PointAnomalyDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series:
+    def sparse_to_dense(
+        y_sparse: pd.Series, index: pd.Index, columns: pd.Index = None
+    ) -> pd.Series:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
@@ -64,7 +66,9 @@ class PointAnomalyDetector(BaseDetector):
         -------
         pd.Series of the integer locations of the anomalous data points.
         """
+        # The sparse format only uses integer positions, so we reset the index.
         y_dense = y_dense.reset_index(drop=True)
+
         anomalies = y_dense.iloc[y_dense.values > 0].index
         return PointAnomalyDetector._format_sparse_output(anomalies)
 
@@ -104,7 +108,9 @@ class CollectiveAnomalyDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series:
+    def sparse_to_dense(
+        y_sparse: pd.Series, index: pd.Index, columns: pd.Index = None
+    ) -> pd.Series:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
@@ -147,7 +153,9 @@ class CollectiveAnomalyDetector(BaseDetector):
         The start and end points of the intervals can be accessed by
         output.array.left and output.array.right, respectively.
         """
+        # The sparse format only uses integer positions, so we reset the index.
         y_dense = y_dense.reset_index(drop=True)
+
         y_anomaly = y_dense.loc[y_dense.values > 0]
         anomaly_locations_diff = y_anomaly.index.diff()
 
@@ -160,7 +168,9 @@ class CollectiveAnomalyDetector(BaseDetector):
         anomaly_ends = np.insert(anomaly_ends, len(anomaly_ends), last_anomaly_end)
 
         anomaly_intervals = list(zip(anomaly_starts, anomaly_ends))
-        return CollectiveAnomalyDetector._format_sparse_output(anomaly_intervals)
+        return CollectiveAnomalyDetector._format_sparse_output(
+            anomaly_intervals, closed="both"
+        )
 
     @staticmethod
     def _format_sparse_output(
@@ -172,7 +182,7 @@ class CollectiveAnomalyDetector(BaseDetector):
         """
         return pd.Series(
             pd.IntervalIndex.from_tuples(anomaly_intervals, closed=closed),
-            name="collective_anomaly",
+            name="anomaly_interval",
         )
 
 
@@ -183,11 +193,10 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
     that are considered anomalous, and also provide information on which components of
     the data are affected.
 
+    Output format of the predict method: See the dense_to_sparse method.
+    Output format of the transform method: See the sparse_to_dense method.
+
     Output format of the predict method:
-    pd.DataFrame({
-        "location": pd.IntervalIndex(anomaly_intervals, closed=<insert>),
-        "columns": affected_components_list,
-    })
 
     Subclasses should set the following tags for sktime compatibility:
     - task: "collective_anomaly_detection"
@@ -208,17 +217,108 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse, index):
+    def sparse_to_dense(
+        y_sparse: pd.Series, index: pd.Index, columns: pd.Index
+    ) -> pd.Series:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
         ----------
         y_sparse : pd.DataFrame
-            The sparse output from the predict method.
+            The sparse output from the predict method. The first column must contain the
+            anomaly intervals, the second column must contain a list of the affected
+            columns.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
+        columns : array-like
+            Columns that are to be annotated according to ``y_sparse``.
 
         Returns
         -------
         pd.DataFrame
         """
+        anomaly_intervals = y_sparse.iloc[:, 0].array
+        anomaly_starts = anomaly_intervals.left
+        anomaly_ends = anomaly_intervals.right
+        anomaly_columns = y_sparse.iloc[:, 1]
+
+        start_is_open = anomaly_intervals.closed in ["neither", "right"]
+        if start_is_open:
+            anomaly_starts += 1  # Exclude the start index in the for loop below.
+        end_is_closed = anomaly_intervals.closed in ["both", "right"]
+        if end_is_closed:
+            anomaly_ends += 1  # Include the end index in the for loop below.
+
+        labels = np.zeros((len(index), len(columns)), dtype="int64")
+        anomalies = zip(anomaly_starts, anomaly_ends, anomaly_columns)
+        for i, (start, end, columns) in enumerate(anomalies):
+            labels[start:end, columns] = i + 1
+
+        return pd.DataFrame(labels, index=index, columns=columns)
+
+    @staticmethod
+    def dense_to_sparse(y_dense):
+        """Convert the dense output from the transform method to a sparse format.
+
+        Parameters
+        ----------
+        y_dense : pd.DataFrame
+            The dense output from the transform method.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        # The sparse format only uses integer positions, so we reset index and columns.
+        y_dense = y_dense.reset_index(drop=True)
+        y_dense.columns = range(y_dense.columns.size)
+
+        anomaly_intervals = []
+        unique_labels = np.unique(y_dense.values)
+        for i in unique_labels[unique_labels > 0]:
+            anomaly_mask = y_dense == i
+            which_columns = anomaly_mask.any(axis=0)
+            which_rows = anomaly_mask.any(axis=1)
+            anomaly_columns = anomaly_mask.columns[which_columns].to_list()
+            anomaly_start = anomaly_mask.index[which_rows][0]
+            anomaly_end = anomaly_mask.index[which_rows][-1]
+            anomaly_intervals.append((anomaly_start, anomaly_end, anomaly_columns))
+
+        return SubsetCollectiveAnomalyDetector._format_sparse_output(
+            anomaly_intervals, closed="both"
+        )
+
+    @staticmethod
+    def _format_sparse_output(
+        collective_anomalies: list[tuple[int, int, np.ndarray]],
+        closed: str = "both",
+    ) -> pd.Series:
+        """Format the sparse output of subset collective anomaly detectors.
+
+        Parameters
+        ----------
+        collective_anomalies : list
+            List of tuples containing start and end indices of collective
+            anomalies and a np.array of the affected components/columns.
+        closed : str
+            Whether the (start, end) tuple correspond to intervals that are closed
+            on the left, right, both, or neither.
+
+        Can be reused by subclasses to format the output of the _predict method.
+
+        Returns
+        -------
+        pd.DataFrame with columns
+            anomaly_interval: Intervals of the collective anomalies.
+            anomaly_columns: Affected columns of the collective anomalies.
+        """
+        anomaly_intervals = [(start, end) for start, end, _ in collective_anomalies]
+        affected_components = [components for _, _, components in collective_anomalies]
+        return pd.DataFrame(
+            {
+                "anomaly_interval": pd.IntervalIndex.from_tuples(
+                    anomaly_intervals, closed=closed
+                ),
+                "anomaly_columns": affected_components,
+            }
+        )
