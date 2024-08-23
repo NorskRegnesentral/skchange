@@ -43,6 +43,8 @@ class PointAnomalyDetector(BaseDetector):
             The sparse output from an anomaly detector's predict method.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
+        columns: array-like
+            Not used. Only for API compatibility.
 
         Returns
         -------
@@ -119,6 +121,8 @@ class CollectiveAnomalyDetector(BaseDetector):
             The collective anomaly intervals.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
+        columns: array-like
+            Not used. Only for API compatibility.
 
         Returns
         -------
@@ -218,8 +222,8 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
     @staticmethod
     def sparse_to_dense(
-        y_sparse: pd.Series, index: pd.Index, columns: pd.Index
-    ) -> pd.Series:
+        y_sparse: pd.DataFrame, index: pd.Index, columns: pd.Index
+    ) -> pd.DataFrame:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
@@ -257,7 +261,7 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
         return pd.DataFrame(labels, index=index, columns=columns)
 
     @staticmethod
-    def dense_to_sparse(y_dense):
+    def dense_to_sparse(y_dense: pd.DataFrame):
         """Convert the dense output from the transform method to a sparse format.
 
         Parameters

@@ -46,8 +46,8 @@ class ChangeDetector(BaseDetector):
             The sparse output from a changepoint detector's predict method.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
-        columns : array-like
-            Columns that are to be annotated according to ``y_sparse``.
+        columns: array-like
+            Not used. Only for API compatibility.
 
         Returns
         -------
