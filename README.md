@@ -23,7 +23,7 @@ from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import generate_teeth_data
 
 df = generate_teeth_data(n_segments=10, segment_length=50, mean=5, random_state=1)
-detector = Moscore(bandwidth=10, fmt="sparse")
+detector = Moscore(bandwidth=10)
 detector.fit_predict(df)
 >>>
 0     49
@@ -51,7 +51,7 @@ df = generate_teeth_data(
     affected_proportion=0.2,
     random_state=2,
 )
-detector = Mvcapa(collective_penalty="sparse", fmt="sparse")
+detector = Mvcapa(collective_penalty="sparse")
 detector.fit_predict(df)
 >>>
    start  end components
