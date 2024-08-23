@@ -1,3 +1,5 @@
+"""Interactive exploration of the MoscoreAnomaly detector."""
+
 import numpy as np
 import plotly.express as px
 
@@ -20,17 +22,7 @@ detector = MoscoreAnomaly(
     left_bandwidth=50,
 )
 anomalies = detector.fit_predict(df)
-
-detector = MoscoreAnomaly(
-    score="mean",
-    min_anomaly_length=10,
-    max_anomaly_length=1000,
-    left_bandwidth=20,
-    labels="score",
-)
-scores = detector.fit_predict(df)
-scores["length"] = scores["anomaly_end"] - scores["anomaly_start"] + 1
-px.scatter(scores, x="anomaly_start", y="score", color="length")
+print(anomalies)
 
 
 # Profiling

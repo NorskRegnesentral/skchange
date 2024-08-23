@@ -1,3 +1,5 @@
+"""Interactive exploration of the StatThresholdAnomaliser."""
+
 import numpy as np
 
 from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
@@ -16,3 +18,4 @@ detector = StatThresholdAnomaliser(
     change_detector, stat=np.mean, stat_lower=-1.0, stat_upper=1.0
 )
 anomalies = detector.fit_predict(df)
+print(anomalies)

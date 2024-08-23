@@ -9,9 +9,8 @@ import numpy as np
 import pandas as pd
 from numba import njit
 from scipy.stats import chi2
-from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.anomaly_detectors.utils import format_multivariate_anomaly_output
+from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
 from skchange.costs.saving_factory import saving_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -354,7 +353,7 @@ def run_mvcapa(
     return opt_savings, collective_anomalies, point_anomalies
 
 
-class Mvcapa(BaseSeriesAnnotator):
+class Mvcapa(SubsetCollectiveAnomalyDetector):
     """Subset multivariate collective and point anomaly detection.
 
     An efficient implementation of the MVCAPA algorithm [1]_ for anomaly detection.
@@ -381,18 +380,6 @@ class Mvcapa(BaseSeriesAnnotator):
     ignore_point_anomalies : bool, optional (default=False)
         If True, detected point anomalies are not returned by .predict(). I.e., only
         collective anomalies are returned.
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is
-        an outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a
-        value belongs to.
-
 
     References
     ----------
@@ -406,7 +393,7 @@ class Mvcapa(BaseSeriesAnnotator):
     from skchange.datasets.generate import generate_teeth_data
 
     df = generate_teeth_data(5, 10, p=10, mean=10, affected_proportion=0.2)
-    capa = Capa(collective_penalty_scale=5, fmt="sparse", max_segment_length=20)
+    capa = Capa(collective_penalty_scale=5, max_segment_length=20)
     capa.fit_predict(df)
     """
 
@@ -426,8 +413,6 @@ class Mvcapa(BaseSeriesAnnotator):
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
-        fmt: str = "sparse",
-        labels: str = "int_label",
     ):
         self.saving = saving
         self.collective_penalty = collective_penalty
@@ -437,7 +422,7 @@ class Mvcapa(BaseSeriesAnnotator):
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
-        super().__init__(fmt=fmt, labels=labels)
+        super().__init__()
 
         self.saving_func, self.saving_init_func = saving_factory(self.saving)
 
@@ -463,7 +448,7 @@ class Mvcapa(BaseSeriesAnnotator):
         )
         return collective_alpha, collective_betas, point_alpha, point_betas
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the penalty of the detector.
@@ -478,7 +463,7 @@ class Mvcapa(BaseSeriesAnnotator):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -511,7 +496,7 @@ class Mvcapa(BaseSeriesAnnotator):
 
         Returns
         -------
-        Y : pd.Series or pd.DataFrame
+        y : pd.Series or pd.DataFrame
             Annotations for sequence X, exact format depends on annotation type.
         """
         X = check_data(
@@ -519,7 +504,7 @@ class Mvcapa(BaseSeriesAnnotator):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        opt_savings, self.collective_anomalies, self.point_anomalies = run_mvcapa(
+        opt_savings, collective_anomalies, point_anomalies = run_mvcapa(
             X.values,
             self.saving_func,
             self.saving_init_func,
@@ -531,16 +516,32 @@ class Mvcapa(BaseSeriesAnnotator):
             self.max_segment_length,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
-        anomalies = format_multivariate_anomaly_output(
-            self.fmt,
-            self.labels,
-            X.index,
-            X.columns,
-            self.collective_anomalies,
-            self.point_anomalies if not self.ignore_point_anomalies else None,
-            self.scores,
-        )
-        return anomalies
+
+        anomalies = collective_anomalies
+        if not self.ignore_point_anomalies:
+            anomalies += point_anomalies
+        anomalies = sorted(anomalies)
+
+        return SubsetCollectiveAnomalyDetector._format_sparse_output(anomalies)
+
+    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+        """Compute the MVCAPA scores for the input data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame - data to compute scores for, time series
+
+        Returns
+        -------
+        scores : pd.Series - scores for sequence X
+
+        Notes
+        -----
+        The MVCAPA scores are the cumulative optimal savings, so the scores are
+        increasing and are not per observation scores.
+        """
+        self.predict(X)
+        return self.scores
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -563,5 +564,6 @@ class Mvcapa(BaseSeriesAnnotator):
         """
         params = [
             {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
+            {"saving": "mean", "min_segment_length": 2, "max_segment_length": 20},
         ]
         return params
