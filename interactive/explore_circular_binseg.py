@@ -1,3 +1,5 @@
+"""Interacive exploration of the Circular Binary Segmentation anomaly detector."""
+
 import plotly.express as px
 
 from skchange.anomaly_detectors.circular_binseg import (
@@ -12,9 +14,7 @@ detector = CircularBinarySegmentation(
     score="mean", growth_factor=1.5, min_segment_length=10
 )
 anomalies = detector.fit_predict(df)
-
-df.plot(kind="line", backend="plotly")
-
+px.line(df)
 px.scatter(detector.scores, x="argmax_anomaly_start", y="score")
 
 # Test anomaly intervals
