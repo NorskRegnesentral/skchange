@@ -16,7 +16,7 @@ detector) are subclasses of BaseDetector (task + learning_type tags in sktime).
 They are defined by the content and format of the output of the predict method. Each
 detector type therefore has the following methods for converting between sparse and
 dense output formats:
-    converting sparse output to dense - sparse_to_dense(y_sparse, index)
+    converting sparse output to dense - sparse_to_dense(y_sparse, index, columns)
     converting dense output to sparse - dense_to_sparse(y_dense)  [optional]
 
 Convenience methods:
@@ -202,7 +202,7 @@ class BaseDetector(BaseTransformer):
             detection results in some meaningful way depending on the detector type.
         """
         y = self.predict(X)
-        y_dense = self.sparse_to_dense(y, X.index)
+        y_dense = self.sparse_to_dense(y, X.index, X.columns)
 
         # sktime does not support transformations that change the state of the object.
         # Some detectors store detection score information a self.scores during predict.
@@ -213,7 +213,7 @@ class BaseDetector(BaseTransformer):
         return y_dense
 
     @staticmethod
-    def sparse_to_dense(y_sparse, index):
+    def sparse_to_dense(y_sparse, index, columns=None):
         """Convert the sparse output from a detector to a dense format.
 
         Parameters
@@ -223,10 +223,12 @@ class BaseDetector(BaseTransformer):
             series depends on the task and capability of the annotator.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
+        columns : array-like, optional
+            Columns that are to be annotated according to ``y_sparse``.
 
         Returns
         -------
-        pd.Series
+        pd.Series or pd.DataFrame of detection labels.
         """
         raise NotImplementedError("abstract method")
 
@@ -404,8 +406,7 @@ class BaseDetector(BaseTransformer):
         self : pd.Series
             Annotations for sequence X exact format depends on annotation type.
         """
-        y = self.fit_predict(X)
-        return self.sparse_to_dense(y, index=X.index)
+        return self.fit(X).transform(X)
 
 
 # Notes on required .predict output formats per detector type (task and capability):

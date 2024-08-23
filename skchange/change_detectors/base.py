@@ -35,19 +35,24 @@ class ChangeDetector(BaseDetector):
     """
 
     @staticmethod
-    def sparse_to_dense(y_sparse: pd.Series, index: pd.Index) -> pd.Series:
+    def sparse_to_dense(
+        y_sparse: pd.Series, index: pd.Index, columns: pd.Index = None
+    ) -> pd.Series:
         """Convert the sparse output from the predict method to a dense format.
 
         Parameters
         ----------
-        y_sparse : pd.Series
+        y_sparse : pd.DataFrame
             The sparse output from a changepoint detector's predict method.
         index : array-like
             Indices that are to be annotated according to ``y_sparse``.
+        columns : array-like
+            Columns that are to be annotated according to ``y_sparse``.
 
         Returns
         -------
-        pd.Series
+        pd.Series with integer labels 0, ..., K for each segment between two
+        changepoints.
         """
         changepoints = y_sparse.to_list()
         n = len(index)

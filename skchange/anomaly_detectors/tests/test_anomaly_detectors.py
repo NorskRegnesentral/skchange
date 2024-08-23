@@ -19,7 +19,7 @@ def test_collective_anomaly_detector_predict(Estimator):
     detector = Estimator.create_test_instance()
     anomalies = detector.fit_predict(anomaly_data)
     if isinstance(anomalies, pd.DataFrame):
-        anomalies = anomalies["location"]
+        anomalies = anomalies.iloc[:, 0]
 
     assert len(anomalies) == len(true_anomalies)
     for i, (start, end) in enumerate(true_anomalies):
@@ -53,9 +53,11 @@ def test_anomaly_detector_sparse_to_dense(Estimator):
     """Test that predict + sparse_to_dense == transform."""
     detector = Estimator.create_test_instance()
     anomalies = detector.fit_predict(anomaly_data)
-    labels = detector.sparse_to_dense(anomalies, anomaly_data.index)
+    labels_predict_convert = detector.sparse_to_dense(
+        anomalies, anomaly_data.index, anomaly_data.columns
+    )
     labels_transform = detector.fit_transform(anomaly_data)
-    assert labels.equals(labels_transform)
+    assert labels_predict_convert.equals(labels_transform)
 
 
 @pytest.mark.parametrize("Estimator", ANOMALY_DETECTORS)
@@ -63,6 +65,6 @@ def test_anomaly_detector_dense_to_sparse(Estimator):
     """Test that transform + dense_to_sparse == predict."""
     detector = Estimator.create_test_instance()
     labels = detector.fit_transform(anomaly_data)
-    anomalies = detector.dense_to_sparse(labels)
+    anomalies_transform_convert = detector.dense_to_sparse(labels)
     anomalies_predict = detector.fit_predict(anomaly_data)
-    assert anomalies.equals(anomalies_predict)
+    assert anomalies_transform_convert.equals(anomalies_predict)
