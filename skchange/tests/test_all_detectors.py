@@ -88,3 +88,5 @@ def test_detector_not_implemented_methods():
         detector.score_transform(x)
     with pytest.raises(NotImplementedError):
         detector.dense_to_sparse(x)
+    with pytest.raises(NotImplementedError):
+        detector.sparse_to_dense(x)
