@@ -141,7 +141,7 @@ using the same example data as for anomaly detection.
 
 ### Changepoints in univariate data or multivariate data without subset changes
 ```python
-detector = ChangepointDetector().fit(x_univariate)
+detector = ChangeDetector().fit(x_univariate)
 detector.predict(x_univariate)
 0    0
 1    1
@@ -152,7 +152,7 @@ dtype: int64
 ```
 ### Subset changepoints in multivariate data
 ```python
-detector = SubsetChangepointDetector().fit(x_multivariate)
+detector = SubsetChangeDetector().fit(x_multivariate)
 detector.predict(x_multivariate)
    index columns
 0      0     [0]

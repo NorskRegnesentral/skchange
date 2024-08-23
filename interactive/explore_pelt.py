@@ -1,3 +1,5 @@
+"""Interactive exploration of the Pelt change detector."""
+
 import numpy as np
 
 from skchange.change_detectors.pelt import Pelt

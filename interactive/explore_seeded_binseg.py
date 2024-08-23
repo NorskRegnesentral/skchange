@@ -1,3 +1,5 @@
+"""Interactive exploration of Seeded Binary Segmentation."""
+
 import plotly.express as px
 
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
@@ -8,9 +10,8 @@ df = generate_teeth_data(n_segments=2, mean=10, segment_length=20, p=1, random_s
 detector = SeededBinarySegmentation(score="mean", growth_factor=2)
 detector.fit_predict(df)
 
-df.plot(kind="line", backend="plotly")
-
-px.scatter(detector.scores, x="maximizer", y="score", hover_data=["start", "end"])
+px.line(df)
+px.scatter(detector.scores, x="argmax_cpt", y="score", hover_data=["start", "end"])
 
 
 # Profiling
