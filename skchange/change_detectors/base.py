@@ -52,7 +52,7 @@ class ChangeDetector(BaseDetector):
         Returns
         -------
         pd.Series with integer labels 0, ..., K for each segment between two
-        changepoints.
+            changepoints.
         """
         changepoints = y_sparse.to_list()
         n = len(index)
@@ -76,7 +76,8 @@ class ChangeDetector(BaseDetector):
 
         Returns
         -------
-        pd.Series
+        pd.Series of changepoint locations. Changepoints are defined as the last element
+            of a segment.
         """
         y_dense = y_dense.reset_index(drop=True)
         # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.

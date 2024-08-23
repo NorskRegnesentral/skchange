@@ -14,14 +14,6 @@ class PointAnomalyDetector(BaseDetector):
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
 
-    Subclasses should set the following tags for sktime compatibility:
-    - task: "anomaly_detection"
-    - learning_type: "unsupervised" or "supervised"
-    - And possibly other tags, such as
-        * "capability:missing_values": False,
-        * "capability:multivariate": True,
-        * "fit_is_empty": False,
-
     Needs to be implemented:
     - _fit(self, X, y=None) -> self
     - _predict(self, X) -> pd.Series
@@ -91,14 +83,6 @@ class CollectiveAnomalyDetector(BaseDetector):
 
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
-
-    Subclasses should set the following tags for sktime compatibility:
-    - task: "collective_anomaly_detection"
-    - learning_type: "unsupervised" or "supervised"
-    - And possibly other tags, such as
-        * "capability:missing_values": False,
-        * "capability:multivariate": True,
-        * "fit_is_empty": False,
 
     Needs to be implemented:
     - _fit(self, X, y=None) -> self
@@ -202,15 +186,6 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
     Output format of the predict method:
 
-    Subclasses should set the following tags for sktime compatibility:
-    - task: "collective_anomaly_detection"
-    - learning_type: "unsupervised" or "supervised"
-    - capability:subset_detection: True
-    - And possibly other tags, such as
-        * "capability:missing_values": False,
-        * "capability:multivariate": True,
-        * "fit_is_empty": False,
-
     Needs to be implemented:
     - _fit(self, X, y=None) -> self
     - _predict(self, X) -> pd.DataFrame
@@ -239,7 +214,8 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
         Returns
         -------
-        pd.DataFrame
+        pd.DataFrame where 0-entries are normal and each collective anomaly are labelled
+            from 1, ..., K.
         """
         anomaly_intervals = y_sparse.iloc[:, 0].array
         anomaly_starts = anomaly_intervals.left
@@ -271,7 +247,9 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
         Returns
         -------
-        pd.DataFrame
+        pd.DataFrame with columns
+            anomaly_interval: Intervals of the collective anomalies.
+            anomaly_columns: Affected columns of the collective anomalies.
         """
         # The sparse format only uses integer positions, so we reset index and columns.
         y_dense = y_dense.reset_index(drop=True)
@@ -296,8 +274,10 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
     def _format_sparse_output(
         collective_anomalies: list[tuple[int, int, np.ndarray]],
         closed: str = "both",
-    ) -> pd.Series:
+    ) -> pd.DataFrame:
         """Format the sparse output of subset collective anomaly detectors.
+
+        Can be reused by subclasses to format the output of the _predict method.
 
         Parameters
         ----------
@@ -307,8 +287,6 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
         closed : str
             Whether the (start, end) tuple correspond to intervals that are closed
             on the left, right, both, or neither.
-
-        Can be reused by subclasses to format the output of the _predict method.
 
         Returns
         -------

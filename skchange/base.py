@@ -2,7 +2,7 @@
 
     class name: BaseDetector
 
-    Adapted from the sktime.BaseSeriesAnnotator class.
+    Adapted from the BaseSeriesAnnotator and BaseTransformer class in sktime.
 
 Scitype defining methods:
     fitting                         - fit(self, X, y=None)
@@ -11,11 +11,11 @@ Scitype defining methods:
     detection scores, dense         - score_transform(self, X)  [optional]
     updating (temporal)             - update(self, X, y=None)  [optional]
 
-Each detector type (e.g. anomaly detector, collective anomaly detector, changepoint
-detector) are subclasses of BaseDetector (task + learning_type tags in sktime).
-They are defined by the content and format of the output of the predict method. Each
-detector type therefore has the following methods for converting between sparse and
-dense output formats:
+Each detector type (e.g. point anomaly detector, collective anomaly detector,
+changepoint detector) are subclasses of BaseDetector (task tag in sktime).
+A detector type is defined by the content and format of the output of the predict
+method. Each detector type therefore has the following methods for converting between
+sparse and dense output formats:
     converting sparse output to dense - sparse_to_dense(y_sparse, index, columns)
     converting dense output to sparse - dense_to_sparse(y_dense)  [optional]
 
@@ -63,6 +63,7 @@ class BaseDetector(BaseTransformer):
     - _update(self, X, y=None) -> self
     """
 
+    # _tags are adapted from BaseTransformer in sktime.
     _tags = {
         "object_type": "transformer",  # type of object
         "scitype:transform-input": "Series",
@@ -398,46 +399,3 @@ class BaseDetector(BaseTransformer):
             Annotations for sequence X exact format depends on annotation type.
         """
         return self.fit(X).transform(X)
-
-
-# Notes on required .predict output formats per detector type (task and capability):
-#
-# - task == "anomaly_detection":
-#     pd.Series(anomaly_indices, dtype=int, name="anomalies)
-# - task == "collective_anomaly_detection":
-#     pd.Series(pd.IntervalIndex(
-#         anomaly_intervals, closed=<insert>, name="collective_anomalies"
-#     ))
-# - task == "change_point_detection":
-#     Changepoints are defined as the last element of a segment.
-#     pd.Series(changepoint_indices, dtype=int, name="changepoints")
-# - task == "segmentation":
-#     Difference from change point detection: Allows the same label to be assigned to
-#     multiple segments.
-#     pd.Series({
-#         index = pd.IntervalIndex(segment_intervals, closed=<insert>),
-#         values = segment_labels,
-#     })
-# - task == "None":
-#     Custom task.
-#     Only restriction is that the output must be a pd.Series or pd.DataFrame where
-#     each element or row corresponds to a detected event.
-#     For .transform to work, .sparse_to_dense must be implemented for custom tasks.
-# - capability:subset_detection is True:
-#     * task == "anomaly_detection":
-#         pd.DataFrame({
-#             "location": anomaly_indices,
-#             "columns": affected_components_list,
-#         })
-#     * task == "collective_anomaly_detection":
-#         pd.DataFrame({
-#             "location": pd.IntervalIndex(anomaly_intervals, closed=<insert>),
-#             "columns": affected_components_list,
-#         })
-#     * task == "change_point_detection":
-#         pd.DataFrame({
-#             "location": changepoint_indices,
-#             "columns": affected_components_list,
-#         })
-# - capability:detection_score is True: Explicit way of stating that _score_transform
-#   is implemented.
