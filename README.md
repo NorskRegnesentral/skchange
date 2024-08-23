@@ -35,7 +35,7 @@ detector.fit_predict(df)
 6    349
 7    399
 8    449
-Name: changepoints, dtype: int32
+Name: changepoint, dtype: int64
 ```
 
 ### Multivariate anomaly detection
@@ -54,9 +54,9 @@ df = generate_teeth_data(
 detector = Mvcapa(collective_penalty="sparse")
 detector.fit_predict(df)
 >>>
-   start  end components
-0     50   99     [0, 1]
-1    150  199     [0, 1]
+  anomaly_interval anomaly_columns
+0         [50, 99]          [0, 1]
+1       [150, 199]          [0, 1]
 ```
 
 
