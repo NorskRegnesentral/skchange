@@ -11,7 +11,6 @@ from numba import njit
 from scipy.stats import chi2
 
 from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
-from skchange.anomaly_detectors.utils import merge_anomalies
 from skchange.costs.saving_factory import saving_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -518,10 +517,11 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 
-        if self.ignore_point_anomalies:
-            anomalies = collective_anomalies
-        else:
-            anomalies = merge_anomalies(collective_anomalies, point_anomalies)
+        anomalies = collective_anomalies
+        if not self.ignore_point_anomalies:
+            anomalies += point_anomalies
+        anomalies = sorted(anomalies)
+
         return SubsetCollectiveAnomalyDetector._format_sparse_output(anomalies)
 
     def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
