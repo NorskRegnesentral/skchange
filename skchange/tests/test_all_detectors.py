@@ -64,9 +64,9 @@ def test_detector_score_transform(Detector):
 def test_detector_update(Detector):
     """Test update method output."""
     detector = Detector.create_test_instance()
-    x = make_annotation_problem(n_timepoints=15, estimator_type="None")
-    x_train = x[:10].to_frame()
-    x_next = x[10:].to_frame()
+    x = make_annotation_problem(n_timepoints=30, estimator_type="None")
+    x_train = x[:20].to_frame()
+    x_next = x[20:].to_frame()
     detector.fit(x_train)
     detector.update_predict(x_next)
     assert issubclass(detector.__class__, BaseDetector)
