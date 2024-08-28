@@ -20,7 +20,7 @@ def solve_gl(X: np.ndarray, alpha_scaler: float) -> np.ndarray:
 @njit(cache=True)
 def init_precision_score(X: np.ndarray) -> np.ndarray:
     """Initialize the precision matrix change point detection."""
-    # TODO: Should compute "rolling" covariance matrices here?
+    # TODO: Should (could) compute "rolling" covariance matrices here?
     return X
 
 

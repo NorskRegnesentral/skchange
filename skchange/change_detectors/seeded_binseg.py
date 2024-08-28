@@ -182,6 +182,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         growth_factor: float = 1.5,
         fmt: str = "sparse",
         labels: str = "int_label",
+        require_jitted: bool = True,
     ):
         self.score = score
         self.threshold_scale = threshold_scale  # Just holds the input value.
@@ -189,8 +190,10 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
+        self.require_jitted = require_jitted
+
         super().__init__(fmt=fmt, labels=labels)
-        self.score_f, self.score_init_f = score_factory(self.score)
+        self.score_f, self.score_init_f = score_factory(self.score, require_jitted=require_jitted)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
