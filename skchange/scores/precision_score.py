@@ -81,7 +81,7 @@ def _precision_score(
     # Remove normalization constant from LogLikelihood:
     pre_split_loss = precision_log_likelihood(pre_split_cov, pre_split_precision) * pre_split_fraction
     post_split_loss = precision_log_likelihood(post_split_cov, post_split_precision) * post_split_fraction
-    interval_loss = precision_log_likelihood(complete_cov, complete_precision) * 1.0
+    interval_loss = precision_log_likelihood(complete_cov, complete_precision)
 
     return interval_loss - (pre_split_loss + post_split_loss)
 

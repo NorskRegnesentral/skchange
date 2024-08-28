@@ -96,7 +96,7 @@ def log_pdet_cov_matrix(cov: np.ndarray, zero_eigval_tol: float = 1.0e-10) -> fl
     return np.sum(np.log(non_zero_eigvals))
 
 
-def log_top_k_eig_det_cov_matrix(cov: np.ndarray, top_k_eigvals: int) -> float:
+def log_top_k_eigenvals_det_cov_matrix(cov: np.ndarray, top_k_eigvals: int) -> float:
     """Calculate the log determinant of the covariance matrix."""
     eigvals = np.linalg.eigvalsh(cov)
     # Sort the eigenvalues in descending order:
@@ -269,6 +269,10 @@ def _multivariate_meanvar_score(
     split : int
         Split index of the interval to test for a change in the precision matrix.
         Include the element at the index 'split' in the second segment. 
+    diag_var_perturbation : float
+        Diagonal variance perturbation to add to the covariance matrix.
+    apply_bartlett_correction : bool
+        Whether to apply the Bartlett correction to the score.
     Returns
     -------
     score : float
@@ -358,7 +362,7 @@ def multivariate_meanvar_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the CUSUM score for a change in the mean and covariance for.
+    """Calculate the CUSUM score for a change in the mean and covariance under a multivariate Gaussian model.
 
     Parameters
     ----------
@@ -371,7 +375,7 @@ def multivariate_meanvar_score(
     splits : np.ndarray
         Split indices of the intervals to test for a change in the covariance.
 
-    Source:
+    References:
     - A Multivariate Change point Model for Change in Mean Vector and/or Covariance Structure: Detection of Isolated
     Systolic Hypertension (ISH). K.D. Zamba.
 
