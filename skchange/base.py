@@ -36,6 +36,7 @@ State:
 __author__ = ["mtveten"]
 __all__ = ["BaseDetector"]
 
+import pandas as pd
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
 
@@ -197,7 +198,8 @@ class BaseDetector(BaseEstimator):
             detection results in some meaningful way depending on the detector type.
         """
         y = self.predict(X)
-        y_dense = self.sparse_to_dense(y, X.index, X.columns)
+        X_inner = pd.DataFrame(X)
+        y_dense = self.sparse_to_dense(y, X_inner.index, X_inner.columns)
 
         # sktime does not support transformations that change the state of the object.
         # Some detectors store detection score information a self.scores during predict.
