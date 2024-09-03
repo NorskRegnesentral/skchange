@@ -200,13 +200,6 @@ class BaseDetector(BaseEstimator):
         y = self.predict(X)
         X_inner = pd.DataFrame(X)
         y_dense = self.sparse_to_dense(y, X_inner.index, X_inner.columns)
-
-        # sktime does not support transformations that change the state of the object.
-        # Some detectors store detection score information a self.scores during predict.
-        # For now remove self.scores in transform to pass tests.
-        if hasattr(self, "scores"):
-            del self.scores
-
         return y_dense
 
     @staticmethod
