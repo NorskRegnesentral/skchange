@@ -2,7 +2,7 @@
 
     class name: BaseDetector
 
-    Adapted from the BaseSeriesAnnotator and BaseTransformer class in sktime.
+    Adapted from the BaseSeriesAnnotator class in sktime.
 
 Scitype defining methods:
     fitting                         - fit(self, X, y=None)
