@@ -7,7 +7,7 @@
 Scitype defining methods:
     fitting                         - fit(self, X, y=None)
     detecting, sparse format        - predict(self, X)
-    detecting, dense format         - transform(self, X, y=None)
+    detecting, dense format         - transform(self, X)
     detection scores, dense         - score_transform(self, X)  [optional]
     updating (temporal)             - update(self, X, y=None)  [optional]
 
@@ -182,7 +182,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def transform(self, X, y=None):
+    def transform(self, X):
         """Detect events and return the result in a dense format.
 
         Parameters
@@ -333,13 +333,15 @@ class BaseDetector(BaseEstimator):
 
         return self
 
-    def update_predict(self, X):
+    def update_predict(self, X, y=None):
         """Update model with new data and detect events in it.
 
         Parameters
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
             Training data to update model with, time series.
+        y : pd.Series or np.ndarray, optional (default=None)
+            Target values of data to be detected.
 
         Returns
         -------
@@ -367,7 +369,7 @@ class BaseDetector(BaseEstimator):
         X : pd.DataFrame, pd.Series or np.ndarray
             Data to be transformed
         y : pd.Series or np.ndarray, optional (default=None)
-            Target values of data to be predicted.
+            Target values of data to be detected.
 
         Returns
         -------
@@ -390,7 +392,7 @@ class BaseDetector(BaseEstimator):
         X : pd.DataFrame, pd.Series or np.ndarray
             Data to be transformed
         y : pd.Series or np.ndarray, optional (default=None)
-            Target values of data to be predicted.
+            Target values of data to be detected.
 
         Returns
         -------
@@ -399,4 +401,4 @@ class BaseDetector(BaseEstimator):
             format, meaning that each element in X will be annotated according to the
             detection results in some meaningful way depending on the detector type.
         """
-        return self.fit(X).transform(X)
+        return self.fit(X, y).transform(X)
