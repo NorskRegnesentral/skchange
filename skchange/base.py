@@ -86,10 +86,10 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Training data to fit model to (time series).
         y : pd.Series, optional
-            Ground truth annotations for training if annotator is supervised.
+            Ground truth detections for training if detector is supervised.
 
         Returns
         -------
@@ -125,10 +125,10 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Training data to fit model to time series.
         y : pd.Series, optional
-            Ground truth annotations for training if annotator is supervised.
+            Ground truth detections for training if detector is supervised.
 
         Returns
         -------
@@ -146,14 +146,14 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Data to detect events in (time series).
 
         Returns
         -------
         y : pd.Series or pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
-            the specific detector type.
+            the detector type.
         """
         self.check_is_fitted()
 
@@ -171,14 +171,14 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Data to detect events in (time series).
 
         Returns
         -------
         y : pd.Series or pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
-            the specific detector type.
+            the detector type.
         """
         raise NotImplementedError("abstract method")
 
@@ -187,7 +187,7 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Data to detect events in (time series).
 
         Returns
@@ -239,49 +239,48 @@ class BaseDetector(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     def score_transform(self, X):
-        """Return scores for predicted annotations on test/deployment data.
+        """Return detection scores on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Data to annotate (time series).
 
         Returns
         -------
-        y : pd.Series
-            Scores for sequence X exact format depends on annotation type.
+        y : pd.Series or pd.DataFrame
+            Scores for sequence X. Exact format depends on the concrete detector.
         """
         self.check_is_fitted()
         X = check_series(X, allow_index_names=True)
         return self._score_transform(X)
 
     def _score_transform(self, X):
-        """Return scores for predicted annotations on test/deployment data.
+        """Return detection scores on test/deployment data.
 
         core logic
 
         Parameters
         ----------
-        X : pd.DataFrame
-            Data to annotate, time series.
+        X : pd.Series, pd.DataFrame or np.ndarray
+            Data to annotate (time series).
 
         Returns
         -------
-        y : pd.Series
-            One score for each element in X.
-            Annotations for sequence X exact format depends on annotation type.
+        y : pd.Series or pd.DataFrame
+            Scores for sequence X. Exact format depends on the concrete detector.
         """
         raise NotImplementedError("abstract method")
 
     def update(self, X, y=None):
-        """Update model with new data and optional ground truth annotations.
+        """Update model with new data and optional ground truth detections.
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Training data to update model with (time series).
         y : pd.Series, optional
-            Ground truth annotations for training if annotator is supervised.
+            Ground truth detections for training if annotator is supervised.
 
         Returns
         -------
@@ -309,16 +308,16 @@ class BaseDetector(BaseEstimator):
         return self
 
     def _update(self, X, y=None):
-        """Update model with new data and optional ground truth annotations.
+        """Update model with new data and optional ground truth detections.
 
         core logic
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Training data to update model with time series
         y : pd.Series, optional
-            Ground truth annotations for training if annotator is supervised.
+            Ground truth detections for training if annotator is supervised.
 
         Returns
         -------
@@ -335,17 +334,18 @@ class BaseDetector(BaseEstimator):
         return self
 
     def update_predict(self, X):
-        """Update model with new data and create annotations for it.
+        """Update model with new data and detect events in it.
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : pd.Series, pd.DataFrame or np.ndarray
             Training data to update model with, time series.
 
         Returns
         -------
-        y : pd.Series
-            Annotations for sequence X exact format depends on annotation type.
+        y : pd.Series or pd.DataFrame
+            Each element or row corresponds to a detected event. Exact format depends on
+            the detector type.
 
         Notes
         -----
@@ -359,8 +359,8 @@ class BaseDetector(BaseEstimator):
     def fit_predict(self, X, y=None):
         """Fit to data, then predict it.
 
-        Fits model to X and y with given annotation parameters
-        and returns the annotations made by the model.
+        Fits model to X and y with given detector parameters and returns the detected
+        events.
 
         Parameters
         ----------
@@ -371,8 +371,9 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        self : pd.Series
-            Annotations for sequence X exact format depends on annotation type.
+        y : pd.Series or pd.DataFrame
+            Each element or row corresponds to a detected event. Exact format depends on
+            the detector type.
         """
         # Non-optimized default implementation; override when a better
         # method is possible for a given algorithm.
@@ -381,8 +382,8 @@ class BaseDetector(BaseEstimator):
     def fit_transform(self, X, y=None):
         """Fit to data, then transform it.
 
-        Fits model to X and y with given annotation parameters
-        and returns the annotations made by the model.
+        Fits model to X and y with given detector parameters and returns the detected
+        events in a dense format.
 
         Parameters
         ----------
@@ -393,7 +394,9 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        self : pd.Series
-            Annotations for sequence X exact format depends on annotation type.
+        y : pd.Series or pd.DataFrame
+            Detections for sequence X. The returned detections will be in the dense
+            format, meaning that each element in X will be annotated according to the
+            detection results in some meaningful way depending on the detector type.
         """
         return self.fit(X).transform(X)
