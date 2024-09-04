@@ -88,7 +88,7 @@ class BaseDetector(BaseEstimator):
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
             Training data to fit model to (time series).
-        y : pd.Series, optional
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
             Ground truth detections for training if detector is supervised.
 
         Returns
@@ -126,8 +126,8 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to fit model to time series.
-        y : pd.Series, optional
+            Training data to fit model to (time series).
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
             Ground truth detections for training if detector is supervised.
 
         Returns
@@ -244,7 +244,7 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
-            Data to annotate (time series).
+            Data to score (time series).
 
         Returns
         -------
@@ -263,7 +263,7 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
-            Data to annotate (time series).
+            Data to score (time series).
 
         Returns
         -------
@@ -279,8 +279,8 @@ class BaseDetector(BaseEstimator):
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
             Training data to update model with (time series).
-        y : pd.Series, optional
-            Ground truth detections for training if annotator is supervised.
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
+            Ground truth detections for training if detector is supervised.
 
         Returns
         -------
@@ -315,9 +315,9 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to update model with time series
-        y : pd.Series, optional
-            Ground truth detections for training if annotator is supervised.
+            Training data to update model with (time series).
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
+            Ground truth detections for training if detector is supervised.
 
         Returns
         -------
@@ -339,9 +339,9 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to update model with, time series.
-        y : pd.Series or np.ndarray, optional (default=None)
-            Target values of data to be detected.
+            Training data to update model with and detect events in (time series).
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
+            Ground truth detections for training if detector is supervised.
 
         Returns
         -------
@@ -367,9 +367,9 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.DataFrame, pd.Series or np.ndarray
-            Data to be transformed
-        y : pd.Series or np.ndarray, optional (default=None)
-            Target values of data to be detected.
+            Training data to fit model with and detect events in (time series).
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
+            Ground truth detections for training if detector is supervised.
 
         Returns
         -------
@@ -390,7 +390,7 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         X : pd.DataFrame, pd.Series or np.ndarray
-            Data to be transformed
+            Training data to fit model with and detect events in (time series).
         y : pd.Series or np.ndarray, optional (default=None)
             Target values of data to be detected.
 
