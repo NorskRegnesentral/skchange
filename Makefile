@@ -42,7 +42,8 @@ tests: test
 clean: ## Clean build dist and egg directories left after install
 	rm -rf ./dist
 	rm -rf ./build
-	rm -rf ./pytest_cache
+	rm -rf ./.pytest_cache
+	rm -rf ./.ruff_cache
 	rm -rf ./htmlcov
 	rm -rf ./junit
 	rm -rf ./$(PACKAGE).egg-info
