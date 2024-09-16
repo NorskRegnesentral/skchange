@@ -37,7 +37,7 @@ dependencies = [
   "numpy>=1.21",
   "pandas>=1.1",
   "numba>=0.56",  # numba is used for fast computation throughout
-  "sktime>=0.30",
+  "sktime>=0.33",
 ]
 
 [project.urls]

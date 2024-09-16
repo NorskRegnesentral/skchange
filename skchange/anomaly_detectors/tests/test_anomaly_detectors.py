@@ -56,10 +56,6 @@ def test_anomaly_detector_sparse_to_dense(Estimator):
     labels_predict_convert = detector.sparse_to_dense(
         anomalies, anomaly_data.index, anomaly_data.columns
     )
-    if isinstance(labels_predict_convert, pd.Series):
-        # transforms does output conversion to match the input. This is not required of
-        # spare_to_dense.
-        labels_predict_convert = labels_predict_convert.to_frame()
     labels_transform = detector.fit_transform(anomaly_data)
     assert labels_predict_convert.equals(labels_transform)
 
