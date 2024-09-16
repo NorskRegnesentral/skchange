@@ -1,5 +1,6 @@
 """Tests for all annotators/detectors in skchange."""
 
+import numpy as np
 import pandas as pd
 import pytest
 from sktime.utils._testing.annotation import make_annotation_problem
@@ -23,7 +24,8 @@ def test_detector_fit(Detector):
     """Test fit method output."""
     detector = Detector.create_test_instance()
     x = make_annotation_problem(n_timepoints=50, estimator_type="None")
-    fit_detector = detector.fit(x)
+    y = pd.Series(np.zeros(len(x)))  # For coverage testing.
+    fit_detector = detector.fit(x, y)
     assert issubclass(detector.__class__, BaseDetector)
     assert issubclass(fit_detector.__class__, BaseDetector)
     assert isinstance(fit_detector, Detector)
