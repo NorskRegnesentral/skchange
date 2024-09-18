@@ -1,5 +1,5 @@
 # skchange
-`skchange` provies sktime-compatible change detection and changepoint-based anomaly detection algorithms.
+`skchange` provides sktime-compatible change detection and changepoint-based anomaly detection algorithms.
 
 A playground for now.
 
