@@ -61,7 +61,7 @@ class Moscore(ChangeDetector):
     score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
-        * If "var", the difference-in-variance statistic is used,
+        * If "meanvar", the difference-in-variance statistic is used,
         * If a tuple, it must contain two functions: The first function is the scoring
         function, which takes in the output of the second function as its first
         argument, and start, end and split indices as the second, third and fourth
