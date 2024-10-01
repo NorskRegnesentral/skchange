@@ -61,9 +61,9 @@ def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: np.ndarray, j: np.nda
 @njit(cache=True)
 def meanvar_score(
     precomputed_params: np.ndarray,
-    start: np.ndarray,
-    end: np.ndarray,
-    split: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    splits: np.ndarray,
 ) -> np.ndarray:
     """Calculate the score for a change in the mean and/or variance.
 
@@ -92,11 +92,11 @@ def meanvar_score(
     To optimize performance, no checks are performed on (start, split, end).
     """
     sums, sums2 = precomputed_params
-    before_var = var_from_sums(sums, sums2, start, split)
-    after_var = var_from_sums(sums, sums2, split + 1, end)
-    full_var = var_from_sums(sums, sums2, start, end)
-    before_n = (split - start + 1).reshape(-1, 1)
-    after_n = (end - split).reshape(-1, 1)
+    before_var = var_from_sums(sums, sums2, starts, splits)
+    after_var = var_from_sums(sums, sums2, splits + 1, ends)
+    full_var = var_from_sums(sums, sums2, starts, ends)
+    before_n = (splits - starts + 1).reshape(-1, 1)
+    after_n = (ends - splits).reshape(-1, 1)
     before_term = -before_n * np.log(before_var / full_var)
     after_term = -after_n * np.log(after_var / full_var)
     likelihood_ratio = before_term + after_term

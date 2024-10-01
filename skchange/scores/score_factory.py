@@ -30,7 +30,7 @@ from skchange.scores.mean_cov_score import (
     mean_cov_score,
 )
 
-VALID_CHANGE_SCORES = ["mean", "meanvar", "multivariate_meanvar"]
+VALID_CHANGE_SCORES = ["mean", "meanvar", "mean_cov"]
 VALID_ANOMALY_SCORES = ["mean", "meanvar"]
 
 
@@ -60,7 +60,7 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
         return mean_score, init_mean_score
     elif isinstance(score, str) and score == "meanvar":
         return meanvar_score, init_meanvar_score
-    elif isinstance(score, str) and score == "multivariate_meanvar":
+    elif isinstance(score, str) and score == "mean_cov":
         return mean_cov_score, init_mean_cov_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
         return score[0], score[1]

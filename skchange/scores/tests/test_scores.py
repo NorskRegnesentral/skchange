@@ -15,12 +15,12 @@ def test_scores(score):
     score_f, init_score_f = score_factory(score)
     params = init_score_f(df.values)
     scores = np.zeros(n)
-    for split in np.arange(10, n - 10).reshape(-1, 1):
-        score_value = score_f(
-            params, start=np.array([0]), end=np.array([49]), split=split
+    for splits in np.arange(10, n - 10).reshape(-1, 1):
+        score_values = score_f(
+            params, starts=np.array([0]), ends=np.array([49]), splits=splits
         )
-        assert isinstance(score_value, np.ndarray)
-        scores[split] = score_value
+        assert isinstance(score_values, np.ndarray)
+        scores[splits] = score_values
 
     assert np.all(scores >= 0.0)
 
