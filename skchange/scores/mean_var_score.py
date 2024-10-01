@@ -8,8 +8,8 @@ from skchange.utils.numba.stats import col_cumsum
 
 
 @njit(cache=True)
-def init_meanvar_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Precompute sums and squared sums for 'meanvar_score'.
+def init_mean_var_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Precompute sums and squared sums for 'mean_var_score'.
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: np.ndarray, j: np.nda
 
 
 @njit(cache=True)
-def meanvar_score(
+def mean_var_score(
     precomputed_params: np.ndarray,
     start: np.ndarray,
     end: np.ndarray,
@@ -148,7 +148,7 @@ def baseline_var_from_sums(
 
 
 @njit(cache=True)
-def meanvar_anomaly_score(
+def mean_var_anomaly_score(
     precomputed_params: np.ndarray,
     interval_start: np.ndarray,
     interval_end: np.ndarray,
