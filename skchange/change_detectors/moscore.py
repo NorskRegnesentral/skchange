@@ -305,6 +305,6 @@ class Moscore(ChangeDetector):
         """
         params = [
             {"score": "mean", "bandwidth": 5},
-            {"score": "meanvar", "bandwidth": 5},
+            {"score": "mean_var", "bandwidth": 5},
         ]
         return params

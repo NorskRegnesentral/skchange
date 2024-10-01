@@ -17,21 +17,20 @@ Recipe for adding new scores:
 from typing import Callable, Union
 
 from numba.extending import is_jitted
-from numba import njit
 
-from skchange.scores.mean_score import init_mean_score, mean_anomaly_score, mean_score
-from skchange.scores.meanvar_score import (
-    init_meanvar_score,
-    meanvar_anomaly_score,
-    meanvar_score,
-)
 from skchange.scores.mean_cov_score import (
     init_mean_cov_score,
     mean_cov_score,
 )
+from skchange.scores.mean_score import init_mean_score, mean_anomaly_score, mean_score
+from skchange.scores.mean_var_score import (
+    init_mean_var_score,
+    mean_var_anomaly_score,
+    mean_var_score,
+)
 
-VALID_CHANGE_SCORES = ["mean", "meanvar", "mean_cov"]
-VALID_ANOMALY_SCORES = ["mean", "meanvar"]
+VALID_CHANGE_SCORES = ["mean", "mean_var", "mean_cov"]
+VALID_ANOMALY_SCORES = ["mean", "mean_var"]
 
 
 def score_factory(score: Union[str, tuple[Callable, Callable]]):
@@ -42,7 +41,7 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
     score: str, tuple[Callable, Callable]
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
-        * If "meanvar", the difference-in-mean-and-variance statistic is used,
+        * If "mean_var", the difference-in-mean-and-variance statistic is used,
         * If a tuple, it must contain two functions: The first function is the scoring
         function, which takes in the output of the second function as its first
         argument, and start, end and split indices as the second, third and fourth
@@ -58,8 +57,8 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
     """
     if isinstance(score, str) and score == "mean":
         return mean_score, init_mean_score
-    elif isinstance(score, str) and score == "meanvar":
-        return meanvar_score, init_meanvar_score
+    elif isinstance(score, str) and score == "mean_var":
+        return mean_var_score, init_mean_var_score
     elif isinstance(score, str) and score == "mean_cov":
         return mean_cov_score, init_mean_cov_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
@@ -96,8 +95,8 @@ def anomaly_score_factory(score: Union[str, tuple[Callable, Callable]]):
     """
     if isinstance(score, str) and score == "mean":
         return mean_anomaly_score, init_mean_score
-    elif isinstance(score, str) and score == "meanvar":
-        return meanvar_anomaly_score, init_meanvar_score
+    elif isinstance(score, str) and score == "mean_var":
+        return mean_var_anomaly_score, init_mean_var_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
         return score[0], score[1]
     else:
