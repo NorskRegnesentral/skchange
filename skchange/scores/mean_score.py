@@ -62,10 +62,14 @@ def mean_score(
     """
     sums = precomputed_params
     before_sum = sums[splits + 1] - sums[starts]
-    before_weight = np.sqrt((ends - splits) / ((ends - starts + 1) * (splits - starts + 1)))
+    before_weight = np.sqrt(
+        (ends - splits) / ((ends - starts + 1) * (splits - starts + 1))
+    )
     before_weight = before_weight.reshape(-1, 1)
     after_sum = sums[ends + 1] - sums[splits + 1]
-    after_weight = np.sqrt((splits - starts + 1) / ((ends - starts + 1) * (ends - splits)))
+    after_weight = np.sqrt(
+        (splits - starts + 1) / ((ends - starts + 1) * (ends - splits))
+    )
     after_weight = after_weight.reshape(-1, 1)
     return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
 

@@ -9,7 +9,8 @@ def half_integer_digamma(twice_n: int) -> float:
     """Calculate the digamma function for half integer values, i.e. twice_n/2.
 
     The digamma function is the logarithmic derivative of the gamma function.
-    This function is capable of calculating the digamma function for half integer values.
+    This function is capable of calculating the
+    digamma function for half integer values.
 
     Source: https://en.wikipedia.org/wiki/Digamma_function
 
@@ -47,8 +48,9 @@ def likelihood_ratio_expected_value(
 ) -> float:
     """Calculate the expected value of twice the negative log likelihood ratio.
 
-    We check that the cut point is within the sequence length, and that both 'k' and 'n' are
-    large enough relative to the dimension 'p', to ensure that the expected value is finite.
+    We check that the cut point is within the sequence length, and that both 'k' and 'n'
+    are large enough relative to the dimension 'p', to ensure that the expected
+    value is finite.
     Should at least have 'p+1' points on each side of a split, for 'p' dimensional data.
 
     Parameters
@@ -152,18 +154,22 @@ def _mean_cov_score(
     end: int,
     split: int,
 ) -> float:
-    """Calculate the score (twice negative log likelihood ratio) for a change in mean and variance.
+    """Calculate the score for a change in mean and variance.
 
-    Under a multivariate Gaussian model.
+    The score is computed as the Bartlett corrected log likelihood
+    ratio for a test of change in mean and/or variance at the split
+    point under a multivariate Gaussian model.
 
     Parameters
     ----------
     X : np.ndarray
         Data matrix. Rows are observations and columns are variables.
     start : int
-        Start index of the interval to test for a change in the precision matrix. (Inclusive)
+        Start index of the interval to test for a change in the precision matrix.
+        (Inclusive)
     end : int
-        End index of the interval to test for a change in the precision matrix. (Inclusive)
+        End index of the interval to test for a change in the precision matrix.
+        (Inclusive)
     split : int
         Split index of the interval to test for a change in the precision matrix.
         Include the element at the index 'split' in the first segment.
@@ -196,12 +202,13 @@ def mean_cov_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate CUSUM score for a change in mean and covariance under a multivariate Gaussian model.
+    """Calculate CUSUM scores for a change in mean and covariance.
 
     References
     ----------
-    - A Multivariate Change point Model for Change in Mean Vector and/or Covariance Structure: Detection of Isolated
-    Systolic Hypertension (ISH). K.D. Zamba.
+    - A Multivariate Change point Model for Change in Mean Vector and/or
+      Covariance Structure: Detection of Isolated Systolic Hypertension (ISH).
+      K.D. Zamba.
 
     Parameters
     ----------
