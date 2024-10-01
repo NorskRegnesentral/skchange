@@ -1,6 +1,6 @@
 """The Moving Score algorithm for multiple changepoint detection."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["Moscore"]
 
 from typing import Callable, Optional, Union

@@ -1,6 +1,6 @@
 """Circular binary segmentation algorithm for multiple changepoint detection."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["CircularBinarySegmentation"]
 
 from typing import Callable, Optional, Union
