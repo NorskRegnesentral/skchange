@@ -14,6 +14,8 @@ Recipe for adding new costs:
 
 """
 
+__author__ = ["mtveten"]
+
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
 
 VALID_COSTS = ["mean"]

@@ -14,6 +14,8 @@ Recipe for adding new scores:
 
 """
 
+__author__ = ["mtveten"]
+
 from typing import Callable, Union
 
 from numba.extending import is_jitted

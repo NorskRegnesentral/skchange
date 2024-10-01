@@ -1,5 +1,7 @@
 """Data generators."""
 
+__author__ = ["mtveten"]
+
 from numbers import Number
 from typing import Union
 
