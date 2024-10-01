@@ -20,10 +20,10 @@ from numba.extending import is_jitted
 from numba import njit
 
 from skchange.scores.mean_score import init_mean_score, mean_anomaly_score, mean_score
-from skchange.scores.meanvar_score import (
-    init_meanvar_score,
-    meanvar_anomaly_score,
-    meanvar_score,
+from skchange.scores.mean_var_score import (
+    init_mean_var_score,
+    mean_var_anomaly_score,
+    mean_var_score,
 )
 from skchange.scores.mean_cov_score import (
     init_mean_cov_score,
@@ -59,7 +59,7 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
     if isinstance(score, str) and score == "mean":
         return mean_score, init_mean_score
     elif isinstance(score, str) and score == "meanvar":
-        return meanvar_score, init_meanvar_score
+        return mean_var_score, init_mean_var_score
     elif isinstance(score, str) and score == "mean_cov":
         return mean_cov_score, init_mean_cov_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
@@ -97,7 +97,7 @@ def anomaly_score_factory(score: Union[str, tuple[Callable, Callable]]):
     if isinstance(score, str) and score == "mean":
         return mean_anomaly_score, init_mean_score
     elif isinstance(score, str) and score == "meanvar":
-        return meanvar_anomaly_score, init_meanvar_score
+        return mean_var_anomaly_score, init_mean_var_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
         return score[0], score[1]
     else:

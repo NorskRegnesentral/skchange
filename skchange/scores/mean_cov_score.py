@@ -22,7 +22,6 @@ def half_integer_digamma(twice_n: int) -> float:
     res : float
         Value of the digamma function for the half integer value.
     """
-    assert isinstance(twice_n, int), "n must be an integer."
     assert twice_n > 0, "n must be a positive integer."
 
     if twice_n % 2 == 0:
@@ -130,7 +129,14 @@ def multivariate_normal_cost(X: np.ndarray):
     """Compute log determinant cost for a given interval."""
     cov = np.cov(X, rowvar=False, ddof=0)
 
-    det_sign, log_abs_det = np.linalg.slogdet(cov)
+    if len(cov.shape) < 2:
+        # Handle 0D and 1D arrays:
+        det_sign, log_abs_det = np.linalg.slogdet(cov.reshape(1, -1))
+    elif len(cov.shape) > 2:
+        raise ValueError("Cannot handle input arrays of dimension greater than two.")
+    else:
+        det_sign, log_abs_det = np.linalg.slogdet(cov)
+
     if det_sign <= 0:
         return np.nan
 
