@@ -1,4 +1,5 @@
 """Test statistic for differences in the mean and/or variance for multivariate data."""
+
 import numpy as np
 from numba import njit
 
@@ -16,7 +17,7 @@ def half_integer_digamma(twice_n: int) -> float:
     ----------
     twice_n : int
         Twice the integer value.
-    
+
     Returns
     -------
     res : float
@@ -62,7 +63,7 @@ def likelihood_ratio_expected_value(
     Returns
     -------
     g_k_n : float
-        Expected value of twice the negative log likelihood ratio.        
+        Expected value of twice the negative log likelihood ratio.
 
     """
     n, k, p = sequence_length, cut_point, dimension
@@ -94,7 +95,7 @@ def likelihood_ratio_expected_value(
 @njit(cache=True)
 def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimension):
     """Calculate the Bartlett correction for the twice negated log likelihood ratio.
-    
+
     Parameters
     ----------
     twice_negated_log_lr : float
@@ -154,6 +155,7 @@ def _mean_cov_score(
     """Calculate the score (twice negative log likelihood ratio) for a change in mean and variance.
 
     Under a multivariate Gaussian model.
+
     Parameters
     ----------
     X : np.ndarray
@@ -164,16 +166,16 @@ def _mean_cov_score(
         End index of the interval to test for a change in the precision matrix. (Inclusive)
     split : int
         Split index of the interval to test for a change in the precision matrix.
-        Include the element at the index 'split' in the first segment. 
+        Include the element at the index 'split' in the first segment.
 
     Returns
     -------
     score : float
         Score (twice negative log likelihood ratio) for the change in mean and variance.
     """
-    full_span_loss  = multivariate_normal_cost(X[start:end+1, :])
-    pre_split_loss  = multivariate_normal_cost(X[start:split+1, :])
-    post_split_loss = multivariate_normal_cost(X[split + 1:end+1, :])
+    full_span_loss = multivariate_normal_cost(X[start : end + 1, :])
+    pre_split_loss = multivariate_normal_cost(X[start : split + 1, :])
+    post_split_loss = multivariate_normal_cost(X[split + 1 : end + 1, :])
 
     twice_negated_log_lr = full_span_loss - pre_split_loss - post_split_loss
 
@@ -196,7 +198,8 @@ def mean_cov_score(
 ) -> np.ndarray:
     """Calculate CUSUM score for a change in mean and covariance under a multivariate Gaussian model.
 
-    References:
+    References
+    ----------
     - A Multivariate Change point Model for Change in Mean Vector and/or Covariance Structure: Detection of Isolated
     Systolic Hypertension (ISH). K.D. Zamba.
 

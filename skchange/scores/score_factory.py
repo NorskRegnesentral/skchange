@@ -17,17 +17,16 @@ Recipe for adding new scores:
 from typing import Callable, Union
 
 from numba.extending import is_jitted
-from numba import njit
 
+from skchange.scores.mean_cov_score import (
+    init_mean_cov_score,
+    mean_cov_score,
+)
 from skchange.scores.mean_score import init_mean_score, mean_anomaly_score, mean_score
 from skchange.scores.mean_var_score import (
     init_mean_var_score,
     mean_var_anomaly_score,
     mean_var_score,
-)
-from skchange.scores.mean_cov_score import (
-    init_mean_cov_score,
-    mean_cov_score,
 )
 
 VALID_CHANGE_SCORES = ["mean", "meanvar", "mean_cov"]
