@@ -204,13 +204,13 @@ def mean_cov_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate CUSUM scores for a change in mean and covariance.
+    """Calculate CUSUM scores for a change in mean and covariance[1]_.
 
     References
     ----------
-    - A Multivariate Change point Model for Change in Mean Vector and/or
-      Covariance Structure: Detection of Isolated Systolic Hypertension (ISH).
-      K.D. Zamba.
+    .. [1] K. D. Zamba and Douglas M. Hawkins (2009). A Multivariate
+    Change point Model for Change in Mean Vector and/or Covariance
+    Structure: Detection of Isolated Systolic Hypertension (ISH).
 
     Parameters
     ----------
