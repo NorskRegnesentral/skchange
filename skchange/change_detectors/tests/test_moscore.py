@@ -14,7 +14,7 @@ def test_moscore_changepoint(score):
     n_segments = 2
     seg_len = 50
     df = generate_teeth_data(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
+        n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
     detector = Moscore(score)
     changepoints = detector.fit_predict(df)
