@@ -3,14 +3,13 @@
 __author__ = ["mtveten"]
 __all__ = ["MoscoreAnomaly"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from sktime.annotation.base import BaseSeriesAnnotator
 
+from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.anomaly_detectors.circular_binseg import greedy_anomaly_selection
-from skchange.anomaly_detectors.utils import format_anomaly_output
 from skchange.scores.score_factory import anomaly_score_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than, check_smaller_than
@@ -24,7 +23,7 @@ def run_moscore_anomaly(
     left_bandwidth: int,
     right_bandwidth: int,
     threshold: float,
-) -> Tuple[List[Tuple[int, int]], np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[list[tuple[int, int]], np.ndarray, np.ndarray, np.ndarray]:
     n = len(X)
     starts = tuple(
         np.arange(left_bandwidth, n - k - right_bandwidth)
@@ -53,7 +52,7 @@ def run_moscore_anomaly(
     return anomalies, scores, starts, ends
 
 
-class MoscoreAnomaly(BaseSeriesAnnotator):
+class MoscoreAnomaly(CollectiveAnomalyDetector):
     """Moving score algorithm for multiple collective anomaly detection.
 
     A custom version of the MOSUM (moving sum) algorithm [1]_ for collective anomaly
@@ -62,13 +61,13 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
     `left_bandwidth` values to the left and `right_bandwidth` samples to the right of
     the anomaly window.
 
-    Experimental for now.
+    Experimental.
 
     Efficently implemented using numba.
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -102,17 +101,6 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         `min_anomaly_length` and `max_anomaly_length` are considered. If it is not
         important to consider all candidates, just a sparse subset for example,
         customising the anomaly lengths can significantly speed up the algorithm.
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
 
     References
     ----------
@@ -138,7 +126,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         min_anomaly_length: int = 2,
         max_anomaly_length: int = 100,
         left_bandwidth: int = 50,
@@ -146,8 +134,6 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         anomaly_lengths: np.ndarray = None,
-        fmt: str = "sparse",
-        labels: str = "int_label",
     ):
         self.score = score
         self.min_anomaly_length = min_anomaly_length
@@ -157,7 +143,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         self.threshold_scale = threshold_scale
         self.level = level
         self.anomaly_lengths = anomaly_lengths
-        super().__init__(fmt=fmt, labels=labels)
+        super().__init__()
 
         self.score_f, self.score_init_f = anomaly_score_factory(score)
         self._right_bandwidth = right_bandwidth if right_bandwidth else left_bandwidth
@@ -247,7 +233,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
             p = X.shape[1]
             return self.threshold_scale * self.get_default_threshold(n, p)
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -262,7 +248,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -282,16 +268,21 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Data to detect events in (time series).
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
+        pd.Series[pd.Interval] containing the collective anomaly intervals.
+
+        Notes
+        -----
+        The start and end points of the intervals can be accessed by
+        output.array.left and output.array.right, respectively.
         """
         min_length = (
             self.left_bandwidth + self._right_bandwidth + self._min_anomaly_length
@@ -301,7 +292,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
             min_length=min_length,
             min_length_name="left_bandwidth + _right_bandwidth + _min_anomaly_length",
         )
-        self.anomalies, scores, starts, ends = run_moscore_anomaly(
+        anomalies, scores, starts, ends = run_moscore_anomaly(
             X.values,
             self.score_f,
             self.score_init_f,
@@ -313,9 +304,7 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         self.scores = pd.DataFrame(
             {"anomaly_start": starts, "anomaly_end": ends, "score": scores}
         )
-        return format_anomaly_output(
-            self.fmt, self.labels, X.index, self.anomalies, scores=self.scores
-        )
+        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -339,9 +328,15 @@ class MoscoreAnomaly(BaseSeriesAnnotator):
         params = [
             {
                 "score": "mean",
-                "min_anomaly_length": 5,
-                "max_anomaly_length": 100,
-                "left_bandwidth": 50,
+                "min_anomaly_length": 2,
+                "max_anomaly_length": 8,
+                "left_bandwidth": 4,
+            },
+            {
+                "score": "mean",
+                "min_anomaly_length": 2,
+                "max_anomaly_length": 6,
+                "left_bandwidth": 3,
             },
         ]
         return params

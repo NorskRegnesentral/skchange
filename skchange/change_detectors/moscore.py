@@ -3,14 +3,13 @@
 __author__ = ["mtveten"]
 __all__ = ["Moscore"]
 
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
 from numba import njit
-from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.change_detectors.utils import format_changepoint_output
+from skchange.change_detectors.base import ChangeDetector
 from skchange.scores.score_factory import score_factory
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
@@ -91,7 +90,7 @@ def moscore_transform(
     return scores
 
 
-class Moscore(BaseSeriesAnnotator):
+class Moscore(ChangeDetector):
     """Moving score algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
@@ -101,7 +100,7 @@ class Moscore(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -127,17 +126,6 @@ class Moscore(BaseSeriesAnnotator):
     min_detection_interval : int, optional (default=1)
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
 
     References
     ----------
@@ -162,27 +150,25 @@ class Moscore(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         bandwidth: int = 30,
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         min_detection_interval: int = 1,
-        fmt: str = "sparse",
-        labels: str = "int_label",
     ):
         self.score = score
         self.bandwidth = bandwidth
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
-        super().__init__(fmt=fmt, labels=labels)
+        super().__init__()
         self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(1, self.bandwidth, "bandwidth")
         check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
         check_larger_than(0, self.level, "level")
         check_in_interval(
-            pd.Interval(1, self.bandwidth / 2 - 1, closed="both"),
+            pd.Interval(1, max(1, self.bandwidth / 2 - 1), closed="both"),
             self.min_detection_interval,
             "min_detection_interval",
         )
@@ -259,7 +245,7 @@ class Moscore(BaseSeriesAnnotator):
                 n, p, self.bandwidth, self.level
             )
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -276,7 +262,7 @@ class Moscore(BaseSeriesAnnotator):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -296,17 +282,18 @@ class Moscore(BaseSeriesAnnotator):
         self.threshold_ = self._get_threshold(X)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+        """Return scores for predicted annotations on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Data to annotate, time series.
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
+        y : pd.Series
+            Annotations for sequence X exact format depends on annotation type.
         """
         X = check_data(
             X,
@@ -319,13 +306,25 @@ class Moscore(BaseSeriesAnnotator):
             self.score_init_f,
             self.bandwidth,
         )
-        self.changepoints = get_moscore_changepoints(
-            scores, self.threshold_, self.min_detection_interval
+        return pd.Series(scores, index=X.index, name="score")
+
+    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+        """Create annotations on test/deployment data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame - data to annotate, time series
+
+        Returns
+        -------
+        y : pd.Series - annotations for sequence X
+            exact format depends on annotation type
+        """
+        self.scores = self.score_transform(X)
+        changepoints = get_moscore_changepoints(
+            self.scores.values, self.threshold_, self.min_detection_interval
         )
-        self.scores = pd.Series(scores, index=X.index, name="score")
-        return format_changepoint_output(
-            self.fmt, self.labels, self.changepoints, X.index, self.scores
-        )
+        return ChangeDetector._format_sparse_output(changepoints)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -347,6 +346,7 @@ class Moscore(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean", "bandwidth": 10},
+            {"score": "mean", "bandwidth": 5},
+            {"score": "meanvar", "bandwidth": 5},
         ]
         return params

@@ -3,14 +3,13 @@
 __author__ = ["mtveten"]
 __all__ = ["CircularBinarySegmentation"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
 from numba import njit
-from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.anomaly_detectors.utils import format_anomaly_output
+from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals
 from skchange.scores.score_factory import anomaly_score_factory
 from skchange.utils.validation.data import check_data
@@ -25,7 +24,7 @@ def greedy_anomaly_selection(
     starts: np.ndarray,
     ends: np.ndarray,
     threshold: float,
-) -> List[Tuple[int, int]]:
+) -> list[tuple[int, int]]:
     scores = scores.copy()
     anomalies = []
     while np.any(scores > threshold):
@@ -41,7 +40,7 @@ def greedy_anomaly_selection(
 @njit
 def make_anomaly_intervals(
     interval_start: int, interval_end: int, min_segment_length: int = 1
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     starts = []
     ends = []
     for i in range(interval_start + 1, interval_end - min_segment_length + 2):
@@ -62,7 +61,7 @@ def run_circular_binseg(
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     starts, ends = make_seeded_intervals(
         X.shape[0],
         2 * min_segment_length,
@@ -97,7 +96,7 @@ def run_circular_binseg(
     return anomalies, anomaly_scores, maximizers, starts, ends
 
 
-class CircularBinarySegmentation(BaseSeriesAnnotator):
+class CircularBinarySegmentation(CollectiveAnomalyDetector):
     """Circular binary segmentation algorithm for multiple collective anomaly detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data
@@ -108,7 +107,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -137,22 +136,11 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         starting at 'interval_len'='min_interval_length'. It also governs the amount
         of overlap between intervals of the same length, as the start of each interval
         is shifted by a factor of '1 + 1 / growth_factor'. Must be a float in (1, 2].
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
 
     References
     ----------
     .. [1] Olshen, A. B., Venkatraman, E. S., Lucito, R., & Wigler, M. (2004). Circular
-    binary segmentation for the analysis of array‐based DNA copy number data.
+    binary segmentation for the analysis of array-based DNA copy number data.
     Biostatistics, 5(4), 557-572.
 
     Examples
@@ -178,14 +166,12 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 100,
         growth_factor: float = 1.5,
-        fmt: str = "sparse",
-        labels: str = "int_label",
     ):
         self.score = score
         self.threshold_scale = threshold_scale  # Just holds the input value.
@@ -193,7 +179,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
-        super().__init__(fmt=fmt, labels=labels)
+        super().__init__()
         self.score_f, self.score_init_f = anomaly_score_factory(self.score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
@@ -262,7 +248,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
             p = X.shape[1]
             return self.threshold_scale * self.get_default_threshold(n, p)
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -277,7 +263,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -294,16 +280,23 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
+
+        core logic
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Data to detect events in (time series).
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
+        pd.Series[pd.Interval] containing the collective anomaly intervals.
+
+        Notes
+        -----
+        The start and end points of the intervals can be accessed by
+        output.array.left and output.array.right, respectively.
         """
         X = check_data(
             X,
@@ -319,7 +312,6 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
             self.max_interval_length,
             self.growth_factor,
         )
-        self.anomalies = anomalies
         self.scores = pd.DataFrame(
             {
                 "interval_start": starts,
@@ -329,9 +321,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
                 "score": scores,
             }
         )
-        return format_anomaly_output(
-            self.fmt, self.labels, X.index, self.anomalies, scores=self.scores
-        )
+        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -353,6 +343,7 @@ class CircularBinarySegmentation(BaseSeriesAnnotator):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
+            {"score": "mean", "min_segment_length": 5, "max_interval_length": 50},
+            {"score": "mean", "min_segment_length": 2, "max_interval_length": 20},
         ]
         return params

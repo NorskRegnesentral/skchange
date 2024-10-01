@@ -14,7 +14,7 @@ Recipe for adding new scores:
 
 """
 
-from typing import Callable, Tuple, Union
+from typing import Callable, Union
 
 from numba.extending import is_jitted
 from numba import njit
@@ -34,7 +34,7 @@ VALID_CHANGE_SCORES = ["mean", "meanvar", "multivariate_meanvar"]
 VALID_ANOMALY_SCORES = ["mean", "meanvar"]
 
 
-def score_factory(score: Union[str, Tuple[Callable, Callable]]):
+def score_factory(score: Union[str, tuple[Callable, Callable]]):
     """Return score function and its initializer.
 
     Parameters
@@ -73,13 +73,12 @@ def score_factory(score: Union[str, Tuple[Callable, Callable]]):
         raise ValueError(message)
 
 
-
-def anomaly_score_factory(score: Union[str, Tuple[Callable, Callable]]):
+def anomaly_score_factory(score: Union[str, tuple[Callable, Callable]]):
     """Return anomaly score function and its initializer.
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable]
+    score: str, tuple[Callable, Callable]
         Test statistic to use for anomaly detection.
         * If "mean", the difference-in-mean statistic is used,
         * If a tuple, it must contain two functions: The first function is the scoring

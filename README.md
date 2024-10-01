@@ -1,5 +1,5 @@
 # skchange
-`skchange` provies sktime-compatible change detection and changepoint-based anomaly detection algorithms. Methods implement the annotator interface of sktime.
+`skchange` provides sktime-compatible change detection and changepoint-based anomaly detection algorithms.
 
 A playground for now.
 
@@ -13,7 +13,7 @@ A playground for now.
 ```sh
 pip install skchange
 ```
-Requires Python >= 3.8, < 3.13.
+Requires Python >= 3.9, < 3.13.
 
 ## Quickstart
 
@@ -23,7 +23,7 @@ from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import generate_teeth_data
 
 df = generate_teeth_data(n_segments=10, segment_length=50, mean=5, random_state=1)
-detector = Moscore(bandwidth=10, fmt="sparse")
+detector = Moscore(bandwidth=10)
 detector.fit_predict(df)
 >>>
 0     49
@@ -35,7 +35,7 @@ detector.fit_predict(df)
 6    349
 7    399
 8    449
-Name: changepoints, dtype: int32
+Name: changepoint, dtype: int64
 ```
 
 ### Multivariate anomaly detection
@@ -51,12 +51,12 @@ df = generate_teeth_data(
     affected_proportion=0.2,
     random_state=2,
 )
-detector = Mvcapa(collective_penalty="sparse", fmt="sparse")
+detector = Mvcapa(collective_penalty="sparse")
 detector.fit_predict(df)
 >>>
-   start  end components
-0     50   99     [0, 1]
-1    150  199     [0, 1]
+  anomaly_interval anomaly_columns
+0         [50, 99]          [0, 1]
+1       [150, 199]          [0, 1]
 ```
 
 

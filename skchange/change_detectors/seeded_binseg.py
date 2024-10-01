@@ -3,14 +3,13 @@
 __author__ = ["mtveten"]
 __all__ = ["SeededBinarySegmentation"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
 from numba import njit
-from sktime.annotation.base import BaseSeriesAnnotator
 
-from skchange.change_detectors.utils import format_changepoint_output
+from skchange.change_detectors.base import ChangeDetector
 from skchange.scores.score_factory import score_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
@@ -19,7 +18,7 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 @njit
 def make_seeded_intervals(
     n: int, min_length: int, max_length: int, growth_factor: float = 1.5
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     starts = [0]  # For numba to be able to compile type.
     ends = [0]  # For numba to be able to compile type.
     step_factor = 1 - 1 / growth_factor
@@ -47,7 +46,7 @@ def greedy_changepoint_selection(
     starts: np.ndarray,
     ends: np.ndarray,
     threshold: float,
-) -> List[int]:
+) -> list[int]:
     scores = scores.copy()
     cpts = []
     while np.any(scores > threshold):
@@ -68,7 +67,7 @@ def run_seeded_binseg(
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     starts, ends = make_seeded_intervals(
         X.shape[0],
         2 * min_segment_length,
@@ -95,7 +94,7 @@ def run_seeded_binseg(
     return cpts, amoc_scores, maximizers, starts, ends
 
 
-class SeededBinarySegmentation(BaseSeriesAnnotator):
+class SeededBinarySegmentation(ChangeDetector):
     """Seeded binary segmentation algorithm for multiple changepoint detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data
@@ -109,7 +108,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
 
     Parameters
     ----------
-    score: str, Tuple[Callable, Callable], optional (default="mean")
+    score: str, tuple[Callable, Callable], optional (default="mean")
         Test statistic to use for changepoint detection.
         * If "mean", the difference-in-mean statistic is used,
         * If "var", the difference-in-variance statistic is used,
@@ -138,17 +137,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         starting at 'interval_len'='min_interval_length'. It also governs the amount
         of overlap between intervals of the same length, as the start of each interval
         is shifted by a factor of '1 + 1 / growth_factor'. Must be a float in (1, 2].
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is an
-        outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a value
-        belongs to.
 
     References
     ----------
@@ -174,15 +162,12 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        score: Union[str, Tuple[Callable, Callable]] = "mean",
+        score: Union[str, tuple[Callable, Callable]] = "mean",
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
-        fmt: str = "sparse",
-        labels: str = "int_label",
-        require_jitted: bool = True,
     ):
         self.score = score
         self.threshold_scale = threshold_scale  # Just holds the input value.
@@ -190,9 +175,8 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
-
-        super().__init__(fmt=fmt, labels=labels)
-        self.score_f, self.score_init_f = score_factory(self.score, require_jitted=require_jitted)
+        super().__init__()
+        self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
@@ -260,7 +244,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             p = X.shape[1]
             return self.threshold_scale * self.get_default_threshold(n, p)
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -275,7 +259,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -300,7 +284,7 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
+        y : pd.Series - annotations for sequence X
             exact format depends on annotation type
         """
         X = check_data(
@@ -317,13 +301,10 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
             self.max_interval_length,
             self.growth_factor,
         )
-        self.changepoints = cpts
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
         )
-        return format_changepoint_output(
-            self.fmt, self.labels, self.changepoints, X.index, self.scores
-        )
+        return ChangeDetector._format_sparse_output(cpts)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -346,5 +327,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         """
         params = [
             {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
+            {"score": "mean", "min_segment_length": 1, "max_interval_length": 20},
         ]
         return params

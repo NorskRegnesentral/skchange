@@ -1,16 +1,16 @@
 """The collective and point anomalies (CAPA) algorithm."""
+
 __author__ = ["mtveten"]
 __all__ = ["Capa"]
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
 from numba import njit
-from sktime.annotation.base import BaseSeriesAnnotator
 
+from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.anomaly_detectors.mvcapa import dense_capa_penalty, run_base_capa
-from skchange.anomaly_detectors.utils import format_anomaly_output
 from skchange.costs.saving_factory import saving_factory
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -25,7 +25,7 @@ def run_capa(
     point_alpha: float,
     min_segment_length: int,
     max_segment_length: int,
-) -> Tuple[np.ndarray, List[Tuple[int, int]], List[Tuple[int, int]]]:
+) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
     params = saving_init_func(X)
     collective_betas = np.zeros(1)
     point_betas = np.zeros(1)
@@ -42,7 +42,7 @@ def run_capa(
     )
 
 
-class Capa(BaseSeriesAnnotator):
+class Capa(CollectiveAnomalyDetector):
     """Collective and point anomaly detection.
 
     An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
@@ -66,19 +66,8 @@ class Capa(BaseSeriesAnnotator):
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional (default=False)
         If True, detected point anomalies are not returned by .predict(). I.e., only
-        collective anomalies are returned.
-    fmt : str {"dense", "sparse"}, optional (default="sparse")
-        Annotation output format:
-        * If "sparse", a sub-series of labels for only the outliers in X is returned,
-        * If "dense", a series of labels for all values in X is returned.
-    labels : str {"indicator", "score", "int_label"}, optional (default="int_label")
-        Annotation output labels:
-        * If "indicator", returned values are boolean, indicating whether a value is
-        an outlier,
-        * If "score", returned values are floats, giving the outlier score.
-        * If "int_label", returned values are integer, indicating which segment a
-        value belongs to.
-
+        collective anomalies are returned. If False, point anomalies are included in the
+        output as collective anomalies of length 1.
 
     References
     ----------
@@ -106,14 +95,12 @@ class Capa(BaseSeriesAnnotator):
 
     def __init__(
         self,
-        saving: Union[str, Tuple[Callable, Callable]] = "mean",
+        saving: Union[str, tuple[Callable, Callable]] = "mean",
         collective_penalty_scale: float = 2.0,
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
-        fmt: str = "sparse",
-        labels: str = "int_label",
     ):
         self.saving = saving
         self.collective_penalty_scale = collective_penalty_scale
@@ -121,7 +108,7 @@ class Capa(BaseSeriesAnnotator):
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
-        super().__init__(fmt=fmt, labels=labels)
+        super().__init__()
 
         self.saving_func, self.saving_init_func = saving_factory(self.saving)
 
@@ -130,7 +117,7 @@ class Capa(BaseSeriesAnnotator):
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
-    def _get_penalty_components(self, X: pd.DataFrame) -> Tuple[np.ndarray, float]:
+    def _get_penalty_components(self, X: pd.DataFrame) -> tuple[np.ndarray, float]:
         # TODO: Add penalty tuning.
         # if self.tune:
         #     return self._tune_threshold(X)
@@ -148,7 +135,7 @@ class Capa(BaseSeriesAnnotator):
         point_penalty = self.point_penalty_scale * n_params * p * np.log(n)
         return collective_penalty, point_penalty
 
-    def _fit(self, X: pd.DataFrame, Y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
         Sets the penalty of the detector.
@@ -163,7 +150,7 @@ class Capa(BaseSeriesAnnotator):
         ----------
         X : pd.DataFrame
             training data to fit the threshold to.
-        Y : pd.Series, optional
+        y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
 
@@ -184,23 +171,30 @@ class Capa(BaseSeriesAnnotator):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
+
+        core logic
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Data to detect events in (time series).
 
         Returns
         -------
-        Y : pd.Series - annotations for sequence X
-            exact format depends on annotation type
+        pd.Series[pd.Interval] containing the collective anomaly intervals.
+
+        Notes
+        -----
+        The start and end points of the intervals can be accessed by
+        output.array.left and output.array.right, respectively.
         """
         X = check_data(
             X,
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        opt_savings, self.collective_anomalies, self.point_anomalies = run_capa(
+        opt_savings, collective_anomalies, point_anomalies = run_capa(
             X.values,
             self.saving_func,
             self.saving_init_func,
@@ -210,15 +204,32 @@ class Capa(BaseSeriesAnnotator):
             self.max_segment_length,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
-        anomalies = format_anomaly_output(
-            self.fmt,
-            self.labels,
-            X.index,
-            self.collective_anomalies,
-            self.point_anomalies if not self.ignore_point_anomalies else None,
-            scores=self.scores,
-        )
-        return anomalies
+
+        anomalies = collective_anomalies
+        if not self.ignore_point_anomalies:
+            anomalies += point_anomalies
+        anomalies = sorted(anomalies)
+
+        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
+
+    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+        """Compute the CAPA scores for the input data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame - data to compute scores for, time series
+
+        Returns
+        -------
+        scores : pd.Series - scores for sequence X
+
+        Notes
+        -----
+        The CAPA scores are the cumulative optimal savings, so the scores are increasing
+        and are not per observation scores.
+        """
+        self.predict(X)
+        return self.scores
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -241,5 +252,6 @@ class Capa(BaseSeriesAnnotator):
         """
         params = [
             {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
+            {"saving": "mean", "min_segment_length": 2, "max_segment_length": 20},
         ]
         return params

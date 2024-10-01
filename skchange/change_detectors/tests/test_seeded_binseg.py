@@ -51,10 +51,7 @@ def test_binseg_tuning(score):
     df = generate_teeth_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
-    detector = SeededBinarySegmentation(
-        score, threshold_scale=None, fmt="dense", labels="score"
-    )
-    detector.fit(df)
-    scores = detector.predict(df)
-    assert detector.threshold_ >= scores["score"].mean()
-    assert detector.threshold_ <= scores["score"].max()
+    detector = SeededBinarySegmentation(score, threshold_scale=None)
+    detector.fit_predict(df)
+    assert detector.threshold_ >= detector.scores["score"].mean()
+    assert detector.threshold_ <= detector.scores["score"].max()

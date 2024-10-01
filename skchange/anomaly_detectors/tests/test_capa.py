@@ -1,5 +1,6 @@
 """Tests for CAPA and all available savings."""
 
+import pandas as pd
 import pytest
 
 from skchange.anomaly_detectors.capa import Capa
@@ -9,21 +10,30 @@ from skchange.datasets.generate import generate_teeth_data
 
 
 @pytest.mark.parametrize("saving", VALID_SAVINGS)
-def test_capa_anomalies(saving):
+@pytest.mark.parametrize("detector_class", [Capa, Mvcapa])
+def test_capa_anomalies(detector_class, saving):
     """Test Capa anomalies."""
     n_segments = 2
     seg_len = 20
     df = generate_teeth_data(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=5, random_state=8
+        n_segments=n_segments,
+        mean=20,
+        segment_length=seg_len,
+        p=5,
+        affected_proportion=0.2,
+        random_state=8,
     )
-    for detector_class in [Capa, Mvcapa]:
-        detector = detector_class(
-            saving=saving, fmt="sparse", collective_penalty_scale=2.0
-        )
-        anomalies = detector.fit_predict(df)
-        # End point also included as a changepoint
-        assert (
-            len(anomalies) == 1
-            and anomalies.loc[0, "start"] == seg_len
-            and anomalies.loc[0, "end"] == 2 * seg_len - 1
-        )
+    detector = detector_class(
+        saving=saving,
+        collective_penalty_scale=2.0,
+        ignore_point_anomalies=True,  # To get test coverage.
+    )
+    anomalies = detector.fit_predict(df)
+    if isinstance(anomalies, pd.DataFrame):
+        anomalies = anomalies.iloc[:, 0]
+    # End point also included as a changepoint
+    assert (
+        len(anomalies) == 1
+        and anomalies.array.left[0] == seg_len
+        and anomalies.array.right[0] == 2 * seg_len - 1
+    )

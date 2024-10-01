@@ -1,7 +1,7 @@
 """Data generators."""
 
 from numbers import Number
-from typing import List, Tuple, Union
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -68,9 +68,9 @@ def generate_teeth_data(
 
 def generate_anomalous_data(
     n: int = 100,
-    anomalies: Union[Tuple[int, int], List[Tuple[int, int]]] = (71, 80),
-    means: Union[float, List[float], List[np.ndarray]] = 3.0,
-    variances: Union[float, List[float], List[np.ndarray]] = 1.0,
+    anomalies: Union[tuple[int, int], list[tuple[int, int]]] = (71, 80),
+    means: Union[float, list[float], list[np.ndarray]] = 3.0,
+    variances: Union[float, list[float], list[np.ndarray]] = 1.0,
     random_state: int = None,
 ) -> pd.DataFrame:
     """
@@ -94,7 +94,7 @@ def generate_anomalous_data(
     -------
         pd.DataFrame: DataFrame with generate_teeth_data-shaped segments.
     """
-    if isinstance(anomalies, Tuple):
+    if isinstance(anomalies, tuple):
         anomalies = [anomalies]
     if isinstance(means, Number):
         means = [means]
