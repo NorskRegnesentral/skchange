@@ -25,16 +25,16 @@ from skchange.scores.meanvar_score import (
     meanvar_anomaly_score,
     meanvar_score,
 )
-from skchange.scores.multivariate_meanvar_score import (
-    init_multivariate_meanvar_score,
-    multivariate_meanvar_score,
+from skchange.scores.mean_cov_score import (
+    init_mean_cov_score,
+    mean_cov_score,
 )
 
 VALID_CHANGE_SCORES = ["mean", "meanvar", "multivariate_meanvar"]
 VALID_ANOMALY_SCORES = ["mean", "meanvar"]
 
 
-def score_factory(score: Union[str, tuple[Callable, Callable]]):
+def score_factory(score: Union[str, Tuple[Callable, Callable]]):
     """Return score function and its initializer.
 
     Parameters
@@ -61,7 +61,7 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
     elif isinstance(score, str) and score == "meanvar":
         return meanvar_score, init_meanvar_score
     elif isinstance(score, str) and score == "multivariate_meanvar":
-        return multivariate_meanvar_score, init_multivariate_meanvar_score
+        return mean_cov_score, init_mean_cov_score
     elif len(score) == 2 and all([is_jitted(s) for s in score]):
         return score[0], score[1]
     else:

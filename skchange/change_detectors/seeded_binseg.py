@@ -190,7 +190,6 @@ class SeededBinarySegmentation(BaseSeriesAnnotator):
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
-        self.require_jitted = require_jitted
 
         super().__init__(fmt=fmt, labels=labels)
         self.score_f, self.score_init_f = score_factory(self.score, require_jitted=require_jitted)
