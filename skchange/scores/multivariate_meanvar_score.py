@@ -85,6 +85,7 @@ def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimens
 def init_multivariate_meanvar_score(X: np.ndarray) -> np.ndarray:
     """Initialize the precision matrix change point detection."""
     # TODO: Should (could) compute "rolling" covariance matrices here?
+    #       - Would take up more memory, but save on computation time.
     return X
 
 
@@ -252,7 +253,7 @@ def _multivariate_meanvar_score(
     start: int,
     end: int,
     split: int,
-    diag_var_perturbation: float = 1e-12,
+    diag_var_perturbation: float = 1e-10,
     apply_bartlett_correction: bool = False,
 ) -> float:
     """Calculate the score (twice negative log likelihood ratio) for a change in mean and variance.

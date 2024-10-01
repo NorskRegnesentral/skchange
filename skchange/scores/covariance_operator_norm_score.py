@@ -4,18 +4,17 @@ Reference: Optimal covariance change point localization in high dimensions: Dare
 """
 import numpy as np
 from numba import njit
-from skchange.utils.numba.general import truncate_below
 
 
 @njit(cache=True)
-def init_covariance_opnorm_score(X: np.ndarray) -> np.ndarray:
+def init_covariance_diff_opnorm_score(X: np.ndarray) -> np.ndarray:
     """Initialize the precision matrix change point detection."""
     # TODO: Should (could) compute "rolling" covariance matrices here?
     return X
 
 
 @njit(cache=True)
-def _covariance_opnorm_score(X: np.ndarray, start: int, end: int, split: int) -> float:
+def _covariance_diff_opnorm_score(X: np.ndarray, start: int, end: int, split: int) -> float:
     """Calculate the CUSUM score for a change in the covariance matrix operator norm.
 
     Parameters
@@ -48,7 +47,7 @@ def _covariance_opnorm_score(X: np.ndarray, start: int, end: int, split: int) ->
     pre_split_scaling = np.sqrt(post_split_length / (full_interval_length * pre_split_length))
     post_split_scaling = np.sqrt(pre_split_length / (full_interval_length * post_split_length))
 
-    cov_diff_operator = pre_split_scaling * pre_split_cov - post_split_scaling * post_split_cov
+    cov_diff_operator = (pre_split_scaling * pre_split_cov) - (post_split_scaling * post_split_cov)
 
     # Compute the operator norm of the covariance difference operator:
     # Since the covariance matrix is symmetric, the operator norm is the largest eigenvalue.
@@ -60,7 +59,7 @@ def _covariance_opnorm_score(X: np.ndarray, start: int, end: int, split: int) ->
 
 
 @njit(cache=True)
-def covariance_opnorm_score(
+def covariance_diff_opnorm_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
@@ -100,7 +99,7 @@ def covariance_opnorm_score(
 
     scores = np.zeros(num_splits, dtype=np.float64)
     for split_idx in range(num_splits):
-        scores[split_idx] = _covariance_opnorm_score(
+        scores[split_idx] = _covariance_diff_opnorm_score(
             X, starts[split_idx], ends[split_idx], splits[split_idx]
         )
 
