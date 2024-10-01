@@ -1,6 +1,6 @@
 """Test statistic for differences in the mean and/or variance."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 
 import numpy as np
 from numba import njit

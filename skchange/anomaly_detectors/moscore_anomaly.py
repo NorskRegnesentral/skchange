@@ -1,6 +1,6 @@
 """The Moving Score algorithm for multiple collective anomaly detection."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["MoscoreAnomaly"]
 
 from typing import Callable, Optional, Union

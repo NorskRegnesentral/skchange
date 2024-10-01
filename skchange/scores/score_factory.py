@@ -14,7 +14,7 @@ Recipe for adding new scores:
 
 """
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 
 from typing import Callable, Union
 

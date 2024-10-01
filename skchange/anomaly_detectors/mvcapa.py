@@ -1,6 +1,6 @@
 """The subset multivariate collective and point anomalies (MVCAPA) algorithm."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["Mvcapa"]
 
 from typing import Callable, Optional, Union

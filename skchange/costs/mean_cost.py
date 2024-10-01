@@ -1,6 +1,6 @@
 """Gaussian mean likelihood cost function for change point detection."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 
 import numpy as np
 from numba import njit

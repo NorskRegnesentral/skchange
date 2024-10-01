@@ -1,6 +1,6 @@
 """Seeded binary segmentation algorithm for multiple changepoint detection."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["SeededBinarySegmentation"]
 
 from typing import Callable, Optional, Union

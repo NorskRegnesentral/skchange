@@ -1,6 +1,6 @@
 """Data generators."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 
 from numbers import Number
 from typing import Union
