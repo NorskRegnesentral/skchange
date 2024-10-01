@@ -208,9 +208,9 @@ def mean_cov_score(
 
     References
     ----------
-    .. [1] K. D. Zamba and Douglas M. Hawkins (2009). A Multivariate
-    Change point Model for Change in Mean Vector and/or Covariance
-    Structure: Detection of Isolated Systolic Hypertension (ISH).
+    .. [1] Zamba, K. D., & Hawkins, D. M. (2009). A Multivariate Change-Point Model\
+    for Change in Mean Vector and/or Covariance Structure. \
+    Journal of Quality Technology, 41(3), 285-303.
 
     Parameters
     ----------
