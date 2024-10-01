@@ -1,5 +1,7 @@
 """Test statistic for differences in the mean and/or variance for multivariate data."""
 
+__author__ = ["johannvk"]
+
 import numpy as np
 from numba import njit
 
