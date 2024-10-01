@@ -1,4 +1,5 @@
 """Test statistic for differences in the mean and/or variance for multivariate data."""
+
 import numpy as np
 from numba import njit
 
@@ -8,7 +9,8 @@ def half_integer_digamma(twice_n: int) -> float:
     """Calculate the digamma function for half integer values, i.e. twice_n/2.
 
     The digamma function is the logarithmic derivative of the gamma function.
-    This function is capable of calculating the digamma function for half integer values.
+    This function is capable of calculating the
+    digamma function for half integer values.
 
     Source: https://en.wikipedia.org/wiki/Digamma_function
 
@@ -16,13 +18,12 @@ def half_integer_digamma(twice_n: int) -> float:
     ----------
     twice_n : int
         Twice the integer value.
-    
+
     Returns
     -------
     res : float
         Value of the digamma function for the half integer value.
     """
-    assert isinstance(twice_n, int), "n must be an integer."
     assert twice_n > 0, "n must be a positive integer."
 
     if twice_n % 2 == 0:
@@ -47,8 +48,9 @@ def likelihood_ratio_expected_value(
 ) -> float:
     """Calculate the expected value of twice the negative log likelihood ratio.
 
-    We check that the cut point is within the sequence length, and that both 'k' and 'n' are
-    large enough relative to the dimension 'p', to ensure that the expected value is finite.
+    We check that the cut point is within the sequence length, and that both 'k' and 'n'
+    are large enough relative to the dimension 'p', to ensure that the expected
+    value is finite.
     Should at least have 'p+1' points on each side of a split, for 'p' dimensional data.
 
     Parameters
@@ -63,7 +65,7 @@ def likelihood_ratio_expected_value(
     Returns
     -------
     g_k_n : float
-        Expected value of twice the negative log likelihood ratio.        
+        Expected value of twice the negative log likelihood ratio.
 
     """
     n, k, p = sequence_length, cut_point, dimension
@@ -95,7 +97,7 @@ def likelihood_ratio_expected_value(
 @njit(cache=True)
 def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimension):
     """Calculate the Bartlett correction for the twice negated log likelihood ratio.
-    
+
     Parameters
     ----------
     twice_negated_log_lr : float
@@ -130,7 +132,14 @@ def multivariate_normal_cost(X: np.ndarray):
     """Compute log determinant cost for a given interval."""
     cov = np.cov(X, rowvar=False, ddof=0)
 
-    det_sign, log_abs_det = np.linalg.slogdet(cov)
+    if len(cov.shape) < 2:
+        # Handle 0D and 1D arrays:
+        det_sign, log_abs_det = np.linalg.slogdet(cov.reshape(1, -1))
+    elif len(cov.shape) > 2:
+        raise ValueError("Cannot handle input arrays of dimension greater than two.")
+    else:
+        det_sign, log_abs_det = np.linalg.slogdet(cov)
+
     if det_sign <= 0:
         return np.nan
 
@@ -145,29 +154,34 @@ def _mean_cov_score(
     end: int,
     split: int,
 ) -> float:
-    """Calculate the score (twice negative log likelihood ratio) for a change in mean and variance.
+    """Calculate the score for a change in mean and variance.
 
-    Under a multivariate Gaussian model.
+    The score is computed as the Bartlett corrected log likelihood
+    ratio for a test of change in mean and/or variance at the split
+    point under a multivariate Gaussian model.
+
     Parameters
     ----------
     X : np.ndarray
         Data matrix. Rows are observations and columns are variables.
     start : int
-        Start index of the interval to test for a change in the precision matrix. (Inclusive)
+        Start index of the interval to test for a change in the precision matrix.
+        (Inclusive)
     end : int
-        End index of the interval to test for a change in the precision matrix. (Inclusive)
+        End index of the interval to test for a change in the precision matrix.
+        (Inclusive)
     split : int
         Split index of the interval to test for a change in the precision matrix.
-        Include the element at the index 'split' in the first segment. 
+        Include the element at the index 'split' in the first segment.
 
     Returns
     -------
     score : float
         Score (twice negative log likelihood ratio) for the change in mean and variance.
     """
-    full_span_loss  = multivariate_normal_cost(X[start:end+1, :])
-    pre_split_loss  = multivariate_normal_cost(X[start:split+1, :])
-    post_split_loss = multivariate_normal_cost(X[split + 1:end+1, :])
+    full_span_loss = multivariate_normal_cost(X[start : end + 1, :])
+    pre_split_loss = multivariate_normal_cost(X[start : split + 1, :])
+    post_split_loss = multivariate_normal_cost(X[split + 1 : end + 1, :])
 
     twice_negated_log_lr = full_span_loss - pre_split_loss - post_split_loss
 
@@ -188,11 +202,13 @@ def mean_cov_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate CUSUM score for a change in mean and covariance under a multivariate Gaussian model.
+    """Calculate CUSUM scores for a change in mean and covariance.
 
-    References:
-    - A Multivariate Change point Model for Change in Mean Vector and/or Covariance Structure: Detection of Isolated
-    Systolic Hypertension (ISH). K.D. Zamba.
+    References
+    ----------
+    - A Multivariate Change point Model for Change in Mean Vector and/or
+      Covariance Structure: Detection of Isolated Systolic Hypertension (ISH).
+      K.D. Zamba.
 
     Parameters
     ----------
