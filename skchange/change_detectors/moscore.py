@@ -58,30 +58,48 @@ class Moscore(ChangeDetector):
 
     Parameters
     ----------
-    score: str, tuple[Callable, Callable], optional (default="mean")
+    score: {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
         Test statistic to use for changepoint detection.
-        * If "mean", the difference-in-mean statistic is used,
-        * If "var", the difference-in-variance statistic is used,
-        * If a tuple, it must contain two functions: The first function is the scoring
-        function, which takes in the output of the second function as its first
-        argument, and start, end and split indices as the second, third and fourth
-        arguments. The second function is the initializer, which precomputes quantities
-        that should be precomputed. See skchange/scores/score_factory.py for examples.
-    bandwidth : int, optional (default=30)
+
+        * "mean": The CUSUM statistic for a change in mean (this is equivalent to a
+          likelihood ratio test for a change in the mean of Gaussian data). For
+          multivariate data, the sum of the CUSUM statistics for each dimension is used.
+        * "mean_var": The likelihood ratio test for a change in the mean and/or variance
+          of Gaussian data. For multivariate data, the sum of the likelihood ratio
+          statistics for each dimension is used.
+        * "mean_cov": The likelihood ratio test for a change in the mean and/or
+          covariance matrix of multivariate Gaussian data.
+        * If a tuple, it must contain two numba jitted functions:
+
+            1. The first function is the scoring function, which takes four arguments:
+
+                1. The output of the second function.
+                2. Start indices of the intervals to score for a change
+                3. End indices of the intervals to score for a change
+                4. Split indices of the intervals to score for a change.
+
+               For each start, split and end, the score should be calculated for the
+               data intervals [start:split] and [split+1:end], meaning that both the
+               starts and ends are inclusive, while split is included in the left
+               interval.
+            2. The second function is the initializer, which takes the data matrix as
+               input and returns precomputed quantities that may speed up the score
+               calculations. If not relevant, just return the data matrix.
+    bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
         test statistic. For "mean", the minimum bandwidth is 1.
-    threshold_scale : float, optional (default=2.0)
+    threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
         'threshold_scale * default_threshold', where the default threshold depends on
         the number of samples, the number of variables, `bandwidth` and `level`.
         If None, the threshold is tuned on the data input to .fit().
-    level : float, optional (default=0.01)
+    level : float, default=0.01
         If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
         of the changepoint score on the training data. For this to be correct, the
         training data must contain no changepoints. If `threshold_scale` is a number,
         `level` is used in the default threshold, _before_ scaling.
-    min_detection_interval : int, optional (default=1)
+    min_detection_interval : int, default=1
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between 1 and `bandwidth`/2.
 
