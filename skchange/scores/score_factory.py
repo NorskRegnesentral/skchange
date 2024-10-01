@@ -38,15 +38,33 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
 
     Parameters
     ----------
-    score: str, tuple[Callable, Callable]
+    score: {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable]
         Test statistic to use for changepoint detection.
-        * If "mean", the difference-in-mean statistic is used,
-        * If "mean_var", the difference-in-mean-and-variance statistic is used,
-        * If a tuple, it must contain two functions: The first function is the scoring
-        function, which takes in the output of the second function as its first
-        argument, and start, end and split indices as the second, third and fourth
-        arguments. The second function is the initializer, which precomputes quantities
-        that should be precomputed. See skchange/scores/score_factory.py for examples.
+
+        * "mean": The CUSUM statistic for a change in mean (this is equivalent to a
+          likelihood ratio test for a change in the mean of Gaussian data). For
+          multivariate data, the sum of the CUSUM statistics for each dimension is used.
+        * "mean_var": The likelihood ratio test for a change in the mean and/or variance
+          of Gaussian data. For multivariate data, the sum of the likelihood ratio
+          statistics for each dimension is used.
+        * "mean_cov": The likelihood ratio test for a change in the mean and/or
+          covariance matrix of multivariate Gaussian data.
+        * If a tuple, it must contain two numba jitted functions:
+
+            1. The first function is the scoring function, which takes four arguments:
+
+                1. The output of the second function.
+                2. Start indices of the intervals to score for a change
+                3. End indices of the intervals to score for a change
+                4. Split indices of the intervals to score for a change.
+
+               For each start, split and end, the score should be calculated for the
+               data intervals [start:split] and [split+1:end], meaning that both the
+               starts and ends are inclusive, while split is included in the left
+               interval.
+            2. The second function is the initializer, which takes the data matrix as
+               input and returns precomputed quantities that may speed up the score
+               calculations. If not relevant, just return the data matrix.
 
     Returns
     -------
