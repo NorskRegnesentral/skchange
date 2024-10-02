@@ -38,3 +38,15 @@ def test_custom_score():
             return 10.0
 
         score_factory((score_f, init_score_f))
+
+
+def test_mean_cov_score_negative_definite_error():
+    """Test that mean_cov_score raises an error when the covariance matrix is ."""
+    n = 50
+    x = np.zeros((n, 1))
+    score_f, init_score_f = score_factory("mean_cov")
+    with pytest.raises(RuntimeError):
+        params = init_score_f(x)
+        score_f(
+            params, starts=np.array([0]), ends=np.array([49]), splits=np.array([25])
+        )
