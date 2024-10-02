@@ -131,6 +131,7 @@ def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
     return X
 
 
+@njit(cache=True)
 def _mean_cov_log_det_term(X: np.ndarray, start: int, end: int) -> float:
     """Compute the contribution of a segment to the mean_cov score.
 
