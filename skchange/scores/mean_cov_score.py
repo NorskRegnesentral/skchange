@@ -131,16 +131,17 @@ def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
 
 @njit(cache=True)
 def multivariate_normal_cost(X: np.ndarray):
-    """Compute log determinant cost for a given interval."""
-    cov = np.cov(X, rowvar=False, ddof=0)
+    """Compute log determinant cost for a given interval.
 
-    if len(cov.shape) < 2:
-        # Handle 0D and 1D arrays:
-        det_sign, log_abs_det = np.linalg.slogdet(cov.reshape(1, -1))
-    elif len(cov.shape) > 2:
-        raise ValueError("Cannot handle input arrays of dimension greater than two.")
-    else:
-        det_sign, log_abs_det = np.linalg.slogdet(cov)
+    Parameters
+    ----------
+    X : np.ndarray
+        2D array of shape (n, p) where n is the number of samples and p is the number of
+        variables.
+
+    """
+    cov = np.cov(X, rowvar=False, ddof=0)
+    det_sign, log_abs_det = np.linalg.slogdet(cov)
 
     if det_sign <= 0:
         return np.nan
@@ -230,11 +231,6 @@ def mean_cov_score(
     """
     X = precomputed_params
     num_splits = len(splits)
-
-    # Assume: 'start', 'end', and 'split' are 1D integer arrays,
-    # of the same length.
-    if not (len(starts) == len(ends) == num_splits):
-        raise ValueError("Lengths of 'starts', 'ends', and 'splits' must be the same.")
 
     scores = np.zeros(num_splits, dtype=np.float64)
     for split_idx in range(num_splits):
