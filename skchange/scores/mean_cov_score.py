@@ -5,6 +5,8 @@ __author__ = ["johannvk"]
 import numpy as np
 from numba import njit
 
+from skchange.utils.numba.stats import log_det_covariance
+
 
 @njit(cache=True)
 def half_integer_digamma(twice_n: int) -> float:
@@ -129,25 +131,32 @@ def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
     return X
 
 
-@njit(cache=True)
-def multivariate_normal_cost(X: np.ndarray):
-    """Compute log determinant cost for a given interval.
+def _mean_cov_log_det_term(X: np.ndarray, start: int, end: int) -> float:
+    """Compute the contribution of a segment to the mean_cov score.
 
     Parameters
     ----------
     X : np.ndarray
-        2D array of shape (n, p) where n is the number of samples and p is the number of
-        variables.
+        Data matrix. Rows are observations and columns are variables.
+    start : int
+        Start index of the interval to test for a change in the covariance matrix.
+        (Inclusive)
+    end : int
+        End index of the interval to test for a change in the covariance matrix.
+        (Inclusive)
 
+    Returns
+    -------
+    contribution : float
+        Contribution of the segment to the mean and covariance cost.
     """
-    cov = np.cov(X, rowvar=False, ddof=0)
-    det_sign, log_abs_det = np.linalg.slogdet(cov)
+    log_det_cov = log_det_covariance(X[start : end + 1, :])
+    if np.isnan(log_det_cov):
+        raise RuntimeError(
+            f"The covariance matrix of X[{start}:{end + 1}] is not positive definite."
+        )
 
-    if det_sign <= 0:
-        return np.nan
-
-    n = X.shape[0]
-    return n * log_abs_det
+    return (end - start + 1) * log_det_cov
 
 
 @njit(cache=True)
@@ -182,10 +191,9 @@ def _mean_cov_score(
     score : float
         Score (twice negative log likelihood ratio) for the change in mean and variance.
     """
-    full_span_loss = multivariate_normal_cost(X[start : end + 1, :])
-    pre_split_loss = multivariate_normal_cost(X[start : split + 1, :])
-    post_split_loss = multivariate_normal_cost(X[split + 1 : end + 1, :])
-
+    full_span_loss = _mean_cov_log_det_term(X, start, end)
+    pre_split_loss = _mean_cov_log_det_term(X, start, split)
+    post_split_loss = _mean_cov_log_det_term(X, split + 1, end)
     twice_negated_log_lr = full_span_loss - pre_split_loss - post_split_loss
 
     score = bartlett_correction(
@@ -194,7 +202,6 @@ def _mean_cov_score(
         cut_point=split - start,
         dimension=X.shape[1],
     )
-
     return score
 
 
