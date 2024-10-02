@@ -155,6 +155,7 @@ def _mean_cov_log_det_term(X: np.ndarray, start: int, end: int) -> float:
     if np.isnan(log_det_cov):
         raise RuntimeError(
             f"The covariance matrix of X[{start}:{end + 1}] is not positive definite."
+            + " Quick and dirty fix: Add a tiny amount of random noise to the data."
         )
 
     return (end - start + 1) * log_det_cov
@@ -213,7 +214,7 @@ def mean_cov_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate CUSUM scores for a change in mean and covariance[1]_.
+    """Calculate likelihood ratio scores for a change in mean and covariance[1]_.
 
     References
     ----------
@@ -235,7 +236,7 @@ def mean_cov_score(
     Returns
     -------
     scores : np.ndarray
-        Scores (-2 negative log likelihood) for each split segment.
+        Scores for each start, end, split combination.
     """
     X = precomputed_params
     num_splits = len(splits)
