@@ -31,7 +31,7 @@ profiler.stop()
 df = generate_teeth_data(
     n_segments=2, variance=16, segment_length=100, p=1, random_state=1
 )
-detector = Moscore(score="meanvar")
+detector = Moscore(score="mean_var")
 changepoints = detector.fit_predict(df)
 px.scatter(df)
 px.scatter(detector.scores)

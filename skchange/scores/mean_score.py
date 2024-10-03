@@ -1,5 +1,7 @@
 """Test statistic for differences in the mean."""
 
+__author__ = ["Tveten"]
+
 import numpy as np
 from numba import njit
 
@@ -31,9 +33,9 @@ def init_mean_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 @njit(cache=True)
 def mean_score(
     precomputed_params: np.ndarray,
-    start: np.ndarray,
-    end: np.ndarray,
-    split: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    splits: np.ndarray,
 ) -> np.ndarray:
     """Calculate the CUSUM score for a change in the mean.
 
@@ -61,11 +63,15 @@ def mean_score(
     To optimize performance, no checks are performed on (start, split, end).
     """
     sums = precomputed_params
-    before_sum = sums[split + 1] - sums[start]
-    before_weight = np.sqrt((end - split) / ((end - start + 1) * (split - start + 1)))
+    before_sum = sums[splits + 1] - sums[starts]
+    before_weight = np.sqrt(
+        (ends - splits) / ((ends - starts + 1) * (splits - starts + 1))
+    )
     before_weight = before_weight.reshape(-1, 1)
-    after_sum = sums[end + 1] - sums[split + 1]
-    after_weight = np.sqrt((split - start + 1) / ((end - start + 1) * (end - split)))
+    after_sum = sums[ends + 1] - sums[splits + 1]
+    after_weight = np.sqrt(
+        (splits - starts + 1) / ((ends - starts + 1) * (ends - splits))
+    )
     after_weight = after_weight.reshape(-1, 1)
     return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
 

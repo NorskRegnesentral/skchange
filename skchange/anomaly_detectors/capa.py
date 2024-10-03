@@ -1,6 +1,6 @@
 """The collective and point anomalies (CAPA) algorithm."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["Capa"]
 
 from typing import Callable, Optional, Union

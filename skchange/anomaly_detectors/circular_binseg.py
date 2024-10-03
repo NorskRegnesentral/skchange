@@ -1,6 +1,6 @@
 """Circular binary segmentation algorithm for multiple changepoint detection."""
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["CircularBinarySegmentation"]
 
 from typing import Callable, Optional, Union
@@ -107,30 +107,48 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    score: str, tuple[Callable, Callable], optional (default="mean")
+    score: {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
         Test statistic to use for changepoint detection.
-        * If "mean", the difference-in-mean statistic is used,
-        * If "var", the difference-in-variance statistic is used,
-        * If a tuple, it must contain two functions: The first function is the scoring
-        function, which takes in the output of the second function as its first
-        argument, and start, end and split indices as the second, third and fourth
-        arguments. The second function is the initializer, which precomputes quantities
-        that should be precomputed. See skchange/scores/score_factory.py for examples.
-    threshold_scale : float, optional (default=2.0)
+
+        * "mean": The CUSUM statistic for a change in mean (this is equivalent to a
+          likelihood ratio test for a change in the mean of Gaussian data). For
+          multivariate data, the sum of the CUSUM statistics for each dimension is used.
+        * "mean_var": The likelihood ratio test for a change in the mean and/or variance
+          of Gaussian data. For multivariate data, the sum of the likelihood ratio
+          statistics for each dimension is used.
+        * "mean_cov": The likelihood ratio test for a change in the mean and/or
+          covariance matrix of multivariate Gaussian data.
+        * If a tuple, it must contain two numba jitted functions:
+
+            1. The first function is the scoring function, which takes four arguments:
+
+                1. The output of the second function.
+                2. Start indices of the intervals to score for a change
+                3. End indices of the intervals to score for a change
+                4. Split indices of the intervals to score for a change.
+
+               For each start, split and end, the score should be calculated for the
+               data intervals [start:split] and [split+1:end], meaning that both the
+               starts and ends are inclusive, while split is included in the left
+               interval.
+            2. The second function is the initializer, which takes the data matrix as
+               input and returns precomputed quantities that may speed up the score
+               calculations. If not relevant, just return the data matrix.
+    threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
         'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
         and 'p' is the number of variables. If None, the threshold is tuned on the data
         input to .fit().
-    level : float, optional (default=0.01)
+    level : float, default=0.01
         If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
         of the changepoint scores of all the seeded intervals on the training data.
         For this to be correct, the training data must contain no changepoints.
-    min_segment_length : int, optional (default=5)
+    min_segment_length : int, default=5
         Minimum length between two changepoints. Must be greater than or equal to 1.
-    max_interval_length : int (default=100)
+    max_interval_length : int, default=100
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to '2 * min_segment_length'.
-    growth_factor : float (default = 1.5)
+    growth_factor : float, default=1.5
         The growth factor for the seeded intervals. Intervals grow in size according to
         'interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))',
         starting at 'interval_len'='min_interval_length'. It also governs the amount

@@ -1,5 +1,7 @@
 """Mean saving for CAPA type anomaly detection."""
 
+__author__ = ["Tveten"]
+
 import numpy as np
 from numba import njit
 

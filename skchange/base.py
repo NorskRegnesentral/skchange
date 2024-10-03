@@ -33,7 +33,7 @@ State:
     fitted state flag       - check_is_fitted()
 """
 
-__author__ = ["mtveten"]
+__author__ = ["Tveten"]
 __all__ = ["BaseDetector"]
 
 import pandas as pd
@@ -66,8 +66,8 @@ class BaseDetector(BaseEstimator):
 
     _tags = {
         "object_type": "detector",  # type of object
-        "authors": "mtveten",  # author(s) of the object
-        "maintainers": "mtveten",  # current maintainer(s) of the object
+        "authors": "Tveten",  # author(s) of the object
+        "maintainers": "Tveten",  # current maintainer(s) of the object
     }  # for unit test cases
 
     def __init__(self):

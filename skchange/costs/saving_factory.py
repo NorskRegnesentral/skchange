@@ -16,6 +16,8 @@ Recipe for adding new savings:
 
 """
 
+__author__ = ["Tveten"]
+
 from skchange.costs.mean_saving import init_mean_saving, mean_saving
 
 VALID_SAVINGS = ["mean"]
