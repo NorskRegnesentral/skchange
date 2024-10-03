@@ -41,7 +41,11 @@ def test_custom_score():
 
 
 def test_mean_cov_score_negative_definite_error():
-    """Test that mean_cov_score raises an error when the covariance matrix is ."""
+    """Test that mean_cov_score raises an error.
+
+    When the covariance matrix is not positive definite, the
+    'mean_cov' score should raise a RuntimeError.
+    """
     n = 50
     x = np.zeros((n, 1))
     score_f, init_score_f = score_factory("mean_cov")
