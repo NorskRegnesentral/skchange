@@ -1,6 +1,6 @@
 [project]
 name = "skchange"
-version = "0.7.0"
+version = "0.8.0"
 description = "Sktime-compatible change and anomaly detection"
 authors = [
     {name = "Martin Tveten", email = "tveten@nr.no"},

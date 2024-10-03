@@ -21,7 +21,7 @@ def col_cumsum(x: np.ndarray):
 
 @njit(cache=True)
 def log_det_covariance(X: np.ndarray) -> float:
-    """Compute log determinant og the covariance matrix of a data matrix.
+    """Compute log determinant of the covariance matrix of a data matrix.
 
     Parameters
     ----------
