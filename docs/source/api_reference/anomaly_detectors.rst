@@ -9,32 +9,32 @@ Base
 
 .. currentmodule:: skchange.anomaly_detectors
 .. autosummary::
-   :toctree: auto_generated/
-   :template: class.rst
+    :toctree: auto_generated/
+    :template: class.rst
 
-   CollectiveAnomalyDetector
-   SubsetCollectiveAnomalyDetector
-   PointAnomalyDetector
+    CollectiveAnomalyDetector
+    SubsetCollectiveAnomalyDetector
+    PointAnomalyDetector
 
 Collective anomaly detectors
 ----------------------------
 .. currentmodule:: skchange.anomaly_detectors
 
 .. autosummary::
-   :toctree: auto_generated/
-   :template: class.rst
+    :toctree: auto_generated/
+    :template: class.rst
 
-   Capa
-   CircularBinarySegmentation
-   MoscoreAnomaly
-   StatThresholdAnomaliser
+    Capa
+    CircularBinarySegmentation
+    MoscoreAnomaly
+    StatThresholdAnomaliser
 
 Subset collective anomaly detectors
 -----------------------------
 .. currentmodule:: skchange.anomaly_detectors
 
 .. autosummary::
-   :toctree: auto_generated/
-   :template: class.rst
+    :toctree: auto_generated/
+    :template: class.rst
 
-   Mvcapa
+    Mvcapa
