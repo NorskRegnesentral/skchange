@@ -7,7 +7,7 @@ Scores
 
 .. autosummary::
     :toctree: auto_generated/
-    :template: class.rst
+    :template: functions.rst
 
     init_mean_score
     mean_score
