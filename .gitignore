@@ -166,4 +166,4 @@ cython_debug/
 .ruff_cache/
 
 # Sphinx documentation
-docs/source/auto_generated/
+docs/source/api_reference/auto_generated/
