@@ -9,7 +9,7 @@ SPHINXAUTOBUILD    = sphinx-autobuild
 SPHINXAUTOOPTS     =
 SOURCEDIR          = ./source
 BUILDDIR           = ./build
-SKCHANGEDIR          = ../../skchange
+SKCHANGEDIR          = ../skchange
 
 .PHONY: help build autobuild
 
