@@ -9,9 +9,9 @@ Costs
     :toctree: auto_generated/
     :template: functions.rst
 
+    cost_factory
     init_mean_cost
     mean_cost
-    cost_factory
 
 Savings
 -------
@@ -20,6 +20,6 @@ Savings
     :toctree: auto_generated/
     :template: functions.rst
 
+    saving_factory
     init_mean_saving
     mean_saving
-    saving_factory
