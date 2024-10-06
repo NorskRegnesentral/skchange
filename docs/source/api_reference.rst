@@ -11,7 +11,16 @@ It describes the classes and functions included in skchange.
 
 For Python Interactive examples, see the :ref:`interactive`.
 
-.. autosummary::
-   :toctree: generated
+Anomaly detectors
+-----------------
 
-   skchange
+.. currentmodule:: skchange.anomaly_detectors
+
+.. autosummary:: skchange
+   :toctree: auto_generated/
+
+   Capa
+   CircularBinarySegmentation
+   MoscoreAnomaly
+   Mvcapa
+   StatThresholdAnomaliser
