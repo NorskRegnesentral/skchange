@@ -9,7 +9,6 @@ Anomaly detectors
    :toctree: auto_generated/
    :template: class.rst
 
-
    Capa
    CircularBinarySegmentation
    MoscoreAnomaly
