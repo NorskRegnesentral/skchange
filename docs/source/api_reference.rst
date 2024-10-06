@@ -16,11 +16,26 @@ Anomaly detectors
 
 .. currentmodule:: skchange.anomaly_detectors
 
-.. autosummary:: skchange
+.. autosummary::
    :toctree: auto_generated/
+   :template: class.rst
+
 
    Capa
    CircularBinarySegmentation
    MoscoreAnomaly
    Mvcapa
    StatThresholdAnomaliser
+
+Change detectors
+----------------
+
+.. currentmodule:: skchange.change_detectors
+
+.. autosummary::
+   :toctree: auto_generated/
+   :template: class.rst
+
+   Moscore
+   Pelt
+   SeededBinarySegmentation
