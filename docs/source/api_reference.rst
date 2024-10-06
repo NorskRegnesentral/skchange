@@ -14,7 +14,7 @@ For Python Interactive examples, see the `interactive <https://github.com/NorskR
 .. include:: includes/api_css.rst
 
 .. toctree::
-    :maxdepth: 1
+   :maxdepth: 1
 
    api_reference/base
    api_reference/anomaly_detectors
