@@ -1,7 +1,7 @@
 .. _datasets:
 
 Datasets
---------
+========
 
 .. currentmodule:: skchange.datasets
 

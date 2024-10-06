@@ -1,5 +1,8 @@
 .. _costs:
 
+Costs and savings
+=================
+
 Costs
 -----
 

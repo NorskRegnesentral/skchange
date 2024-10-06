@@ -1,7 +1,7 @@
 .. _anomaly_detectors:
 
 Anomaly detectors
------------------
+=================
 
 .. currentmodule:: skchange.anomaly_detectors
 

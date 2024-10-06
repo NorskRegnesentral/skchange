@@ -1,7 +1,7 @@
 .. _change_detectors:
 
 Change detectors
-----------------
+================
 
 .. currentmodule:: skchange.change_detectors
 
