@@ -71,10 +71,12 @@ class Capa(CollectiveAnomalyDetector):
 
     References
     ----------
-    .. [1] Fisch, A., Eckley, I. A., & Fearnhead, P. (2018). A linear time method for
-    the detection of point and collective anomalies. arXiv preprint arXiv:1806.01947.
-    .. [2] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
-    collective and point anomaly detection. Journal of Computational and Graphical
+    .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). A linear time method\
+    for the detection of collective and point anomalies. Statistical Analysis and Data\
+    Mining: The ASA Data Science Journal, 15(4), 494-508.
+
+    .. [2] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate\
+    collective and point anomaly detection. Journal of Computational and Graphical\
     Statistics, 31(2), 574-585.
 
     Examples
