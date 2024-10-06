@@ -7,7 +7,7 @@ from skchange.base import BaseDetector
 
 
 class PointAnomalyDetector(BaseDetector):
-    """Base class for anomaly detectors.
+    """Base class for point anomaly detectors.
 
     Anomaly detectors detect individual data points that are considered anomalous.
 
