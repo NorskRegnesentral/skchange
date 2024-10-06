@@ -152,3 +152,34 @@ def linkcode_resolve(domain, info):
 # -- Options for HTML output
 
 html_theme = "pydata_sphinx_theme"
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+
+html_theme_options = {
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/NorskRegnesentral/skchange",
+            "icon": "fab fa-github",
+        },
+    ],
+    "show_prev_next": False,
+    "use_edit_page_button": False,
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-nav"],
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+}
+html_context = {
+    "github_user": "NorskRegnesentral",
+    "github_repo": "skchange",
+    "github_version": "main",
+    "doc_path": "docs/source/",
+}
+html_sidebars = {
+    "**": ["sidebar-nav-bs.html", "sidebar-ethical-ads.html"],
+    "index": [],
+    "get_started": [],
+    "search": [],
+}
