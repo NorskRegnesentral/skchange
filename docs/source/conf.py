@@ -146,7 +146,7 @@ def linkcode_resolve(domain, info):
         filename = "skchange/%s#L%d-L%d" % find_source()
     except Exception:
         filename = info["module"].replace(".", "/") + ".py"
-    return f"https://github.com/sktime/sktime/tree/{CURRENT_VERSION}/{filename}"
+    return f"https://github.com/NorskRegnesentral/skchange/tree/{CURRENT_VERSION}/{filename}"
 
 
 # -- Options for HTML output
