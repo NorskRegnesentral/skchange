@@ -1,7 +1,7 @@
 .. _scores:
 
 Scores
-----------------
+------
 
 .. currentmodule:: skchange.scores
 
