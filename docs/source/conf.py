@@ -183,3 +183,8 @@ html_sidebars = {
     "get_started": [],
     "search": [],
 }
+
+# -- Options for the copybutton extension
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
+copybutton_line_continuation_character = "\\"
