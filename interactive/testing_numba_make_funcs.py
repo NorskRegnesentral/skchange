@@ -10,8 +10,7 @@ import time
 import numba as nb
 
 
-@nb.njit
-def quad_trap(f, a, b, N):
+def python_quad_trap(f, a, b, N):
     """
     Calculate the integral of a function using the trapezoidal rule.
 
@@ -34,8 +33,31 @@ def quad_trap(f, a, b, N):
     return integral
 
 
-@nb.njit(nb.float64(nb.float64))
-def specific_function(x):
+@nb.njit
+def jitted_quad_trap(f, a, b, N):
+    """
+    Calculate the integral of a function using the trapezoidal rule.
+
+    Parameters
+    ----------
+    f (function): The function to integrate.
+    a (float): The start point of the interval.
+    b (float): The end point of the interval.
+    N (int): The number of subintervals.
+
+    Returns
+    -------
+    float: The approximate integral of the function.
+    """
+    h = (b - a) / N
+    integral = h * (f(a) + f(b)) / 2
+    for k in range(N):
+        xk = (b - a) * k / N + a
+        integral = integral + h * f(xk)
+    return integral
+
+
+def python_integrand(x):
     """
     Compute the value of the expression e^x - 10.
 
@@ -51,7 +73,23 @@ def specific_function(x):
 
 
 @nb.njit
-def parametrized_function(x, p):
+def jitted_integrand(x):
+    """
+    Compute the value of the expression e^x - 10.
+
+    Parameters
+    ----------
+    x (float): The exponent to which e is raised.
+
+    Returns
+    -------
+    float: The result of the expression e^x - 10.
+    """
+    return math.exp(x) - 10
+
+
+@nb.njit
+def parametrized_integrand(x, p):
     return math.exp(p * x) - 10
 
 
@@ -61,7 +99,7 @@ def slow_internal_function_definition(p):
     def integrand(x):
         return math.exp(p * x) - 10
 
-    return quad_trap(integrand, -1, 1, 10000)
+    return jitted_quad_trap(integrand, -1, 1, 10000)
 
 
 def capturing_function_definition(p: float):
@@ -77,12 +115,16 @@ def capturing_function_definition(p: float):
     function: A Numba JIT-compiled function that computes the integrand.
     """
 
-    @nb.njit(nb.float64(nb.float64))
+    @nb.njit
     def integrand(x):
         return math.exp(p * x) - 10
 
     return integrand
 
+
+@nb.njit
+def parametrized_integrand(x, p):
+    return math.exp(p * x) - 10
 
 ## Equally fast method:
 def default_argument_function_definition(p: float):
@@ -97,12 +139,12 @@ def default_argument_function_definition(p: float):
     -------
     function: A Numba JIT-compiled function that computes the integrand.
     """
-
     @nb.njit
-    def integrand(x, p=p):
-        return math.exp(p * x) - 10
+    def integrand(x):
+        return parametrized_integrand(x, p)
 
     return integrand
+
 
 def partial_application_function_definition(func, p: float):
     """
@@ -134,33 +176,47 @@ integrand_capturing_arg = capturing_function_definition(1)
 integrand_default_arged = default_argument_function_definition(1)
 
 integrand_partial_application = partial_application_function_definition(
-    parametrized_function, p=1
+    parametrized_integrand, p=1
 )
 
-def simple_quadrature_benchmark(quad_func, num_applications):
-    # Warm up JIT:
-    q1 = quad_trap(quad_func, -1, 1, 10000)
-
+def python_quadrature_benchmark(quad_func, num_applications):
     start_time = time.time()
     for i in range(num_applications):
-        q1 = quad_trap(quad_func, -1, 1, 10000)
+        q1 = python_quad_trap(quad_func, -1, 1, 10000)
     elapsed_time = time.time() - start_time
     avg_time = elapsed_time / num_applications
 
-    print(f"On average, quadrature took: {avg_time:.4e} seconds.")
+    print(f"On average, python quadrature took: {avg_time:.4e} seconds.")
 
 
-num_applications = int(1.0e5)
+def jit_quadrature_benchmark(quad_func, num_applications):
+    # Warm up JIT:
+    q1 = jitted_quad_trap(quad_func, -1, 1, 10000)
 
-print("Specific function:")
-simple_quadrature_benchmark(specific_function, num_applications)
+    start_time = time.time()
+    for i in range(num_applications):
+        q1 = jitted_quad_trap(quad_func, -1, 1, 10000)
+    elapsed_time = time.time() - start_time
+    avg_time = elapsed_time / num_applications
+
+    print(f"On average, jitted quadrature took: {avg_time:.4e} seconds.")
+
+
+num_applications = int(1.0e4)
+
+print("Python integrand:")
+python_quadrature_benchmark(python_integrand, num_applications)
+
+print("Jitted integrand:")
+jit_quadrature_benchmark(jitted_integrand, num_applications)
 
 print("\nCapturing argument:")
-simple_quadrature_benchmark(integrand_capturing_arg, num_applications)
+jit_quadrature_benchmark(integrand_capturing_arg, num_applications)
 
 print("\nSetting Default argument:")
-simple_quadrature_benchmark(integrand_default_arged, num_applications)
+jit_quadrature_benchmark(integrand_default_arged, num_applications)
 
 print("\nPartial application:")
-simple_quadrature_benchmark(integrand_partial_application, num_applications)
+jit_quadrature_benchmark(integrand_partial_application, num_applications)
+
 
