@@ -81,12 +81,15 @@ class Capa(CollectiveAnomalyDetector):
 
     Examples
     --------
-    from skchange.anomaly_detectors.capa import Capa
-    from skchange.datasets.generate import generate_teeth_data
+    >>> from skchange.anomaly_detectors.capa import Capa
+    >>> from skchange.datasets.generate import generate_teeth_data
 
-    df = generate_teeth_data(n_segments=5, mean=10, segment_length=100)
-    detector = Capa()
-    detector.fit_predict(df)
+    >>> df = generate_teeth_data(n_segments=5, mean=10, segment_length=100)
+    >>> detector = Capa()
+    >>> detector.fit_predict(df)
+    0    [100, 199]
+    1    [300, 399]
+    Name: anomaly_interval, dtype: interval
     """
 
     _tags = {
