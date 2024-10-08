@@ -122,10 +122,6 @@ def capturing_function_definition(p: float):
     return integrand
 
 
-@nb.njit
-def parametrized_integrand(x, p):
-    return math.exp(p * x) - 10
-
 ## Equally fast method:
 def default_argument_function_definition(p: float):
     """
@@ -179,7 +175,7 @@ integrand_partial_application = partial_application_function_definition(
     parametrized_integrand, p=1
 )
 
-def python_quadrature_benchmark(quad_func, num_applications):
+def python_quadrature_benchmark(quad_func, num_applications):  # noqa: D103
     start_time = time.time()
     for i in range(num_applications):
         q1 = python_quad_trap(quad_func, -1, 1, 10000)
@@ -189,7 +185,7 @@ def python_quadrature_benchmark(quad_func, num_applications):
     print(f"On average, python quadrature took: {avg_time:.4e} seconds.")
 
 
-def jit_quadrature_benchmark(quad_func, num_applications):
+def jit_quadrature_benchmark(quad_func, num_applications):  # noqa: D103
     # Warm up JIT:
     q1 = jitted_quad_trap(quad_func, -1, 1, 10000)
 
