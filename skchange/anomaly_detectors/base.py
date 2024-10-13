@@ -1,4 +1,21 @@
-"""Base classes for anomaly detectors."""
+"""Base classes for anomaly detectors.
+
+    classes:
+        PointAnomalyDetector
+        CollectiveAnomalyDetector
+        SubsetCollectiveAnomalyDetector
+
+By inheriting from these classes the remaining methods of the BaseDetector class to
+implement to obtain a fully functional anomaly detector are given below.
+
+Needs to be implemented:
+    _fit(self, X, y=None)
+    _predict(self, X)
+
+Optional to implement:
+    _score_transform(self, X)
+    _update(self, X, y=None)
+"""
 
 import numpy as np
 import pandas as pd
@@ -9,18 +26,10 @@ from skchange.base import BaseDetector
 class PointAnomalyDetector(BaseDetector):
     """Base class for point anomaly detectors.
 
-    Anomaly detectors detect individual data points that are considered anomalous.
+    Point anomaly detectors detect individual data points that are considered anomalous.
 
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
-
-    Needs to be implemented:
-    - _fit(self, X, y=None) -> self
-    - _predict(self, X) -> pd.Series
-
-    Optional to implement:
-    - _score_transform(self, X) -> pd.Series
-    - _update(self, X, y=None) -> self
     """
 
     @staticmethod
@@ -83,14 +92,6 @@ class CollectiveAnomalyDetector(BaseDetector):
 
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
-
-    Needs to be implemented:
-    - _fit(self, X, y=None) -> self
-    - _predict(self, X) -> pd.Series
-
-    Optional to implement:
-    - _score_transform(self, X) -> pd.Series
-    - _update(self, X, y=None) -> self
     """
 
     @staticmethod
@@ -183,16 +184,6 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
-
-    Output format of the predict method:
-
-    Needs to be implemented:
-    - _fit(self, X, y=None) -> self
-    - _predict(self, X) -> pd.DataFrame
-
-    Optional to implement:
-    - _score_transform(self, X) -> pd.Series
-    - _update(self, X, y=None) -> self
     """
 
     @staticmethod

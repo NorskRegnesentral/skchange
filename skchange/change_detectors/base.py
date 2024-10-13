@@ -1,4 +1,20 @@
-"""Base classes for changepoint detectors."""
+"""Base classes for changepoint detectors.
+
+    classes:
+        ChangeDetector
+
+By inheriting from these classes the remaining methods of the BaseDetector class to
+implement to obtain a fully functional anomaly detector are given below.
+
+Needs to be implemented:
+    _fit(self, X, y=None)
+    _predict(self, X)
+
+Optional to implement:
+    _score_transform(self, X)
+    _update(self, X, y=None)
+
+"""
 
 import numpy as np
 import pandas as pd
@@ -16,22 +32,6 @@ class ChangeDetector(BaseDetector):
 
     Output format of the predict method: See the dense_to_sparse method.
     Output format of the transform method: See the sparse_to_dense method.
-
-    Subclasses should set the following tags for sktime compatibility:
-    - task: "change_point_detection"
-    - learning_type: "unsupervised" or "supervised"
-    - And possibly other tags, such as
-        * "capability:missing_values": False,
-        * "capability:multivariate": True,
-        * "fit_is_empty": False,
-
-    Needs to be implemented:
-    - _fit(self, X, y=None) -> self
-    - _predict(self, X) -> pd.Series
-
-    Optional to implement:
-    - _score_transform(self, X) -> pd.Series
-    - _update(self, X, y=None) -> self
     """
 
     @staticmethod
