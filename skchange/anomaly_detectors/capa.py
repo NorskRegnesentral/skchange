@@ -49,8 +49,8 @@ class Capa(CollectiveAnomalyDetector):
     It is implemented using the 'savings' formulation of the problem given in [2]_.
 
     Capa can be applied to both univariate and multivariate data, but does not infer
-    the subset of affected components for each anomaly in the multivariate case. See the
-    Mvcapa class if such inference is desired.
+    the subset of affected components for each anomaly in the multivariate case. See
+    :class:`Mvcapa` if such inference is desired.
 
     Parameters
     ----------
@@ -65,9 +65,13 @@ class Capa(CollectiveAnomalyDetector):
     max_segment_length : int, optional (default=1000)
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional (default=False)
-        If True, detected point anomalies are not returned by .predict(). I.e., only
+        If True, detected point anomalies are not returned by ``predict``. I.e., only
         collective anomalies are returned. If False, point anomalies are included in the
         output as collective anomalies of length 1.
+
+    See Also
+    --------
+    :class:`Mvcapa` : Multivariate CAPA with subset inference.
 
     References
     ----------
@@ -143,10 +147,10 @@ class Capa(CollectiveAnomalyDetector):
         """Fit to training data.
 
         Sets the penalty of the detector.
-        If `penalty_scale` is None, the penalty is set to the (1-`level`)-quantile
+        If ``penalty_scale`` is None, the penalty is set to the (1-``level``)-quantile
         of the change/anomaly scores on the training data. For this to be correct,
-        the training data must contain no changepoints. If `penalty_scale` is a
-        number, the penalty is set to `penalty_scale` times the default penalty
+        the training data must contain no changepoints. If ``penalty_scale`` is a
+        number, the penalty is set to ``penalty_scale`` times the default penalty
         for the detector. The default penalty depends at least on the data's shape,
         but could also depend on more parameters.
 
@@ -177,8 +181,6 @@ class Capa(CollectiveAnomalyDetector):
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Detect events in test/deployment data.
 
-        core logic
-
         Parameters
         ----------
         X : pd.DataFrame
@@ -186,12 +188,13 @@ class Capa(CollectiveAnomalyDetector):
 
         Returns
         -------
-        pd.Series[pd.Interval] containing the collective anomaly intervals.
+        pd.Series[pd.Interval]
+            Containing the collective anomaly intervals.
 
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        output.array.left and output.array.right, respectively.
+        ``output.array.left`` and ``output.array.right``, respectively.
         """
         X = check_data(
             X,
