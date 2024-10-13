@@ -31,6 +31,16 @@ Inspection methods:
 State:
     fitted model/strategy   - by convention, any attributes ending in "_"
     fitted state flag       - check_is_fitted()
+
+Needs to be implemented for a concrete detector:
+    _fit(self, X, y=None)
+    _predict(self, X)
+    sparse_to_dense(y_sparse, index)
+
+Recommended but optional to implement for a concrete detector:
+    dense_to_sparse(y_dense)
+    _score_transform(self, X)
+    _update(self, X, y=None)
 """
 
 __author__ = ["Tveten"]
@@ -67,20 +77,9 @@ class BaseDetector(BaseEstimator):
     uses ``sparse_to_dense`` to convert the output from ``predict`` to a dense format.
     It will not work if ``sparse_to_dense`` is not implemented.
 
-    Note that the ``BaseDetector`` is an alternative to the
-    BaseSeriesAnnotator class in sktime, with primary focus on detection tasks.
+    Note that the ``BaseDetector`` serves as an alternative to the BaseSeriesAnnotator
+    class in sktime, specifically tailored for detection-oriented tasks.
 
-    Needs to be implemented for a concrete detector:
-
-    - ``_fit(self, X, y=None)``
-    - ``_predict(self, X)``
-    - ``sparse_to_dense(y_sparse, index)``
-
-    Recommended but optional to implement for a concrete detector:
-
-    - ``dense_to_sparse(y_dense)``
-    - ``_score_transform(self, X)``
-    - ``_update(self, X, y=None)``
     """
 
     _tags = {
@@ -140,7 +139,9 @@ class BaseDetector(BaseEstimator):
     def _fit(self, X, y=None):
         """Fit to training data.
 
-        core logic
+        The core logic for fitting the detector to training data should be implemented
+        here. A typical example is to tune a detection threshold to training data.
+        This method must be implemented by all detectors.
 
         Parameters
         ----------
@@ -161,7 +162,7 @@ class BaseDetector(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     def predict(self, X):
-        """Detect events in test/deployment data.
+        """Detect events and return the result in a sparse format.
 
         Parameters
         ----------
@@ -184,9 +185,10 @@ class BaseDetector(BaseEstimator):
         return y
 
     def _predict(self, X):
-        """Detect events in test/deployment data.
+        """Detect events and return the result in a sparse format.
 
-        core logic
+        The core logic for detecting events in the input data should be implemented
+        here. This method must be implemented by all detectors.
 
         Parameters
         ----------
@@ -258,7 +260,7 @@ class BaseDetector(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     def score_transform(self, X):
-        """Return detection scores on test/deployment data.
+        """Return detection scores on the input data.
 
         Parameters
         ----------
@@ -275,9 +277,11 @@ class BaseDetector(BaseEstimator):
         return self._score_transform(X)
 
     def _score_transform(self, X):
-        """Return detection scores on test/deployment data.
+        """Return detection scores on the input data.
 
-        core logic
+        The core logic for scoring the input data should be implemented here. This
+        method is optional to implement, but is useful for detectors that provide
+        detection scores.
 
         Parameters
         ----------
@@ -329,7 +333,9 @@ class BaseDetector(BaseEstimator):
     def _update(self, X, y=None):
         """Update model with new data and optional ground truth detections.
 
-        core logic
+        The core logic for updating the detector with new data should be implemented
+        here. This method is optional to implement, but is useful for detectors that
+        can be efficiently updated with new data.
 
         Parameters
         ----------
