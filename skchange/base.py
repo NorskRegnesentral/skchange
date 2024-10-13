@@ -100,7 +100,12 @@ class BaseDetector(BaseEstimator):
         super().__init__()
 
     def fit(self, X, y=None):
-        """Fit to training data.
+        """Fit detector to training data.
+
+        Fit trains the detector on the input data, for example by tuning a detection
+        threshold or other hyperparameters. Detection of events does not happen here,
+        but in the ``predict`` or ``transform`` methods, after the detector has been
+        fit.
 
         Parameters
         ----------
@@ -137,7 +142,7 @@ class BaseDetector(BaseEstimator):
         return self
 
     def _fit(self, X, y=None):
-        """Fit to training data.
+        """Fit detector to training data.
 
         The core logic for fitting the detector to training data should be implemented
         here. A typical example is to tune a detection threshold to training data.
