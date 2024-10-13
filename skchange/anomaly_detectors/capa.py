@@ -46,7 +46,8 @@ class Capa(CollectiveAnomalyDetector):
     """Collective and point anomaly detection.
 
     An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
-    It is implemented using the 'savings' formulation of the problem given in [2]_.
+    It is implemented using the 'savings' formulation of the problem given in [2]_ and
+    [3]_.
 
     Capa can be applied to both univariate and multivariate data, but does not infer
     the subset of affected components for each anomaly in the multivariate case. See
@@ -82,6 +83,10 @@ class Capa(CollectiveAnomalyDetector):
     .. [2] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate\
     collective and point anomaly detection. Journal of Computational and Graphical\
     Statistics, 31(2), 574-585.
+
+    .. [3] Tveten, M., Eckley, I. A., & Fearnhead, P. (2022). Scalable change-point and\
+    anomaly detection in cross-correlated data with an application to condition\
+    monitoring. The Annals of Applied Statistics, 16(2), 721-743.
 
     Examples
     --------
