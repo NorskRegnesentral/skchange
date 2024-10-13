@@ -42,7 +42,7 @@ from sktime.utils.validation.series import check_series
 
 
 class BaseDetector(BaseEstimator):
-    """Base detector.
+    """Base class for all detectors in skchange.
 
     A detector is a model that detects events in time series data. Events can be
     anomalies, changepoints, or any other type of event that the detector is designed
