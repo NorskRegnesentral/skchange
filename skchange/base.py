@@ -54,33 +54,33 @@ class BaseDetector(BaseEstimator):
     defines the methods that all detectors should implement, as well as some optional
     methods that can be implemented if they are relevant for a specific detector type.
 
-    The .predict method returns the detections in a sparse format, where each element
-    corresponds to a detected event. The .transform method returns the detections in a
-    dense format, where each element in the input data is annotated according to the
-    detection results. The .score_transform method (if implemented) returns detection
+    The ``predict`` method returns the detections in a sparse format, where each element
+    corresponds to a detected event. The ``transform`` method returns the detections in
+    a dense format, where each element in the input data is annotated according to the
+    detection results. The ``score_transform`` method (if implemented) returns detection
     scores in a dense format.
 
     In addition, there are two special format defining and converting methods that
-    should be implemented for each detector type: sparse_to_dense and dense_to_sparse.
-    These methods define the format of the output from the detector and how to convert
-    between the sparse and dense formats. The .transform method used the sparse_to_dense
-    method to convert the output from the .predict method to a dense format. It will
-    not work if the sparse_to_dense method is not implemented.
+    should be implemented for each detector type: ``sparse_to_dense`` and
+    ``dense_to_sparse``. These methods define the format of the output from the detector
+    and how to convert between the sparse and dense formats. The ``transform`` method
+    uses ``sparse_to_dense`` to convert the output from ``predict`` to a dense format.
+    It will not work if ``sparse_to_dense`` is not implemented.
 
-    Note that the `BaseDetector` is an alternative to the BaseSeriesAnnotator class in
-    sktime, with primary focus on detection tasks.
+    Note that the ``BaseDetector`` is an alternative to the
+    BaseSeriesAnnotator class in sktime, with primary focus on detection tasks.
 
     Needs to be implemented for a concrete detector:
 
-    - _fit(self, X, y=None)
-    - _predict(self, X)
-    - sparse_to_dense(y_sparse, index)
+    - ``_fit(self, X, y=None)``
+    - ``_predict(self, X)``
+    - ``sparse_to_dense(y_sparse, index)``
 
     Recommended but optional to implement for a concrete detector:
 
-    - dense_to_sparse(y_dense) -> pd.Series or pd.DataFrame
-    - _score_transform(self, X) -> pd.Series or pd.DataFrame
-    - _update(self, X, y=None) -> self
+    - ``dense_to_sparse(y_dense)``
+    - ``_score_transform(self, X)``
+    - ``_update(self, X, y=None)``
     """
 
     _tags = {
