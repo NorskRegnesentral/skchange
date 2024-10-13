@@ -44,21 +44,40 @@ from sktime.utils.validation.series import check_series
 class BaseDetector(BaseEstimator):
     """Base detector.
 
-    An alternative implementation to the BaseSeriesAnnotator class from sktime,
-    more focused on the detection of events of interest.
-    Safer for now since the annotation module is still experimental.
+    A detector is a model that detects events in time series data. Events can be
+    anomalies, changepoints, or any other type of event that the detector is designed
+    to detect. The output from a detector is a series of detections, where each element
+    corresponds to a detected event. The format of the output depends on the detector
+    type.
 
-    All detectors share the common feature that each element of the output from .predict
-    indicates the detection of a specific event of interest, such as an anomaly, a
-    changepoint, or something else.
+    The base detector class defines the interface for all detectors in skchange. It
+    defines the methods that all detectors should implement, as well as some optional
+    methods that can be implemented if they are relevant for a specific detector type.
 
-    Needs to be implemented:
-    - _fit(self, X, y=None) -> self
-    - _predict(self, X) -> pd.Series or pd.DataFrame
-    - sparse_to_dense(y_sparse, index) -> pd.Series or pd.DataFrame
-        * Enables the transform method to work.
+    The .predict method returns the detections in a sparse format, where each element
+    corresponds to a detected event. The .transform method returns the detections in a
+    dense format, where each element in the input data is annotated according to the
+    detection results. The .score_transform method (if implemented) returns detection
+    scores in a dense format.
 
-    Optional to implement:
+    In addition, there are two special format defining and converting methods that
+    should be implemented for each detector type: sparse_to_dense and dense_to_sparse.
+    These methods define the format of the output from the detector and how to convert
+    between the sparse and dense formats. The .transform method used the sparse_to_dense
+    method to convert the output from the .predict method to a dense format. It will
+    not work if the sparse_to_dense method is not implemented.
+
+    Note that the `BaseDetector` is an alternative to the BaseSeriesAnnotator class in
+    sktime, with primary focus on detection tasks.
+
+    Needs to be implemented for a concrete detector:
+
+    - _fit(self, X, y=None)
+    - _predict(self, X)
+    - sparse_to_dense(y_sparse, index)
+
+    Recommended but optional to implement for a concrete detector:
+
     - dense_to_sparse(y_dense) -> pd.Series or pd.DataFrame
     - _score_transform(self, X) -> pd.Series or pd.DataFrame
     - _update(self, X, y=None) -> self
