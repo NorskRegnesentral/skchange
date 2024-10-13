@@ -123,8 +123,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
             1. The first function is the scoring function, which takes four arguments:
 
                 1. The output of the second function.
-                2. Start indices of the intervals to score for a change
-                3. End indices of the intervals to score for a change
+                2. Start indices of the intervals to score for a change.
+                3. End indices of the intervals to score for a change.
                 4. Split indices of the intervals to score for a change.
 
                For each start, split and end, the score should be calculated for the
