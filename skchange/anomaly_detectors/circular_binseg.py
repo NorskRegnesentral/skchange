@@ -110,13 +110,13 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
     score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
         Test statistic to use for changepoint detection.
 
-        * "mean": The CUSUM statistic for a change in mean (this is equivalent to a
+        * ``"mean"``: The CUSUM statistic for a change in mean (this is equivalent to a
           likelihood ratio test for a change in the mean of Gaussian data). For
           multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * "mean_var": The likelihood ratio test for a change in the mean and/or variance
-          of Gaussian data. For multivariate data, the sum of the likelihood ratio
-          statistics for each dimension is used.
-        * "mean_cov": The likelihood ratio test for a change in the mean and/or
+        * ``"mean_var"``: The likelihood ratio test for a change in the mean and/or
+          variance of Gaussian data. For multivariate data, the sum of the likelihood
+          ratio statistics for each dimension is used.
+        * ``"mean_cov"``: The likelihood ratio test for a change in the mean and/or
           covariance matrix of multivariate Gaussian data.
         * If a tuple, it must contain two numba jitted functions:
 
@@ -135,7 +135,6 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
             2. The second function is the initializer, which takes the data matrix as
                input and returns precomputed quantities that may speed up the score
                calculations. If not relevant, just return the data matrix.
-
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
         ``threshold_scale * 2 * p * np.sqrt(np.log(n))``, where ``n`` is the sample size
