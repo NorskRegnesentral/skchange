@@ -70,13 +70,13 @@ class Pelt(ChangeDetector):
     ----------
     cost : str or callable, optional (default="mean")
         Cost function to use for changepoint detection.
-        * If "mean", the Gaussian mean likelihood cost is used,
+        * If ``"mean"``, the Gaussian mean likelihood cost is used,
         * ...
     penalty_scale : float, optional (default=2.0)
         Scaling factor for the penalty. The penalty is set to
-        'penalty_scale * 2 * p * np.log(n)', where 'n' is the sample size
-        and 'p' is the number of variables. If None, the penalty is tuned on the data
-        input to .fit() (not supported yet).
+        ``penalty_scale * 2 * p * np.log(n)``, where ``n`` is the sample size
+        and ``p`` is the number of variables. If None, the penalty is tuned on the data
+        input to ``fit`` (not supported yet).
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
 
@@ -88,12 +88,13 @@ class Pelt(ChangeDetector):
 
     Examples
     --------
-    from skchange.change_detectors.pelt import Pelt
-    from skchange.datasets.generate import generate_teeth_data
-
-    df = generate_teeth_data(n_segments=2, mean=10, segment_length=10000, p=5)
-    detector = Pelt()
-    detector.fit_predict(df)
+    >>> from skchange.change_detectors.pelt import Pelt
+    >>> from skchange.datasets.generate import generate_teeth_data
+    >>> df = generate_teeth_data(n_segments=2, mean=10, segment_length=10000, p=5)
+    >>> detector = Pelt()
+    >>> detector.fit_predict(df)
+    0    9999
+    Name: changepoint, dtype: int64
     """
 
     _tags = {
