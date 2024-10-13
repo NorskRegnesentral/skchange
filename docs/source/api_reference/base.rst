@@ -4,8 +4,8 @@ Base
 ====
 
 The :mod:`skchange.base` module contains the abstract detector class
-:class:`skchange.base.BaseDetector`. This class serves as a minimalistic template for all the
-detectors in `sktime`.
+:class:`skchange.base.BaseDetector`. This class serves as a minimalistic template for
+all the detectors in :mod:`skchange`.
 
 For common detection tasks, like changepoint detection or anomaly detection, there
 are dedicated subclasses of :class:`BaseDetector` that implement a stricter template
