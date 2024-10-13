@@ -35,6 +35,13 @@ def cost_factory(cost_name: str):
         Cost function.
     init_cost_func : Callable
         Cost function initializer.
+
+    Raises
+    ------
+    ValueError
+        If the provided cost_name is not recognized, an error is raised with a message
+        indicating the valid options.
+
     """
     if cost_name == "mean":
         return mean_cost, init_mean_cost
