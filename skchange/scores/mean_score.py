@@ -81,10 +81,10 @@ def mean_score(
 @njit(cache=True)
 def mean_anomaly_score(
     precomputed_params: np.ndarray,
-    interval_start: np.ndarray,
-    interval_end: np.ndarray,
-    anomaly_start: np.ndarray,
-    anomaly_end: np.ndarray,
+    interval_starts: np.ndarray,
+    interval_ends: np.ndarray,
+    anomaly_starts: np.ndarray,
+    anomaly_ends: np.ndarray,
 ) -> np.ndarray:
     """
     Calculate the CUSUM score for difference in the mean of a subinterval.
@@ -100,13 +100,13 @@ def mean_anomaly_score(
     ----------
     precomputed_params : `np.ndarray`
         Precomputed parameters from `init_mean_score`.
-    interval_start : `np.ndarray`
+    interval_starts : `np.ndarray`
         Start indices of the intervals to test for an anomaly in.
-    interval_end : `np.ndarray`
+    interval_ends : `np.ndarray`
         End indices of the intervals to test for an anomaly in.
-    anomaly_start : `np.ndarray`
+    anomaly_starts : `np.ndarray`
         Start indices of the anomalies.
-    anomaly_end : `np.ndarray`
+    anomaly_ends : `np.ndarray`
         End indices of the anomalies.
 
     Returns
@@ -120,16 +120,16 @@ def mean_anomaly_score(
     """
     sums = precomputed_params
     baseline_sum = (
-        sums[interval_end + 1]
-        - sums[anomaly_end + 1]
-        + sums[anomaly_start]
-        - sums[interval_start]
+        sums[interval_ends + 1]
+        - sums[anomaly_ends + 1]
+        + sums[anomaly_starts]
+        - sums[interval_starts]
     )
-    baseline_n = interval_end - anomaly_end + anomaly_start - interval_start
+    baseline_n = interval_ends - anomaly_ends + anomaly_starts - interval_starts
     baseline_n = baseline_n.reshape(-1, 1)
     baseline_mean = baseline_sum / baseline_n
-    anomaly_sum = sums[anomaly_end + 1] - sums[anomaly_start]
-    anomaly_n = (anomaly_end - anomaly_start + 1).reshape(-1, 1)
+    anomaly_sum = sums[anomaly_ends + 1] - sums[anomaly_starts]
+    anomaly_n = (anomaly_ends - anomaly_starts + 1).reshape(-1, 1)
     anomaly_mean = anomaly_sum / anomaly_n
     weight = (1 / anomaly_n + 1 / baseline_n) ** (-1 / 2)
     return np.sum(np.abs(weight * (baseline_mean - anomaly_mean)), axis=1)

@@ -156,10 +156,10 @@ def baseline_var_from_sums(
 @njit(cache=True)
 def mean_var_anomaly_score(
     precomputed_params: np.ndarray,
-    interval_start: np.ndarray,
-    interval_end: np.ndarray,
-    anomaly_start: np.ndarray,
-    anomaly_end: np.ndarray,
+    interval_starts: np.ndarray,
+    interval_ends: np.ndarray,
+    anomaly_starts: np.ndarray,
+    anomaly_ends: np.ndarray,
 ) -> np.ndarray:
     """Calculate the score for an anomaly in the mean and/or variance.
 
@@ -174,13 +174,13 @@ def mean_var_anomaly_score(
     ----------
     precomputed_params : np.ndarray
         Precomputed parameters from `init_mean_var_score`.
-    interval_start : np.ndarray
+    interval_starts : np.ndarray
         Start indices of the intervals to test for an anomaly in.
-    interval_end : np.ndarray
+    interval_ends : np.ndarray
         End indices of the intervals to test for an anomaly in.
-    anomaly_start : np.ndarray
+    anomaly_starts : np.ndarray
         Start indices of the anomalies.
-    anomaly_end : np.ndarray
+    anomaly_ends : np.ndarray
         End indices of the anomalies.
 
     Returns
@@ -194,18 +194,18 @@ def mean_var_anomaly_score(
     """
     sums, sums2 = precomputed_params
 
-    baseline_n = interval_end - anomaly_end + anomaly_start - interval_start
-    baseline_n = baseline_n.reshape(-1, 1)
-    anomaly_n = (anomaly_end - anomaly_start + 1).reshape(-1, 1)
+    baseline_ns = interval_ends - anomaly_ends + anomaly_starts - interval_starts
+    baseline_ns = baseline_ns.reshape(-1, 1)
+    anomaly_ns = (anomaly_ends - anomaly_starts + 1).reshape(-1, 1)
 
-    baseline_var = baseline_var_from_sums(
-        sums, sums2, interval_start, interval_end, anomaly_start, anomaly_end
+    baseline_vars = baseline_var_from_sums(
+        sums, sums2, interval_starts, interval_ends, anomaly_starts, anomaly_ends
     )
-    anomaly_var = var_from_sums(sums, sums2, anomaly_start, anomaly_end)
-    full_var = var_from_sums(sums, sums2, interval_start, interval_end)
+    anomaly_vars = var_from_sums(sums, sums2, anomaly_starts, anomaly_ends)
+    full_vars = var_from_sums(sums, sums2, interval_starts, interval_ends)
 
-    baseline_term = -baseline_n * np.log(baseline_var / full_var)
-    anomaly_term = -anomaly_n * np.log(anomaly_var / full_var)
+    baseline_term = -baseline_ns * np.log(baseline_vars / full_vars)
+    anomaly_term = -anomaly_ns * np.log(anomaly_vars / full_vars)
 
     likelihood_ratio = baseline_term + anomaly_term
     return np.sum(likelihood_ratio, axis=1)
