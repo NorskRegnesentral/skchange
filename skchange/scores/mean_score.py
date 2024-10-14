@@ -10,17 +10,18 @@ from skchange.utils.numba.stats import col_cumsum
 
 @njit(cache=True)
 def init_mean_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Precompute sums for mean_score.
+    """
+    Precompute sums for `mean_score`.
 
     Parameters
     ----------
-    X : np.ndarray
+    X : `np.ndarray`
         2D array.
 
     Returns
     -------
-    sums : np.ndarray
-        Cumulative sums of X.
+    tuple of `np.ndarray`
+        Cumulative sums of `X`.
     """
     n = X.shape[0]
     p = X.shape[1]
@@ -37,30 +38,31 @@ def mean_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the CUSUM score for a change in the mean.
+    """
+    Calculate the CUSUM score for a change in the mean.
 
     Compares the mean of the data before and after the split within the interval from
-    start:end (both inclusive).
+    `start:end` (both inclusive).
 
     Parameters
     ----------
-    precomputed_params : np.ndarray
-        Precomputed parameters from init_mean_score.
-    start : np.ndarray
+    precomputed_params : `np.ndarray`
+        Precomputed parameters from `init_mean_score`.
+    starts : `np.ndarray`
         Start indices of the intervals to test for a change in the mean.
-    end : np.ndarray
+    ends : `np.ndarray`
         End indices of the intervals to test for a change in the mean.
-    split : np.ndarray
+    splits : `np.ndarray`
         Split indices of the intervals to test for a change in the mean.
 
     Returns
     -------
-    score : np.ndarray
-        Scores for a difference in the mean at the given intervals and splits
+    `np.ndarray`
+        Scores for a difference in the mean at the given intervals and splits.
 
     Notes
     -----
-    To optimize performance, no checks are performed on (start, split, end).
+    To optimize performance, no checks are performed on (`starts`, `splits`, `ends`).
     """
     sums = precomputed_params
     before_sum = sums[splits + 1] - sums[starts]
@@ -84,31 +86,32 @@ def mean_anomaly_score(
     anomaly_start: np.ndarray,
     anomaly_end: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the CUSUM score for difference in the mean of a subinterval.
+    """
+    Calculate the CUSUM score for difference in the mean of a subinterval.
 
-    Compares the mean of the data in anomaly_start:anomaly_end (both inclusive)
-    to the mean of the complement of interval_start:interval_end (both inclusive) and
-    anomaly_start:anomaly_end.
+    Compares the mean of the data in `anomaly_start:anomaly_end` (both inclusive)
+    to the mean of the complement of `interval_start:interval_end` (both inclusive) and
+    `anomaly_start:anomaly_end`.
 
     The overall and anomalous intervals must satisfy
-    `interval_start > anomaly_start <= anomaly_end <= interval_end`
+    `interval_start > anomaly_start <= anomaly_end <= interval_end`.
 
     Parameters
     ----------
-    precomputed_params : np.ndarray
-        Precomputed parameters from init_mean_score.
-    interval_start : np.ndarray
+    precomputed_params : `np.ndarray`
+        Precomputed parameters from `init_mean_score`.
+    interval_start : `np.ndarray`
         Start indices of the intervals to test for an anomaly in.
-    interval_end : np.ndarray
+    interval_end : `np.ndarray`
         End indices of the intervals to test for an anomaly in.
-    anomaly_start : np.ndarray
+    anomaly_start : `np.ndarray`
         Start indices of the anomalies.
-    anomaly_end : np.ndarray
+    anomaly_end : `np.ndarray`
         End indices of the anomalies.
 
     Returns
     -------
-    score : float
+    `np.ndarray`
         Score for a difference in the mean.
 
     Notes

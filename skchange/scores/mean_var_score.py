@@ -11,7 +11,7 @@ from skchange.utils.numba.stats import col_cumsum
 
 @njit(cache=True)
 def init_mean_var_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Precompute sums and squared sums for 'mean_var_score'.
+    """Precompute sums and squared sums for `mean_var_score`.
 
     Parameters
     ----------
@@ -21,7 +21,7 @@ def init_mean_var_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     Returns
     -------
     sums : np.ndarray
-        Cumulative sums of X.
+        Cumulative sums of `X`.
     """
     n = X.shape[0]
     p = X.shape[1]
@@ -40,18 +40,18 @@ def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: np.ndarray, j: np.nda
     Parameters
     ----------
     sums1 : np.ndarray
-        Cumulative sums of X.
+        Cumulative sums of `X`.
     sums2 : np.ndarray
-        Cumulative sums of X**2.
+        Cumulative sums of `X**2`.
     i : np.ndarray
-        Start indices in the original data X.
+        Start indices in the original data `X`.
     j : np.ndarray
-        End indices in the original data X.
+        End indices in the original data `X`.
 
     Returns
     -------
     var : float
-        Variance of X[i:j] (inclusive j).
+        Variance of `X[i:j]` (inclusive `j`).
     """
     n = (j - i + 1).reshape(-1, 1)
     sum1 = sums1[j + 1] - sums1[i]  # Indices is moved one step forward
@@ -75,12 +75,12 @@ def mean_var_score(
     Parameters
     ----------
     precomputed_params : np.ndarray
-        Precomputed parameters from init_mean_score.
-    start : np.ndarray
+        Precomputed parameters from `init_mean_var_score`.
+    starts : np.ndarray
         Start indices of the intervals to test for a change in the mean.
-    end : np.ndarray
+    ends : np.ndarray
         End indices of the intervals to test for a change in the mean.
-    split : np.ndarray
+    splits : np.ndarray
         Split indices of the intervals to test for a change in the mean.
 
     Returns
@@ -91,7 +91,7 @@ def mean_var_score(
 
     Notes
     -----
-    To optimize performance, no checks are performed on (start, split, end).
+    To optimize performance, no checks are performed on (`starts`, `splits`, `ends`).
     """
     sums, sums2 = precomputed_params
     before_var = var_from_sums(sums, sums2, starts, splits)
@@ -119,18 +119,22 @@ def baseline_var_from_sums(
     Parameters
     ----------
     sums1 : np.ndarray
-        Cumulative sums of X.
+        Cumulative sums of `X`.
     sums2 : np.ndarray
-        Cumulative sums of X**2.
-    i : np.ndarray
-        Start indices in the original data X.
-    j : np.ndarray
-        End indices in the original data X.
+        Cumulative sums of `X**2`.
+    interval_start : np.ndarray
+        Start indices in the original data `X`.
+    interval_end : np.ndarray
+        End indices in the original data `X`.
+    anomaly_start : np.ndarray
+        Start indices of the anomalies.
+    anomaly_end : np.ndarray
+        End indices of the anomalies.
 
     Returns
     -------
     var : float
-        Variance of X[i:j] (inclusive j).
+        Variance of `X` in the specified intervals.
     """
     n = (interval_end - anomaly_end + anomaly_start - interval_start).reshape(-1, 1)
     sum1 = (
@@ -169,7 +173,7 @@ def mean_var_anomaly_score(
     Parameters
     ----------
     precomputed_params : np.ndarray
-        Precomputed parameters from init_mean_score.
+        Precomputed parameters from `init_mean_var_score`.
     interval_start : np.ndarray
         Start indices of the intervals to test for an anomaly in.
     interval_end : np.ndarray
