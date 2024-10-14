@@ -77,7 +77,7 @@ def run_seeded_binseg(
     params = score_init_func(X)
 
     amoc_scores = np.zeros(starts.size)
-    maximizers = np.zeros(starts.size)
+    maximizers = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
         splits_lower = start + min_segment_length - 1
         splits = np.arange(splits_lower, end - min_segment_length + 1)
