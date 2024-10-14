@@ -33,7 +33,7 @@ def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
     cost : {"mean"}, tuple[Callable, Callable], default="mean
         Name of cost function to use for changepoint detection.
 
-        * `"mean"`: The Gaussian mean likelihood cost is used,
+        * `"mean"`: The Gaussian mean likelihood cost is used.
         * More cost functions will be added in the future.
 
     Returns
