@@ -16,18 +16,25 @@ Recipe for adding new costs:
 
 __author__ = ["Tveten"]
 
+from typing import Callable, Union
+
+from numba.extending import is_jitted
+
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
 
 VALID_COSTS = ["mean"]
 
 
-def cost_factory(cost_name: str):
+def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
     """Return cost function and its initializer.
 
     Parameters
     ----------
-    cost_name : str
-        Name of cost function. Must be one of 'mean'.
+    cost : {"mean"}, tuple[Callable, Callable], default="mean
+        Name of cost function to use for changepoint detection.
+
+        * `"mean"`: The Gaussian mean likelihood cost is used,
+        * More cost functions will be added in the future.
 
     Returns
     -------
@@ -39,15 +46,18 @@ def cost_factory(cost_name: str):
     Raises
     ------
     ValueError
-        If the provided cost_name is not recognized, an error is raised with a message
+        If the provided `cost` is not recognized, an error is raised with a message
         indicating the valid options.
 
     """
-    if cost_name == "mean":
+    if cost == "mean":
         return mean_cost, init_mean_cost
+    elif len(cost) == 2 and all([is_jitted(s) for s in cost]):
+        return cost[0], cost[1]
     else:
         message = (
-            f"cost_name={cost_name} not recognized."
+            f"`cost`={cost} not recognized."
             + f" Must be one of {', '.join(VALID_COSTS)}"
+            + " or a tuple of two numba jitted functions."
         )
         raise ValueError(message)
