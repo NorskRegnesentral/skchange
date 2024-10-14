@@ -10,5 +10,6 @@ Datasets
     :template: functions.rst
 
     generate_anomalous_data
-    generate_teeth_data
+    generate_changing_data
+    generate_alternating_data
     add_linspace_outliers
