@@ -68,8 +68,8 @@ class Pelt(ChangeDetector):
 
     Parameters
     ----------
-    cost : str or callable, optional (default="mean")
-        Cost function to use for changepoint detection.
+    cost : {"mean"}, tuple[Callable, Callable], default="mean
+        Name of cost function to use for changepoint detection.
 
         * `"mean"`: The Gaussian mean likelihood cost is used,
         * More cost functions will be added in the future.
