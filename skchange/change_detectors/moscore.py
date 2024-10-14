@@ -53,7 +53,7 @@ class Moscore(ChangeDetector):
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
     detection. It runs a test statistic for a single changepoint at the midpoint in a
-    moving window of length ``2 * bandwidth`` over the data. Efficiently implemented
+    moving window of length `2 * bandwidth` over the data. Efficiently implemented
     using numba.
 
     Parameters
@@ -61,25 +61,25 @@ class Moscore(ChangeDetector):
     score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
         Test statistic to use for changepoint detection.
 
-        * ``"mean"``: The CUSUM statistic for a change in mean (this is equivalent to a
+        * `"mean"`: The CUSUM statistic for a change in mean (this is equivalent to a
           likelihood ratio test for a change in the mean of Gaussian data). For
           multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * ``"mean_var"``: The likelihood ratio test for a change in the mean and/or
+        * `"mean_var"`: The likelihood ratio test for a change in the mean and/or
           variance of Gaussian data. For multivariate data, the sum of the likelihood
           ratio statistics for each dimension is used.
-        * ``"mean_cov"``: The likelihood ratio test for a change in the mean and/or
+        * `"mean_cov"`: The likelihood ratio test for a change in the mean and/or
           covariance matrix of multivariate Gaussian data.
         * If a tuple, it must contain two numba jitted functions:
 
             1. The first function is the scoring function, which takes four arguments:
 
-                1. ``precomputed_params``: The output of the second function.
-                2. ``starts``: Start indices of the intervals to score for a change.
-                3. ``ends``: End indices of the intervals to score for a change.
-                4. ``splits``: Split indices of the intervals to score for a change.
+                1. `precomputed_params`: The output of the second function.
+                2. `starts`: Start indices of the intervals to score for a change.
+                3. `ends`: End indices of the intervals to score for a change.
+                4. `splits`: Split indices of the intervals to score for a change.
 
                For each start, split and end, the score should be calculated for the
-               data intervals ``[start:split]`` and ``[split+1:end]``, meaning that both
+               data intervals `[start:split]` and `[split+1:end]`, meaning that both
                the starts and ends are inclusive, while split is included in the left
                interval.
 
@@ -89,21 +89,21 @@ class Moscore(ChangeDetector):
     bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
-        test statistic. For ``"mean"``, the minimum bandwidth is 1.
+        test statistic. For `"mean"`, the minimum bandwidth is 1.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
-        ``threshold_scale * default_threshold``, where the default threshold depends on
-        the number of samples, the number of variables, ``bandwidth`` and ``level``.
-        If None, the threshold is tuned on the input data to ``fit``.
+        `threshold_scale * default_threshold`, where the default threshold depends on
+        the number of samples, the number of variables, `bandwidth` and `level`.
+        If None, the threshold is tuned on the input data to `fit`.
     level : float, default=0.01
-        If ``threshold_scale`` is ``None``, the threshold is set to the
-        (1-``level``)-quantile of the changepoint score on the training data. For this
+        If `threshold_scale` is `None`, the threshold is set to the
+        (1-`level`)-quantile of the changepoint score on the training data. For this
         to be correct, the training data must contain no changepoints. If
-        ``threshold_scale`` is a number, ``level`` is used in the default threshold,
+        `threshold_scale` is a number, `level` is used in the default threshold,
         _before_ scaling.
     min_detection_interval : int, default=1
         Minimum number of consecutive scores above the threshold to be considered a
-        changepoint. Must be between 1 and ``bandwidth``/2.
+        changepoint. Must be between 1 and `bandwidth`/2.
 
     References
     ----------
@@ -253,7 +253,7 @@ class Moscore(ChangeDetector):
 
         State change
         ------------
-        Creates the threshold_ attribute.
+        Creates the `threshold_` attribute.
         """
         X = check_data(
             X,
@@ -274,7 +274,7 @@ class Moscore(ChangeDetector):
         Returns
         -------
         y : pd.Series
-            Annotations for sequence X exact format depends on annotation type.
+            Annotations for sequence `X` exact format depends on annotation type.
         """
         X = check_data(
             X,
@@ -298,7 +298,7 @@ class Moscore(ChangeDetector):
 
         Returns
         -------
-        y : pd.Series - annotations for sequence X
+        y : pd.Series - annotations for sequence `X`
             exact format depends on annotation type
         """
         self.scores = self.score_transform(X)

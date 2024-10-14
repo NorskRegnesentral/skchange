@@ -14,13 +14,13 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    change_detector : ChangeDetector
+    change_detector : `ChangeDetector`
         Change detector to use for detecting segments.
-    stat : callable, optional (default=np.mean)
+    stat : `callable`, optional (default=`np.mean`)
         Statistic to calculate per segment.
-    stat_lower : float, optional (default=-1.0)
+    stat_lower : `float`, optional (default=-1.0)
         Segments with a statistic lower than this value are considered anomalous.
-    stat_upper : float, optional (default=1.0)
+    stat_upper : `float`, optional (default=1.0)
         Segments with a statistic higher than this value are considered anomalous.
     """
 
@@ -53,11 +53,11 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
 
         Parameters
         ----------
-        X : pd.DataFrame
+        X : `pd.DataFrame`
             training data to fit the threshold to.
-        y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+        y : `pd.Series`, optional
+            Does nothing. Only here to make the `fit` method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
@@ -72,11 +72,11 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : `pd.DataFrame` - data to annotate, time series
 
         Returns
         -------
-        y : pd.Series - annotations for sequence X
+        y : `pd.Series` - annotations for sequence `X`
             exact format depends on annotation type
         """
         # This is the required output format for the rest of the code to work.

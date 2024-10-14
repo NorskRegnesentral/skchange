@@ -370,7 +370,7 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
     collective_penalty_scale : float, optional, default=1.0
         Scaling factor for the collective penalty.
     point_penalty : str or Callable, optional, default="sparse"
-        Penalty function to use for point anomalies. See ``collective_penalty``.
+        Penalty function to use for point anomalies. See `collective_penalty`.
     point_penalty_scale : float, optional, default=1.0
         Scaling factor for the point penalty.
     min_segment_length : int, optional, default=2
@@ -378,7 +378,7 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
     max_segment_length : int, optional, default=1000
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional, default=False
-        If True, detected point anomalies are not returned by ``predict``. I.e., only
+        If True, detected point anomalies are not returned by `predict`. I.e., only
         collective anomalies are returned.
 
     References

@@ -90,22 +90,22 @@ class CollectiveAnomalyDetector(BaseDetector):
     Collective anomaly detectors detect segments of data points that are considered
     anomalous.
 
-    Output format of the predict method: See the dense_to_sparse method.
-    Output format of the transform method: See the sparse_to_dense method.
+    Output format of the `predict` method: See the `dense_to_sparse` method.
+    Output format of the `transform` method: See the `sparse_to_dense` method.
     """
 
     @staticmethod
     def sparse_to_dense(
         y_sparse: pd.Series, index: pd.Index, columns: pd.Index = None
     ) -> pd.Series:
-        """Convert the sparse output from the predict method to a dense format.
+        """Convert the sparse output from the `predict` method to a dense format.
 
         Parameters
         ----------
         y_sparse : pd.Series[pd.Interval]
             The collective anomaly intervals.
         index : array-like
-            Indices that are to be annotated according to ``y_sparse``.
+            Indices that are to be annotated according to `y_sparse`.
         columns: array-like
             Not used. Only for API compatibility.
 
@@ -115,21 +115,21 @@ class CollectiveAnomalyDetector(BaseDetector):
             from 1, ..., K.
         """
         labels = pd.IntervalIndex(y_sparse).get_indexer(index)
-        # get_indexer return values 0 for the values inside the first interval, 1 to
+        # `get_indexer` return values 0 for the values inside the first interval, 1 to
         # the values within the next interval and so on, and -1 for values outside any
-        # interval. The skchange convention is that 0 is normal and > 0 is anomalous,
+        # interval. The `skchange` convention is that 0 is normal and > 0 is anomalous,
         # so we add 1 to the result.
         labels += 1
         return pd.Series(labels, index=index, name="anomaly_label", dtype="int64")
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
-        """Convert the dense output from the transform method to a sparse format.
+        """Convert the dense output from the `transform` method to a sparse format.
 
         Parameters
         ----------
         y_dense : pd.Series
-            The dense output from a collective anomaly detector's transform method:
+            The dense output from a collective anomaly detector's `transform` method:
             An integer series where 0-entries are normal and each collective anomaly
             are labelled from 1, ..., K.
 
@@ -140,7 +140,7 @@ class CollectiveAnomalyDetector(BaseDetector):
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        output.array.left and output.array.right, respectively.
+        `output.array.left` and `output.array.right`, respectively.
         """
         # The sparse format only uses integer positions, so we reset the index.
         y_dense = y_dense.reset_index(drop=True)
@@ -167,7 +167,7 @@ class CollectiveAnomalyDetector(BaseDetector):
     ) -> pd.Series:
         """Format the sparse output of collective anomaly detectors.
 
-        Can be reused by subclasses to format the output of the _predict method.
+        Can be reused by subclasses to format the output of the `_predict` method.
         """
         return pd.Series(
             pd.IntervalIndex.from_tuples(anomaly_intervals, closed=closed),
@@ -182,26 +182,26 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
     that are considered anomalous, and also provide information on which components of
     the data are affected.
 
-    Output format of the predict method: See the dense_to_sparse method.
-    Output format of the transform method: See the sparse_to_dense method.
+    Output format of the `predict` method: See the `dense_to_sparse` method.
+    Output format of the `transform` method: See the `sparse_to_dense` method.
     """
 
     @staticmethod
     def sparse_to_dense(
         y_sparse: pd.DataFrame, index: pd.Index, columns: pd.Index
     ) -> pd.DataFrame:
-        """Convert the sparse output from the predict method to a dense format.
+        """Convert the sparse output from the `predict` method to a dense format.
 
         Parameters
         ----------
         y_sparse : pd.DataFrame
-            The sparse output from the predict method. The first column must contain the
-            anomaly intervals, the second column must contain a list of the affected
+            The sparse output from the `predict` method. The first column must contain
+            the anomaly intervals, the second column must contain a list of the affected
             columns.
         index : array-like
-            Indices that are to be annotated according to ``y_sparse``.
+            Indices that are to be annotated according to `y_sparse`.
         columns : array-like
-            Columns that are to be annotated according to ``y_sparse``.
+            Columns that are to be annotated according to `y_sparse`.
 
         Returns
         -------
@@ -229,12 +229,12 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.DataFrame):
-        """Convert the dense output from the transform method to a sparse format.
+        """Convert the dense output from the `transform` method to a sparse format.
 
         Parameters
         ----------
         y_dense : pd.DataFrame
-            The dense output from the transform method.
+            The dense output from the `transform` method.
 
         Returns
         -------
@@ -268,7 +268,7 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
     ) -> pd.DataFrame:
         """Format the sparse output of subset collective anomaly detectors.
 
-        Can be reused by subclasses to format the output of the _predict method.
+        Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------

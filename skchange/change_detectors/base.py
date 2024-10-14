@@ -30,22 +30,22 @@ class ChangeDetector(BaseDetector):
     homogeneous, i.e., of the same distribution. A changepoint is defined as the
     location of the last element of a segment.
 
-    Output format of the predict method: See the dense_to_sparse method.
-    Output format of the transform method: See the sparse_to_dense method.
+    Output format of the `predict` method: See the `dense_to_sparse` method.
+    Output format of the `transform` method: See the `sparse_to_dense` method.
     """
 
     @staticmethod
     def sparse_to_dense(
         y_sparse: pd.Series, index: pd.Index, columns: pd.Index = None
     ) -> pd.Series:
-        """Convert the sparse output from the predict method to a dense format.
+        """Convert the sparse output from the `predict` method to a dense format.
 
         Parameters
         ----------
         y_sparse : pd.DataFrame
-            The sparse output from a changepoint detector's predict method.
+            The sparse output from a changepoint detector's `predict` method.
         index : array-like
-            Indices that are to be annotated according to ``y_sparse``.
+            Indices that are to be annotated according to `y_sparse`.
         columns: array-like
             Not used. Only for API compatibility.
 
@@ -67,12 +67,12 @@ class ChangeDetector(BaseDetector):
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
-        """Convert the dense output from the transform method to a sparse format.
+        """Convert the dense output from the `transform` method to a sparse format.
 
         Parameters
         ----------
         y_dense : pd.Series
-            The dense output from a changepoint detector's transform method.
+            The dense output from a changepoint detector's `transform` method.
 
         Returns
         -------
@@ -89,6 +89,6 @@ class ChangeDetector(BaseDetector):
     def _format_sparse_output(changepoints) -> pd.Series:
         """Format the sparse output of changepoint detectors.
 
-        Can be reused by subclasses to format the output of the _predict method.
+        Can be reused by subclasses to format the output of the `_predict` method.
         """
         return pd.Series(changepoints, name="changepoint", dtype="int64")

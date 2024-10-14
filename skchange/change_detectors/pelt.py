@@ -70,13 +70,14 @@ class Pelt(ChangeDetector):
     ----------
     cost : str or callable, optional (default="mean")
         Cost function to use for changepoint detection.
-        * If ``"mean"``, the Gaussian mean likelihood cost is used,
-        * ...
+
+        * `"mean"`: The Gaussian mean likelihood cost is used,
+        * More cost functions will be added in the future.
     penalty_scale : float, optional (default=2.0)
         Scaling factor for the penalty. The penalty is set to
-        ``penalty_scale * 2 * p * np.log(n)``, where ``n`` is the sample size
-        and ``p`` is the number of variables. If None, the penalty is tuned on the data
-        input to ``fit`` (not supported yet).
+        `penalty_scale * 2 * p * np.log(n)`, where `n` is the sample size
+        and `p` is the number of variables. If None, the penalty is tuned on the data
+        input to `fit` (not supported yet).
     min_segment_length : int, optional (default=2)
         Minimum length of a segment.
 
@@ -132,7 +133,7 @@ class Pelt(ChangeDetector):
             The tuned penalty.
         """
         raise ValueError(
-            "tuning of the penalty is not supported yet (penalty_scale=None)."
+            "tuning of the penalty is not supported yet (`penalty_scale=None`)."
         )
 
     @staticmethod
@@ -181,8 +182,8 @@ class Pelt(ChangeDetector):
         X : pd.DataFrame
             training data to fit the penalty to.
         y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+            Does nothing. Only here to make the `fit` method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
@@ -205,7 +206,7 @@ class Pelt(ChangeDetector):
 
         Returns
         -------
-        y : pd.Series - annotations for sequence X
+        y : pd.Series - annotations for sequence `X`
             exact format depends on annotation type
         """
         X = check_data(
@@ -233,7 +234,7 @@ class Pelt(ChangeDetector):
 
         Returns
         -------
-        scores : pd.Series - scores for sequence X
+        scores : pd.Series - scores for sequence `X`
 
         Notes
         -----
