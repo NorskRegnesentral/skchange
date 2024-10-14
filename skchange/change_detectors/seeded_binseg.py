@@ -167,8 +167,10 @@ class SeededBinarySegmentation(ChangeDetector):
     Examples
     --------
     >>> from skchange.change_detectors import SeededBinarySegmentation
-    >>> from skchange.datasets.generate import generate_teeth_data
-    >>> df = generate_teeth_data(n_segments=4, mean=10, segment_length=100000, p=5)
+    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> df = generate_alternating_data(
+            n_segments=4, mean=10, segment_length=100000, p=5
+        )
     >>> detector = SeededBinarySegmentation()
     >>> detector.fit_predict(df)
     0     99999

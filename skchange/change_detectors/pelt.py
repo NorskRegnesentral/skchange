@@ -90,8 +90,8 @@ class Pelt(ChangeDetector):
     Examples
     --------
     >>> from skchange.change_detectors import Pelt
-    >>> from skchange.datasets.generate import generate_teeth_data
-    >>> df = generate_teeth_data(n_segments=2, mean=10, segment_length=10000, p=5)
+    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=10000, p=5)
     >>> detector = Pelt()
     >>> detector.fit_predict(df)
     0    9999

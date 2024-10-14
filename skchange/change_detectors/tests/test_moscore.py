@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from skchange.change_detectors.moscore import Moscore
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 from skchange.scores.score_factory import VALID_CHANGE_SCORES
 
 
@@ -13,7 +13,7 @@ def test_moscore_changepoint(score):
     """Test Moscore changepoints."""
     n_segments = 2
     seg_len = 50
-    df = generate_teeth_data(
+    df = generate_alternating_data(
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
     detector = Moscore(score)
@@ -26,7 +26,7 @@ def test_moscore_scores(score):
     """Test Moscore scores."""
     n_segments = 2
     seg_len = 50
-    df = generate_teeth_data(
+    df = generate_alternating_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
     detector = Moscore(score)
@@ -40,7 +40,7 @@ def test_moscore_tuning(score):
     """Test Moscore tuning."""
     n_segments = 2
     seg_len = 50
-    df = generate_teeth_data(
+    df = generate_alternating_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
     detector = Moscore(score, threshold_scale=None)

@@ -50,12 +50,13 @@ def generate_changing_data(
     if isinstance(variances[0], Number):
         variances = [np.array([variance]) for variance in variances]
 
+    n_segments = len(changepoints) + 1
     if len(means) == 1:
-        means = means * len(changepoints + 1)
+        means = means * n_segments
     if len(variances) == 1:
-        variances = variances * len(changepoints + 1)
+        variances = variances * n_segments
 
-    if len(changepoints) != len(means) - 1 or len(changepoints) != len(variances) - 1:
+    if n_segments != len(means) or n_segments != len(variances):
         raise ValueError(
             "Number of segments (len(changepoints) + 1),"
             + " means and variances must be the same."

@@ -6,7 +6,7 @@ import pytest
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.costs.saving_factory import VALID_SAVINGS
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 
 
 @pytest.mark.parametrize("saving", VALID_SAVINGS)
@@ -15,7 +15,7 @@ def test_capa_anomalies(detector_class, saving):
     """Test Capa anomalies."""
     n_segments = 2
     seg_len = 20
-    df = generate_teeth_data(
+    df = generate_alternating_data(
         n_segments=n_segments,
         mean=20,
         segment_length=seg_len,

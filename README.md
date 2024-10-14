@@ -20,9 +20,9 @@ Requires Python >= 3.9, < 3.13.
 ### Changepoint detection / time series segmentation
 ```python
 from skchange.change_detectors.moscore import Moscore
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 
-df = generate_teeth_data(n_segments=10, segment_length=50, mean=5, random_state=1)
+df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 detector = Moscore(bandwidth=10)
 detector.fit_predict(df)
 >>>
@@ -41,9 +41,9 @@ Name: changepoint, dtype: int64
 ### Multivariate anomaly detection
 ```python
 from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 
-df = generate_teeth_data(
+df = generate_alternating_data(
     n_segments=5,
     segment_length=50,
     p=10,

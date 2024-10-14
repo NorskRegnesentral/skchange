@@ -5,11 +5,13 @@ import plotly.express as px
 
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
 # Unviariate
-df = generate_teeth_data(n_segments=5, segment_length=10, mean=10, random_state=2)[0]
+df = generate_alternating_data(
+    n_segments=5, segment_length=10, mean=10, random_state=2
+)[0]
 detector = Capa(max_segment_length=20)
 
 anomalies = detector.fit_predict(df)
@@ -22,7 +24,9 @@ scores = detector.score_transform(df)
 px.scatter(scores)
 
 # Multivariate
-df = generate_teeth_data(5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2)
+df = generate_alternating_data(
+    5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2
+)
 detector = Mvcapa(collective_penalty="sparse")
 
 anomalies = detector.fit_predict(df)
@@ -51,7 +55,7 @@ px.scatter(scores)
 
 # Profiling
 n = int(1e5)
-df = generate_teeth_data(n_segments=1, mean=0, segment_length=n, p=1)
+df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
 detector = Capa(
     max_segment_length=100, collective_penalty_scale=5, point_penalty_scale=5
 )

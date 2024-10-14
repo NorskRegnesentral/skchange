@@ -166,8 +166,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
     Examples
     --------
     >>> from skchange.anomaly_detectors import CircularBinarySegmentation
-    >>> from skchange.datasets.generate import generate_teeth_data
-    >>> df = generate_teeth_data(n_segments=5, mean=10, segment_length=100)
+    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
     >>> detector = CircularBinarySegmentation()
     >>> detector.fit_predict(df)
     0    [100, 199]

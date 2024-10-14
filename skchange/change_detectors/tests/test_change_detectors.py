@@ -3,11 +3,11 @@
 import pytest
 
 from skchange.change_detectors import CHANGE_DETECTORS
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 
 n_segments = 2
 seg_len = 50
-changepoint_data = generate_teeth_data(
+changepoint_data = generate_alternating_data(
     n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
 )[0]
 

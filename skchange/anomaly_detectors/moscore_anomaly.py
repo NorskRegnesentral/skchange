@@ -110,7 +110,7 @@ class MoscoreAnomaly(CollectiveAnomalyDetector):
     Examples
     --------
     from skchange.anomaly_detectors.moscore_anomaly import MoscoreAnomaly
-    from skchange.datasets.generate import generate_teeth_data
+    from skchange.datasets.generate import generate_alternating_data
 
     anomalies = [(100, 119), (250, 299)]
     df = generate_anomalous_data(500, anomalies=anomalies, means=[10.0, 5.0])
