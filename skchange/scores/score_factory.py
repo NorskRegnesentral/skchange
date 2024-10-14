@@ -74,6 +74,12 @@ def score_factory(score: Union[str, tuple[Callable, Callable]]):
         Score function.
     init_score_func : Numba jitted Callable
         Score function initializer.
+
+    Raises
+    ------
+    ValueError
+        If the provided `score` is not recognized, an error is raised with a message
+        indicating the valid options.
     """
     if isinstance(score, str) and score == "mean":
         return mean_score, init_mean_score
