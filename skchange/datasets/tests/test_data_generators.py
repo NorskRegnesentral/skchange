@@ -42,18 +42,10 @@ def test_generate_changing_data_with_multiple_changepoints():
 
 
 def test_generate_changing_data_invalid_changepoints():
-    n = 100
-    changepoints = [10, 20, 110]  # Invalid changepoint
-    means = [1.0, 2.0, 3.0]
-    variances = [1.0, 2.0, 3.0]
-    random_state = 1
     with pytest.raises(ValueError):
         generate_changing_data(
-            n=n,
-            changepoints=changepoints,
-            means=means,
-            variances=variances,
-            random_state=random_state,
+            n=100,
+            changepoints=110,  # Invalid changepoint.
         )
 
 
