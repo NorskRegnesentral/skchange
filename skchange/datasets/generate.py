@@ -13,7 +13,7 @@ from scipy.stats import multivariate_normal
 def generate_changing_data(
     n: int = 100,
     changepoints: Union[int, list[int]] = 49,
-    means: Union[float, list[float], list[np.ndarray]] = 3.0,
+    means: Union[float, list[float], list[np.ndarray]] = 0.0,
     variances: Union[float, list[float], list[np.ndarray]] = 1.0,
     random_state: int = None,
 ):
