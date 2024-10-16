@@ -35,7 +35,8 @@ def saving_factory(saving: Union[str, tuple[Callable, Callable]]):
     saving : {"mean"} or `tuple[Callable, Callable]`, default="mean"
         Name of saving function to use for anomaly detection.
 
-        * `"mean"`: The Gaussian mean likelihood cost is used.
+        * `"mean"`: The Gaussian likelihood ratio saving of a maximum likelihod
+            estimate of the mean versus a zero mean is used.
         * If a tuple, it must contain two numba jitted functions:
 
             1. The first function is the saving function, which takes three arguments:

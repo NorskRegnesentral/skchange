@@ -44,6 +44,10 @@ def mean_saving(
     """
     Calculate the Gaussian mean likelihood saving for each segment.
 
+    The mean_saving calculates the Gaussian likelihood ratio test statistic of the
+    segment starting at `start` and ending at `end` having the maximum likelihod
+    estimate of the mean versus zero mean.
+
     Parameters
     ----------
     precomputed_params : `tuple[np.ndarray, np.ndarray]`
