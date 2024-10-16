@@ -34,7 +34,20 @@ def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
         Name of cost function to use for changepoint detection.
 
         * `"mean"`: The Gaussian mean likelihood cost is used.
-        * More cost functions will be added in the future.
+        * If a tuple, it must contain two numba jitted functions:
+
+            1. The first function is the cost function, which takes three arguments:
+
+                1. `precomputed_params`: The output of the second function.
+                2. `starts`: Start indices of the intervals to calculate the cost for.
+                3. `ends`: End indices of the intervals to calculate the cost for.
+
+            The algorithms that use the cost function govern what intervals are
+            considered.
+
+            2. The second function is the initializer, which takes the data matrix as
+               input and returns precomputed quantities that may speed up the cost
+               calculations. If not relevant, just return the input data matrix.
 
     Returns
     -------
