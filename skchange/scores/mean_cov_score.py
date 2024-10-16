@@ -10,7 +10,7 @@ from skchange.utils.numba.stats import log_det_covariance
 
 @njit(cache=True)
 def half_integer_digamma(twice_n: int) -> float:
-    """Calculate the digamma function for half integer values, i.e. twice_n/2.
+    """Calculate the digamma function for half integer values, i.e. `twice_n/2`.
 
     The digamma function is the logarithmic derivative of the gamma function.
     This function is capable of calculating the
@@ -52,10 +52,10 @@ def likelihood_ratio_expected_value(
 ) -> float:
     """Calculate the expected value of twice the negative log likelihood ratio.
 
-    We check that the cut point is within the sequence length, and that both 'k' and 'n'
-    are large enough relative to the dimension 'p', to ensure that the expected
+    We check that the cut point is within the sequence length, and that both `k` and `n`
+    are large enough relative to the dimension `p`, to ensure that the expected
     value is finite.
-    Should at least have 'p+1' points on each side of a split, for 'p' dimensional data.
+    Should at least have `p+1` points on each side of a split, for `p` dimensional data.
 
     Parameters
     ----------
@@ -70,16 +70,15 @@ def likelihood_ratio_expected_value(
     -------
     g_k_n : float
         Expected value of twice the negative log likelihood ratio.
-
     """
     n, k, p = sequence_length, cut_point, dimension
 
-    assert 0 < k < n, "Cut point 'k' must be within the sequence length 'n'."
-    assert p > 0, "Dimension 'p' must be a positive integer."
-    assert k > (p + 1), "Cut point 'k' must be larger than the dimension + 1."
+    assert 0 < k < n, "Cut point `k` must be within the sequence length `n`."
+    assert p > 0, "Dimension `p` must be a positive integer."
+    assert k > (p + 1), "Cut point `k` must be larger than the dimension + 1."
     assert n - k > (
         p + 1
-    ), "Run length after cut point 'n - k' must be larger than dimension + 1."
+    ), "Run length after cut point `n - k` must be larger than dimension + 1."
 
     g_k_n = p * (
         np.log(2)
@@ -127,7 +126,20 @@ def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimens
 
 @njit(cache=True)
 def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
-    """Initialize the precision matrix change point detection."""
+    """Precompute quantities for the mean_cov_score.
+
+    Currently does nothing as the memory overhead is too large for large datasets.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Data matrix.
+
+    Returns
+    -------
+    X : np.ndarray
+        Initialized data matrix.
+    """
     return X
 
 
@@ -154,7 +166,7 @@ def _mean_cov_log_det_term(X: np.ndarray, start: int, end: int) -> float:
     log_det_cov = log_det_covariance(X[start : end + 1, :])
     if np.isnan(log_det_cov):
         raise RuntimeError(
-            f"The covariance matrix of X[{start}:{end + 1}] is not positive definite."
+            f"The covariance matrix of `X[{start}:{end + 1}]` is not positive definite."
             + " Quick and dirty fix: Add a tiny amount of random noise to the data."
         )
 
@@ -186,7 +198,7 @@ def _mean_cov_score(
         (Inclusive)
     split : int
         Split index of the interval to test for a change in the precision matrix.
-        Include the element at the index 'split' in the first segment.
+        Include the element at the index `split` in the first segment.
 
     Returns
     -------
@@ -214,7 +226,7 @@ def mean_cov_score(
     ends: np.ndarray,
     splits: np.ndarray,
 ) -> np.ndarray:
-    """Calculate likelihood ratio scores for a change in mean and covariance[1]_.
+    """Calculate likelihood ratio scores for a change in mean and covariance [1]_.
 
     References
     ----------
@@ -225,7 +237,7 @@ def mean_cov_score(
     Parameters
     ----------
     precomputed_params : Tuple[np.ndarray, np.ndarray, np.ndarray]
-        Precomputed parameters from init_covariance_score.
+        Precomputed parameters from `init_covariance_score`.
     starts : np.ndarray
         Start indices of the intervals to test for a change in the covariance.
     ends : np.ndarray

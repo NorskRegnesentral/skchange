@@ -46,11 +46,12 @@ class Capa(CollectiveAnomalyDetector):
     """Collective and point anomaly detection.
 
     An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
-    It is implemented using the 'savings' formulation of the problem given in [2]_.
+    It is implemented using the 'savings' formulation of the problem given in [2]_ and
+    [3]_.
 
-    Capa can be applied to both univariate and multivariate data, but does not infer
-    the subset of affected components for each anomaly in the multivariate case. See the
-    Mvcapa class if such inference is desired.
+    `Capa` can be applied to both univariate and multivariate data, but does not infer
+    the subset of affected components for each anomaly in the multivariate case. See
+    `Mvcapa` if such inference is desired.
 
     Parameters
     ----------
@@ -65,26 +66,38 @@ class Capa(CollectiveAnomalyDetector):
     max_segment_length : int, optional (default=1000)
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional (default=False)
-        If True, detected point anomalies are not returned by .predict(). I.e., only
+        If True, detected point anomalies are not returned by `predict`. I.e., only
         collective anomalies are returned. If False, point anomalies are included in the
         output as collective anomalies of length 1.
 
+    See Also
+    --------
+    Mvcapa : Multivariate CAPA with subset inference.
+
     References
     ----------
-    .. [1] Fisch, A., Eckley, I. A., & Fearnhead, P. (2018). A linear time method for
-    the detection of point and collective anomalies. arXiv preprint arXiv:1806.01947.
-    .. [2] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
-    collective and point anomaly detection. Journal of Computational and Graphical
-    Statistics, 31(2), 574-585.
+    .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). A linear time method\
+        for the detection of collective and point anomalies. Statistical Analysis and\
+        DataMining: The ASA Data Science Journal, 15(4), 494-508.
+
+    .. [2] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate\
+        collective and point anomaly detection. Journal of Computational and Graphical\
+        Statistics, 31(2), 574-585.
+
+    .. [3] Tveten, M., Eckley, I. A., & Fearnhead, P. (2022). Scalable change-point and\
+        anomaly detection in cross-correlated data with an application to condition\
+        monitoring. The Annals of Applied Statistics, 16(2), 721-743.
 
     Examples
     --------
-    from skchange.anomaly_detectors.capa import Capa
-    from skchange.datasets.generate import generate_teeth_data
-
-    df = generate_teeth_data(n_segments=5, mean=10, segment_length=100)
-    detector = Capa()
-    detector.fit_predict(df)
+    >>> from skchange.anomaly_detectors import Capa
+    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
+    >>> detector = Capa()
+    >>> detector.fit_predict(df)
+    0    [100, 199]
+    1    [300, 399]
+    Name: anomaly_interval, dtype: interval
     """
 
     _tags = {
@@ -173,8 +186,6 @@ class Capa(CollectiveAnomalyDetector):
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Detect events in test/deployment data.
 
-        core logic
-
         Parameters
         ----------
         X : pd.DataFrame
@@ -182,12 +193,13 @@ class Capa(CollectiveAnomalyDetector):
 
         Returns
         -------
-        pd.Series[pd.Interval] containing the collective anomaly intervals.
+        pd.Series[pd.Interval]
+            Containing the collective anomaly intervals.
 
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        output.array.left and output.array.right, respectively.
+        `output.array.left` and `output.array.right`, respectively.
         """
         X = check_data(
             X,

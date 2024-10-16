@@ -107,38 +107,39 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    score: {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
+    score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
         Test statistic to use for changepoint detection.
 
-        * "mean": The CUSUM statistic for a change in mean (this is equivalent to a
+        * `"mean"`: The CUSUM statistic for a change in mean (this is equivalent to a
           likelihood ratio test for a change in the mean of Gaussian data). For
           multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * "mean_var": The likelihood ratio test for a change in the mean and/or variance
-          of Gaussian data. For multivariate data, the sum of the likelihood ratio
-          statistics for each dimension is used.
-        * "mean_cov": The likelihood ratio test for a change in the mean and/or
+        * `"mean_var"`: The likelihood ratio test for a change in the mean and/or
+          variance of Gaussian data. For multivariate data, the sum of the likelihood
+          ratio statistics for each dimension is used.
+        * `"mean_cov"`: The likelihood ratio test for a change in the mean and/or
           covariance matrix of multivariate Gaussian data.
         * If a tuple, it must contain two numba jitted functions:
 
             1. The first function is the scoring function, which takes four arguments:
 
-                1. The output of the second function.
-                2. Start indices of the intervals to score for a change
-                3. End indices of the intervals to score for a change
-                4. Split indices of the intervals to score for a change.
+                1. `precomputed_params`: The output of the second function.
+                2. `starts`: Start indices of the intervals to score for a change.
+                3. `ends`: End indices of the intervals to score for a change.
+                4. `splits`: Split indices of the intervals to score for a change.
 
                For each start, split and end, the score should be calculated for the
-               data intervals [start:split] and [split+1:end], meaning that both the
-               starts and ends are inclusive, while split is included in the left
+               data intervals `[start:split]` and `[split+1:end]`, meaning that both
+               the starts and ends are inclusive, while split is included in the left
                interval.
+
             2. The second function is the initializer, which takes the data matrix as
                input and returns precomputed quantities that may speed up the score
                calculations. If not relevant, just return the data matrix.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
-        'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
-        and 'p' is the number of variables. If None, the threshold is tuned on the data
-        input to .fit().
+        `threshold_scale * 2 * p * np.sqrt(np.log(n))`, where `n` is the sample size
+        and `p` is the number of variables. If None, the threshold is tuned on the
+        data input to `.fit()`.
     level : float, default=0.01
         If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
         of the changepoint scores of all the seeded intervals on the training data.
@@ -147,13 +148,14 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int, default=100
         The maximum length of an interval to estimate a changepoint in. Must be greater
-        than or equal to '2 * min_segment_length'.
+        than or equal to `2 * min_segment_length`.
     growth_factor : float, default=1.5
         The growth factor for the seeded intervals. Intervals grow in size according to
-        'interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))',
-        starting at 'interval_len'='min_interval_length'. It also governs the amount
+        `interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))`,
+        starting at `interval_len=min_interval_length`. It also governs the amount
         of overlap between intervals of the same length, as the start of each interval
-        is shifted by a factor of '1 + 1 / growth_factor'. Must be a float in (1, 2].
+        is shifted by a factor of `1 + 1 / growth_factor`. Must be a float in
+        `(1, 2]`.
 
     References
     ----------
@@ -163,17 +165,14 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Examples
     --------
-    from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
-    from skchange.datasets.generate import generate_teeth_data
-
-    # Generate data
-    df = generate_teeth_data(
-        n_segments=3, mean=10, segment_length=100000, p=5, random_state=2
-    )
-
-    # Detect changepoints
-    detector = CircularBinarySegmentation()
-    detector.fit_predict(df)
+    >>> from skchange.anomaly_detectors import CircularBinarySegmentation
+    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
+    >>> detector = CircularBinarySegmentation()
+    >>> detector.fit_predict(df)
+    0    [100, 199]
+    1    [300, 399]
+    Name: anomaly_interval, dtype: interval
     """
 
     _tags = {
@@ -188,7 +187,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
-        max_interval_length: int = 100,
+        max_interval_length: int = 1000,
         growth_factor: float = 1.5,
     ):
         self.score = score
@@ -215,9 +214,9 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold.
 
-        The threshold is set to the (1-`level`)-quantile of the changepoint scores from
-        all the seeded intervals on the training data `X`. For this to be correct, the
-        training data must contain no changepoints.
+        The threshold is set to the (1-`level`)-quantile of the changepoint scores
+        from all the seeded intervals on the training data `X`. For this to be
+        correct, the training data must contain no changepoints.
 
         Parameters
         ----------
@@ -271,23 +270,23 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
         Sets the threshold of the detector.
         If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
-        of the change/anomaly scores on the training data. For this to be correct,
-        the training data must contain no changepoints. If `threshold_scale` is a
-        number, the threshold is set to `threshold_scale` times the default threshold
-        for the detector. The default threshold depends at least on the data's shape,
-        but could also depend on more parameters.
+        of the change/anomaly scores on the training data. For this to be
+        correct, the training data must contain no changepoints. If `threshold_scale`
+        is a number, the threshold is set to `threshold_scale` times the default
+        threshold for the detector. The default threshold depends at least on the data's
+        shape, but could also depend on more parameters.
 
         Parameters
         ----------
         X : pd.DataFrame
-            training data to fit the threshold to.
+            Training data to fit the threshold to.
         y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+            Does nothing. Only here to make the fit method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
-        self : returns a reference to self
+        self : Returns a reference to self
         """
         X = check_data(
             X,
@@ -314,7 +313,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        output.array.left and output.array.right, respectively.
+        `output.array.left` and `output.array.right`, respectively.
         """
         X = check_data(
             X,

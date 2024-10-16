@@ -1,12 +1,17 @@
-# skchange
-`skchange` provides sktime-compatible change detection and changepoint-based anomaly detection algorithms.
-
-A playground for now.
+# [skchange](https://skchange.readthedocs.io/en/latest/)
 
 [![codecov](https://codecov.io/gh/NorskRegnesentral/skchange/graph/badge.svg?token=QSS3AY45KY)](https://codecov.io/gh/NorskRegnesentral/skchange)
 [![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml/badge.svg)](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml)
+[![docs](https://readthedocs.org/projects/skchange/badge/?version=latest)](https://skchange.readthedocs.io/en/latest/?badge=latest)
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+Skchange provides sktime-compatible change detection and changepoint-based anomaly detection algorithms.
+
+Experimental but maturing.
+
+## [Documentation](https://skchange.readthedocs.io/en/latest/)
+Now available.
 
 
 ## Installation
@@ -20,9 +25,9 @@ Requires Python >= 3.9, < 3.13.
 ### Changepoint detection / time series segmentation
 ```python
 from skchange.change_detectors.moscore import Moscore
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 
-df = generate_teeth_data(n_segments=10, segment_length=50, mean=5, random_state=1)
+df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 detector = Moscore(bandwidth=10)
 detector.fit_predict(df)
 >>>
@@ -41,9 +46,9 @@ Name: changepoint, dtype: int64
 ### Multivariate anomaly detection
 ```python
 from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.datasets.generate import generate_teeth_data
+from skchange.datasets.generate import generate_alternating_data
 
-df = generate_teeth_data(
+df = generate_alternating_data(
     n_segments=5,
     segment_length=50,
     p=10,

@@ -360,41 +360,48 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
 
     Parameters
     ----------
-    saving : str (default="mean")
+    saving : str, default="mean"
         Saving function to use for anomaly detection.
-    collective_penalty : str or Callable, optional (default="combined")
+    collective_penalty : str or Callable, optional, default="combined"
         Penalty function to use for collective anomalies. If a string, must be one of
         "dense", "sparse", "intermediate" or "combined". If a Callable, must be a
         function returning a penalty and per-component penalties, given n, p, n_params
         and scale.
-    collective_penalty_scale : float, optional (default=1.0)
+    collective_penalty_scale : float, optional, default=1.0
         Scaling factor for the collective penalty.
-    point_penalty : str or Callable, optional (default="sparse")
-        Penalty function to use for point anomalies. See 'collective_penalty'.
-    point_penalty_scale : float, optional (default=1.0)
+    point_penalty : str or Callable, optional, default="sparse"
+        Penalty function to use for point anomalies. See `collective_penalty`.
+    point_penalty_scale : float, optional, default=1.0
         Scaling factor for the point penalty.
-    min_segment_length : int, optional (default=2)
+    min_segment_length : int, optional, default=2
         Minimum length of a segment.
-    max_segment_length : int, optional (default=1000)
+    max_segment_length : int, optional, default=1000
         Maximum length of a segment.
-    ignore_point_anomalies : bool, optional (default=False)
-        If True, detected point anomalies are not returned by .predict(). I.e., only
+    ignore_point_anomalies : bool, optional, default=False
+        If True, detected point anomalies are not returned by `predict`. I.e., only
         collective anomalies are returned.
 
     References
     ----------
     .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
-    collective and point anomaly detection. Journal of Computational and Graphical
-    Statistics, 31(2), 574-585.
+       collective and point anomaly detection. Journal of Computational and Graphical
+       Statistics, 31(2), 574-585.
 
     Examples
     --------
-    from skchange.anomaly_detectors.capa import Capa
-    from skchange.datasets.generate import generate_teeth_data
-
-    df = generate_teeth_data(5, 10, p=10, mean=10, affected_proportion=0.2)
-    capa = Capa(collective_penalty_scale=5, max_segment_length=20)
-    capa.fit_predict(df)
+    >>> import numpy as np
+    >>> from skchange.anomaly_detectors import Mvcapa
+    >>> from skchange.datasets.generate import generate_anomalous_data
+    >>> n = 300
+    >>> means = [np.array([8.0, 0.0, 0.0]), np.array([2.0, 3.0, 5.0])]
+    >>> df = generate_anomalous_data(
+    >>>     n, anomalies=[(100, 119), (250, 299)], means=means, random_state=3
+    >>> )
+    >>> detector = Mvcapa()
+    >>> detector.fit_predict(df)
+      anomaly_interval anomaly_columns
+    0       [100, 119]             [0]
+    1       [250, 299]       [2, 1, 0]
     """
 
     _tags = {

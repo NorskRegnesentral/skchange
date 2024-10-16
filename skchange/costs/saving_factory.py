@@ -18,31 +18,61 @@ Recipe for adding new savings:
 
 __author__ = ["Tveten"]
 
+from typing import Callable, Union
+
+from numba.extending import is_jitted
+
 from skchange.costs.mean_saving import init_mean_saving, mean_saving
 
 VALID_SAVINGS = ["mean"]
 
 
-def saving_factory(saving_name: str):
+def saving_factory(saving: Union[str, tuple[Callable, Callable]]):
     """Return saving function and its initializer.
 
     Parameters
     ----------
-    saving_name : str
-        Name of saving function. Must be one of 'mean'.
+    saving : {"mean"} or `tuple[Callable, Callable]`, default="mean"
+        Name of saving function to use for anomaly detection.
+
+        * `"mean"`: The Gaussian likelihood ratio saving of a maximum likelihod
+            estimate of the mean versus a zero mean is used.
+        * If a tuple, it must contain two numba jitted functions:
+
+            1. The first function is the saving function, which takes three arguments:
+
+                1. `precomputed_params`: The output of the second function.
+                2. `starts`: Start indices of the intervals to calculate the saving for.
+                3. `ends`: End indices of the intervals to calculate the saving for.
+
+            The algorithms that use the saving function govern what intervals are
+            considered.
+
+            2. The second function is the initializer, which takes the data matrix as
+               input and returns precomputed quantities that may speed up the saving
+               calculations. If not relevant, just return the input data matrix.
 
     Returns
     -------
-    cost_func : Callable
-        Cost function.
-    init_cost_func : Callable
-        Cost function initializer.
+    saving_func : `Callable`
+        Saving function.
+    init_saving_func : `Callable`
+        Saving function initializer.
+
+    Raises
+    ------
+    ValueError
+        If `saving` is not recognized, an error is raised with a message indicating the
+        valid options.
     """
-    if saving_name == "mean":
+    if saving == "mean":
         return mean_saving, init_mean_saving
+    elif len(saving) == 2 and all([is_jitted(s) for s in saving]):
+        return saving[0], saving[1]
     else:
         message = (
-            f"saving_name={saving_name} not recognized."
+            f"saving={saving} not recognized."
             + f" Must be one of {', '.join(VALID_SAVINGS)}"
+            + " or a tuple of two numba jitted functions."
         )
         raise ValueError(message)

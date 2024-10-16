@@ -104,57 +104,59 @@ class SeededBinarySegmentation(ChangeDetector):
     theoretical guarantees as the original binary segmentation algorithm, but runs
     in log-linear time no matter the changepoint configuration.
 
-    Efficently implemented using numba.
+    Efficiently implemented using numba.
 
     Parameters
     ----------
-    score: {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
+    score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
         Test statistic to use for changepoint detection.
 
-        * "mean": The CUSUM statistic for a change in mean (this is equivalent to a
+        * `"mean"`: The CUSUM statistic for a change in mean (this is equivalent to a
           likelihood ratio test for a change in the mean of Gaussian data). For
           multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * "mean_var": The likelihood ratio test for a change in the mean and/or variance
-          of Gaussian data. For multivariate data, the sum of the likelihood ratio
-          statistics for each dimension is used.
-        * "mean_cov": The likelihood ratio test for a change in the mean and/or
+        * `"mean_var"`: The likelihood ratio test for a change in the mean and/or
+          variance of Gaussian data. For multivariate data, the sum of the likelihood
+          ratio statistics for each dimension is used.
+        * `"mean_cov"`: The likelihood ratio test for a change in the mean and/or
           covariance matrix of multivariate Gaussian data.
         * If a tuple, it must contain two numba jitted functions:
 
             1. The first function is the scoring function, which takes four arguments:
 
-                1. The output of the second function.
-                2. Start indices of the intervals to score for a change
-                3. End indices of the intervals to score for a change
-                4. Split indices of the intervals to score for a change.
+                1. `precomputed_params`: The output of the second function.
+                2. `starts`: Start indices of the intervals to score for a change.
+                3. `ends`: End indices of the intervals to score for a change.
+                4. `splits`: Split indices of the intervals to score for a change.
 
                For each start, split and end, the score should be calculated for the
-               data intervals [start:split] and [split+1:end], meaning that both the
-               starts and ends are inclusive, while split is included in the left
+               data intervals `[start:split]` and `[split+1:end]`, meaning that both
+               the starts and ends are inclusive, while split is included in the left
                interval.
+
             2. The second function is the initializer, which takes the data matrix as
                input and returns precomputed quantities that may speed up the score
                calculations. If not relevant, just return the data matrix.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
-        'threshold_scale * 2 * p * np.sqrt(np.log(n))', where 'n' is the sample size
-        and 'p' is the number of variables. If None, the threshold is tuned on the data
-        input to .fit().
+        `threshold_scale * 2 * p * np.sqrt(np.log(n))`, where `n` is the sample size
+        and `p` is the number of variables. If None, the threshold is tuned on the
+        data input to `fit`.
     level : float, default=0.01
-        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
-        of the changepoint scores of all the seeded intervals on the training data.
-        For this to be correct, the training data must contain no changepoints.
+        If `threshold_scale` is None, the threshold is set to the
+        (1-`level`)-quantile of the changepoint scores of all the seeded intervals on
+        the training data. For this to be correct, the training data must contain no
+        changepoints.
     min_segment_length : int, default=5
         Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
-        than or equal to '2 * min_segment_length'.
+        than or equal to `2 * min_segment_length`.
     growth_factor : float, default=1.5
         The growth factor for the seeded intervals. Intervals grow in size according to
-        'interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))',
-        starting at 'interval_len'='min_interval_length'. It also governs the amount
+        `interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))`,
+        starting at `interval_len=min_interval_length`. It also governs the amount
         of overlap between intervals of the same length, as the start of each interval
-        is shifted by a factor of '1 + 1 / growth_factor'. Must be a float in (1, 2].
+        is shifted by a factor of `1 + 1 / growth_factor`. Must be a float in (1, 2].
 
     References
     ----------
@@ -164,12 +166,17 @@ class SeededBinarySegmentation(ChangeDetector):
 
     Examples
     --------
-    from skchange.change_detectors.binary_segmentation import SeededBinarySegmentation
-    from skchange.datasets.generate import generate_teeth_data
-
-    df = generate_teeth_data(n_segments=2, mean=10, segment_length=10000, p=5)
-    detector = SeededBinarySegmentation()
-    detector.fit_predict(df)
+    >>> from skchange.change_detectors import SeededBinarySegmentation
+    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> df = generate_alternating_data(
+            n_segments=4, mean=10, segment_length=100000, p=5
+        )
+    >>> detector = SeededBinarySegmentation()
+    >>> detector.fit_predict(df)
+    0     99999
+    1    199999
+    2    299999
+    Name: changepoint, dtype: int64
     """
 
     _tags = {
@@ -238,7 +245,7 @@ class SeededBinarySegmentation(ChangeDetector):
 
     @staticmethod
     def get_default_threshold(n: int, p: int) -> float:
-        """Get the default threshold for Seeded Binary Segmentation.
+        """Get the default threshold.
 
         Parameters
         ----------
@@ -278,8 +285,8 @@ class SeededBinarySegmentation(ChangeDetector):
         X : pd.DataFrame
             training data to fit the threshold to.
         y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+            Does nothing. Only here to make the fit method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
@@ -302,7 +309,7 @@ class SeededBinarySegmentation(ChangeDetector):
 
         Returns
         -------
-        y : pd.Series - annotations for sequence X
+        y : pd.Series - annotations for sequence `X`
             exact format depends on annotation type
         """
         X = check_data(

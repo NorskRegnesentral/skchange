@@ -159,6 +159,11 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# VS Code settings
 .vscode/
 
+# Ruff
 .ruff_cache/
+
+# Sphinx documentation
+docs/source/api_reference/auto_generated/

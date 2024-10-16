@@ -29,9 +29,9 @@ class URLs:
     """Container class for URLs."""
 
     DOCS_LOCAL = "file://" + os.path.realpath(
-        os.path.join(ROOT_DIR, "docs/_build/html/index.html")
+        os.path.join(ROOT_DIR, "docs/build/html/index.html")
     )
-    DOCS_ONLINE = "https://www.sktime.net"
+    DOCS_ONLINE = "https://skchange.readthedocs.io/"
     PYPI = f"https://pypi.org/simple/{PACKAGE_NAME}/"
 
 
@@ -337,8 +337,8 @@ def main():
         CheckVersionNumber(),
         UpdateReadme(),
         # UpdateChangelog(),
-        # MakeDocs(),
-        # CheckLocalDocs(),
+        MakeDocs(),
+        CheckLocalDocs(),
         MakeDist(),
         CheckDist(),
         UploadToTestPyPI(),
@@ -349,7 +349,7 @@ def main():
         GitTagRelease(),
         PushTagToGitHub(),
         CheckCIStatus(),
-        # CheckOnlineDocs(),
+        CheckOnlineDocs(),
         UploadToPyPI(),
         CheckPyPIFiles(),
     ]

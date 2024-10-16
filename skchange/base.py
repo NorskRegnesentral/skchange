@@ -31,6 +31,16 @@ Inspection methods:
 State:
     fitted model/strategy   - by convention, any attributes ending in "_"
     fitted state flag       - check_is_fitted()
+
+Needs to be implemented for a concrete detector:
+    _fit(self, X, y=None)
+    _predict(self, X)
+    sparse_to_dense(y_sparse, index)
+
+Recommended but optional to implement for a concrete detector:
+    dense_to_sparse(y_dense)
+    _score_transform(self, X)
+    _update(self, X, y=None)
 """
 
 __author__ = ["Tveten"]
@@ -42,26 +52,33 @@ from sktime.utils.validation.series import check_series
 
 
 class BaseDetector(BaseEstimator):
-    """Base detector.
+    """Base class for all detectors in skchange.
 
-    An alternative implementation to the BaseSeriesAnnotator class from sktime,
-    more focused on the detection of events of interest.
-    Safer for now since the annotation module is still experimental.
+    A detector is a model that detects events in time series data. Events can be
+    anomalies, changepoints, or any other type of event that the detector is designed
+    to detect. The output from a detector is a series of detections, where each element
+    corresponds to a detected event. The format of the output depends on the detector
+    type.
 
-    All detectors share the common feature that each element of the output from .predict
-    indicates the detection of a specific event of interest, such as an anomaly, a
-    changepoint, or something else.
+    The base detector class defines the interface for all detectors in skchange. It
+    defines the methods that all detectors should implement, as well as some optional
+    methods that can be implemented if they are relevant for a specific detector type.
 
-    Needs to be implemented:
-    - _fit(self, X, y=None) -> self
-    - _predict(self, X) -> pd.Series or pd.DataFrame
-    - sparse_to_dense(y_sparse, index) -> pd.Series or pd.DataFrame
-        * Enables the transform method to work.
+    The `predict` method returns the detections in a sparse format, where each element
+    corresponds to a detected event. The `transform` method returns the detections in
+    a dense format, where each element in the input data is annotated according to the
+    detection results. The `score_transform` method (if implemented) returns detection
+    scores in a dense format.
 
-    Optional to implement:
-    - dense_to_sparse(y_dense) -> pd.Series or pd.DataFrame
-    - _score_transform(self, X) -> pd.Series or pd.DataFrame
-    - _update(self, X, y=None) -> self
+    In addition, there are two special format defining and converting methods that
+    should be implemented for each detector type: `sparse_to_dense` and
+    `dense_to_sparse`. These methods define the format of the output from the detector
+    and how to convert between the sparse and dense formats. The `transform` method
+    uses `sparse_to_dense` to convert the output from `predict` to a dense format.
+    It will not work if `sparse_to_dense` is not implemented.
+
+    Note that the `BaseDetector` serves as an alternative to the `BaseSeriesAnnotator`
+    class in sktime, specifically tailored for detection-oriented tasks.
     """
 
     _tags = {
@@ -82,7 +99,12 @@ class BaseDetector(BaseEstimator):
         super().__init__()
 
     def fit(self, X, y=None):
-        """Fit to training data.
+        """Fit detector to training data.
+
+        Fit trains the detector on the input data, for example by tuning a detection
+        threshold or other hyperparameters. Detection of events does not happen here,
+        but in the `predict` or `transform` methods, after the detector has been
+        fit.
 
         Parameters
         ----------
@@ -99,7 +121,7 @@ class BaseDetector(BaseEstimator):
         Notes
         -----
         Creates fitted model that updates attributes ending in "_". Sets
-        _is_fitted flag to True.
+        `_is_fitted` flag to True.
         """
         X = check_series(X, allow_index_names=True)
 
@@ -119,9 +141,11 @@ class BaseDetector(BaseEstimator):
         return self
 
     def _fit(self, X, y=None):
-        """Fit to training data.
+        """Fit detector to training data.
 
-        core logic
+        The core logic for fitting the detector to training data should be implemented
+        here. A typical example is to tune a detection threshold to training data.
+        This method must be implemented by all detectors.
 
         Parameters
         ----------
@@ -142,7 +166,7 @@ class BaseDetector(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     def predict(self, X):
-        """Detect events in test/deployment data.
+        """Detect events and return the result in a sparse format.
 
         Parameters
         ----------
@@ -165,9 +189,10 @@ class BaseDetector(BaseEstimator):
         return y
 
     def _predict(self, X):
-        """Detect events in test/deployment data.
+        """Detect events and return the result in a sparse format.
 
-        core logic
+        The core logic for detecting events in the input data should be implemented
+        here. This method must be implemented by all detectors.
 
         Parameters
         ----------
@@ -209,12 +234,12 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         y_sparse : pd.Series
-            The sparse output from a detector's predict method. The format of the
+            The sparse output from a detector's `predict` method. The format of the
             series depends on the task and capability of the annotator.
         index : array-like
-            Indices that are to be annotated according to ``y_sparse``.
+            Indices that are to be annotated according to `y_sparse`.
         columns : array-like, optional
-            Columns that are to be annotated according to ``y_sparse``.
+            Columns that are to be annotated according to `y_sparse`.
 
         Returns
         -------
@@ -229,7 +254,7 @@ class BaseDetector(BaseEstimator):
         Parameters
         ----------
         y_dense : pd.Series
-            The dense output from a detector's transform method. The format of the
+            The dense output from a detector's `transform` method. The format of the
             series depends on the task and capability of the annotator.
 
         Returns
@@ -239,7 +264,7 @@ class BaseDetector(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     def score_transform(self, X):
-        """Return detection scores on test/deployment data.
+        """Return detection scores on the input data.
 
         Parameters
         ----------
@@ -256,9 +281,11 @@ class BaseDetector(BaseEstimator):
         return self._score_transform(X)
 
     def _score_transform(self, X):
-        """Return detection scores on test/deployment data.
+        """Return detection scores on the input data.
 
-        core logic
+        The core logic for scoring the input data should be implemented here. This
+        method is optional to implement, but is useful for detectors that provide
+        detection scores.
 
         Parameters
         ----------
@@ -310,7 +337,9 @@ class BaseDetector(BaseEstimator):
     def _update(self, X, y=None):
         """Update model with new data and optional ground truth detections.
 
-        core logic
+        The core logic for updating the detector with new data should be implemented
+        here. This method is optional to implement, but is useful for detectors that
+        can be efficiently updated with new data.
 
         Parameters
         ----------
@@ -361,8 +390,8 @@ class BaseDetector(BaseEstimator):
     def fit_predict(self, X, y=None):
         """Fit to data, then predict it.
 
-        Fits model to X and y with given detector parameters and returns the detected
-        events.
+        Fits model to `X` and `y` with given detector parameters and returns the
+        detected events.
 
         Parameters
         ----------
@@ -384,8 +413,8 @@ class BaseDetector(BaseEstimator):
     def fit_transform(self, X, y=None):
         """Fit to data, then transform it.
 
-        Fits model to X and y with given detector parameters and returns the detected
-        events in a dense format.
+        Fits model to `X` and `y` with given detector parameters and returns the
+        detected events in a dense format.
 
         Parameters
         ----------
@@ -397,8 +426,8 @@ class BaseDetector(BaseEstimator):
         Returns
         -------
         y : pd.Series or pd.DataFrame
-            Detections for sequence X. The returned detections will be in the dense
-            format, meaning that each element in X will be annotated according to the
+            Detections for sequence `X`. The returned detections will be in the dense
+            format, meaning that each element in `X` will be annotated according to the
             detection results in some meaningful way depending on the detector type.
         """
         return self.fit(X, y).transform(X)
