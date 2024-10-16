@@ -34,3 +34,13 @@ Licence
 -------
 This project is a free and open-source software licensed under the
 `BSD 3-clause license <https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE>`_.
+
+
+.. toctree::
+    :maxdepth: 2
+    :hidden:
+
+    user_guide
+    api_reference
+    developer_guide
+    releases
