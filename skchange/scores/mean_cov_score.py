@@ -126,7 +126,9 @@ def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimens
 
 @njit(cache=True)
 def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
-    """Initialize the precision matrix change point detection.
+    """Precompute quantities for the mean_cov_score.
+
+    Currently does nothing as the memory overhead is too large for large datasets.
 
     Parameters
     ----------
