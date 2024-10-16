@@ -33,10 +33,23 @@ def saving_factory(saving: Union[str, tuple[Callable, Callable]]):
     Parameters
     ----------
     saving : {"mean"} or `tuple[Callable, Callable]`, default="mean"
-        Name og saving function to use for anomaly detection.
+        Name of saving function to use for anomaly detection.
 
         * `"mean"`: The Gaussian mean likelihood cost is used.
-        * More cost functions will be added in the future.
+        * If a tuple, it must contain two numba jitted functions:
+
+            1. The first function is the saving function, which takes three arguments:
+
+                1. `precomputed_params`: The output of the second function.
+                2. `starts`: Start indices of the intervals to calculate the saving for.
+                3. `ends`: End indices of the intervals to calculate the saving for.
+
+            The algorithms that use the saving function govern what intervals are
+            considered.
+
+            2. The second function is the initializer, which takes the data matrix as
+               input and returns precomputed quantities that may speed up the saving
+               calculations. If not relevant, just return the input data matrix.
 
     Returns
     -------
