@@ -14,7 +14,7 @@ The library can be installed via pip:
 
 .. code-block:: bash
 
-    pip install sktime
+    pip install skchange
 
 Requires python versions >= 3.9, < 3.13.
 
