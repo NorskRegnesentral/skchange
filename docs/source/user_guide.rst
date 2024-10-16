@@ -4,4 +4,4 @@
 User guide
 ==========
 
-Under construction.
+Under construction. For now, see the `API reference <api_reference>`_.
