@@ -8,10 +8,29 @@ A python library for fast collective anomaly and changepoint detection.
 The library is sktime-compatible and is designed to be used in a similar way to
 scikit-learn. Numba is used for fast computation throughout.
 
-Contents
---------
+Installation
+------------
+The library can be installed via pip:
 
-.. toctree::
-    :maxdepth: 2
+.. code-block:: bash
 
-    api_reference
+    pip install sktime
+
+Requires python versions >= 3.9, < 3.13.
+
+Key features
+------------
+Under construction.
+
+Goals
+-----
+Under construction.
+
+Example
+-------
+Under construction.
+
+Licence
+-------
+This project is a free and open-source software licensed under the
+`BSD 3-clause license <https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE>`_.
