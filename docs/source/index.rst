@@ -5,8 +5,8 @@ Welcome to skchange
 ===================
 
 A python library for fast collective anomaly and changepoint detection.
-The library is sktime-compatible and is designed to be used in a similar way to
-scikit-learn. Numba is used for fast computation throughout.
+The library is designed to be compatible with `sktime <https://www.sktime.net>`_,
+and it uses `Numba <https://numba.readthedocs.io/en/stable/>_` for computational speed.
 
 Installation
 ------------
