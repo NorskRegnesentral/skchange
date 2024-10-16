@@ -72,7 +72,7 @@ class Capa(CollectiveAnomalyDetector):
 
     See Also
     --------
-    `Mvcapa` : Multivariate CAPA with subset inference.
+    Mvcapa : Multivariate CAPA with subset inference.
 
     References
     ----------
