@@ -77,16 +77,16 @@ class Capa(CollectiveAnomalyDetector):
     References
     ----------
     .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). A linear time method\
-    for the detection of collective and point anomalies. Statistical Analysis and Data\
-    Mining: The ASA Data Science Journal, 15(4), 494-508.
+        for the detection of collective and point anomalies. Statistical Analysis and\
+        DataMining: The ASA Data Science Journal, 15(4), 494-508.
 
     .. [2] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate\
-    collective and point anomaly detection. Journal of Computational and Graphical\
-    Statistics, 31(2), 574-585.
+        collective and point anomaly detection. Journal of Computational and Graphical\
+        Statistics, 31(2), 574-585.
 
     .. [3] Tveten, M., Eckley, I. A., & Fearnhead, P. (2022). Scalable change-point and\
-    anomaly detection in cross-correlated data with an application to condition\
-    monitoring. The Annals of Applied Statistics, 16(2), 721-743.
+        anomaly detection in cross-correlated data with an application to condition\
+        monitoring. The Annals of Applied Statistics, 16(2), 721-743.
 
     Examples
     --------
