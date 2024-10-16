@@ -1,7 +1,7 @@
 .. _api_reference:
 
 =============
-API Reference
+API reference
 =============
 
 Welcome to the API reference for ``skchange``.
