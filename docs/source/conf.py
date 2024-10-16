@@ -152,6 +152,7 @@ def linkcode_resolve(domain, info):
 # -- Options for HTML output
 
 html_theme = "pydata_sphinx_theme"
+html_title = "skchange"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
