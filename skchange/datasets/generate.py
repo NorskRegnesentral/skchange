@@ -45,10 +45,8 @@ def generate_changing_data(
     if isinstance(variances, Number):
         variances = [variances]
 
-    if isinstance(means[0], Number):
-        means = [np.array([mean]) for mean in means]
-    if isinstance(variances[0], Number):
-        variances = [np.array([variance]) for variance in variances]
+    means = [np.asarray(mean).reshape(-1) for mean in means]
+    variances = [np.asarray(variance).reshape(-1) for variance in variances]
 
     n_segments = len(changepoints) + 1
     if len(means) == 1:
@@ -117,10 +115,8 @@ def generate_anomalous_data(
     if isinstance(variances, Number):
         variances = [variances]
 
-    if isinstance(means[0], Number):
-        means = [np.array([mean]) for mean in means]
-    if isinstance(variances[0], Number):
-        variances = [np.array([variance]) for variance in variances]
+    means = [np.asarray(mean).reshape(-1) for mean in means]
+    variances = [np.asarray(variance).reshape(-1) for variance in variances]
 
     if len(means) == 1:
         means = means * len(anomalies)
