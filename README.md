@@ -28,9 +28,11 @@ from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import generate_alternating_data
 
 df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
+
 detector = Moscore(bandwidth=10)
 detector.fit_predict(df)
->>>
+```
+```python
 0     49
 1     99
 2    149
@@ -45,20 +47,19 @@ Name: changepoint, dtype: int64
 
 ### Multivariate anomaly detection
 ```python
-from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.datasets.generate import generate_alternating_data
+import numpy as np
+from skchange.anomaly_detectors import Mvcapa
+from skchange.datasets.generate import generate_anomalous_data
 
-df = generate_alternating_data(
-    n_segments=5,
-    segment_length=50,
-    p=10,
-    mean=10,
-    affected_proportion=0.2,
-    random_state=2,
-)
-detector = Mvcapa(collective_penalty="sparse")
+n = 300
+anomalies = [(100, 119), (250, 299)]
+means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
+df = generate_anomalous_data(n, anomalies, means, random_state=3)
+
+detector = Mvcapa()
 detector.fit_predict(df)
->>>
+```
+```python
   anomaly_interval anomaly_columns
 0         [50, 99]          [0, 1]
 1       [150, 199]          [0, 1]
