@@ -5,11 +5,114 @@ __author__ = ["Tveten"]
 import numpy as np
 from numba import njit
 
-from skchange.utils.numba.stats import col_cumsum
+from skchange.scores.utils import init_sample_sizes, init_sums, init_sums2
 
 
 @njit(cache=True)
-def init_mean_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def init_mean_cost(X: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Precompute sums and weights for `mean_cost`.
+
+    Parameters
+    ----------
+    X : `np.ndarray`
+        2D array.
+
+    Returns
+    -------
+    sums : `np.ndarray`
+        Cumulative sums of `X`.
+    sums2 : `np.ndarray`
+        Cumulative sums of `X**2`.
+    weights : `np.ndarray`
+        Weights for `sums2` in the cost calculation.
+    """
+    return init_sums(X), init_sums2(X), init_sample_sizes(X)
+
+
+@njit(cache=True)
+def mean_cost(
+    precomputed_params: tuple[np.ndarray, np.ndarray, np.ndarray],
+    starts: np.ndarray,
+    ends: np.ndarray,
+) -> np.ndarray:
+    """Calculate the Gaussian mean likelihood cost for each segment.
+
+    Parameters
+    ----------
+    precomputed_params : `tuple[np.ndarray, np.ndarray, np.ndarray]`
+        Precomputed parameters from `init_mean_cost`.
+    starts : `np.ndarray`
+        Start indices of the segments.
+    ends : `np.ndarray`
+        End indices of the segments.
+
+    Returns
+    -------
+    costs : `np.ndarray`
+        Costs for each segment.
+    """
+    sums, sums2, weights = precomputed_params
+    partial_sums = sums[ends + 1] - sums[starts]
+    partial_sums2 = sums2[ends + 1] - sums2[starts]
+    weights = weights[ends - starts + 1]
+    costs = np.sum(partial_sums2 - partial_sums**2 / weights, axis=1)
+    return costs
+
+
+@njit(cache=True)
+def init_mean_saving(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Precompute sums and weights for `mean_saving`.
+
+    Parameters
+    ----------
+    X : `np.ndarray`
+        2D array.
+
+    Returns
+    -------
+    sums : `np.ndarray`
+        Cumulative sums of `X`.
+    weights : `np.ndarray`
+        Weights for `sums2` in the cost calculation.
+    """
+    return init_sums(X), init_sample_sizes(X)
+
+
+@njit(cache=True)
+def mean_saving(
+    precomputed_params: tuple[np.ndarray, np.ndarray],
+    starts: np.ndarray,
+    ends: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate the Gaussian mean likelihood saving for each segment.
+
+    The mean_saving calculates the Gaussian likelihood ratio test statistic of the
+    segment starting at `start` and ending at `end` having the maximum likelihod
+    estimate of the mean versus zero mean.
+
+    Parameters
+    ----------
+    precomputed_params : `tuple[np.ndarray, np.ndarray]`
+        Precomputed parameters from `init_mean_saving`.
+    starts : `np.ndarray`
+        Start indices of the segments.
+    ends : `np.ndarray`
+        End indices of the segments.
+
+    Returns
+    -------
+    savings : `np.ndarray`
+        2D array of savings for each segment (rows) and component (columns).
+    """
+    sums, weights = precomputed_params
+    saving = (sums[ends + 1] - sums[starts]) ** 2 / weights[ends - starts + 1]
+    return saving
+
+
+@njit(cache=True)
+def init_mean_change_score(X: np.ndarray) -> np.ndarray:
     """
     Precompute sums for `mean_score`.
 
@@ -23,16 +126,11 @@ def init_mean_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     tuple of `np.ndarray`
         Cumulative sums of `X`.
     """
-    n = X.shape[0]
-    p = X.shape[1]
-    # 0.0 as first row to make calculations work also for start = 0 in mean_score
-    sums = np.zeros((n + 1, p))
-    sums[1:] = col_cumsum(X)
-    return sums
+    return init_sums(X)
 
 
 @njit(cache=True)
-def mean_score(
+def mean_change_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
@@ -76,6 +174,24 @@ def mean_score(
     )
     after_weight = after_weight.reshape(-1, 1)
     return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
+
+
+@njit(cache=True)
+def init_mean_anomaly_score(X: np.ndarray) -> np.ndarray:
+    """
+    Precompute sums for `mean_score`.
+
+    Parameters
+    ----------
+    X : `np.ndarray`
+        2D array.
+
+    Returns
+    -------
+    `np.ndarray`
+        Cumulative sums of `X`.
+    """
+    return init_sums(X)
 
 
 @njit(cache=True)
