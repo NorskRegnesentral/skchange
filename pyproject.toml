@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/NorskRegnesentral/skchange"
+Homepage = "https://skchange.readthedocs.io"
 
 [project.optional-dependencies]
 # all_extras - all soft dependencies, install via "pip install skchange[all_extras]"
