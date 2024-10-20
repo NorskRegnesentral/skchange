@@ -1,4 +1,4 @@
-"""Utility functions for cost calculations."""
+"""Utility functions for detector components."""
 
 import numpy as np
 from numba import njit
