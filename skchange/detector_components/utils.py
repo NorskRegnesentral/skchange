@@ -1,4 +1,4 @@
-"""Utility functions for score calculations."""
+"""Utility functions for cost calculations."""
 
 import numpy as np
 from numba import njit
