@@ -21,14 +21,14 @@ class CostBasedChangeScore(BaseChangeScore):
 
         @njit(cache=True)
         def cost_based_change_score(
-            precomputed_params: tuple[np.ndarray, np.ndarray, np.ndarray],
+            precomputed: tuple[np.ndarray, np.ndarray, np.ndarray],
             starts: np.ndarray,
             ends: np.ndarray,
             splits: np.ndarray,
         ) -> np.ndarray:
-            pre_split_cost = cost_jitted_compute(precomputed_params, starts, splits)
-            post_split_cost = cost_jitted_compute(precomputed_params, splits + 1, ends)
-            full_cost = cost_jitted_compute(precomputed_params, starts, ends)
+            pre_split_cost = cost_jitted_compute(precomputed, starts, splits)
+            post_split_cost = cost_jitted_compute(precomputed, splits + 1, ends)
+            full_cost = cost_jitted_compute(precomputed, starts, ends)
             return full_cost - pre_split_cost - post_split_cost
 
         self.jitted_compute = cost_based_change_score

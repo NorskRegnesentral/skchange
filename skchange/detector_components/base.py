@@ -135,13 +135,13 @@ class BaseChangeScore(BaseDetectorComponent):
 
     def compute(
         self,
-        precomputed_params: tuple,
+        precomputed: tuple,
         starts: np.ndarray,
         ends: np.ndarray,
         splits: np.ndarray,
     ) -> np.ndarray:
         """Compute the score for a changepoint within the segment."""
-        return self.jitted_compute(precomputed_params, starts, ends, splits)
+        return self.jitted_compute(precomputed, starts, ends, splits)
 
 
 class BaseAnomalyScore(BaseDetectorComponent):
@@ -149,7 +149,7 @@ class BaseAnomalyScore(BaseDetectorComponent):
 
     def compute(
         self,
-        precomputed_params: tuple,
+        precomputed: tuple,
         starts: np.ndarray,
         ends: np.ndarray,
         anomaly_starts: np.ndarray,
@@ -157,11 +157,7 @@ class BaseAnomalyScore(BaseDetectorComponent):
     ) -> np.ndarray:
         """Compute the score for an anomaly within the segment."""
         return self.jitted_compute(
-            precomputed_params,
-            starts,
-            ends,
-            anomaly_starts,
-            anomaly_ends,
+            precomputed, starts, ends, anomaly_starts, anomaly_ends
         )
 
 
@@ -172,7 +168,7 @@ class BaseSaving(BaseDetectorComponent):
     """
 
     def compute(
-        self, precomputed_params: tuple, starts: np.ndarray, ends: np.ndarray
+        self, precomputed: tuple, starts: np.ndarray, ends: np.ndarray
     ) -> np.ndarray:
         """Compute the saving for each segment."""
-        return self.jitted_compute(precomputed_params, starts, ends)
+        return self.jitted_compute(precomputed, starts, ends)
