@@ -31,9 +31,11 @@ class BaseDetectorComponent(BaseObject):
         check_jitted(self.jitted_precompute)
         check_jitted(self.jitted_compute)
         self._check_jitted_precompute_input()
-        self._check_jitted_precompute_pipeline()
         self._check_jitted_compute_input()
         self._check_jitted_compute_output()
+        # No checks are performed on the precompute output and inputs.
+        # It is complicated to check this without being too restrictive.
+        # It is left to the numba compiler to handle for now.
 
     def precompute(self, X: ArrayLike) -> np.ndarray | tuple:
         """Precompute parameters for the detector component."""
@@ -63,20 +65,6 @@ class BaseDetectorComponent(BaseObject):
                 "jitted_precompute must take a single np.ndarray as input."
             )
 
-    def _check_jitted_precompute_pipeline(self):
-        """Check the pipeline between jitted_precompute and jitted_compute."""
-        precompute_sig = inspect.signature(self.jitted_precompute)
-        compute_sig = inspect.signature(self.jitted_compute)
-
-        precompute_return = precompute_sig.return_annotation
-        first_compute_param = list(compute_sig.parameters.values())[0].annotation
-
-        if precompute_return != first_compute_param:
-            raise ValueError(
-                "The output type of jitted_precompute must match the output type of the"
-                + " first input to jitted_compute."
-            )
-
     def _check_jitted_compute_input(self):
         """Check the input signature of jitted_compute."""
         jitted_sig = inspect.signature(self.jitted_compute)
@@ -88,15 +76,14 @@ class BaseDetectorComponent(BaseObject):
             )
 
         # Check that all but the first parameters to jitted_compute and method are the
-        # same. The first parameter is checked with respect to the precompute output in
-        # `check_jitted_precompute_pipeline`.
+        # same. The first parameter is supposed to be the precomputed output.
         jitted_params = list(jitted_sig.parameters.values())
         method_params = list(method_sig.parameters.values())
         for jitted_param, method_param in zip(jitted_params[1:], method_params[1:]):
             if jitted_param.annotation != method_param.annotation:
                 raise ValueError(
-                    "The signature of `jitted_compute` must match the signature of"
-                    + "`compute`."
+                    f"The signature of `jitted_compute` {jitted_param.annotation} must"
+                    + f"match the signature of `compute` {method_param.annotation}."
                 )
 
     def _check_jitted_compute_output(self):
@@ -109,7 +96,7 @@ class BaseCost(BaseDetectorComponent):
     """Base class template for costs."""
 
     def compute(
-        self, precomputed: tuple, starts: np.ndarray, ends: np.ndarray
+        self, precomputed: np.ndarray | tuple, starts: np.ndarray, ends: np.ndarray
     ) -> np.ndarray:
         """Compute the cost for each segment.
 
@@ -135,7 +122,7 @@ class BaseChangeScore(BaseDetectorComponent):
 
     def compute(
         self,
-        precomputed: tuple,
+        precomputed: np.ndarray | tuple,
         starts: np.ndarray,
         ends: np.ndarray,
         splits: np.ndarray,
@@ -149,7 +136,7 @@ class BaseAnomalyScore(BaseDetectorComponent):
 
     def compute(
         self,
-        precomputed: tuple,
+        precomputed: np.ndarray | tuple,
         starts: np.ndarray,
         ends: np.ndarray,
         anomaly_starts: np.ndarray,
@@ -168,7 +155,7 @@ class BaseSaving(BaseDetectorComponent):
     """
 
     def compute(
-        self, precomputed: tuple, starts: np.ndarray, ends: np.ndarray
+        self, precomputed: np.ndarray | tuple, starts: np.ndarray, ends: np.ndarray
     ) -> np.ndarray:
         """Compute the saving for each segment."""
         return self.jitted_compute(precomputed, starts, ends)
