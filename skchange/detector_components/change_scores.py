@@ -29,6 +29,7 @@ class CostBasedChangeScore(BaseChangeScore):
             pre_split_cost = cost(precomputed, starts, splits)
             post_split_cost = cost(precomputed, splits + 1, ends)
             full_cost = cost(precomputed, starts, ends)
-            return full_cost - pre_split_cost - post_split_cost
+            scores = full_cost - pre_split_cost - post_split_cost
+            return scores
 
         self.jitted_compute = cost_based_change_score
