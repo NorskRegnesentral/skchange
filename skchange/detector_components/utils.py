@@ -25,3 +25,9 @@ def init_sample_sizes(X: np.ndarray) -> np.ndarray:
     n = X.shape[0]
     p = X.shape[1]
     return col_repeat(np.arange(0, n + 1), p)
+
+
+@njit(cache=True)
+def identity_func(X: np.ndarray) -> np.ndarray:
+    """Identity function."""
+    return X
