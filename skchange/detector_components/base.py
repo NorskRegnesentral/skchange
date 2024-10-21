@@ -149,7 +149,7 @@ class BaseAnomalyScore(BaseDetectorComponent):
 
     def compute(
         self,
-        precomputed_params: np.ndarray,
+        precomputed_params: tuple,
         starts: np.ndarray,
         ends: np.ndarray,
         anomaly_starts: np.ndarray,
