@@ -38,7 +38,7 @@ def run_pelt(
     init_starts = np.zeros(min_segment_length - 1, dtype=np.int64)
 
     # Start at a segment of length `min_segment_length`, incrementing by 1 from there.
-    init_ends = np.arange(min_segment_length - 1, 2*(min_segment_length - 1))
+    init_ends = np.arange(min_segment_length - 1, 2 * (min_segment_length - 1))
 
     opt_cost = np.zeros(n + 1) - penalty
     opt_cost[1:min_segment_length] = cost_func(params, init_starts, init_ends)
