@@ -85,8 +85,6 @@ def mean_cov_cost(
     num_starts = len(starts)
     costs = np.zeros(num_starts)
 
-    # Implicitly expect a certain dimension on 'starts' and 'ends'...
-
     for i in range(num_starts):
         segment_mv_ll = gaussian_ll_at_mle_for_segment(X, starts[i], ends[i])
         costs[i] = -segment_mv_ll

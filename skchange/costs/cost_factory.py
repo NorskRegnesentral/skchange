@@ -23,7 +23,7 @@ from numba.extending import is_jitted
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
 from skchange.costs.mean_cov_cost import init_mean_cov_cost, mean_cov_cost
 
-VALID_COSTS = ["mean"]
+VALID_COSTS = ["mean", "mean_cov"]
 
 
 def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
