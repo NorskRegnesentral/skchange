@@ -28,6 +28,6 @@ def init_sample_sizes(X: np.ndarray) -> np.ndarray:
 
 
 @njit(cache=True)
-def identity_func(X: np.ndarray) -> np.ndarray:
+def identity(X: np.ndarray) -> np.ndarray:
     """Identity function."""
     return X
