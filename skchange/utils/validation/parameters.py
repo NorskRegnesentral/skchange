@@ -3,6 +3,7 @@
 from numbers import Number
 
 import pandas as pd
+from numba.extending import is_jitted
 
 
 def check_larger_than(
@@ -105,3 +106,10 @@ def check_in_interval(
     if value is not None and value not in interval:
         raise ValueError(f"{name} must be in {interval} ({name}={value}).")
     return value
+
+
+def check_jitted(func):
+    """Check if a function is jitted."""
+    if not is_jitted(func):
+        raise ValueError("jitted_precompute is not a jitted function.")
+    return func
