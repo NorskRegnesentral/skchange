@@ -1,4 +1,5 @@
 """Numba-optimized functions for calculating various statistics."""
+
 import numpy as np
 from numba import njit
 
