@@ -74,3 +74,25 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
     assert np.allclose(numerical_mle_ll, analytical_mle_ll)
     assert np.allclose(numerical_cost, analytical_cost)
     assert np.allclose(mean_cov_cost, analytical_cost)
+
+
+def test_mean_cov_cost_raises_on_non_positive_definite():
+    """Test mean covariance cost raises on non-positive definite."""
+    X = np.array([[1, 2], [2, 1]])
+    mean_cov_cost_fn, mean_cov_init_cost_fn = cost_factory("mean_cov")
+
+    with pytest.raises(RuntimeError):
+        mean_cov_cost_fn(mean_cov_init_cost_fn(X), [0], [1])
+
+    # Check that the analytical function raises on the same input:
+    with pytest.raises(ValueError):
+        analytical_mv_ll_at_mle(X)
+
+
+def test_mean_cov_cost_raises_on_single_observation():
+    """Test mean covariance cost raises on single observation."""
+    X = np.array([[1, 2]])
+    mean_cov_cost_fn, mean_cov_init_cost_fn = cost_factory("mean_cov")
+
+    with pytest.raises(ValueError):
+        mean_cov_cost_fn(mean_cov_init_cost_fn(X), [0], [0])
