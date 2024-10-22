@@ -37,16 +37,19 @@ def analytical_mv_ll_at_mle(X: np.ndarray):
     return ll
 
 
-@pytest.mark.parametrize("n, p, seed", [
-    (50, 1, 4125),
-    (50, 3, 4125),
-    (100, 1, 4125),
-    (100, 3, 4125),
-    (50, 1, 2125),
-    (50, 3, 2125),
-    (100, 1, 2125),
-    (100, 3, 2125)
-])
+@pytest.mark.parametrize(
+    "n, p, seed",
+    [
+        (50, 1, 4125),
+        (50, 3, 4125),
+        (100, 1, 4125),
+        (100, 3, 4125),
+        (50, 1, 2125),
+        (50, 3, 2125),
+        (100, 1, 2125),
+        (100, 3, 2125),
+    ],
+)
 def test_mean_cov_cost(n: int, p: int, seed: int):
     """Test mean covariance cost."""
     # Generate data:
@@ -64,10 +67,10 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
     numerical_mle_ll = mvn_dist.logpdf(X).sum()
     numerical_cost = -numerical_mle_ll
 
+    # Analytical cost from theoretical formulae:
     analytical_mle_ll = analytical_mv_ll_at_mle(X)
     analytical_cost = -analytical_mle_ll
 
     assert np.allclose(numerical_mle_ll, analytical_mle_ll)
     assert np.allclose(numerical_cost, analytical_cost)
     assert np.allclose(mean_cov_cost, analytical_cost)
-
