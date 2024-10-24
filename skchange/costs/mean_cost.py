@@ -44,6 +44,7 @@ def mean_cost(
     precomputed_params: tuple[np.ndarray, np.ndarray, np.ndarray],
     starts: np.ndarray,
     ends: np.ndarray,
+    min_segment_length: int = 1,
 ) -> np.ndarray:
     """Calculate the Gaussian mean likelihood cost for each segment.
 
