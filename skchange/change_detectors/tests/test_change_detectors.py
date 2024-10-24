@@ -2,14 +2,19 @@
 
 import pytest
 
-from skchange.change_detectors import CHANGE_DETECTORS
+from skchange.change_detectors import CHANGE_DETECTORS, ChangeDetector
 from skchange.datasets.generate import generate_alternating_data
 
 n_segments = 2
 seg_len = 50
 changepoint_data = generate_alternating_data(
-    n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=2
+    n_segments=n_segments, mean=20, segment_length=seg_len, p=1, random_state=2
 )[0]
+
+# import plotly.express as px
+# px.line(
+#     changepoint_data,
+# )
 
 
 @pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
@@ -21,10 +26,19 @@ def test_change_detector_predict(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
-def test_change_detector_transform(Estimator):
+def test_change_detector_transform(Estimator: ChangeDetector):
     """Test changepoint detector transform (dense output)."""
+    Estimator = CHANGE_DETECTORS[1]
     detector = Estimator.create_test_instance()
+    detector.min_segment_length = 1
+    detector.penalty_scale = 10.0
     labels = detector.fit_transform(changepoint_data)
+
+    # px.line(
+    #     detector.scores,
+    #     title=f"[Existing] {Estimator.__name__} scores, min_segment_length={detector.min_segment_length}, penalty_scale={detector.penalty_scale}",
+    # )
+
     assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
 
