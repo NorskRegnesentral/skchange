@@ -49,7 +49,7 @@ def pelt_partition_cost(
     return total_cost
 
 
-# @njit
+@njit
 def run_pelt_old(
     X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length
 ) -> tuple[np.ndarray, list]:
@@ -85,7 +85,8 @@ def run_pelt_old(
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
-def run_pelt_new(
+@njit
+def run_pelt(
     X: np.ndarray,
     cost_func,
     cost_init_func,
@@ -93,78 +94,89 @@ def run_pelt_new(
     min_segment_length: int = 1,
     split_cost: float = 0.0,
 ) -> tuple[np.ndarray, list]:
-    params = cost_init_func(X)
+    """Run the PELT algorithm.
+
+    Currently agrees with the 'changepoint::cpt.mean' implementation of PELT in R.
+    If the 'min_segment_length' is large enough to span more than a single changepoint,
+    the algorithm can return a suboptimal partitioning.
+    In that case, resort to the 'optimal_partitioning' algorithm.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        The data to find changepoints in.
+    cost_func : Callable
+        The cost function to use.
+    cost_init_func : Callable
+        The cost function initialization function.
+    penalty : float
+        The penalty incurred for adding a changepoint.
+    min_segment_length : int, optional
+        The minimum length of a segment, by default 1.
+    split_cost : float, optional
+        The cost of splitting a segment, to ensure that
+        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
+        for all possible splits, 0 <= t < p < s <= len(X) - 1.
+        By default set to 0.0, which is sufficient for
+        log likelihood cost functions to satisfy the
+        above inequality.
+
+    Returns
+    -------
+    tuple[np.ndarray, list]
+        The optimal costs and the changepoints.
+    """
     num_obs = len(X)
+    cost_params = cost_init_func(X)
     min_segment_shift = min_segment_length - 1
 
-    # Explicitly set the first element to -penalty, and the rest to NaN.
-    # Last 'min_segment_shift' elements will be NaN.
+    # Explicitly set the first element to -penalty.
     opt_cost = np.concatenate((np.array([-penalty]), np.zeros(num_obs)))
-    # If min_segment_length > 1, cannot compute the cost for the first
-    # [1, .., min_segment_length - 1] observations.
+
+    # Cannot compute the cost for the first 'min_segment_shift' elements:
     opt_cost[1:min_segment_length] = -penalty
 
-    # Compute the optimal cost for the first
-    # [min_segment_length, .., 2* min_segment_length - 1] observations
-    # directly from the cost function, as we cannot have a changepoint
-    # within the first [min_segment_length, 2*min_segment_length - 1]
-    # observations.
+    # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
     non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
     non_changepoint_ends = np.arange(min_segment_length - 1, 2 * min_segment_length - 1)
-
-    # Shifted by 1 to account for the first element being -penalty:
     opt_cost[min_segment_length : 2 * min_segment_length] = cost_func(
-        params, non_changepoint_starts, non_changepoint_ends
+        cost_params, non_changepoint_starts, non_changepoint_ends
     )
 
-    # Store the previous changepoint for each last start added.
+    # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
     prev_cpts = np.repeat(-1, num_obs)
 
     # Evolving set of admissible segment starts.
-    # Always include [0] as the start of a contiguous segment.
-    candidate_starts = np.array(([0]), dtype=np.int64)
+    cost_eval_starts = np.array(([0]), dtype=np.int64)
 
-    observation_opt_cost_indices = np.arange(
-        2 * min_segment_length - 1, num_obs
-    ).reshape(-1, 1)
-
-    num_cost_evals = min_segment_length - 1
-
-    for obs_opt_cost_index in observation_opt_cost_indices:
-        segment_start = obs_opt_cost_index - min_segment_shift
+    observation_indices = np.arange(2 * min_segment_length - 1, num_obs).reshape(-1, 1)
+    for current_obs_ind in observation_indices:
+        latest_start = current_obs_ind - min_segment_shift
 
         # Add the next start to the admissible starts set:
-        candidate_starts = np.concatenate((candidate_starts, segment_start))
-        candidate_ends = np.repeat(obs_opt_cost_index, len(candidate_starts))
+        cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
+        cost_eval_ends = np.repeat(current_obs_ind, len(cost_eval_starts))
 
-        num_cost_evals += len(candidate_starts)
         candidate_opt_costs = (
-            opt_cost[candidate_starts]
-            + cost_func(params, candidate_starts, candidate_ends)
+            opt_cost[cost_eval_starts]
+            + cost_func(cost_params, cost_eval_starts, cost_eval_ends)
             + penalty
         )
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        opt_cost[obs_opt_cost_index + 1] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[obs_opt_cost_index] = candidate_starts[argmin_candidate_cost] - 1
+        opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost] - 1
 
-        # Trimming the admissible starts set:
-        # TODO: With 'min_segment_length' > 1, we appear to trim away too many starts.
-        candidate_starts = candidate_starts[
-            candidate_opt_costs + split_cost
-            <= opt_cost[obs_opt_cost_index + 1] + penalty
+        # Trimming the admissible starts set: (reuse the array of optimal costs)
+        cost_eval_starts = cost_eval_starts[
+            candidate_opt_costs + split_cost <= opt_cost[current_obs_ind + 1] + penalty
         ]
-
-    print("NEW PELT: Num cost evals:", num_cost_evals)
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
-# Agrees with 'changepoint::cpt.mean' in R on changepoints,
-# with penalty = 100.0 on: X_complex_10_segments_n_200 = generate_alternating_data(
-#     n_segments=10, segment_length=20, p=1, random_state=5, mean=10.5, variance=0.5
-# )[0].values.reshape(-1, 1)
+@njit
 def run_optimal_partitioning(
     X: np.ndarray,
     cost_func,
@@ -211,8 +223,6 @@ def run_optimal_partitioning(
         2 * min_segment_length - 1, num_obs
     ).reshape(-1, 1)
 
-    num_cost_evals = min_segment_length - 1
-
     for opt_cost_obs_index in opt_cost_observation_indices:
         segment_start = opt_cost_obs_index - min_segment_shift
 
@@ -220,7 +230,6 @@ def run_optimal_partitioning(
         candidate_starts = np.concatenate((candidate_starts, segment_start))
         candidate_ends = np.repeat(opt_cost_obs_index, len(candidate_starts))
 
-        num_cost_evals += len(candidate_starts)
         candidate_opt_costs = (
             opt_cost[candidate_starts]  # Shifted by one.
             + cost_func(params, candidate_starts, candidate_ends)
@@ -230,8 +239,6 @@ def run_optimal_partitioning(
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[opt_cost_obs_index + 1] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[opt_cost_obs_index] = candidate_starts[argmin_candidate_cost] - 1
-
-    print("OPTIMAL PARTITIONING: Num cost evals:", num_cost_evals)
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 

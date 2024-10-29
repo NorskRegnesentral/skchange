@@ -7,7 +7,7 @@ from numba import njit
 from pelt import (
     pelt_partition_cost,
     run_optimal_partitioning,
-    run_pelt_new,
+    run_pelt,
     run_pelt_old,
 )
 
@@ -29,9 +29,9 @@ X_complex_10_segments_n_200 = generate_alternating_data(
 # )[0].values.reshape(-1, 1)
 
 # Write the data to a file for testing with R:
-pd.Series(X_complex_10_segments_n_200.flatten()).to_csv(
-    "segments_10_n_200_random_state_10_data.csv", index=False, header=False
-)
+# pd.Series(X_complex_10_segments_n_200.flatten()).to_csv(
+#     "segments_10_n_200_random_state_10_data.csv", index=False, header=False
+# )
 
 # # cost_func, cost_init_func = cost_factory("mean")
 cost_func, cost_init_func = cost_factory("mean")
@@ -90,7 +90,7 @@ pelt_segment_lengths = compute_segment_lengths(
 
 # %%
 pelt_penalty = 100.0
-min_segment_length = 21
+min_segment_length = 30
 
 old_opt_costs, old_changepoints = run_pelt_old(
     X_complex_10_segments_n_200,
@@ -101,7 +101,7 @@ old_opt_costs, old_changepoints = run_pelt_old(
 )
 compute_segment_lengths(old_changepoints, len(X_complex_10_segments_n_200))
 
-new_opt_costs, new_changepoints = run_pelt_new(
+new_opt_costs, new_changepoints = run_pelt(
     X_complex_10_segments_n_200,
     cost_func,
     # min_segment_cost_func(cost_function=cost_func, min_segment_length=1),
@@ -158,4 +158,10 @@ print(
 )
 
 # %%
-# px.line(x=range(len(opt_costs)), y=opt_costs)
+px.line(x=range(len(new_opt_costs)), y=new_opt_costs)
+
+# %%
+px.line(x=range(len(opt_part_costs)), y=opt_part_costs)
+
+# %%
+px.line(x=range(len(old_opt_costs)), y=old_opt_costs)
