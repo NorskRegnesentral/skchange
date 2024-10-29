@@ -87,10 +87,6 @@ def mean_cov_cost(
     costs = np.zeros(num_starts)
 
     for i in range(num_starts):
-        # TODO: DEBUG!
-        if ends[i] - starts[i] + 1 < min_segment_length:
-            costs[i] = np.inf
-        else:
-            segment_mv_ll = gaussian_ll_at_mle_for_segment(X, starts[i], ends[i])
-            costs[i] = -segment_mv_ll
+        segment_mv_ll = gaussian_ll_at_mle_for_segment(X, starts[i], ends[i])
+        costs[i] = -segment_mv_ll
     return costs

@@ -82,7 +82,7 @@ def test_mean_cov_cost_raises_on_non_positive_definite():
     mean_cov_cost_fn, mean_cov_init_cost_fn = cost_factory("mean_cov")
 
     with pytest.raises(RuntimeError):
-        mean_cov_cost_fn(mean_cov_init_cost_fn(X), [0], [1])
+        mean_cov_cost_fn(mean_cov_init_cost_fn(X), np.array([0]), np.array([1]))
 
     # Check that the analytical function raises on the same input:
     with pytest.raises(ValueError):
@@ -95,4 +95,4 @@ def test_mean_cov_cost_raises_on_single_observation():
     mean_cov_cost_fn, mean_cov_init_cost_fn = cost_factory("mean_cov")
 
     with pytest.raises(ValueError):
-        mean_cov_cost_fn(mean_cov_init_cost_fn(X), [0], [0])
+        mean_cov_cost_fn(mean_cov_init_cost_fn(X), np.array([0]), np.array([0]))
