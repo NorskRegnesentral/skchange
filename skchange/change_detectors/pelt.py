@@ -50,42 +50,6 @@ def pelt_partition_cost(
 
 
 @njit
-def run_pelt_old(
-    X: np.ndarray, cost_func, cost_init_func, penalty, min_segment_length
-) -> tuple[np.ndarray, list]:
-    # With 'min_segment_length' > 1, this function can return
-    # segment lengths < 'min_segment_length'.
-    params = cost_init_func(X)
-    n = len(X)
-
-    starts = np.array((), dtype=np.int64)  # Evolving set of admissible segment starts.
-    init_starts = np.zeros(min_segment_length - 1, dtype=np.int64)
-    init_ends = np.arange(min_segment_length - 1)
-    opt_cost = np.zeros(n + 1) - penalty
-    opt_cost[1:min_segment_length] = cost_func(params, init_starts, init_ends)
-
-    # Store the previous changepoint for each t.
-    # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(-1, n)
-
-    ts = np.arange(min_segment_length - 1, n).reshape(-1, 1)
-    for t in ts:
-        starts = np.concatenate((starts, t - min_segment_length + 1))
-        ends = np.repeat(t, len(starts))
-        candidate_opt_costs = (
-            opt_cost[starts] + cost_func(params, starts, ends) + penalty
-        )
-        argmin = np.argmin(candidate_opt_costs)
-        opt_cost[t + 1] = candidate_opt_costs[argmin]
-        prev_cpts[t] = starts[argmin] - 1
-
-        # Trimming the admissible starts set
-        starts = starts[candidate_opt_costs - penalty <= opt_cost[t]]
-
-    return opt_cost[1:], get_changepoints(prev_cpts)
-
-
-@njit
 def run_pelt(
     X: np.ndarray,
     cost_func,
@@ -396,7 +360,7 @@ class Pelt(ChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        opt_costs, changepoints = run_pelt_old(
+        opt_costs, changepoints = run_pelt(
             X.values,
             self.cost_func,
             self.cost_init_func,

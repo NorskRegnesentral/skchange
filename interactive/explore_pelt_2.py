@@ -1,17 +1,13 @@
-from typing import Callable, Optional, Union
-
 import numpy as np
 import pandas as pd
 import plotly.express as px
-from numba import njit
-from pelt import (
+
+from skchange.change_detectors.pelt import (
     pelt_partition_cost,
     run_optimal_partitioning,
     run_pelt,
-    run_pelt_old,
 )
-
-from skchange.change_detectors.base import ChangeDetector
+from skchange.change_detectors.tests.test_pelt import run_pelt_old
 from skchange.costs.cost_factory import cost_factory
 from skchange.datasets.generate import generate_alternating_data
 
