@@ -1,5 +1,6 @@
 """Basic tests for all change detectors."""
 
+import pandas as pd
 import pytest
 
 from skchange.change_detectors import CHANGE_DETECTORS, ChangeDetector
@@ -32,12 +33,7 @@ def test_change_detector_transform(Estimator: ChangeDetector):
     detector = Estimator.create_test_instance()
     detector.min_segment_length = 1
     detector.penalty_scale = 10.0
-    labels = detector.fit_transform(changepoint_data)
-
-    # px.line(
-    #     detector.scores,
-    #     title=f"[Existing] {Estimator.__name__} scores, min_segment_length={detector.min_segment_length}, penalty_scale={detector.penalty_scale}",
-    # )
+    labels: pd.Series = detector.fit_transform(changepoint_data)
 
     assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0

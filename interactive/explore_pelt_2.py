@@ -1,3 +1,5 @@
+"""Interactive exploration of the PELT algorithm, for debugging purposes."""
+
 import numpy as np
 import pandas as pd
 import plotly.express as px
@@ -32,7 +34,10 @@ X_complex_10_segments_n_200 = generate_alternating_data(
 # # cost_func, cost_init_func = cost_factory("mean")
 cost_func, cost_init_func = cost_factory("mean")
 
+
 def min_segment_cost_func(cost_function, min_segment_length):
+    """Limit the cost function to segments of a minimum length."""
+
     def limited_cost_func(params, starts, ends):
         cost = cost_function(params, starts, ends)
         return np.where(ends - starts + 1 < min_segment_length, np.inf, cost)
