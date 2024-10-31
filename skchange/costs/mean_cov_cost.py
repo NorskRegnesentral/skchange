@@ -64,7 +64,6 @@ def mean_cov_cost(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
-    min_segment_length: int = 5,
 ) -> np.ndarray:
     """Calculate the Gaussian log likelihood cost for each segment.
 
