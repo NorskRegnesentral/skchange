@@ -12,11 +12,6 @@ changepoint_data = generate_alternating_data(
     n_segments=n_segments, mean=20, segment_length=seg_len, p=1, random_state=2
 )[0]
 
-# import plotly.express as px
-# px.line(
-#     changepoint_data,
-# )
-
 
 @pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
 def test_change_detector_predict(Estimator):
