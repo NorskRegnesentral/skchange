@@ -57,7 +57,9 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
     X = np.random.randn(n, p)
 
     mean_cov_cost_fn, mean_cov_init_cost_fn = cost_factory("mean_cov")
-    mean_cov_cost_array = mean_cov_cost_fn(mean_cov_init_cost_fn(X), [0], [n - 1])
+    mean_cov_cost_array = mean_cov_cost_fn(
+        mean_cov_init_cost_fn(X), np.array([0]), np.array([n - 1])
+    )
     mean_cov_cost = mean_cov_cost_array[0]
 
     # Analytical cost using SciPy:
