@@ -24,7 +24,7 @@ def _update_config(**kwargs):
             config[key] = value
 
 
-def update_config(use_njit, **njit_args):
+def update_config(use_njit=None, **njit_args):
     """Update the configuration with new values.
 
     Parameters
