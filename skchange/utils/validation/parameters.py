@@ -111,5 +111,5 @@ def check_in_interval(
 def check_jitted(func):
     """Check if a function is jitted."""
     if not is_jitted(func):
-        raise ValueError("jitted_precompute is not a jitted function.")
+        raise ValueError(f"Function {func.__name__} is not jitted.")
     return func
