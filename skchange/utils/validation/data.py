@@ -4,6 +4,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 
 
 def check_data(
@@ -46,4 +47,26 @@ def check_data(
             f"X must have at least {min_length_name}={min_length} samples"
             + f" (X.shape[0]={n})"
         )
+    return X
+
+
+def as_2d_array(X: ArrayLike, vector_as_column=True, dtype=None) -> np.ndarray:
+    """Convert an array-like object to a 2D numpy array.
+
+    Parameters
+    ----------
+    X : `ArrayLike`
+        Array-like object.
+
+    Returns
+    -------
+    X : `np.ndarray`
+        2D numpy array.
+    """
+    if not isinstance(X, np.ndarray):
+        X = np.array(X, dtype=dtype)
+    if X.ndim == 1:
+        X = X.reshape(-1, 1) if vector_as_column else X.reshape(1, -1)
+    elif X.ndim > 2:
+        raise ValueError("X must be at most 2-dimensional.")
     return X
