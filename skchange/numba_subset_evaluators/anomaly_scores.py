@@ -32,6 +32,8 @@ class NumbaAnomalyScore(NumbaSubsetEvaluator):
 
 
 class CostBasedAnomalyScore(NumbaAnomalyScore):
+    """Anomaly score based on a cost function."""
+
     def __init__(self, cost: NumbaCost):
         self.cost = cost
         super().__init__()
