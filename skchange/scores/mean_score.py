@@ -112,7 +112,7 @@ def mean_saving(
 
 
 @njit(cache=True)
-def init_mean_change_score(X: np.ndarray) -> np.ndarray:
+def init_mean_score(X: np.ndarray) -> np.ndarray:
     """
     Precompute sums for `mean_score`.
 
@@ -130,7 +130,7 @@ def init_mean_change_score(X: np.ndarray) -> np.ndarray:
 
 
 @njit(cache=True)
-def mean_change_score(
+def mean_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
