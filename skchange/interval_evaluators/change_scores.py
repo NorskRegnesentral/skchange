@@ -30,6 +30,11 @@ class ChangeScore(BaseChangeScore):
         self.cost = cost
         super().__init__()
 
+    @property
+    def min_size(self) -> int:
+        """Minimum size of the interval to evaluate."""
+        return 2 * self.cost.min_size
+
     def _fit(self, X: ArrayLike, y=None):
         self.cost.fit(X)
         return self
