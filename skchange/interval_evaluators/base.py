@@ -68,17 +68,17 @@ class BaseIntervalEvaluator(BaseEstimator):
         """
         return self
 
-    def _check_intervals(self, intervals):
-        """Check intervals for compatibility."""
-        raise NotImplementedError("abstract method")
-
     def evaluate(self, intervals) -> float:
-        """Evaluate on an interval."""
+        """Evaluate on a set of intervals."""
         self.check_is_fitted()
         intervals = self._check_intervals(intervals)
 
-        value = self._evaluate(intervals)
-        return value
+        values = self._evaluate(intervals)
+        return values
 
     def _evaluate(self, intervals) -> float:
         raise NotImplementedError("abstract method")
+
+    def _check_intervals(self, intervals):
+        """Check intervals for compatibility."""
+        return intervals
