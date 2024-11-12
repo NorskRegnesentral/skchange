@@ -1,18 +1,27 @@
-"""Dispatch njit decorator used to isolate numba."""
+"""Dispatch njit decorator used to isolate numba.
+
+Copied from sktime.utils.numba.njit
+"""
 
 from sktime.utils.dependencies import _check_soft_dependencies
 
+# exports numba.njit if numba is present, otherwise an identity njit
 if _check_soft_dependencies("numba", severity="ignore"):
     from numba import jit, njit  # noqa E402
 else:
 
-    def identity_decorator_factory(*args, **kwargs):
-        """Make an identity decorator for replacing jit or njit by passthrough."""
+    def jit(*args, **kwargs):
+        """Identity decorator for replacing njit by passthrough."""
 
         def decorator(func):
             return func
 
         return decorator
 
-    jit = identity_decorator_factory
-    njit = identity_decorator_factory
+    def njit(*args, **kwargs):
+        """Identity decorator for replacing njit by passthrough."""
+
+        def decorator(func):
+            return func
+
+        return decorator
