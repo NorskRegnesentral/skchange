@@ -24,7 +24,16 @@ class BaseChangeScore(BaseIntervalEvaluator):
 
 
 class ChangeScore(BaseChangeScore):
-    """Change score based a cost class."""
+    """Change score based a cost class.
+
+    The change score is calculated as the difference between the cost of an interval
+    and the sum of the costs on either side of a split point within the interval.
+
+    Parameters
+    ----------
+    cost : BaseCost
+        The cost function to evaluate on the intervals.
+    """
 
     def __init__(self, cost: BaseCost):
         self.cost = cost

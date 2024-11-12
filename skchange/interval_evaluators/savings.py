@@ -28,7 +28,17 @@ class BaseSaving(BaseIntervalEvaluator):
 
 
 class Saving(BaseSaving):
-    """Saving based on a cost class."""
+    """Saving based on a cost class.
+
+    The saving is calculated as the difference between a baseline cost with a fixed
+    parameter and the optimised cost over the same interval.
+
+    Parameters
+    ----------
+    baseline_cost : BaseCost
+        The baseline cost function with a fixed parameter. The optimised cost is
+        constructed by copying the baseline cost and setting the parameter to None.
+    """
 
     def __init__(self, baseline_cost: BaseCost):
         if baseline_cost.param is None:
