@@ -8,7 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 from skbase.base import BaseObject
 
-from skchange.utils.numba.njit import njit_configured
+from skchange.utils.numba.njit import njit
 from skchange.utils.validation.parameters import check_jitted
 
 
@@ -52,7 +52,7 @@ class NumbaEvaluatorMixin:
 
     def _build_evaluate(self):
         """Build the evaluate function."""
-        # @njit_configured
+        # @njit
         # def njit_evaluate(X: np.ndarray | list[np.ndarray]) -> float:
         #     <code>
         #     return value
@@ -108,9 +108,9 @@ class L2Cost(NumbaEvaluatorMixin, BaseCost):
 
     def _build_evaluate(self):
         param = self.param
-        min_size = njit_configured(self.min_size)
+        min_size = njit(self.min_size)
 
-        @njit_configured
+        @njit
         def njit_evaluate(X: np.ndarray) -> float:
             n = X.shape[0]
             if n < min_size(X):

@@ -9,7 +9,7 @@ import numpy as np
 from skbase.base import BaseObject
 
 from skchange.numba_subset_evaluators.utils import identity
-from skchange.utils.numba.njit import njit_configured
+from skchange.utils.numba.njit import njit
 from skchange.utils.validation.parameters import check_jitted
 
 
@@ -18,7 +18,7 @@ def build_default_evaluate_vectorized(subset: Callable, evaluate: Callable):
     check_jitted(subset)
     check_jitted(evaluate)
 
-    @njit_configured
+    @njit
     def default_evaluate_vectorized(
         X: np.ndarray,
         subsetter: np.ndarray,
