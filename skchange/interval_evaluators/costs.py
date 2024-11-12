@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.interval_evaluators.base import BaseIntervalEvaluator
+from skchange.interval_evaluators.utils import check_array_intervals
 from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.njit import njit
 from skchange.utils.numba.stats import col_cumsum
@@ -33,27 +34,22 @@ class BaseCost(BaseIntervalEvaluator):
         return 1
 
     def _check_intervals(self, intervals: ArrayLike) -> np.ndarray:
-        intervals = as_2d_array(intervals, vector_as_column=False)
+        return check_array_intervals(intervals, min_size=self.min_size, last_dim_size=2)
 
-        if not np.issubdtype(intervals.dtype, np.integer):
-            raise ValueError("The intervals must be of integer type.")
+    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
+        starts, ends = intervals[:, 0], intervals[:, 1]
+        if self.param is None:
+            costs = self._evaluate_optim_param(starts, ends)
+        else:
+            costs = self._evaluate_fixed_param(starts, ends)
 
-        if intervals.shape[-1] != 2:
-            raise ValueError(
-                "The intervals must be an array with length 2 in the last dimension."
-            )
+        return costs
 
-        interval_sizes = intervals[:, 1] - intervals[:, 0]
-        if np.any(interval_sizes < self.min_size):
-            raise ValueError(
-                (
-                    f"The interval sizes must be at least {self.min_size}",
-                    f" for {self.__class__.__name__}.",
-                    f" Found an interval with size {np.min(interval_sizes)}.",
-                )
-            )
+    def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        raise NotImplementedError("abstract method")
 
-        return intervals
+    def _evaluate_fixed_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        raise NotImplementedError("abstract method")
 
 
 @njit(cache=True)
@@ -145,14 +141,10 @@ class L2Cost(BaseCost):
 
         return self
 
-    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
-        starts, ends = intervals[:, 0], intervals[:, 1]
-        if self.param is None:
-            costs = l2_cost_optim(
-                starts, ends, self.sums_, self.sums2_, self.sample_sizes_
-            )
-        else:
-            costs = l2_cost_fixed(
-                starts, ends, self.sums_, self.sums2_, self.sample_sizes_, self._mean
-            )
-        return costs
+    def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        return l2_cost_optim(starts, ends, self.sums_, self.sums2_, self.sample_sizes_)
+
+    def _evaluate_fixed_param(self, starts, ends):
+        return l2_cost_fixed(
+            starts, ends, self.sums_, self.sums2_, self.sample_sizes_, self._mean
+        )
