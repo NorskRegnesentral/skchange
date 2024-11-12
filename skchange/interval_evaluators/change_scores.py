@@ -24,7 +24,7 @@ class BaseChangeScore(BaseIntervalEvaluator):
 
 
 class ChangeScore(BaseChangeScore):
-    """Change score based on cost functions."""
+    """Change score based a cost class."""
 
     def __init__(self, cost: BaseCost):
         self.cost = cost
