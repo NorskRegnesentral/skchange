@@ -7,7 +7,7 @@ from numpy.typing import ArrayLike
 
 from skchange.interval_evaluators.base import BaseIntervalEvaluator
 from skchange.utils.numba.general import col_repeat
-from skchange.utils.numba.njit import njit_configured
+from skchange.utils.numba.njit import njit
 from skchange.utils.numba.stats import col_cumsum
 from skchange.utils.validation.data import as_2d_array
 
@@ -56,7 +56,7 @@ class BaseCost(BaseIntervalEvaluator):
         return intervals
 
 
-@njit_configured
+@njit(cache=True)
 def l2_cost_optim(
     starts: np.ndarray,
     ends: np.ndarray,
@@ -85,7 +85,7 @@ def l2_cost_optim(
     return costs
 
 
-@njit_configured
+@njit(cache=True)
 def l2_cost_fixed(
     starts: np.ndarray,
     ends: np.ndarray,
