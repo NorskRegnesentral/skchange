@@ -34,13 +34,25 @@ class BaseCost(BaseIntervalEvaluator):
 
     def _check_intervals(self, intervals: ArrayLike) -> np.ndarray:
         intervals = as_2d_array(intervals, vector_as_column=False)
+
         if not np.issubdtype(intervals.dtype, np.integer):
-            raise ValueError("Interval must be of integer type.")
+            raise ValueError("The intervals must be of integer type.")
 
         if intervals.shape[-1] != 2:
             raise ValueError(
                 "The intervals must be an array with length 2 in the last dimension."
             )
+
+        interval_sizes = intervals[:, 1] - intervals[:, 0]
+        if np.any(interval_sizes < self.min_size):
+            raise ValueError(
+                (
+                    f"The interval sizes must be at least {self.min_size}",
+                    f" for {self.__class__.__name__}.",
+                    f" Found an interval with size {np.min(interval_sizes)}.",
+                )
+            )
+
         return intervals
 
 
