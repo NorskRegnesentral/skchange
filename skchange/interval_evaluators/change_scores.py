@@ -9,7 +9,7 @@ from skchange.interval_evaluators.utils import check_array_intervals
 
 
 class BaseChangeScore(BaseIntervalEvaluator):
-    """Base class template for cost functions."""
+    """Base class template for change scores."""
 
     def __init__(self):
         super().__init__()
