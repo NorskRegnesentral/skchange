@@ -1,45 +1,49 @@
 """Configuration module for the package."""
 
-config = {
-    "enable_numba": True,
-    "njit_args": {
-        "cache": True,
-        "nogil": False,
-        "parallel": False,
-    },
-}
+
+class Config:
+    """Configuration class for skchange."""
+
+    def __init__(self):
+        """Initialize the default configuration."""
+        self._enable_numba = True
+        self._njit_args = {
+            "cache": True,
+            "nogil": False,
+            "parallel": False,
+        }
+
+    @property
+    def enable_numba(self):
+        """Enable numba for just-in-time compilation."""
+        return self._enable_numba
+
+    @enable_numba.setter
+    def enable_numba(self, value):
+        if not isinstance(value, bool):
+            raise ValueError("enable_numba must be a boolean")
+        self._enable_numba = value
+
+    @property
+    def njit_args(self):
+        """Arguments for numba's njit decorator."""
+        return self._njit_args
+
+    @njit_args.setter
+    def njit_args(self, value):
+        if not isinstance(value, dict):
+            raise ValueError("njit_args must be a dictionary")
+        self._njit_args = value
+
+    def get(self, key=None):
+        """Get the entire config or a specific key."""
+        if key:
+            return getattr(self, key, None)
+        return {
+            attr: getattr(self, attr)
+            for attr in dir(self)
+            if not callable(getattr(self, attr)) and not attr.startswith("_")
+        }
 
 
-def get_config(key=None):
-    """Get the entire config or a specific key."""
-    if key:
-        return config.get(key)
-    return config
-
-
-def _update_config(config_updates):
-    """Update the configuration with new values."""
-    for key, value in config_updates.items():
-        if key in config:
-            config[key] = value
-
-
-def update_config(
-    enable_numba: bool = None,
-    njit_args: dict = None,
-):
-    """Update the configuration with new values.
-
-    Parameters
-    ----------
-    enable_numba : bool
-        Whether to use njit.
-    njit_args : dict
-        Arguments to pass to njit.
-    """
-    config_updates = {}
-    if enable_numba is not None:
-        config_updates["enable_numba"] = enable_numba
-    if njit_args is not None:
-        config_updates["njit_args"] = njit_args
-    _update_config(config_updates)
+config = Config()
