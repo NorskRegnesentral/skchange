@@ -7,12 +7,12 @@ if _check_soft_dependencies("numba", severity="ignore"):
 else:
 
     def identity_decorator_factory(*args, **kwargs):
-        """Make an identity decorator."""
+        """Make an identity decorator for replacing jit or njit by passthrough."""
 
-        def _identity(func):
+        def decorator(func):
             return func
 
-        return _identity
+        return decorator
 
     jit = identity_decorator_factory
     njit = identity_decorator_factory
