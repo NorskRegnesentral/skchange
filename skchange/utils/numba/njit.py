@@ -4,7 +4,7 @@ from sktime.utils.dependencies import _check_soft_dependencies
 
 from skchange.config import get_config
 
-if _check_soft_dependencies("numba", severity="ignore") and get_config("use_njit"):
+if _check_soft_dependencies("numba", severity="ignore") and get_config("enable_numba"):
     from numba import jit, njit  # noqa E402
 
     jit_configured = jit(**get_config("njit_args"))

@@ -1,7 +1,7 @@
 """Configuration module for the package."""
 
 config = {
-    "use_njit": True,
+    "enable_numba": True,
     "njit_args": {
         "cache": True,
         "nogil": False,
@@ -25,21 +25,21 @@ def _update_config(config_updates):
 
 
 def update_config(
-    use_njit: bool = None,
+    enable_numba: bool = None,
     njit_args: dict = None,
 ):
     """Update the configuration with new values.
 
     Parameters
     ----------
-    use_njit : bool
+    enable_numba : bool
         Whether to use njit.
     njit_args : dict
         Arguments to pass to njit.
     """
     config_updates = {}
-    if use_njit is not None:
-        config_updates["use_njit"] = use_njit
+    if enable_numba is not None:
+        config_updates["enable_numba"] = enable_numba
     if njit_args is not None:
         config_updates["njit_args"] = njit_args
     _update_config(config_updates)
