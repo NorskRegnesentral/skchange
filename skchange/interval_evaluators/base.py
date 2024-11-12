@@ -74,6 +74,10 @@ class BaseIntervalEvaluator(BaseEstimator):
         intervals = self._check_intervals(intervals)
 
         values = self._evaluate(intervals)
+
+        if len(values) != len(intervals):
+            raise ValueError(f"Expected {len(intervals)} costs, got {len(values)}.")
+
         return values
 
     def _evaluate(self, intervals) -> float:
