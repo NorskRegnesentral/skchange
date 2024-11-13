@@ -1,8 +1,4 @@
-"""Module for calculating savings.
-
-Savings are cost differences between a fixed parameter representing the baseline
-data behaviour and an optimised parameter over the same interval.
-"""
+"""Module for calculating anomaly scores."""
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -13,7 +9,14 @@ from skchange.interval_evaluators.utils import check_array_intervals
 
 
 class BaseSaving(BaseIntervalEvaluator):
-    """Base class template for saving functions."""
+    """Base class template for savings.
+
+    A saving is a measure of the difference between a cost with a fixed baseline
+    parameter and an optimised cost over an interval. Most commonly, the baseline
+    parameter is pre-calculated robustly over the entire dataset under the assumption
+    that anomalies are rare. Each saving thus represents the potential cost reduction if
+    the parameter was optimised for the interval.
+    """
 
     def __init__(self):
         super().__init__()
@@ -30,8 +33,11 @@ class BaseSaving(BaseIntervalEvaluator):
 class Saving(BaseSaving):
     """Saving based on a cost class.
 
-    The saving is calculated as the difference between a baseline cost with a fixed
-    parameter and the optimised cost over the same interval.
+    Savings represent the difference between a cost based on a fixed baseline parameter
+    and an optimized cost over a given interval. The baseline parameter must be robustly
+    estimated across the entire dataset, assuming that anomalies are rare. Each saving
+    indicates the potential for cost reduction if the parameter were optimized for that
+    specific interval.
 
     Parameters
     ----------
