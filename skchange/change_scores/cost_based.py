@@ -1,26 +1,9 @@
-"""Scores for change detection."""
+"""Cost-based change scores."""
 
-import numpy as np
 from numpy.typing import ArrayLike
 
-from skchange.interval_evaluators.base import BaseIntervalEvaluator
+from skchange.change_scores.base import BaseChangeScore
 from skchange.interval_evaluators.costs import BaseCost
-from skchange.interval_evaluators.utils import check_array_intervals
-
-
-class BaseChangeScore(BaseIntervalEvaluator):
-    """Base class template for change scores."""
-
-    def __init__(self):
-        super().__init__()
-
-    @property
-    def min_size(self) -> int:
-        """Minimum size of the interval to evaluate."""
-        return 2
-
-    def _check_intervals(self, intervals: ArrayLike) -> np.ndarray:
-        return check_array_intervals(intervals, min_size=self.min_size, last_dim_size=3)
 
 
 class ChangeScore(BaseChangeScore):
