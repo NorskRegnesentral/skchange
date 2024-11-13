@@ -37,7 +37,6 @@ requires-python = ">=3.9,<3.13"
 dependencies = [
   "numpy>=1.21",
   "pandas>=1.1",
-  "numba>=0.56",  # numba is used for fast computation throughout
   "sktime>=0.33",
 ]
 
@@ -45,6 +44,11 @@ dependencies = [
 Homepage = "https://skchange.readthedocs.io"
 
 [project.optional-dependencies]
+# numba - numba as an optional dependency, install via "pip install skchange[numba]"
+numba = [
+  "numba>=0.56"
+]
+
 # all_extras - all soft dependencies, install via "pip install skchange[all_extras]"
 all_extras = [
   "optuna>=3.1.1",
