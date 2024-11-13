@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.anomaly_scores.base import BaseSaving
-from skchange.interval_evaluators.costs import BaseCost
+from skchange.costs.base import BaseCost
 
 
 class Saving(BaseSaving):
