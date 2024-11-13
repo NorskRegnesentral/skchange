@@ -3,7 +3,7 @@
 from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
-from skchange.interval_evaluators.costs import BaseCost
+from skchange.costs.base import BaseCost
 
 
 class ChangeScore(BaseChangeScore):
