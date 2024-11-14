@@ -1,7 +1,8 @@
 """Numba-optimized functions for various common data manipulation tasks.""" ""
 
 import numpy as np
-from numba import njit, prange
+
+from skchange.utils.numba.njit import njit, prange
 
 
 @njit(cache=True)

@@ -27,17 +27,16 @@ def test_scores(score):
 
 def test_custom_score():
     """Test custom score."""
-    with pytest.raises(ValueError):
-        # Need to be jitted to work.
+        # No longer need to be jitted to work.
         # Cannot test jitted function because numba is turned of in CI testing.
 
-        def init_score_f(X: np.ndarray) -> np.ndarray:
-            return X
+    def init_score_f(X: np.ndarray) -> np.ndarray:
+        return X
 
-        def score_f(params: np.ndarray, start: int, end: int, split: int) -> float:
-            return 10.0
+    def score_f(params: np.ndarray, start: int, end: int, split: int) -> float:
+        return 10.0
 
-        score_factory((score_f, init_score_f))
+    assert (score_f, init_score_f) == score_factory((score_f, init_score_f))
 
 
 def test_mean_cov_score_negative_definite_error():

@@ -8,7 +8,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
+from skchange.utils.numba.njit import njit
 
 from skchange.change_detectors.base import ChangeDetector
 from skchange.costs.cost_factory import cost_factory

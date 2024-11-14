@@ -18,8 +18,6 @@ __author__ = ["Tveten"]
 
 from typing import Callable, Union
 
-from numba.extending import is_jitted
-
 from skchange.scores.mean_cov_score import (
     init_mean_cov_score,
     mean_cov_score,
@@ -88,7 +86,7 @@ def score_factory(score: Union[str, tuple[Callable, Callable]] = "mean"):
         return mean_var_score, init_mean_var_score
     elif isinstance(score, str) and score == "mean_cov":
         return mean_cov_score, init_mean_cov_score
-    elif len(score) == 2 and all([is_jitted(s) for s in score]):
+    elif len(score) == 2:
         return score[0], score[1]
     else:
         message = (

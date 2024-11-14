@@ -21,14 +21,12 @@ def test_costs(cost):
 
 def test_custom_cost():
     """Test custom cost."""
-    with pytest.raises(ValueError):
-        # Need to be jitted to work.
-        # Cannot test jitted function because numba is turned off in CI testing.
+    # No longer need to be jitted to work.
 
-        def init_cost_f(X: np.ndarray) -> np.ndarray:
-            return X
+    def init_cost_f(X: np.ndarray) -> np.ndarray:
+        return X
 
-        def cost_f(params: np.ndarray, start: int, end: int, split: int) -> float:
-            return 10.0
+    def cost_f(params: np.ndarray, start: int, end: int, split: int) -> float:
+        return 10.0
 
-        cost_factory((cost_f, init_cost_f))
+    assert (cost_f, init_cost_f) == cost_factory((cost_f, init_cost_f))

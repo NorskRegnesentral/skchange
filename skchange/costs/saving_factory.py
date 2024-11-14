@@ -20,8 +20,6 @@ __author__ = ["Tveten"]
 
 from typing import Callable, Union
 
-from numba.extending import is_jitted
-
 from skchange.costs.mean_saving import init_mean_saving, mean_saving
 
 VALID_SAVINGS = ["mean"]
@@ -67,7 +65,7 @@ def saving_factory(saving: Union[str, tuple[Callable, Callable]]):
     """
     if saving == "mean":
         return mean_saving, init_mean_saving
-    elif len(saving) == 2 and all([is_jitted(s) for s in saving]):
+    elif len(saving) == 2:
         return saving[0], saving[1]
     else:
         message = (

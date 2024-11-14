@@ -7,7 +7,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
+from skchange.utils.numba.njit import njit
 from scipy.stats import chi2
 
 from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector

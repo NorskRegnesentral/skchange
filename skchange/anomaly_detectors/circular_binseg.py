@@ -7,7 +7,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
+from skchange.utils.numba.njit import njit
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals

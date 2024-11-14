@@ -2,7 +2,7 @@
 
 import numpy as np
 import plotly.express as px
-from numba import njit
+from skchange.utils.numba.njit import njit
 
 from skchange.change_detectors.moscore import Moscore
 from skchange.datasets.generate import add_linspace_outliers, generate_alternating_data

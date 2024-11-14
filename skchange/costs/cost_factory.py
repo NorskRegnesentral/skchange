@@ -18,8 +18,6 @@ __author__ = ["Tveten"]
 
 from typing import Callable, Union
 
-from numba.extending import is_jitted
-
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
 
 VALID_COSTS = ["mean"]
@@ -65,7 +63,7 @@ def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
     """
     if cost == "mean":
         return mean_cost, init_mean_cost
-    elif len(cost) == 2 and all([is_jitted(s) for s in cost]):
+    elif len(cost) == 2:
         return cost[0], cost[1]
     else:
         message = (
