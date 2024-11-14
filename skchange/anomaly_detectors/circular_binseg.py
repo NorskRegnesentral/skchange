@@ -7,11 +7,11 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from skchange.utils.numba.njit import njit
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals
 from skchange.scores.score_factory import anomaly_score_factory
+from skchange.utils.numba.njit import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 

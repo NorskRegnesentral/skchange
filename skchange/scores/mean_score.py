@@ -3,8 +3,8 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-from skchange.utils.numba.njit import njit
 
+from skchange.utils.numba.njit import njit
 from skchange.utils.numba.stats import col_cumsum
 
 

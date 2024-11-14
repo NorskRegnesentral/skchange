@@ -27,8 +27,8 @@ def test_scores(score):
 
 def test_custom_score():
     """Test custom score."""
-        # No longer need to be jitted to work.
-        # Cannot test jitted function because numba is turned of in CI testing.
+    # No longer need to be jitted to work.
+    # Cannot test jitted function because numba is turned of in CI testing.
 
     def init_score_f(X: np.ndarray) -> np.ndarray:
         return X
