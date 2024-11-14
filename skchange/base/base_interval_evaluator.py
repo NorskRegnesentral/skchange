@@ -28,7 +28,8 @@ from skchange.utils.validation.data import as_2d_array
 class BaseIntervalEvaluator(BaseEstimator):
     """Base class template for interval evaluators.
 
-    This is a common base class for costs, change scores and anomaly scores.
+    This is a common base class for costs, change scores and anomaly scores. It is used
+    to evaluate a function on a set of intervals, possibly with split point information.
     """
 
     def __init__(self):
