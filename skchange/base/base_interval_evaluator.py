@@ -28,8 +28,15 @@ from skchange.utils.validation.data import as_2d_array
 class BaseIntervalEvaluator(BaseEstimator):
     """Base class template for interval evaluators.
 
-    This is a common base class for costs, change scores and anomaly scores. It is used
+    This is a common base class for costs, change scores, and anomaly scores. It is used
     to evaluate a function on a set of intervals, possibly with split point information.
+
+    Attributes
+    ----------
+    _is_fitted : bool
+        Indicates whether the evaluator has been fitted.
+    _X : array-like
+        The input data used for fitting.
     """
 
     def __init__(self):
@@ -39,12 +46,12 @@ class BaseIntervalEvaluator(BaseEstimator):
         super().__init__()
 
     def fit(self, X, y=None):
-        """Fit interval evaluator to training data.
+        """Fit the interval evaluator to the training data.
 
         Parameters
         ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data evaluate a function on.
+        X : pd.Series, pd.DataFrame, or np.ndarray
+            The input data on which the function will be evaluated.
         y : None
             Ignored. Included for API consistency by convention.
 
@@ -55,7 +62,7 @@ class BaseIntervalEvaluator(BaseEstimator):
 
         Notes
         -----
-        Updates fitted model that updates attributes ending in "_".
+        Updates the fitted model and sets attributes ending in "_".
         """
         X = check_series(X, allow_index_names=True)
         self._X = X
@@ -67,7 +74,7 @@ class BaseIntervalEvaluator(BaseEstimator):
     def _fit(self, X, y=None):
         """Fit interval evaluator to training data.
 
-        The core logic of fitting a interval evaluator to training data is implemented
+        The core logic of fitting an interval evaluator to training data is implemented
         here.
 
         Parameters
@@ -94,13 +101,13 @@ class BaseIntervalEvaluator(BaseEstimator):
         Parameters
         ----------
         intervals : ArrayLike
-            Integer location based intervals to evaluate. If intervals is a 2D array,
+            Integer location-based intervals to evaluate. If intervals is a 2D array,
             the subsets X[intervals[i, 0]:intervals[i, -1]] for
             i = 0, ..., len(intervals) are evaluated.
             If intervals is a 1D array, it is assumed to represent a single interval.
 
-            If intervals contains additional columns, these represent splitting points
-            within the interval, and needs to be in increasing order.
+            If intervals contain additional columns, these represent splitting points
+            within the interval and need to be in increasing order.
             If splitting points are given, the same slicing convention is used for the
             intervals between the splitting points:
             [start, split_1), [split_1, split_2), ..., [split_n, end).
@@ -112,7 +119,7 @@ class BaseIntervalEvaluator(BaseEstimator):
 
         Notes
         -----
-        Different interval evaluators may require different number of columns in the
+        Different interval evaluators may require different numbers of columns in the
         intervals array. For example, a cost function requires two columns, one for the
         start of the interval and one for the end of the interval. A change score
         requires three columns, one for the start of the interval, one for the
@@ -138,12 +145,12 @@ class BaseIntervalEvaluator(BaseEstimator):
         Parameters
         ----------
         intervals : np.ndarray
-            A 2D array of integer location based intervals to evaluate.
+            A 2D array of integer location-based intervals to evaluate.
             The subsets X[intervals[i, 0]:intervals[i, -1]] for
             i = 0, ..., len(intervals) are evaluated.
 
-            If intervals contains additional columns, these represent splitting points
-            within the interval, and needs to be in increasing order.
+            If intervals contain additional columns, these represent splitting points
+            within the interval and need to be in increasing order.
             If splitting points are given, the same slicing convention is used for the
             intervals between the splitting points:
             [start, split_1), [split_1, split_2), ..., [split_n, end).
@@ -161,12 +168,12 @@ class BaseIntervalEvaluator(BaseEstimator):
         Parameters
         ----------
         intervals : np.ndarray
-            A 2D array of integer location based intervals to evaluate.
+            A 2D array of integer location-based intervals to evaluate.
             the subsets X[intervals[i, 0]:intervals[i, -1]] for
             i = 0, ..., len(intervals) are evaluated.
 
-            If intervals contains additional columns, these represent splitting points
-            within the interval, and needs to be in increasing order.
+            If intervals contain additional columns, these represent splitting points
+            within the interval and need to be in increasing order.
             If splitting points are given, the same slicing convention is used for the
             intervals between the splitting points:
             [start, split_1), [split_1, split_2), ..., [split_n, end).
