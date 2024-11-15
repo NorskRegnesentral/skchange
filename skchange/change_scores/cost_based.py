@@ -7,7 +7,7 @@ from skchange.costs.base import BaseCost
 
 
 class ChangeScore(BaseChangeScore):
-    """Change score based a cost class.
+    """Change score based on a cost class.
 
     The change score is calculated as the difference between the cost of an interval
     and the sum of the costs on either side of a split point within the interval.
@@ -28,10 +28,39 @@ class ChangeScore(BaseChangeScore):
         return 2 * self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
+        """Fit the change score evaluator.
+
+        Parameters
+        ----------
+        X : array-like
+            Input data.
+        y : None
+            Ignored. Included for API consistency by convention.
+
+        Returns
+        -------
+        self :
+            Reference to self.
+        """
         self.cost.fit(X)
         return self
 
     def _evaluate(self, intervals):
+        """Evaluate the change score on a set of intervals.
+
+        Parameters
+        ----------
+        intervals : np.ndarray
+            A 2D array with three columns of integer location-based intervals to
+            evaluate. The difference between subsets X[intervals[i, 0]:intervals[i, 1]]
+            and X[intervals[i, 1]:intervals[i, 2]] are evaluated for
+            i = 0, ..., len(intervals).
+
+        Returns
+        -------
+        scores : np.ndarray
+            Change scores for each interval.
+        """
         starts, splits, ends = intervals[:, 0], intervals[:, 1], intervals[:, 2]
         left_costs = self.cost.evaluate(starts, splits)
         right_costs = self.cost.evaluate(splits, ends)
