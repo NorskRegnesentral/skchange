@@ -20,7 +20,7 @@ def l2_cost_optim(
     sums2: np.ndarray,
     sample_sizes: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the Gaussian mean likelihood cost for each segment.
+    """Calculate the L2 cost for an optimal constant mean for each segment.
 
     Parameters
     ----------
@@ -50,7 +50,7 @@ def l2_cost_fixed(
     sample_sizes: np.ndarray,
     mean: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the Gaussian mean likelihood cost for each segment.
+    """Calculate the L2 cost for a fixed constant mean for each segment.
 
     Parameters
     ----------
@@ -76,12 +76,32 @@ def l2_cost_fixed(
 
 
 class L2Cost(BaseCost):
-    """L2 cost."""
+    """L2 cost of a constant mean.
+
+    Parameters
+    ----------
+    param : float or array-like, optional (default=None)
+        Fixed mean for the cost calculation. If None, the optimal mean is calculated.
+    """
 
     def __init__(self, param: Optional[float | ArrayLike] = None):
         super().__init__(param)
 
     def _check_fixed_param(self, param: float | ArrayLike, X: np.ndarray) -> np.ndarray:
+        """Check if the fixed mean parameter is valid.
+
+        Parameters
+        ----------
+        param : float or array-like
+            The input parameter to check.
+        X : np.ndarray
+            Input data.
+
+        Returns
+        -------
+        mean : np.ndarray
+            Fixed mean for the cost calculation.
+        """
         mean = np.asarray(param)
         if len(mean) != 1 and len(mean) != X.shape[1]:
             raise ValueError(
@@ -90,6 +110,17 @@ class L2Cost(BaseCost):
         return mean
 
     def _fit(self, X: ArrayLike, y=None):
+        """Fit the cost interval evaluator.
+
+        This method precomputes quantities that speed up the cost evaluation.
+
+        Parameters
+        ----------
+        X : array-like
+            Input data.
+        y: None
+            Ignored. Included for API consistency by convention.
+        """
         X = as_2d_array(X)
         self._mean = self._check_param(self.param, X)
 
@@ -100,9 +131,37 @@ class L2Cost(BaseCost):
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        """Evaluate the cost for the optimal parameter.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            Costs for each interval.
+        """
         return l2_cost_optim(starts, ends, self.sums_, self.sums2_, self.sample_sizes_)
 
     def _evaluate_fixed_param(self, starts, ends):
+        """Evaluate the cost for the fixed parameter.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            Costs for each interval.
+        """
         return l2_cost_fixed(
             starts, ends, self.sums_, self.sums2_, self.sample_sizes_, self._mean
         )
