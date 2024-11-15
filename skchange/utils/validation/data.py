@@ -50,7 +50,7 @@ def check_data(
     return X
 
 
-def as_np2d_array(X: ArrayLike, vector_as_column=True, dtype=None) -> np.ndarray:
+def as_2d_array(X: ArrayLike, vector_as_column=True, dtype=None) -> np.ndarray:
     """Convert an array-like object to a 2D numpy array.
 
     Parameters
