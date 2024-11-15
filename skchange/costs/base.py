@@ -56,7 +56,7 @@ class BaseCost(BaseIntervalEvaluator):
         Parameters
         ----------
         intervals : np.ndarray
-            A 2D array with two columns of integer location based intervals to evaluate.
+            A 2D array with two columns of integer location-based intervals to evaluate.
             The subsets X[intervals[i, 0]:intervals[i, 1]] for
             i = 0, ..., len(intervals) are evaluated.
 
