@@ -139,7 +139,7 @@ class BaseIntervalEvaluator(BaseEstimator):
         ----------
         intervals : np.ndarray
             A 2D array of integer location based intervals to evaluate.
-            the subsets X[intervals[i, 0]:intervals[i, -1]] for
+            The subsets X[intervals[i, 0]:intervals[i, -1]] for
             i = 0, ..., len(intervals) are evaluated.
 
             If intervals contains additional columns, these represent splitting points
