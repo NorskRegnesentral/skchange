@@ -81,9 +81,7 @@ class L2Cost(BaseCost):
     def __init__(self, param: Optional[float | ArrayLike] = None):
         super().__init__(param)
 
-    def _check_fixed_param(
-        self, param: Optional[float | ArrayLike], X: np.ndarray
-    ) -> np.ndarray:
+    def _check_fixed_param(self, param: float | ArrayLike, X: np.ndarray) -> np.ndarray:
         mean = np.asarray(param)
         if len(mean) != 1 and len(mean) != X.shape[1]:
             raise ValueError(
