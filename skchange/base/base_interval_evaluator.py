@@ -39,6 +39,12 @@ class BaseIntervalEvaluator(BaseEstimator):
         The input data used for fitting.
     """
 
+    _tags = {
+        "object_type": "interval_evaluator",  # type of object
+        "authors": "Tveten",  # author(s) of the object
+        "maintainers": "Tveten",  # current maintainer(s) of the object
+    }  # for unit test cases
+
     def __init__(self):
         self._is_fitted = False
         self._X = None
