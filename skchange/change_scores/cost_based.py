@@ -61,10 +61,9 @@ class ChangeScore(BaseChangeScore):
         scores : np.ndarray
             Change scores for each interval.
         """
-        starts, splits, ends = intervals[:, 0], intervals[:, 1], intervals[:, 2]
-        left_costs = self.cost.evaluate(starts, splits)
-        right_costs = self.cost.evaluate(splits, ends)
-        no_change_costs = self.cost.evaluate(starts, ends)
+        left_costs = self.cost.evaluate(intervals[:, [0, 1]])
+        right_costs = self.cost.evaluate(intervals[:, [1, 2]])
+        no_change_costs = self.cost.evaluate(intervals[:, [0, 2]])
         return no_change_costs - (left_costs + right_costs)
 
     @classmethod

@@ -70,9 +70,8 @@ class Saving(BaseSaving):
         savings : np.ndarray
             Savings for each interval.
         """
-        starts, ends = intervals[:, 0], intervals[:, 1]
-        baseline_costs = self.baseline_cost.evaluate(starts, ends)
-        optimised_costs = self.optimised_cost.evaluate(starts, ends)
+        baseline_costs = self.baseline_cost.evaluate(intervals)
+        optimised_costs = self.optimised_cost.evaluate(intervals)
         return baseline_costs - optimised_costs
 
     @classmethod
