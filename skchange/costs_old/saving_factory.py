@@ -22,7 +22,7 @@ from typing import Callable, Union
 
 from numba.extending import is_jitted
 
-from skchange.costs.mean_saving import init_mean_saving, mean_saving
+from skchange.costs_old.mean_saving import init_mean_saving, mean_saving
 
 VALID_SAVINGS = ["mean"]
 

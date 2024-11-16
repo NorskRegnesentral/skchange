@@ -20,8 +20,8 @@ from typing import Callable, Union
 
 from numba.extending import is_jitted
 
-from skchange.costs.mean_cost import init_mean_cost, mean_cost
-from skchange.costs.mean_cov_cost import init_mean_cov_cost, mean_cov_cost
+from skchange.costs_old.mean_cost import init_mean_cost, mean_cost
+from skchange.costs_old.mean_cov_cost import init_mean_cov_cost, mean_cov_cost
 
 VALID_COSTS = ["mean", "mean_cov"]
 
