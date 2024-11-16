@@ -23,6 +23,7 @@ from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
 
 from skchange.utils.validation.data import as_2d_array
+from skchange.utils.validation.intervals import check_array_intervals
 
 
 class BaseIntervalEvaluator(BaseEstimator):
@@ -44,6 +45,11 @@ class BaseIntervalEvaluator(BaseEstimator):
         "authors": "Tveten",  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
     }  # for unit test cases
+
+    # Number of expected entries in the intervals array of `evaluate`. Default is 2, but
+    # can be overridden in subclasses if splitting points are relevant, like for change
+    # scores.
+    expected_interval_entries = 2
 
     def __init__(self):
         self._is_fitted = False
@@ -164,6 +170,14 @@ class BaseIntervalEvaluator(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
+    @property
+    def min_size(self) -> int:
+        """Minimum size of the interval to evaluate.
+
+        The size of each interval is defined as intervals[i, -1] - intervals[i, 0].
+        """
+        return 1
+
     def _check_intervals(self, intervals: np.ndarray) -> np.ndarray:
         """Check intervals for compatibility.
 
@@ -190,4 +204,8 @@ class BaseIntervalEvaluator(BaseEstimator):
         ValueError
             If the intervals are not compatible.
         """
-        return intervals
+        return check_array_intervals(
+            intervals,
+            min_size=self.min_size,
+            last_dim_size=self.expected_interval_entries,
+        )
