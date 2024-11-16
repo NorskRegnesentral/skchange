@@ -1,5 +1,6 @@
 """L2 cost."""
 
+import numbers
 from typing import Optional
 
 import numpy as np
@@ -102,7 +103,11 @@ class L2Cost(BaseCost):
         mean : np.ndarray
             Fixed mean for the cost calculation.
         """
-        mean = np.asarray(param)
+        mean = (
+            np.array([param])
+            if isinstance(param, numbers.Number)
+            else np.asarray(param)
+        )
         if len(mean) != 1 and len(mean) != X.shape[1]:
             raise ValueError(
                 f"param must have length 1 or X.shape[1], got {len(mean)}."
@@ -165,3 +170,28 @@ class L2Cost(BaseCost):
         return l2_cost_fixed(
             starts, ends, self.sums_, self.sums2_, self.sample_sizes_, self._mean
         )
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for interval evaluators.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"param": None},
+            {"param": 0.0},
+        ]
+        return params
