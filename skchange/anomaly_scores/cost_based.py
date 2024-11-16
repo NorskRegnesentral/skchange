@@ -28,7 +28,7 @@ class Saving(BaseSaving):
             raise ValueError("The baseline cost must have a fixed parameter.")
 
         self.baseline_cost = baseline_cost
-        self.optimised_cost = baseline_cost.clone().set_params({"param": None})
+        self.optimised_cost = baseline_cost.clone().set_params(param=None)
         super().__init__()
 
     @property
@@ -74,3 +74,30 @@ class Saving(BaseSaving):
         baseline_costs = self.baseline_cost.evaluate(starts, ends)
         optimised_costs = self.optimised_cost.evaluate(starts, ends)
         return baseline_costs - optimised_costs
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for interval evaluators.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        from skchange.costs.l2_cost import L2Cost
+
+        params = [
+            {"baseline_cost": L2Cost(param=0.0)},
+            {"baseline_cost": L2Cost(param=np.array([1.0]))},
+        ]
+        return params
