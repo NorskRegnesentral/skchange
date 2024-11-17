@@ -1,6 +1,6 @@
 """The pruned exact linear time (PELT) algorithm."""
 
-__author__ = ["Tveten"]
+__author__ = ["Tveten", "johannvk"]
 __all__ = ["Pelt"]
 
 
