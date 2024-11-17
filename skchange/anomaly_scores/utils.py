@@ -27,6 +27,6 @@ def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
     else:
         raise ValueError(
             f"evaluator must be an instance of BaseSaving or BaseCost. "
-            f"Got {type(saving)}."
+            f"Got {type(evaluator)}."
         )
     return saving

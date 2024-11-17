@@ -27,6 +27,6 @@ def to_change_score(evaluator: Union[BaseCost, BaseChangeScore]) -> BaseChangeSc
     else:
         raise ValueError(
             f"evaluator must be an instance of BaseChangeScore or BaseCost. "
-            f"Got {type(change_score)}."
+            f"Got {type(evaluator)}."
         )
     return change_score
