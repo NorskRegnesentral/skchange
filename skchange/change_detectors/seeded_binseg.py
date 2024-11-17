@@ -3,14 +3,16 @@
 __author__ = ["Tveten"]
 __all__ = ["SeededBinarySegmentation"]
 
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
 
 from skchange.change_detectors.base import ChangeDetector
-from skchange.scores.score_factory import score_factory
+from skchange.change_scores import BaseChangeScore
+from skchange.change_scores.utils import to_change_score
+from skchange.costs.base import BaseCost
+from skchange.utils.numba.njit import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
@@ -58,11 +60,9 @@ def greedy_changepoint_selection(
     return cpts
 
 
-@njit
 def run_seeded_binseg(
     X: np.ndarray,
-    score_func: Callable,
-    score_init_func: Callable,
+    change_score: BaseChangeScore,
     threshold: float,
     min_segment_length: int,
     max_interval_length: int,
@@ -74,16 +74,17 @@ def run_seeded_binseg(
         max_interval_length,
         growth_factor,
     )
-    params = score_init_func(X)
+    change_score.fit(X)
 
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
         splits_lower = start + min_segment_length - 1
         splits = np.arange(splits_lower, end - min_segment_length + 1)
-        scores = score_func(
-            params, np.repeat(start, splits.size), np.repeat(end, splits.size), splits
+        intervals = np.column_stack(
+            (np.repeat(start, splits.size), splits + 1, np.repeat(end + 1, splits.size))
         )
+        scores = change_score.evaluate(intervals)
         argmax = np.argmax(scores)
         amoc_scores[i] = scores[argmax]
         maximizers[i] = splits_lower + argmax
@@ -108,34 +109,9 @@ class SeededBinarySegmentation(ChangeDetector):
 
     Parameters
     ----------
-    score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
-        Test statistic to use for changepoint detection.
-
-        * `"mean"`: The CUSUM statistic for a change in mean (this is equivalent to a
-          likelihood ratio test for a change in the mean of Gaussian data). For
-          multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * `"mean_var"`: The likelihood ratio test for a change in the mean and/or
-          variance of Gaussian data. For multivariate data, the sum of the likelihood
-          ratio statistics for each dimension is used.
-        * `"mean_cov"`: The likelihood ratio test for a change in the mean and/or
-          covariance matrix of multivariate Gaussian data.
-        * If a tuple, it must contain two numba jitted functions:
-
-            1. The first function is the scoring function, which takes four arguments:
-
-                1. `precomputed_params`: The output of the second function.
-                2. `starts`: Start indices of the intervals to score for a change.
-                3. `ends`: End indices of the intervals to score for a change.
-                4. `splits`: Split indices of the intervals to score for a change.
-
-               For each start, split and end, the score should be calculated for the
-               data intervals `[start:split]` and `[split+1:end]`, meaning that both
-               the starts and ends are inclusive, while split is included in the left
-               interval.
-
-            2. The second function is the initializer, which takes the data matrix as
-               input and returns precomputed quantities that may speed up the score
-               calculations. If not relevant, just return the data matrix.
+    change_score : BaseChangeScore or BaseCost
+        The change score to use in the algorithm. If a cost function is given, it is
+        converted to a change score using the `ChangeScore` class.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
         `threshold_scale * 2 * p * np.sqrt(np.log(n))`, where `n` is the sample size
@@ -187,21 +163,21 @@ class SeededBinarySegmentation(ChangeDetector):
 
     def __init__(
         self,
-        score: Union[str, tuple[Callable, Callable]] = "mean",
+        change_score: Union[BaseChangeScore, BaseCost],
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
     ):
-        self.score = score
+        self.change_score = change_score
+        self._change_score = to_change_score(change_score)
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         super().__init__()
-        self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
@@ -234,8 +210,7 @@ class SeededBinarySegmentation(ChangeDetector):
         """
         _, scores, _, _, _ = run_seeded_binseg(
             X.values,
-            self.score_f,
-            self.score_init_f,
+            self._change_score,
             np.inf,
             self.min_segment_length,
             self.max_interval_length,
@@ -319,8 +294,7 @@ class SeededBinarySegmentation(ChangeDetector):
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
             X.values,
-            self.score_f,
-            self.score_init_f,
+            self._change_score,
             self.threshold_,
             self.min_segment_length,
             self.max_interval_length,
@@ -350,8 +324,18 @@ class SeededBinarySegmentation(ChangeDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"score": "mean", "min_segment_length": 5, "max_interval_length": 100},
-            {"score": "mean", "min_segment_length": 1, "max_interval_length": 20},
+            {
+                "change_score": L2Cost(),
+                "min_segment_length": 5,
+                "max_interval_length": 100,
+            },
+            {
+                "change_score": L2Cost(),
+                "min_segment_length": 1,
+                "max_interval_length": 20,
+            },
         ]
         return params
