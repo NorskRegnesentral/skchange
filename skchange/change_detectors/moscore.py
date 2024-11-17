@@ -3,15 +3,17 @@
 __author__ = ["Tveten"]
 __all__ = ["Moscore"]
 
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
 
-from skchange.change_detectors.base import ChangeDetector
-from skchange.scores.score_factory import score_factory
+from skchange.change_detectors import ChangeDetector
+from skchange.change_scores import BaseChangeScore
+from skchange.change_scores.utils import to_change_score
+from skchange.costs.base import BaseCost
 from skchange.utils.numba.general import where
+from skchange.utils.numba.njit import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
@@ -31,20 +33,19 @@ def get_moscore_changepoints(
     return changepoints
 
 
-@njit
 def moscore_transform(
     X: np.ndarray,
-    score_f: Callable,
-    score_init_f: Callable,
+    change_score: BaseChangeScore,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
     n = len(X)
     splits = np.arange(bandwidth - 1, n - bandwidth)
     starts = splits - bandwidth + 1
     ends = splits + bandwidth
-    params = score_init_f(X)
+    intervals = np.column_stack((starts, splits + 1, ends + 1))
+    change_score.fit(X)
     scores = np.zeros(n)
-    scores[splits] = score_f(params, starts, ends, splits)
+    scores[splits] = change_score.evaluate(intervals)
     return scores
 
 
@@ -58,34 +59,9 @@ class Moscore(ChangeDetector):
 
     Parameters
     ----------
-    score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
-        Test statistic to use for changepoint detection.
-
-        * `"mean"`: The CUSUM statistic for a change in mean (this is equivalent to a
-          likelihood ratio test for a change in the mean of Gaussian data). For
-          multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * `"mean_var"`: The likelihood ratio test for a change in the mean and/or
-          variance of Gaussian data. For multivariate data, the sum of the likelihood
-          ratio statistics for each dimension is used.
-        * `"mean_cov"`: The likelihood ratio test for a change in the mean and/or
-          covariance matrix of multivariate Gaussian data.
-        * If a tuple, it must contain two numba jitted functions:
-
-            1. The first function is the scoring function, which takes four arguments:
-
-                1. `precomputed_params`: The output of the second function.
-                2. `starts`: Start indices of the intervals to score for a change.
-                3. `ends`: End indices of the intervals to score for a change.
-                4. `splits`: Split indices of the intervals to score for a change.
-
-               For each start, split and end, the score should be calculated for the
-               data intervals `[start:split]` and `[split+1:end]`, meaning that both
-               the starts and ends are inclusive, while split is included in the left
-               interval.
-
-            2. The second function is the initializer, which takes the data matrix as
-               input and returns precomputed quantities that may speed up the score
-               calculations. If not relevant, just return the data matrix.
+    change_score : BaseChangeScore or BaseCost
+        The change score to use in the algorithm. If a cost function is given, it is
+        converted to a change score using the `ChangeScore` class.
     bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
@@ -133,19 +109,19 @@ class Moscore(ChangeDetector):
 
     def __init__(
         self,
-        score: Union[str, tuple[Callable, Callable]] = "mean",
+        change_score: Union[BaseChangeScore, BaseCost],
         bandwidth: int = 30,
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,
         min_detection_interval: int = 1,
     ):
-        self.score = score
+        self.change_score = change_score
+        self._change_score = to_change_score(change_score)
         self.bandwidth = bandwidth
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_detection_interval = min_detection_interval
         super().__init__()
-        self.score_f, self.score_init_f = score_factory(self.score)
 
         check_larger_than(1, self.bandwidth, "bandwidth")
         check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
@@ -174,8 +150,7 @@ class Moscore(ChangeDetector):
         """
         scores = moscore_transform(
             X.values,
-            self.score_f,
-            self.score_init_f,
+            self._change_score,
             self.bandwidth,
         )
         tuned_threshold = np.quantile(scores, 1 - self.level)
@@ -285,8 +260,7 @@ class Moscore(ChangeDetector):
         )
         scores = moscore_transform(
             X.values,
-            self.score_f,
-            self.score_init_f,
+            self._change_score,
             self.bandwidth,
         )
         return pd.Series(scores, index=X.index, name="score")
@@ -328,8 +302,10 @@ class Moscore(ChangeDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"score": "mean", "bandwidth": 5},
-            {"score": "mean_var", "bandwidth": 5},
+            {"change_score": L2Cost(), "bandwidth": 5},
+            {"change_score": L2Cost(), "bandwidth": 5},
         ]
         return params
