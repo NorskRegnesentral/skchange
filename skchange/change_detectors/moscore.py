@@ -11,7 +11,7 @@ import pandas as pd
 from skchange.change_detectors import ChangeDetector
 from skchange.change_scores import BaseChangeScore
 from skchange.change_scores.utils import to_change_score
-from skchange.costs.base import BaseCost
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba.general import where
 from skchange.utils.numba.njit import njit
 from skchange.utils.validation.data import check_data
@@ -59,7 +59,7 @@ class Moscore(ChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost
+    change_score : BaseChangeScore or BaseCost, optional (default=`L2Cost`)
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
     bandwidth : int, default=30
@@ -109,7 +109,7 @@ class Moscore(ChangeDetector):
 
     def __init__(
         self,
-        change_score: Union[BaseChangeScore, BaseCost],
+        change_score: Union[BaseChangeScore, BaseCost] = L2Cost(),
         bandwidth: int = 30,
         threshold_scale: Optional[float] = 2.0,
         level: float = 0.01,

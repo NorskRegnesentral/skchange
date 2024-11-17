@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from skchange.change_detectors.base import ChangeDetector
-from skchange.costs import BaseCost
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba.njit import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -123,8 +123,8 @@ class Pelt(ChangeDetector):
 
     Parameters
     ----------
-    cost : BaseCost
-        The cost to use for changepoint detection.
+    cost : BaseCost, optional (default=`L2Cost`)
+        The cost function to use for the changepoint detection.
     penalty_scale : float, optional (default=2.0)
         Scaling factor for the penalty. The penalty is set to
         `penalty_scale * 2 * p * np.log(n)`, where `n` is the sample size
@@ -158,7 +158,7 @@ class Pelt(ChangeDetector):
 
     def __init__(
         self,
-        cost: BaseCost,
+        cost: BaseCost = L2Cost(),
         penalty_scale: Optional[float] = 2.0,
         min_segment_length: int = 2,
     ):
