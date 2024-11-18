@@ -3,9 +3,9 @@
 __author__ = ["johannvk"]
 
 import numpy as np
-from numba import njit
 
 from skchange.scores.mean_cov_score import _mean_cov_log_det_term
+from skchange.utils.numba import njit
 
 
 @njit(cache=True)

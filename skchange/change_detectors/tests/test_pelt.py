@@ -4,7 +4,6 @@ from typing import Callable
 
 import numpy as np
 import pytest
-from numba import njit
 
 from skchange.change_detectors.pelt import (
     get_changepoints,
@@ -12,6 +11,7 @@ from skchange.change_detectors.pelt import (
 )
 from skchange.costs.cost_factory import cost_factory
 from skchange.datasets.generate import generate_alternating_data
+from skchange.utils.numba import njit
 
 n_segments = 2
 seg_len = 50
