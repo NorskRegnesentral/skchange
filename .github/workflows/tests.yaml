@@ -47,7 +47,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  pytests:
+  pytests-no-numba:
     name: pytests-no-numba
     runs-on: ubuntu-latest
     steps:
