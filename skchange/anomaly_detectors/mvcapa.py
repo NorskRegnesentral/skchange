@@ -11,7 +11,7 @@ from scipy.stats import chi2
 
 from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
 from skchange.costs.saving_factory import saving_factory
-from skchange.utils.numba.njit import njit
+from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skchange.utils.numba.njit import njit
+from skchange.utils.numba import njit
 
 
 @njit(cache=True)

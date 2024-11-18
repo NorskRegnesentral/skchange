@@ -11,7 +11,7 @@ import pandas as pd
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.anomaly_detectors.mvcapa import dense_capa_penalty, run_base_capa
 from skchange.costs.saving_factory import saving_factory
-from skchange.utils.numba.njit import njit
+from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 

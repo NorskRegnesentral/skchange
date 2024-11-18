@@ -11,7 +11,7 @@ import pandas as pd
 
 from skchange.change_detectors.base import ChangeDetector
 from skchange.costs.cost_factory import cost_factory
-from skchange.utils.numba.njit import njit
+from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 

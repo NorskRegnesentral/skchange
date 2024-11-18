@@ -78,11 +78,8 @@ def read_boolean_env_var(name, default_value):
         )
 
 
-def configure_jit(jit_default_kwargs=None):
+def configure_jit(jit_default_kwargs):
     """Decorate jit with default kwargs from environment variables."""
-    if jit_default_kwargs is None:
-        jit_default_kwargs = {}
-
     def decorator(_):
         if _check_soft_dependencies("numba", severity="none"):
             from numba import jit as numba_jit
@@ -120,11 +117,8 @@ def configure_jit(jit_default_kwargs=None):
     return decorator
 
 
-def configure_njit(njit_default_kwargs=None):
+def configure_njit(njit_default_kwargs):
     """Configure njit with default kwargs from environment variables."""
-    if njit_default_kwargs is None:
-        njit_default_kwargs = {}
-
     def decorator(_):
         if _check_soft_dependencies("numba", severity="none"):
             from numba import njit as numba_njit

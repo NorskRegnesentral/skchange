@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skchange.utils.numba.njit import njit, prange
+from skchange.utils.numba import njit, prange
 
 
 @njit(cache=True)
