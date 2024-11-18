@@ -36,6 +36,8 @@ def test_custom_score():
     def score_f(params: np.ndarray, start: int, end: int, split: int) -> float:
         return 10.0
 
+    assert init_score_f(np.zeros(1)) == np.zeros(1)
+    assert score_f(np.zeros(1), 0, 1, 0) == 10.0
     assert (score_f, init_score_f) == score_factory((score_f, init_score_f))
 
 

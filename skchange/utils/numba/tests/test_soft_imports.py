@@ -4,6 +4,8 @@ from contextlib import contextmanager
 
 import pytest
 
+from skchange.utils.numba import jit, njit, prange
+
 
 def remove_modules_with_prefix(prefix):
     to_remove = [mod for mod in sys.modules if mod.startswith(prefix)]
@@ -53,3 +55,42 @@ def test_setting_falsy_env_variable_does_not_raise():
         import skchange.utils.numba  # noqa: F401, I001
 
     assert True
+
+
+def test_njit_function():
+    with temp_env_and_modules(
+        remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
+    ):
+
+        @njit
+        def add(a, b):
+            return a + b
+
+        assert add(1, 2) == 3
+
+
+def test_jit_function():
+    with temp_env_and_modules(
+        remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
+    ):
+
+        @jit
+        def multiply(a, b):
+            return a * b
+
+        assert multiply(2, 3) == 6
+
+
+def test_prange_function():
+    with temp_env_and_modules(
+        remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
+    ):
+
+        @njit(parallel=True)
+        def sum_prange(n):
+            total = 0
+            for i in prange(n):
+                total += i
+            return total
+
+        assert sum_prange(10) == sum(range(10))

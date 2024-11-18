@@ -56,7 +56,7 @@ def define_prange(_):
 @define_prange
 def prange(*args, **kwargs):
     """Dispatch prange based on numba dependency."""
-    pass
+    ...
 
 
 def read_boolean_env_var(name, default_value):
@@ -166,7 +166,7 @@ def configure_njit(njit_default_kwargs):
 )
 def jit():
     """Dispatch jit decorator based on environment variables."""
-    pass
+    ...
 
 
 @configure_njit(
@@ -178,4 +178,4 @@ def jit():
 )
 def njit():
     """Dispatch njit decorator based on environment variables."""
-    pass
+    ...
