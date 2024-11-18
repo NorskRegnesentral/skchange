@@ -48,7 +48,7 @@ jobs:
       #     echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
       - name: Run pytest - with Numba installed
         run: |
-          pytest --cov --cov-config=.codecov.yml --cov-report=xml --cov-append
+          pytest --cov --cov-report=xml --cov-append
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         env:
