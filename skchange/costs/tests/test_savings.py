@@ -31,3 +31,9 @@ def test_custom_savings():
     assert init_savings_f(np.zeros(1)) == np.zeros(1)
     assert savings_f(np.zeros(1), 0, 1, 0) == 10.0
     assert (savings_f, init_savings_f) == saving_factory((savings_f, init_savings_f))
+
+
+def test_savings_factory_raises_on_invalid_savings():
+    """Test that savings_factory raises an error on invalid savings."""
+    with pytest.raises(ValueError):
+        saving_factory("invalid_savings")

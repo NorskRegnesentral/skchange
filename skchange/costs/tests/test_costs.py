@@ -32,3 +32,9 @@ def test_custom_cost():
     assert init_cost_f(np.zeros(1)) == np.zeros(1)
     assert cost_f(np.zeros(1), 0, 1, 0) == 10.0
     assert (cost_f, init_cost_f) == cost_factory((cost_f, init_cost_f))
+
+
+def test_cost_factory_raises_on_invalid_cost():
+    """Test that cost_factory raises an error on invalid cost."""
+    with pytest.raises(ValueError):
+        cost_factory("invalid_cost")
