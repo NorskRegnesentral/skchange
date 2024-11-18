@@ -41,10 +41,11 @@ jobs:
           echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
       - name: Test with pytest
         run: |
-          pytest --cov=skchange --cov-report=xml --cov-append
+          pytest --cov=skchange --cov-report=xml
 
   pytests-no-numba:
     name: Run pytests without numba
+    needs: pytests-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,10 +61,6 @@ jobs:
       - name: Test with pytest
         run: |
           pytest --cov=skchange --cov-report=xml --cov-append
-      # - name: Upload coverage reports to Codecov
-      #   uses: codecov/codecov-action@v3
-      #   env:
-      #     CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   upload-code-cov:
     name: Upload-coverage-reports-to-Codecov
