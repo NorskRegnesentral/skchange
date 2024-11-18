@@ -23,7 +23,7 @@ jobs:
         shell: bash
 
   pytests:
-    # name: pytests-with-numba
+    name: pytests-with-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[dev,numba]
           python -m pip install pytest
-      - name: Disable numba JIT
         run: |
           echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
       - name: Test with pytest
@@ -48,7 +47,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   pytests-no-numba:
-    # name: pytests-no-numba
+    name: pytests-no-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +60,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[dev]
           python -m pip install pytest
-      - name: Disable numba JIT
       - name: Test with pytest
         run: |
           pytest --cov --cov-report=xml
