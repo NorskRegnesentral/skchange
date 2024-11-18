@@ -22,7 +22,8 @@ jobs:
         run: build_tools/fail_on_missing_init_files.sh
         shell: bash
 
-  pytests-numba:
+  pytests:
+    name: pytests-with-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,8 +47,8 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-
-  pytests-no-numba:
+  pytests:
+    name: pytests-no-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
