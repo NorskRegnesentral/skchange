@@ -66,7 +66,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   upload-code-cov:
-    needs: [pytests-numba, pytests-no-numba]
+    - needs: [pytests-numba, pytests-no-numba]
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
