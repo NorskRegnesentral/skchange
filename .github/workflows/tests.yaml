@@ -23,7 +23,7 @@ jobs:
         shell: bash
 
   pytests:
-    name: pytests-with-numba
+    # name: pytests-with-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   pytests-no-numba:
-    name: pytests-no-numba
+    # name: pytests-no-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
