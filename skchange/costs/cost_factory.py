@@ -19,8 +19,9 @@ __author__ = ["Tveten"]
 from typing import Callable, Union
 
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
+from skchange.costs.mean_cov_cost import init_mean_cov_cost, mean_cov_cost
 
-VALID_COSTS = ["mean"]
+VALID_COSTS = ["mean", "mean_cov"]
 
 
 def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
@@ -32,6 +33,7 @@ def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
         Name of cost function to use for changepoint detection.
 
         * `"mean"`: The Gaussian mean likelihood cost is used.
+        * `"mean_cov"`: The Gaussian mean and covariance likelihood cost is used.
         * If a tuple, it must contain two numba jitted functions:
 
             1. The first function is the cost function, which takes three arguments:
@@ -63,6 +65,8 @@ def cost_factory(cost: Union[str, tuple[Callable, Callable]]):
     """
     if cost == "mean":
         return mean_cost, init_mean_cost
+    elif cost == "mean_cov":
+        return mean_cov_cost, init_mean_cov_cost
     elif len(cost) == 2:
         return cost[0], cost[1]
     else:

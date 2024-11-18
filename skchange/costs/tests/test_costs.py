@@ -6,7 +6,7 @@ from skchange.datasets.generate import generate_alternating_data
 
 
 @pytest.mark.parametrize("cost", VALID_COSTS)
-def test_costs(cost):
+def test_costs(cost: str):
     """Test all available costs."""
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)

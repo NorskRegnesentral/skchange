@@ -5,6 +5,7 @@ from skchange.costs.cost_factory import (
     cost_factory,
 )
 from skchange.costs.mean_cost import init_mean_cost, mean_cost
+from skchange.costs.mean_cov_cost import init_mean_cov_cost, mean_cov_cost
 from skchange.costs.mean_saving import init_mean_saving, mean_saving
 from skchange.costs.saving_factory import (
     VALID_SAVINGS,
@@ -16,6 +17,8 @@ __all__ = [
     mean_cost,
     init_mean_saving,
     mean_saving,
+    init_mean_cov_cost,
+    mean_cov_cost,
     cost_factory,
     saving_factory,
     VALID_COSTS,

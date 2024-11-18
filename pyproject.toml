@@ -62,6 +62,8 @@ dev = [
     "pytest",
     "pytest-cov",
     "ipykernel",
+    "plotly",
+    "nbformat>=4.2.0",
 ]
 
 docs = [
