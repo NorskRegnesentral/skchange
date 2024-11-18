@@ -22,8 +22,8 @@ jobs:
         run: build_tools/fail_on_missing_init_files.sh
         shell: bash
 
-  pytests:
-    name: pytests-with-numba
+  pytests-numba:
+    name: pytests-numba
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .[dev,numba]
           python -m pip install pytest
+      - name: Disable numba JIT
         run: |
           echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
       - name: Test with pytest
@@ -45,6 +46,7 @@ jobs:
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
 
   pytests-no-numba:
     name: pytests-no-numba
