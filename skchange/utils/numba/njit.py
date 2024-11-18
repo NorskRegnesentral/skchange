@@ -1,6 +1,40 @@
 """Dispatch njit decorator used to isolate numba.
 
-Copied from sktime.utils.numba.njit
+We wrap the import of `@jit` and `@njit` from `numba` through a check
+that sees if `numba` is installed. If not, we provide identity
+decorators instead, which return the unjitted functions.
+
+To configure the default arguments to the `@jit` and `@njit` decorators,
+we read specific environment variables. If the environment variables are
+not set, we use predefined default values.
+
+The default values are:
+- `cache=True`
+- `fastmath=False`
+- `parallel=False`
+
+They are configured by the corresponding environment variables:
+- `NUMBA_CACHE`
+- `NUMBA_FASTMATH`
+- `NUMBA_PARALLEL`
+
+To enable or disable these features, set the environment variables to
+`truthy` or `falsy` values.
+
+The `truthy` values are:
+- `["", "1", "true", "True", "TRUE"]`
+
+The `falsy` values are:
+- `["0", "false", "False", "FALSE"]`
+
+If you're running `skchange` from VS Code, you can set these environment
+variables in the `.env` file in the root of the project directory.
+
+Additionally, we provide a `prange` function that dispatches to `numba.prange`.
+If `numba` is not installed, it dispatches to the regular Python `range`.
+
+The functionality to check for whether or not `numba` is installed
+is copied from `sktime.utils.numba.njit`.
 """
 
 from functools import wraps
@@ -98,6 +132,8 @@ def configure_njit(njit_default_kwargs=None):
             @wraps(numba_njit)
             def njit(maybe_func=None, **kwargs):
                 """Dispatch njit decorator based on environment variables."""
+                # This syntax overwrites the default kwargs
+                # with the provided kwargs if they overlap.
                 kwargs = {**njit_default_kwargs, **kwargs}
                 print(kwargs)
                 return numba_njit(maybe_func, **kwargs)
@@ -129,7 +165,7 @@ def configure_njit(njit_default_kwargs=None):
 
 @configure_jit(
     jit_default_kwargs={
-        "cache": read_boolean_env_var("NUMBA_CACHE", default_value=False),
+        "cache": read_boolean_env_var("NUMBA_CACHE", default_value=True),
         "fastmath": read_boolean_env_var("NUMBA_FASTMATH", default_value=False),
         "parallel": read_boolean_env_var("NUMBA_PARALLEL", default_value=False),
     },
