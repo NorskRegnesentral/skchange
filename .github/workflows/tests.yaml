@@ -42,9 +42,9 @@ jobs:
       - name: Install Skchange + Numba
         run: |
           python -m pip install .[dev,numba]
-      - name: Disable numba JIT
-        run: |
-          echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
+      # - name: Disable numba JIT
+      #   run: |
+      #     echo "NUMBA_DISABLE_JIT=1" >> $GITHUB_ENV
       - name: Run pytest - with Numba installed
         run: |
           pytest --cov --cov-report=xml --cov-append
