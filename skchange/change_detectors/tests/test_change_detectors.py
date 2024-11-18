@@ -1,8 +1,9 @@
 """Basic tests for all change detectors."""
 
+import pandas as pd
 import pytest
 
-from skchange.change_detectors import CHANGE_DETECTORS
+from skchange.change_detectors import CHANGE_DETECTORS, ChangeDetector
 from skchange.datasets.generate import generate_alternating_data
 
 n_segments = 2
@@ -21,10 +22,11 @@ def test_change_detector_predict(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
-def test_change_detector_transform(Estimator):
+def test_change_detector_transform(Estimator: ChangeDetector):
     """Test changepoint detector transform (dense output)."""
     detector = Estimator.create_test_instance()
-    labels = detector.fit_transform(changepoint_data)
+    labels: pd.Series = detector.fit_transform(changepoint_data)
+
     assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
 
