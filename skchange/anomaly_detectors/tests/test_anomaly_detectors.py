@@ -3,8 +3,11 @@
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors import ANOMALY_DETECTORS, COLLECTIVE_ANOMALY_DETECTORS
-from skchange.anomaly_detectors import MoscoreAnomaly
+from skchange.anomaly_detectors import (
+    ANOMALY_DETECTORS,
+    COLLECTIVE_ANOMALY_DETECTORS,
+    MoscoreAnomaly,
+)
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
 from skchange.scores.mean_score import init_mean_score, mean_anomaly_score

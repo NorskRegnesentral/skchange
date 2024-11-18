@@ -21,6 +21,7 @@ def test_savings(savings):
 
 def test_custom_savings():
     """Test custom savings."""
+
     def init_savings_f(X: np.ndarray) -> np.ndarray:
         return X
 

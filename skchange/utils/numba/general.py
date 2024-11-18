@@ -1,4 +1,4 @@
-"""Numba-optimized functions for various common data manipulation tasks.""" ""
+"""Numba-optimized functions for various common data manipulation tasks."""
 
 import numpy as np
 
