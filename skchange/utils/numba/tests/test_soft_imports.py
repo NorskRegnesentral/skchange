@@ -81,6 +81,22 @@ def test_jit_function():
         assert multiply(2, 3) == 6
 
 
+def test_jit_function_with_args():
+    @jit(cache=True)
+    def multiply(a, b):
+        return a * b
+
+    assert multiply(2, 3) == 6
+
+
+def test_njit_function_with_args():
+    @njit(cache=True)
+    def add(a, b):
+        return a + b
+
+    assert add(1, 2) == 3
+
+
 def test_prange_function():
     with temp_env_and_modules(
         remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
