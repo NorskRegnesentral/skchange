@@ -21,7 +21,7 @@ def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
         The saving based on the cost function.
     """
     if isinstance(evaluator, BaseCost):
-        saving = Saving(cost=evaluator)
+        saving = Saving(evaluator)
     elif isinstance(evaluator, BaseSaving):
         saving = evaluator
     else:
