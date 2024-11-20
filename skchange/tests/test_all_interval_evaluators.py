@@ -34,5 +34,5 @@ def test_evaluator_evaluate(Evaluator):
     intervals = np.array([interval1, interval2])
     results = evaluator.evaluate(intervals)
     assert isinstance(results, np.ndarray)
-    assert results.ndim == 1
+    assert results.ndim == 2
     assert len(results) == len(intervals)

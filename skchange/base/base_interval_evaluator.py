@@ -127,7 +127,7 @@ class BaseIntervalEvaluator(BaseEstimator):
         Returns
         -------
         values : np.ndarray
-            One value for each interval.
+            A 2D array of values. One row for each interval.
 
         Notes
         -----
@@ -166,7 +166,7 @@ class BaseIntervalEvaluator(BaseEstimator):
         Returns
         -------
         values : np.ndarray
-            One value for each interval.
+            A 2D array of values. One row for each interval.
         """
         raise NotImplementedError("abstract method")
 
