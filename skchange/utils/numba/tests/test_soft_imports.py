@@ -4,8 +4,6 @@ from contextlib import contextmanager
 
 import pytest
 
-from skchange.utils.numba import jit, njit, prange
-
 
 def remove_modules_with_prefix(prefix):
     to_remove = [mod for mod in sys.modules if mod.startswith(prefix)]
@@ -14,12 +12,13 @@ def remove_modules_with_prefix(prefix):
 
 
 @contextmanager
-def temp_env_and_modules(remove_module_prefix: str, env_vars: dict):
+def temp_env_and_modules(remove_module_prefix: str, env_vars: dict = None):
     original_modules = sys.modules.copy()
     original_environ = os.environ.copy()
+
     remove_modules_with_prefix(remove_module_prefix)
-    os.environ.clear()
-    os.environ.update(env_vars)
+    if env_vars is not None:
+        os.environ.update(env_vars)
     try:
         yield
     finally:
@@ -58,30 +57,28 @@ def test_setting_falsy_env_variable_does_not_raise():
 
 
 def test_njit_function():
-    with temp_env_and_modules(
-        remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
-    ):
+    from skchange.utils.numba import njit
 
-        @njit
-        def add(a, b):
-            return a + b
+    @njit
+    def add(a, b):
+        return a + b
 
-        assert add(1, 2) == 3
+    assert add(1, 2) == 3
 
 
 def test_jit_function():
-    with temp_env_and_modules(
-        remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
-    ):
+    from skchange.utils.numba import jit
 
-        @jit
-        def multiply(a, b):
-            return a * b
+    @jit
+    def multiply(a, b):
+        return a * b
 
-        assert multiply(2, 3) == 6
+    assert multiply(2, 3) == 6
 
 
 def test_jit_function_with_args():
+    from skchange.utils.numba import jit
+
     @jit(cache=True)
     def multiply(a, b):
         return a * b
@@ -90,6 +87,8 @@ def test_jit_function_with_args():
 
 
 def test_njit_function_with_args():
+    from skchange.utils.numba import njit
+
     @njit(cache=True)
     def add(a, b):
         return a + b
@@ -98,15 +97,13 @@ def test_njit_function_with_args():
 
 
 def test_prange_function():
-    with temp_env_and_modules(
-        remove_module_prefix="skchange", env_vars={"NUMBA_DISABLE_JIT": "1"}
-    ):
+    from skchange.utils.numba import njit, prange
 
-        @njit(parallel=True)
-        def sum_prange(n):
-            total = 0
-            for i in prange(n):
-                total += i
-            return total
+    @njit(parallel=True)
+    def sum_prange(n):
+        total = 0
+        for i in prange(n):
+            total += i
+        return total
 
-        assert sum_prange(10) == sum(range(10))
+    assert sum_prange(10) == sum(range(10))
