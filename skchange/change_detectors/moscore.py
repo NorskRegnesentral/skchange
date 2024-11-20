@@ -7,10 +7,10 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
 
 from skchange.change_detectors.base import ChangeDetector
 from skchange.scores.score_factory import score_factory
+from skchange.utils.numba import njit
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than

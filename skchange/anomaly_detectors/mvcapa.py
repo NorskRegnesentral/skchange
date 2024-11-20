@@ -7,11 +7,11 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
 from scipy.stats import chi2
 
 from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
 from skchange.costs.saving_factory import saving_factory
+from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 

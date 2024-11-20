@@ -4,7 +4,11 @@ import numpy as np
 import pytest
 
 from skchange.datasets.generate import generate_alternating_data
-from skchange.scores.score_factory import VALID_CHANGE_SCORES, score_factory
+from skchange.scores.score_factory import (
+    VALID_CHANGE_SCORES,
+    anomaly_score_factory,
+    score_factory,
+)
 
 
 @pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
@@ -27,17 +31,18 @@ def test_scores(score):
 
 def test_custom_score():
     """Test custom score."""
-    with pytest.raises(ValueError):
-        # Need to be jitted to work.
-        # Cannot test jitted function because numba is turned of in CI testing.
+    # No longer need to be jitted to work.
+    # Cannot test jitted function because numba is turned of in CI testing.
 
-        def init_score_f(X: np.ndarray) -> np.ndarray:
-            return X
+    def init_score_f(X: np.ndarray) -> np.ndarray:
+        return X
 
-        def score_f(params: np.ndarray, start: int, end: int, split: int) -> float:
-            return 10.0
+    def score_f(params: np.ndarray, start: int, end: int, split: int) -> float:
+        return 10.0
 
-        score_factory((score_f, init_score_f))
+    assert init_score_f(np.zeros(1)) == np.zeros(1)
+    assert score_f(np.zeros(1), 0, 1, 0) == 10.0
+    assert (score_f, init_score_f) == score_factory((score_f, init_score_f))
 
 
 def test_mean_cov_score_negative_definite_error():
@@ -54,3 +59,15 @@ def test_mean_cov_score_negative_definite_error():
         score_f(
             params, starts=np.array([0]), ends=np.array([49]), splits=np.array([25])
         )
+
+
+def test_score_factory_unknown_score_raises():
+    """Test that unknown score raises an error."""
+    with pytest.raises(ValueError):
+        score_factory("unknown_score")
+
+
+def test_anomaly_score_factory_unknown_score_raises():
+    """Test that unknown score raises an error."""
+    with pytest.raises(ValueError):
+        anomaly_score_factory("unknown_score")

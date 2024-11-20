@@ -11,3 +11,5 @@ ignore:
   - "*.yml"
   - "*.yaml"
   - "*.cfg"
+  - "*/tests/*"
+  - "test_*.py"
