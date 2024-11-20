@@ -1,7 +1,7 @@
 """L2 cost."""
 
 import numbers
-from typing import Optional
+from typing import Union
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -85,10 +85,12 @@ class L2Cost(BaseCost):
         Fixed mean for the cost calculation. If None, the optimal mean is calculated.
     """
 
-    def __init__(self, param: Optional[float | ArrayLike] = None):
+    def __init__(self, param: Union[float, ArrayLike, None] = None):
         super().__init__(param)
 
-    def _check_fixed_param(self, param: float | ArrayLike, X: np.ndarray) -> np.ndarray:
+    def _check_fixed_param(
+        self, param: Union[float, ArrayLike], X: np.ndarray
+    ) -> np.ndarray:
         """Check if the fixed mean parameter is valid.
 
         Parameters
