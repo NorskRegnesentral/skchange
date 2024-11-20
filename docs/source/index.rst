@@ -18,7 +18,7 @@ The library can be installed via pip:
 
 Requires python versions >= 3.9, < 3.13.
 
-It is recommended to install skchange with `numba <https://numba.readthedocs.io>`_ for faster performance:
+For better computational performance, it is recommended to install skchange with `numba <https://numba.readthedocs.io>`_:
 
 .. code-block:: bash
 
