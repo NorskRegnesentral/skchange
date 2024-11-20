@@ -97,6 +97,7 @@ def configure_jit(jit_default_kwargs):
                 return numba_jit(maybe_func, **kwargs)
 
         else:
+
             def jit(maybe_func=None, **kwargs):
                 """Identity decorator for replacing jit by passthrough."""
                 if callable(maybe_func):
@@ -136,6 +137,7 @@ def configure_njit(njit_default_kwargs):
                 return numba_njit(maybe_func, **kwargs)
 
         else:
+
             def njit(maybe_func=None, **kwargs):
                 """Identity decorator for replacing njit by passthrough."""
                 if callable(maybe_func):
