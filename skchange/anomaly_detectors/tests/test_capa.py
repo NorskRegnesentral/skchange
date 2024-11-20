@@ -5,7 +5,7 @@ import pytest
 
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.costs.saving_factory import VALID_SAVINGS
+from skchange.costs_old.saving_factory import VALID_SAVINGS
 from skchange.datasets.generate import generate_alternating_data
 
 

@@ -3,7 +3,7 @@
 import numpy as np
 
 from skchange.change_detectors.pelt import Pelt
-from skchange.costs.mean_cost import init_mean_cost, mean_cost
+from skchange.costs_old.mean_cost import init_mean_cost, mean_cost
 from skchange.datasets.generate import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
