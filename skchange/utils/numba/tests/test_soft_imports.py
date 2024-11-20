@@ -12,7 +12,7 @@ def remove_modules_with_prefix(prefix):
 
 
 @contextmanager
-def temp_env_and_modules(remove_module_prefix: str, env_vars: dict | None = None):
+def temp_env_and_modules(remove_module_prefix: str, env_vars: dict = None):
     original_modules = sys.modules.copy()
     original_environ = os.environ.copy()
 
