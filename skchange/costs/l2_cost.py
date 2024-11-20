@@ -7,8 +7,8 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.costs.base import BaseCost
+from skchange.utils.numba import njit
 from skchange.utils.numba.general import col_repeat
-from skchange.utils.numba.njit import njit
 from skchange.utils.numba.stats import col_cumsum
 from skchange.utils.validation.data import as_2d_array
 
