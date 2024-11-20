@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.costs import VALID_COSTS, cost_factory
+from skchange.costs_old import VALID_COSTS, cost_factory
 from skchange.datasets.generate import generate_alternating_data
 
 

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from scipy.stats import multivariate_normal
 
-from skchange.costs import cost_factory
+from skchange.costs_old import cost_factory
 
 
 def analytical_mv_ll_at_mle(X: np.ndarray):
