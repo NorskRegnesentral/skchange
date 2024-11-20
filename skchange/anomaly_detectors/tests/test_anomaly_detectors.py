@@ -6,11 +6,9 @@ import pytest
 from skchange.anomaly_detectors import (
     ANOMALY_DETECTORS,
     COLLECTIVE_ANOMALY_DETECTORS,
-    MoscoreAnomaly,
 )
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
-from skchange.scores.mean_score import init_mean_score, mean_anomaly_score
 
 true_anomalies = [(30, 34), (70, 75)]
 anomaly_data = generate_anomalous_data(
@@ -35,32 +33,6 @@ def test_collective_anomaly_detector_predict(Estimator):
 def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetector):
     """Test collective anomaly detector's transform method (dense output)."""
     detector = Estimator.create_test_instance()
-    labels = detector.fit_transform(anomaly_data)
-    if isinstance(labels, pd.DataFrame):
-        labels = labels.iloc[:, 0]
-
-    true_collective_anomalies = pd.IntervalIndex.from_tuples(
-        true_anomalies, closed="both"
-    )
-    true_anomaly_labels = CollectiveAnomalyDetector.sparse_to_dense(
-        true_collective_anomalies, anomaly_data.index
-    )
-    labels.equals(true_anomaly_labels)
-
-    # Similar test that does not depend on sparse_to_dense, just to be sure.
-    assert labels.nunique() == len(true_anomalies) + 1
-    for i, (start, end) in enumerate(true_anomalies):
-        assert (labels.iloc[start : end + 1] == i + 1).all()
-
-
-def test_custom_anomaly_detector_transform():
-    """Test collective anomaly detector's transform method (dense output)."""
-    detector = MoscoreAnomaly(
-        score=(mean_anomaly_score, init_mean_score),
-        min_anomaly_length=2,
-        max_anomaly_length=8,
-        left_bandwidth=4,
-    )
     labels = detector.fit_transform(anomaly_data)
     if isinstance(labels, pd.DataFrame):
         labels = labels.iloc[:, 0]
