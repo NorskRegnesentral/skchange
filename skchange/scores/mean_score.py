@@ -8,7 +8,7 @@ from skchange.scores.utils import init_sample_sizes, init_sums, init_sums2
 from skchange.utils.numba import njit
 
 
-@njit(cache=True)
+@njit
 def init_mean_cost(X: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Precompute sums and weights for `mean_cost`.
 
@@ -29,7 +29,7 @@ def init_mean_cost(X: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return init_sums(X), init_sums2(X), init_sample_sizes(X)
 
 
-@njit(cache=True)
+@njit
 def mean_cost(
     precomputed_params: tuple[np.ndarray, np.ndarray, np.ndarray],
     starts: np.ndarray,
@@ -59,7 +59,7 @@ def mean_cost(
     return costs
 
 
-@njit(cache=True)
+@njit
 def init_mean_saving(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Precompute sums and weights for `mean_saving`.
@@ -79,7 +79,7 @@ def init_mean_saving(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return init_sums(X), init_sample_sizes(X)
 
 
-@njit(cache=True)
+@njit
 def mean_saving(
     precomputed_params: tuple[np.ndarray, np.ndarray],
     starts: np.ndarray,
@@ -111,7 +111,7 @@ def mean_saving(
     return saving
 
 
-@njit(cache=True)
+@njit
 def init_mean_score(X: np.ndarray) -> np.ndarray:
     """
     Precompute sums for `mean_score`.
@@ -129,7 +129,7 @@ def init_mean_score(X: np.ndarray) -> np.ndarray:
     return init_sums(X)
 
 
-@njit(cache=True)
+@njit
 def mean_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
@@ -176,7 +176,7 @@ def mean_score(
     return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
 
 
-@njit(cache=True)
+@njit
 def init_mean_anomaly_score(X: np.ndarray) -> np.ndarray:
     """
     Precompute sums for `mean_score`.
@@ -194,7 +194,7 @@ def init_mean_anomaly_score(X: np.ndarray) -> np.ndarray:
     return init_sums(X)
 
 
-@njit(cache=True)
+@njit
 def mean_anomaly_score(
     precomputed_params: np.ndarray,
     interval_starts: np.ndarray,

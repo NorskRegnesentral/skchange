@@ -5,7 +5,7 @@ import numpy as np
 from skchange.utils.numba import njit
 
 
-@njit(cache=True)
+@njit
 def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
     """Calculate the cumulative sum of each column in a 2D array.
 
@@ -38,7 +38,7 @@ def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
     return sums
 
 
-@njit(cache=True)
+@njit
 def log_det_covariance(X: np.ndarray) -> float:
     """Compute log determinant of the covariance matrix of a data matrix.
 

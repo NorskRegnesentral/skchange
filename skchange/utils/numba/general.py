@@ -5,7 +5,7 @@ import numpy as np
 from skchange.utils.numba import njit, prange
 
 
-@njit(cache=True)
+@njit
 def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     """Repeat each column of a 2D array n times.
 
@@ -24,7 +24,7 @@ def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     return expanded_x
 
 
-@njit(cache=True)
+@njit
 def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     """Repeat each row of a 2D array n times.
 
@@ -43,7 +43,7 @@ def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     return expanded_x
 
 
-@njit(cache=True)
+@njit
 def where(indicator: np.ndarray) -> list:
     """
     Identify consecutive intervals of True values in the input array.
@@ -73,7 +73,7 @@ def where(indicator: np.ndarray) -> list:
     return intervals
 
 
-@njit(cache=True)
+@njit
 def truncate_below(x: np.ndarray, lower_bound: float) -> np.ndarray:
     """Truncate values below a lower bound.
 

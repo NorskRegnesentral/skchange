@@ -8,7 +8,7 @@ from skchange.utils.numba import njit
 from skchange.utils.numba.stats import log_det_covariance
 
 
-@njit(cache=True)
+@njit
 def half_integer_digamma(twice_n: int) -> float:
     """Calculate the digamma function for half integer values, i.e. `twice_n/2`.
 
@@ -46,7 +46,7 @@ def half_integer_digamma(twice_n: int) -> float:
     return res
 
 
-@njit(cache=True)
+@njit
 def likelihood_ratio_expected_value(
     sequence_length: int, cut_point: int, dimension: int
 ) -> float:
@@ -97,7 +97,7 @@ def likelihood_ratio_expected_value(
     return g_k_n
 
 
-@njit(cache=True)
+@njit
 def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimension):
     """Calculate the Bartlett correction for the twice negated log likelihood ratio.
 
@@ -124,7 +124,7 @@ def bartlett_correction(twice_negated_log_lr, sequence_length, cut_point, dimens
     return bartlett_corr_log_lr
 
 
-@njit(cache=True)
+@njit
 def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
     """Precompute quantities for the mean_cov_score.
 
@@ -143,7 +143,7 @@ def init_mean_cov_score(X: np.ndarray) -> np.ndarray:
     return X
 
 
-@njit(cache=True)
+@njit
 def _mean_cov_log_det_term(X: np.ndarray, start: int, end: int) -> float:
     """Compute the contribution of a segment to the mean_cov score.
 
@@ -173,7 +173,7 @@ def _mean_cov_log_det_term(X: np.ndarray, start: int, end: int) -> float:
     return (end - start + 1) * log_det_cov
 
 
-@njit(cache=True)
+@njit
 def _mean_cov_score(
     X: np.ndarray,
     start: int,
@@ -219,7 +219,7 @@ def _mean_cov_score(
     return score
 
 
-@njit(cache=True)
+@njit
 def mean_cov_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,

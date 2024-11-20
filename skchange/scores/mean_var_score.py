@@ -9,7 +9,7 @@ from skchange.utils.numba.general import truncate_below
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit(cache=True)
+@njit
 def init_mean_var_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Precompute sums and squared sums for `mean_var_score`.
 
@@ -33,7 +33,7 @@ def init_mean_var_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return sums, sums2
 
 
-@njit(cache=True)
+@njit
 def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: np.ndarray, j: np.ndarray):
     """Calculate variance from precomputed sums.
 
@@ -60,7 +60,7 @@ def var_from_sums(sums1: np.ndarray, sums2: np.ndarray, i: np.ndarray, j: np.nda
     return truncate_below(var, 1e-16)  # standard deviation lower bound of 1e-8
 
 
-@njit(cache=True)
+@njit
 def mean_var_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
@@ -105,7 +105,7 @@ def mean_var_score(
     return np.sum(likelihood_ratio, axis=1)
 
 
-@njit(cache=True)
+@njit
 def baseline_var_from_sums(
     sums1: np.ndarray,
     sums2: np.ndarray,
@@ -153,7 +153,7 @@ def baseline_var_from_sums(
     return truncate_below(var, 1e-16)  # standard deviation lower bound of 1e-8
 
 
-@njit(cache=True)
+@njit
 def mean_var_anomaly_score(
     precomputed_params: np.ndarray,
     interval_starts: np.ndarray,

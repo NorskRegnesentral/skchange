@@ -13,7 +13,7 @@ from skchange.utils.numba.stats import col_cumsum
 from skchange.utils.validation.data import as_2d_array
 
 
-@njit(cache=True)
+@njit
 def l2_cost_optim(
     starts: np.ndarray,
     ends: np.ndarray,
@@ -42,7 +42,7 @@ def l2_cost_optim(
     return costs
 
 
-@njit(cache=True)
+@njit
 def l2_cost_fixed(
     starts: np.ndarray,
     ends: np.ndarray,
