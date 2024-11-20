@@ -8,7 +8,7 @@ from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit(cache=True)
+@njit
 def init_mean_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Precompute sums for `mean_score`.
@@ -31,7 +31,7 @@ def init_mean_score(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return sums
 
 
-@njit(cache=True)
+@njit
 def mean_score(
     precomputed_params: np.ndarray,
     starts: np.ndarray,
@@ -78,7 +78,7 @@ def mean_score(
     return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
 
 
-@njit(cache=True)
+@njit
 def mean_anomaly_score(
     precomputed_params: np.ndarray,
     interval_starts: np.ndarray,

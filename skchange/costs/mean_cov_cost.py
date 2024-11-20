@@ -8,13 +8,13 @@ from skchange.scores.mean_cov_score import _mean_cov_log_det_term
 from skchange.utils.numba import njit
 
 
-@njit(cache=True)
+@njit
 def init_mean_cov_cost(X: np.ndarray) -> np.ndarray:
     """Pass on the data matrix for the cost function."""
     return X
 
 
-@njit(cache=True)
+@njit
 def gaussian_ll_at_mle_for_segment(
     X: np.ndarray,
     start: int,
@@ -59,7 +59,7 @@ def gaussian_ll_at_mle_for_segment(
     return mv_ll_at_mle
 
 
-@njit(cache=True)
+@njit
 def mean_cov_cost(
     precomputed_params: np.ndarray,
     starts: np.ndarray,

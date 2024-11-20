@@ -9,7 +9,7 @@ from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.stats import col_cumsum
 
 
-@njit(cache=True)
+@njit
 def init_mean_saving(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
     Precompute sums and weights for `mean_saving`.
@@ -35,7 +35,7 @@ def init_mean_saving(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return sums, weights
 
 
-@njit(cache=True)
+@njit
 def mean_saving(
     precomputed_params: tuple[np.ndarray, np.ndarray],
     starts: np.ndarray,
