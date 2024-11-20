@@ -7,16 +7,16 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
-from numba import njit
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.anomaly_detectors.mvcapa import dense_capa_penalty, run_base_capa
-from skchange.costs.saving_factory import saving_factory
+from skchange.anomaly_scores import BaseSaving
+from skchange.anomaly_scores.utils import to_saving
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 
 
-@njit
 def run_capa(
     X: np.ndarray,
     saving_func: Callable,
@@ -55,8 +55,10 @@ class Capa(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    saving : str (default="mean")
-        Saving function to use for anomaly detection.
+    saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+        The saving function to use for the anomaly detection. If a `BaseCost` is given,
+        the saving function is constructed from the cost. The cost must have a fixed
+        parameter that represents the baseline cost.
     collective_penalty_scale : float, optional (default=2.0)
         Scaling factor for the collective penalty.
     point_penalty_scale : float, optional (default=2.0)
@@ -108,7 +110,7 @@ class Capa(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        saving: Union[str, tuple[Callable, Callable]] = "mean",
+        saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
         collective_penalty_scale: float = 2.0,
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
@@ -116,14 +118,13 @@ class Capa(CollectiveAnomalyDetector):
         ignore_point_anomalies: bool = False,
     ):
         self.saving = saving
+        self._saving = to_saving(saving)
         self.collective_penalty_scale = collective_penalty_scale
         self.point_penalty_scale = point_penalty_scale
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
-
-        self.saving_func, self.saving_init_func = saving_factory(self.saving)
 
         check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
@@ -208,8 +209,7 @@ class Capa(CollectiveAnomalyDetector):
         )
         opt_savings, collective_anomalies, point_anomalies = run_capa(
             X.values,
-            self.saving_func,
-            self.saving_init_func,
+            self._saving,
             self.collective_penalty_,
             self.point_penalty_,
             self.min_segment_length,
@@ -262,8 +262,18 @@ class Capa(CollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
-            {"saving": "mean", "min_segment_length": 2, "max_segment_length": 20},
+            {
+                "saving": L2Cost(param=0.0),
+                "min_segment_length": 5,
+                "max_segment_length": 100,
+            },
+            {
+                "saving": L2Cost(param=0.0),
+                "min_segment_length": 2,
+                "max_segment_length": 20,
+            },
         ]
         return params
