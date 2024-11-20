@@ -15,10 +15,17 @@ Now available.
 
 
 ## Installation
+It is recommended to install skchange with numba for faster performance:
+```sh
+pip install skchange[numba]
+```
+
+Alternatively, you can install skchange without numba:
 ```sh
 pip install skchange
 ```
 Requires Python >= 3.9, < 3.13.
+
 
 ## Quickstart
 
