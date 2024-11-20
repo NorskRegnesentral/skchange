@@ -33,6 +33,9 @@ variables in the `.env` file in the root of the project directory.
 Additionally, we provide a `prange` function that dispatches to `numba.prange`.
 If `numba` is not installed, it dispatches to the regular Python `range`.
 
+For additional numba configurations, including how to disable numba, see
+`https://numba.readthedocs.io/en/stable/reference/envvars.html`_.
+
 The functionality to check for whether or not `numba` is installed
 is copied from `sktime.utils.numba.njit`.
 """
