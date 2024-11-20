@@ -3,9 +3,9 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-from numba import njit
 
 from skchange.scores.utils import init_sample_sizes, init_sums, init_sums2
+from skchange.utils.numba import njit
 
 
 @njit(cache=True)

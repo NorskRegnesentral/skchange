@@ -20,7 +20,7 @@ def test_sktime_compatible_estimators(obj, test_name):
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
-def test_detector_fit(Detector):
+def test_detector_fit(Detector: BaseDetector):
     """Test fit method output."""
     detector = Detector.create_test_instance()
     x = make_annotation_problem(n_timepoints=50, estimator_type="None")
@@ -32,7 +32,7 @@ def test_detector_fit(Detector):
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
-def test_detector_predict(Detector):
+def test_detector_predict(Detector: BaseDetector):
     """Test predict method output."""
     detector = Detector.create_test_instance()
     x = generate_anomalous_data(means=10, random_state=60)
@@ -41,7 +41,7 @@ def test_detector_predict(Detector):
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
-def test_detector_transform(Detector):
+def test_detector_transform(Detector: BaseDetector):
     """Test transform method output."""
     detector = Detector.create_test_instance()
     x = generate_anomalous_data(means=10, random_state=61)
@@ -51,7 +51,7 @@ def test_detector_transform(Detector):
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
-def test_detector_score_transform(Detector):
+def test_detector_score_transform(Detector: BaseDetector):
     """Test score_transform method output."""
     detector = Detector.create_test_instance()
     x = generate_anomalous_data(means=10, random_state=62)
@@ -63,7 +63,7 @@ def test_detector_score_transform(Detector):
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
-def test_detector_update(Detector):
+def test_detector_update(Detector: BaseDetector):
     """Test update method output."""
     detector = Detector.create_test_instance()
     x = make_annotation_problem(n_timepoints=30, estimator_type="None")

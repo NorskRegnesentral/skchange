@@ -12,7 +12,7 @@ from skchange.change_detectors.base import ChangeDetector
 from skchange.change_scores import BaseChangeScore
 from skchange.change_scores.utils import to_change_score
 from skchange.costs import BaseCost, L2Cost
-from skchange.utils.numba.njit import njit
+from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 

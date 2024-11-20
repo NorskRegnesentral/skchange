@@ -3,8 +3,8 @@
 __author__ = ["johannvk"]
 
 import numpy as np
-from numba import njit
 
+from skchange.utils.numba import njit
 from skchange.utils.numba.stats import log_det_covariance
 
 

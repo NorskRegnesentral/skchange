@@ -21,14 +21,19 @@ def test_savings(savings):
 
 def test_custom_savings():
     """Test custom savings."""
+
+    def init_savings_f(X: np.ndarray) -> np.ndarray:
+        return X
+
+    def savings_f(params: np.ndarray, start: int, end: int, split: int) -> float:
+        return 10.0
+
+    assert init_savings_f(np.zeros(1)) == np.zeros(1)
+    assert savings_f(np.zeros(1), 0, 1, 0) == 10.0
+    assert (savings_f, init_savings_f) == saving_factory((savings_f, init_savings_f))
+
+
+def test_savings_factory_raises_on_invalid_savings():
+    """Test that savings_factory raises an error on invalid savings."""
     with pytest.raises(ValueError):
-        # Need to be jitted to work.
-        # Cannot test jitted function because numba is turned off in CI testing.
-
-        def init_savings_f(X: np.ndarray) -> np.ndarray:
-            return X
-
-        def savings_f(params: np.ndarray, start: int, end: int, split: int) -> float:
-            return 10.0
-
-        saving_factory((savings_f, init_savings_f))
+        saving_factory("invalid_savings")
