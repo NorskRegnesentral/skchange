@@ -1,8 +1,8 @@
 """Utility functions for score calculations."""
 
 import numpy as np
-from numba import njit
 
+from skchange.utils.numba import njit
 from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.stats import col_cumsum
 
