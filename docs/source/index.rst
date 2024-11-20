@@ -18,7 +18,7 @@ The library can be installed via pip:
 
 Requires python versions >= 3.9, < 3.13.
 
-It is recommended to install skchange with numba for faster performance:
+It is recommended to install skchange with `numba <https://numba.readthedocs.io>`_ for faster performance:
 ```sh
 pip install skchange[numba]
 ```
@@ -26,7 +26,7 @@ pip install skchange[numba]
 Key features
 ------------
 
-- **Fast**: `Numba <https://numba.readthedocs.io>`_ is used to implement all algorithms.
+- **Fast**: `Numba <https://numba.readthedocs.io>`_ is used for performance.
 - **Easy to use**: Follows the conventions of `sktime <https://www.sktime.net>`_ and `scikit-learn <https://scikit-learn.org>`_.
 - **Easy to extend**: Make your own detectors by inheriting from the base class templates. Create custom detection scores and cost functions.
 - **Collective anomaly detection**: Detect intervals of anomalous behaviour in time series data.
