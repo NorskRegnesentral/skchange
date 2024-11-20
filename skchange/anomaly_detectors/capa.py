@@ -10,8 +10,7 @@ import pandas as pd
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.anomaly_detectors.mvcapa import dense_capa_penalty, run_base_capa
-from skchange.anomaly_scores import BaseSaving
-from skchange.anomaly_scores.utils import to_saving
+from skchange.anomaly_scores import BaseSaving, to_saving
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than

@@ -9,8 +9,7 @@ import numpy as np
 import pandas as pd
 
 from skchange.change_detectors import ChangeDetector
-from skchange.change_scores import BaseChangeScore
-from skchange.change_scores.utils import to_change_score
+from skchange.change_scores import BaseChangeScore, to_change_score
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import where
