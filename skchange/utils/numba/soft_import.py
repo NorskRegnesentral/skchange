@@ -134,7 +134,6 @@ def configure_njit(njit_default_kwargs):
                 # This syntax overwrites the default kwargs
                 # with the provided kwargs if they overlap.
                 kwargs = {**njit_default_kwargs, **kwargs}
-                print(kwargs)
                 return numba_njit(maybe_func, **kwargs)
 
         else:
