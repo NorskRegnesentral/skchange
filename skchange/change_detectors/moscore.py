@@ -44,7 +44,9 @@ def moscore_transform(
     intervals = np.column_stack((starts, splits + 1, ends + 1))
     change_score.fit(X)
     scores = np.zeros(n)
-    scores[splits] = change_score.evaluate(intervals)
+    change_scores = change_score.evaluate(intervals)
+    agg_change_scores = np.sum(change_scores, axis=1)
+    scores[splits] = agg_change_scores
     return scores
 
 
