@@ -33,6 +33,18 @@ def test_find_fixed_param_combination_value_error():
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
+def test_l2_cost_init(CostClass):
+    cost = CostClass()
+    assert cost.param is None
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_expected_interval_entries(CostClass):
+    cost = CostClass()
+    assert cost.expected_interval_entries == 2
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_cost_evaluation(CostClass):
     optim_cost = CostClass()
     fixed_params = find_fixed_param_combination(CostClass)
