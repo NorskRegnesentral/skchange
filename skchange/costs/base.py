@@ -55,7 +55,11 @@ class BaseCost(BaseIntervalEvaluator):
         Returns
         -------
         costs : np.ndarray
-            One cost value for each interval.
+            A 2D array of costs. One row for each interval. The number of
+            columns is 1 if the cost is inherently multivariate. The number of columns
+            is equal to the number of columns in the input data if the cost is
+            univariate. In this case, each column represents the univariate cost for
+            the corresponding input data column.
         """
         starts, ends = intervals[:, 0], intervals[:, 1]
         if self.param is None:
@@ -78,7 +82,11 @@ class BaseCost(BaseIntervalEvaluator):
         Returns
         -------
         costs : np.ndarray
-            Costs for each interval.
+            A 2D array of costs. One row for each interval. The number of
+            columns is 1 if the cost is inherently multivariate. The number of columns
+            is equal to the number of columns in the input data if the cost is
+            univariate. In this case, each column represents the univariate cost for
+            the corresponding input data column.
         """
         raise NotImplementedError("abstract method")
 
@@ -95,6 +103,10 @@ class BaseCost(BaseIntervalEvaluator):
         Returns
         -------
         costs : np.ndarray
-            Costs for each interval.
+            A 2D array of costs. One row for each interval. The number of
+            columns is 1 if the cost is inherently multivariate. The number of columns
+            is equal to the number of columns in the input data if the cost is
+            univariate. In this case, each column represents the univariate cost for
+            the corresponding input data column.
         """
         raise NotImplementedError("abstract method")
