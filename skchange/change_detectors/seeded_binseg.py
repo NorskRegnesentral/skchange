@@ -84,8 +84,9 @@ def run_seeded_binseg(
             (np.repeat(start, splits.size), splits + 1, np.repeat(end + 1, splits.size))
         )
         scores = change_score.evaluate(intervals)
-        argmax = np.argmax(scores)
-        amoc_scores[i] = scores[argmax]
+        agg_scores = np.sum(scores, axis=1)
+        argmax = np.argmax(agg_scores)
+        amoc_scores[i] = agg_scores[argmax]
         maximizers[i] = splits_lower + argmax
 
     cpts = greedy_changepoint_selection(
