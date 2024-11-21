@@ -87,12 +87,17 @@ class ChangeScore(BaseChangeScore):
         Returns
         -------
         scores : np.ndarray
-            Change scores for each interval.
+            A 2D array of change scores. One row for each interval. The number of
+            columns is 1 if the change score is inherently multivariate. The number of
+            columns is equal to the number of columns in the input data if the score is
+            univariate. In this case, each column represents the univariate score for
+            the corresponding input data column.
         """
         left_costs = self.cost.evaluate(intervals[:, [0, 1]])
         right_costs = self.cost.evaluate(intervals[:, [1, 2]])
         no_change_costs = self.cost.evaluate(intervals[:, [0, 2]])
-        return no_change_costs - (left_costs + right_costs)
+        change_scores = no_change_costs - (left_costs + right_costs)
+        return change_scores
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

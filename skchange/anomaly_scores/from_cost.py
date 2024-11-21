@@ -96,11 +96,16 @@ class Saving(BaseSaving):
         Returns
         -------
         savings : np.ndarray
-            Savings for each interval.
+            A 2D array of savings. One row for each interval. The number of
+            columns is 1 if the saving is inherently multivariate. The number of
+            columns is equal to the number of columns in the input data if the saving is
+            univariate. In this case, each column represents the univariate saving for
+            the corresponding input data column.
         """
         baseline_costs = self.baseline_cost.evaluate(intervals)
         optimised_costs = self.optimised_cost.evaluate(intervals)
-        return baseline_costs - optimised_costs
+        savings = baseline_costs - optimised_costs
+        return savings
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
