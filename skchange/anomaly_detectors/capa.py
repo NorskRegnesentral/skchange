@@ -3,7 +3,7 @@
 __author__ = ["Tveten"]
 __all__ = ["Capa"]
 
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -18,20 +18,17 @@ from skchange.utils.validation.parameters import check_larger_than
 
 def run_capa(
     X: np.ndarray,
-    saving_func: Callable,
-    saving_init_func: Callable,
+    saving: BaseSaving,
     collective_alpha: float,
     point_alpha: float,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    params = saving_init_func(X)
     collective_betas = np.zeros(1)
     point_betas = np.zeros(1)
+    saving.fit(X)
     return run_base_capa(
-        X,
-        params,
-        saving_func,
+        saving,
         collective_alpha,
         collective_betas,
         point_alpha,
@@ -117,13 +114,14 @@ class Capa(CollectiveAnomalyDetector):
         ignore_point_anomalies: bool = False,
     ):
         self.saving = saving
-        self._saving = to_saving(saving)
         self.collective_penalty_scale = collective_penalty_scale
         self.point_penalty_scale = point_penalty_scale
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
+
+        self._saving = to_saving(saving)
 
         check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
