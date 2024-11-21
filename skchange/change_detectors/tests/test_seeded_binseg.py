@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
+from skchange.change_scores import CHANGE_SCORES
 from skchange.datasets.generate import generate_alternating_data
-from skchange.scores.score_factory import VALID_CHANGE_SCORES
 
 
 def test_invalid_parameters():
@@ -43,15 +43,15 @@ def test_invalid_data():
         detector.fit(pd.Series([1.0, np.nan, 1.0, 1.0]))
 
 
-@pytest.mark.parametrize("score", VALID_CHANGE_SCORES)
-def test_binseg_tuning(score):
+@pytest.mark.parametrize("Score", CHANGE_SCORES)
+def test_binseg_tuning(Score):
     """Test SeededBinarySegmentation tuning."""
     n_segments = 2
     seg_len = 50
     df = generate_alternating_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
-    detector = SeededBinarySegmentation(score, threshold_scale=None)
+    detector = SeededBinarySegmentation(Score(), threshold_scale=None)
     detector.fit_predict(df)
     assert detector.threshold_ >= detector.scores["score"].mean()
     assert detector.threshold_ <= detector.scores["score"].max()

@@ -9,6 +9,7 @@ from skchange.change_detectors.pelt import (
     get_changepoints,
     run_pelt,
 )
+from skchange.costs.l2_cost import L2Cost
 from skchange.costs_old.cost_factory import cost_factory
 from skchange.datasets.generate import generate_alternating_data
 from skchange.utils.numba import njit
@@ -25,6 +26,8 @@ alternating_sequence = generate_alternating_data(
 
 cost_func, cost_init_func = cost_factory("mean")
 penalty = 2 * np.log(len(changepoint_data))
+
+cost = L2Cost()
 
 
 def pelt_partition_cost(
@@ -249,8 +252,7 @@ def test_run_optimal_partitioning(min_segment_length=1):
 def test_run_pelt(min_segment_length=1):
     opt_costs, changepoints = run_pelt(
         changepoint_data,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
@@ -276,8 +278,7 @@ def test_compare_all_pelt_functions(min_segment_length=1):
     )
     pelt_costs, pelt_changepoints = run_pelt(
         changepoint_data,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
@@ -299,8 +300,7 @@ def test_pelt_on_tricky_data(min_segment_length):
     # Original "run_pelt" found 7 changepoints.
     pelt_costs, pelt_changepoints = run_pelt(
         alternating_sequence,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
@@ -342,8 +342,7 @@ def test_pelt_min_segment_lengths(min_segment_length):
     # Original "run_pelt" found 7 changepoints.
     _, pelt_changepoints = run_pelt(
         alternating_sequence,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
@@ -367,8 +366,7 @@ def test_xfail_pelt_min_segment_lengths(min_segment_length):
     # Original "run_pelt" found 7 changepoints.
     _, pelt_changepoints = run_pelt(
         alternating_sequence,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
@@ -398,8 +396,7 @@ def test_xfail_pelt_on_tricky_data(min_segment_length):
     # Original "run_pelt" found 7 changepoints.
     pelt_costs, _ = run_pelt(
         alternating_sequence,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
@@ -423,8 +420,7 @@ def test_pelt_dense_changepoints_parametrized(min_segment_length):
     penalty = 0.0
     _, changepoints = run_pelt(
         increasing_data,
-        cost_func,
-        cost_init_func,
+        cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
