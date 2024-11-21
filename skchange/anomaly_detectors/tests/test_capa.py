@@ -5,13 +5,13 @@ import pytest
 
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.mvcapa import Mvcapa
-from skchange.costs_old.saving_factory import VALID_SAVINGS
+from skchange.anomaly_scores import SAVINGS
 from skchange.datasets.generate import generate_alternating_data
 
 
-@pytest.mark.parametrize("saving", VALID_SAVINGS)
-@pytest.mark.parametrize("detector_class", [Capa, Mvcapa])
-def test_capa_anomalies(detector_class, saving):
+@pytest.mark.parametrize("Saving", SAVINGS)
+@pytest.mark.parametrize("Detector", [Capa, Mvcapa])
+def test_capa_anomalies(Detector, Saving):
     """Test Capa anomalies."""
     n_segments = 2
     seg_len = 20
@@ -23,8 +23,8 @@ def test_capa_anomalies(detector_class, saving):
         affected_proportion=0.2,
         random_state=8,
     )
-    detector = detector_class(
-        saving=saving,
+    detector = Detector(
+        saving=Saving(),
         collective_penalty_scale=2.0,
         ignore_point_anomalies=True,  # To get test coverage.
     )
