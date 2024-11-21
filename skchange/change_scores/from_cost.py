@@ -6,6 +6,7 @@ from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.base import BaseCost
+from skchange.costs.l2_cost import L2Cost
 
 
 def to_change_score(evaluator: Union[BaseCost, BaseChangeScore]) -> BaseChangeScore:
@@ -46,7 +47,7 @@ class ChangeScore(BaseChangeScore):
         The cost function to evaluate on the intervals.
     """
 
-    def __init__(self, cost: BaseCost):
+    def __init__(self, cost: BaseCost = L2Cost()):
         self.cost = cost
         super().__init__()
 

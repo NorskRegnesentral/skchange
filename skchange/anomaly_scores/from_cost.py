@@ -6,7 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.anomaly_scores.base import BaseSaving
-from skchange.costs.base import BaseCost
+from skchange.costs import BaseCost, L2Cost
 
 
 def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
@@ -51,7 +51,7 @@ class Saving(BaseSaving):
         constructed by copying the baseline cost and setting the parameter to None.
     """
 
-    def __init__(self, baseline_cost: BaseCost):
+    def __init__(self, baseline_cost: BaseCost = L2Cost(param=0.0)):
         if baseline_cost.param is None:
             raise ValueError("The baseline cost must have a fixed parameter.")
 
