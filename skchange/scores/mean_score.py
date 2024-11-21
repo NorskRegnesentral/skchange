@@ -4,8 +4,8 @@ __author__ = ["Tveten"]
 
 import numpy as np
 
-from skchange.scores.utils import init_sums
 from skchange.utils.numba import njit
+from skchange.utils.numba.stats import col_cumsum
 
 
 @njit
@@ -23,7 +23,7 @@ def init_mean_score(X: np.ndarray) -> np.ndarray:
     tuple of `np.ndarray`
         Cumulative sums of `X`.
     """
-    return init_sums(X)
+    return col_cumsum(X, init_zero=True)
 
 
 @njit
