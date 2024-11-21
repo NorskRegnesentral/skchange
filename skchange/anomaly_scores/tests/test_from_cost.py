@@ -3,12 +3,12 @@ import pytest
 
 from skchange.anomaly_scores.from_cost import Saving, to_saving
 from skchange.costs import COSTS
-from skchange.costs.tests.test_all_costs import find_fixed_param_combinations
+from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_init(cost_class):
-    param = find_fixed_param_combinations(cost_class)
+    param = find_fixed_param_combination(cost_class)
     baseline_cost = cost_class().set_params(**param)
 
     saving = Saving(baseline_cost)
@@ -18,7 +18,7 @@ def test_saving_init(cost_class):
 
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_min_size(cost_class):
-    param = find_fixed_param_combinations(cost_class)
+    param = find_fixed_param_combination(cost_class)
     cost_instance = cost_class().set_params(**param)
 
     saving = Saving(baseline_cost=cost_instance)
@@ -27,7 +27,7 @@ def test_saving_min_size(cost_class):
 
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_fit(cost_class):
-    param = find_fixed_param_combinations(cost_class)
+    param = find_fixed_param_combination(cost_class)
     cost_instance = cost_class().set_params(**param)
 
     saving = Saving(baseline_cost=cost_instance)
@@ -39,7 +39,7 @@ def test_saving_fit(cost_class):
 
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_evaluate(cost_class):
-    param = find_fixed_param_combinations(cost_class)
+    param = find_fixed_param_combination(cost_class)
     cost_instance = cost_class().set_params(**param)
 
     saving = Saving(baseline_cost=cost_instance)
