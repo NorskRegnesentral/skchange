@@ -1,12 +1,12 @@
 """L2 cost."""
 
-import numbers
 from typing import Union
 
 import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.costs.base import BaseCost
+from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.stats import col_cumsum
@@ -105,12 +105,10 @@ class L2Cost(BaseCost):
         Fixed mean for the cost calculation. If None, the optimal mean is calculated.
     """
 
-    def __init__(self, param: Union[float, ArrayLike, None] = None):
+    def __init__(self, param: Union[MeanType, None] = None):
         super().__init__(param)
 
-    def _check_fixed_param(
-        self, param: Union[float, ArrayLike], X: np.ndarray
-    ) -> np.ndarray:
+    def _check_fixed_param(self, param: MeanType, X: np.ndarray) -> np.ndarray:
         """Check if the fixed mean parameter is valid.
 
         Parameters
@@ -125,16 +123,7 @@ class L2Cost(BaseCost):
         mean : np.ndarray
             Fixed mean for the cost calculation.
         """
-        mean = (
-            np.array([param])
-            if isinstance(param, numbers.Number)
-            else np.asarray(param)
-        )
-        if len(mean) != 1 and len(mean) != X.shape[1]:
-            raise ValueError(
-                f"param must have length 1 or X.shape[1], got {len(mean)}."
-            )
-        return mean
+        return check_mean(param, X)
 
     def _fit(self, X: ArrayLike, y=None):
         """Fit the cost interval evaluator.
