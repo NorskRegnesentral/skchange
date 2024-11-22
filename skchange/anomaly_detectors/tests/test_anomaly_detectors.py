@@ -14,13 +14,15 @@ true_anomalies = [(30, 34), (70, 75)]
 anomaly_data = generate_anomalous_data(
     100, anomalies=true_anomalies, means=[10.0, 15.0], random_state=2
 )
+anomaly_free_data = generate_anomalous_data(100, random_state=1)
 
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
-def test_collective_anomaly_detector_predict(Estimator):
+def test_collective_anomaly_detector_predict(Estimator: CollectiveAnomalyDetector):
     """Test collective anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
-    anomalies = detector.fit_predict(anomaly_data)
+    detector.fit(anomaly_free_data)
+    anomalies = detector.predict(anomaly_data)
     if isinstance(anomalies, pd.DataFrame):
         anomalies = anomalies.iloc[:, 0]
 
@@ -33,7 +35,8 @@ def test_collective_anomaly_detector_predict(Estimator):
 def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetector):
     """Test collective anomaly detector's transform method (dense output)."""
     detector = Estimator.create_test_instance()
-    labels = detector.fit_transform(anomaly_data)
+    detector.fit(anomaly_free_data)
+    labels = detector.transform(anomaly_data)
     if isinstance(labels, pd.DataFrame):
         labels = labels.iloc[:, 0]
 
