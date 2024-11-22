@@ -12,9 +12,7 @@ from skchange.utils.benchmarking.profiler import Profiler
 df = generate_alternating_data(
     n_segments=3, mean=10, segment_length=20, p=1, random_state=7
 )
-detector = CircularBinarySegmentation(
-    score="mean", growth_factor=1.5, min_segment_length=10
-)
+detector = CircularBinarySegmentation(growth_factor=1.5, min_segment_length=10)
 anomalies = detector.fit_predict(df)
 px.line(df)
 px.scatter(detector.scores, x="argmax_anomaly_start", y="score")
@@ -23,9 +21,11 @@ px.scatter(detector.scores, x="argmax_anomaly_start", y="score")
 anomaly_intervals = make_anomaly_intervals(0, 5, 2)
 
 # Profiling
-n = int(1e5)
+n = int(1e3)
 df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
-detector = CircularBinarySegmentation("mean", growth_factor=2)
+detector = CircularBinarySegmentation(
+    threshold_scale=4.0, max_interval_length=100, growth_factor=2
+)
 profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
