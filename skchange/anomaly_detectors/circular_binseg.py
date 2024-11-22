@@ -161,7 +161,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
     def __init__(
         self,
         score: Union[BaseCost, BaseLocalAnomalyScore] = L2Cost(),
-        threshold_scale: Optional[float] = None,
+        threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
