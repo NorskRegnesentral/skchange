@@ -103,7 +103,12 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Binary segmentation type changepoint detection algorithms recursively split the data
     into two segments, and test whether the two segments are different. Circular binary
-    segmentation is described in [1]_.
+    segmentation [1]_ is a variant of binary segmentation where the statistical test
+    (anomaly score) is applied to compare the data behaviour of an inner interval subset
+    with the surrounding data contained in an outer interval.
+    In other words, the null hypothesis within each outer interval is that the data
+    is stationary, while the alternative hypothesis is that there is a collective
+    anomaly within the outer interval.
 
     Efficently implemented using numba.
 
@@ -150,6 +155,14 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
     0    [20, 39]
     1    [60, 79]
     Name: anomaly_interval, dtype: interval
+
+    Notes
+    -----
+    Using costs to generate local anomaly scores will be significantly slower than using
+    anomaly scores that are implemented directly. This is because the local anomaly
+    score requires evaluating the cost at disjoint subsets of the data
+    (before and after an anomaly), which is not a natural operation for costs
+    implemented as interval evaluators.
     """
 
     _tags = {
