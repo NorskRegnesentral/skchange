@@ -3,14 +3,15 @@
 __author__ = ["Tveten"]
 __all__ = ["CircularBinarySegmentation"]
 
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
+from skchange.anomaly_scores import BaseLocalAnomalyScore, to_local_anomaly_score
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals
-from skchange.scores.score_factory import anomaly_score_factory
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
@@ -44,7 +45,7 @@ def make_anomaly_intervals(
     starts = []
     ends = []
     for i in range(interval_start + 1, interval_end - min_segment_length + 2):
-        for j in range(i + min_segment_length - 1, interval_end + 1):
+        for j in range(i + min_segment_length - 1, interval_end):
             baseline_n = interval_end - j + i - interval_start
             if baseline_n >= min_segment_length:
                 starts.append(i)
@@ -52,11 +53,9 @@ def make_anomaly_intervals(
     return np.array(starts, dtype=np.int64), np.array(ends, dtype=np.int64)
 
 
-@njit
 def run_circular_binseg(
     X: np.ndarray,
-    score_func: Callable,
-    score_init_func: Callable,
+    score: BaseLocalAnomalyScore,
     threshold: float,
     min_segment_length: int,
     max_interval_length: int,
@@ -68,7 +67,7 @@ def run_circular_binseg(
         max_interval_length,
         growth_factor,
     )
-    params = score_init_func(X)
+    score.fit(X)
 
     anomaly_scores = np.zeros(starts.size)
     anomaly_starts = np.zeros(starts.size, dtype=np.int64)
@@ -78,15 +77,18 @@ def run_circular_binseg(
         anomaly_start_candidates, anomaly_end_candidates = make_anomaly_intervals(
             start, end, min_segment_length
         )
-        scores = score_func(
-            params,
-            np.repeat(start, anomaly_start_candidates.size),
-            np.repeat(end, anomaly_start_candidates.size),
-            anomaly_start_candidates,
-            anomaly_end_candidates,
+        intervals = np.column_stack(
+            (
+                np.repeat(start, anomaly_start_candidates.size),
+                anomaly_start_candidates,
+                anomaly_end_candidates + 1,
+                np.repeat(end + 1, anomaly_start_candidates.size),
+            )
         )
-        argmax = np.argmax(scores)
-        anomaly_scores[i] = scores[argmax]
+        scores = score.evaluate(intervals)
+        agg_scores = np.sum(scores, axis=1)
+        argmax = np.argmax(agg_scores)
+        anomaly_scores[i] = agg_scores[argmax]
         anomaly_starts[i] = anomaly_start_candidates[argmax]
         anomaly_ends[i] = anomaly_end_candidates[argmax]
 
@@ -107,34 +109,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    score : {"mean", "mean_var", "mean_cov"}, tuple[Callable, Callable], default="mean"
-        Test statistic to use for changepoint detection.
-
-        * `"mean"`: The CUSUM statistic for a change in mean (this is equivalent to a
-          likelihood ratio test for a change in the mean of Gaussian data). For
-          multivariate data, the sum of the CUSUM statistics for each dimension is used.
-        * `"mean_var"`: The likelihood ratio test for a change in the mean and/or
-          variance of Gaussian data. For multivariate data, the sum of the likelihood
-          ratio statistics for each dimension is used.
-        * `"mean_cov"`: The likelihood ratio test for a change in the mean and/or
-          covariance matrix of multivariate Gaussian data.
-        * If a tuple, it must contain two numba jitted functions:
-
-            1. The first function is the scoring function, which takes four arguments:
-
-                1. `precomputed_params`: The output of the second function.
-                2. `starts`: Start indices of the intervals to score for a change.
-                3. `ends`: End indices of the intervals to score for a change.
-                4. `splits`: Split indices of the intervals to score for a change.
-
-               For each start, split and end, the score should be calculated for the
-               data intervals `[start:split]` and `[split+1:end]`, meaning that both
-               the starts and ends are inclusive, while split is included in the left
-               interval.
-
-            2. The second function is the initializer, which takes the data matrix as
-               input and returns precomputed quantities that may speed up the score
-               calculations. If not relevant, just return the data matrix.
+    score: LocalAnomalyScore
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
         `threshold_scale * 2 * p * np.sqrt(np.log(n))`, where `n` is the sample size
@@ -183,8 +158,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        score: Union[str, tuple[Callable, Callable]] = "mean",
-        threshold_scale: Optional[float] = 2.0,
+        score: Union[BaseCost, BaseLocalAnomalyScore] = L2Cost(),
+        threshold_scale: Optional[float] = None,
         level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
@@ -197,7 +172,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         super().__init__()
-        self.score_f, self.score_init_f = anomaly_score_factory(self.score)
+
+        self._score = to_local_anomaly_score(score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
@@ -230,8 +206,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         """
         _, scores, _, _, _ = run_circular_binseg(
             X.values,
-            self.score_f,
-            self.score_init_f,
+            self._score,
             np.inf,
             self.min_segment_length,
             self.max_interval_length,
@@ -255,7 +230,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         threshold : float
             The default threshold.
         """
-        return 2 * p * np.sqrt(np.log(n))
+        return 2 * p * np.log(n)
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
         if self.threshold_scale is None:
@@ -322,8 +297,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         )
         anomalies, scores, maximizers, starts, ends = run_circular_binseg(
             X.values,
-            self.score_f,
-            self.score_init_f,
+            self._score,
             self.threshold_,
             self.min_segment_length,
             self.max_interval_length,
@@ -359,8 +333,11 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"score": "mean", "min_segment_length": 5, "max_interval_length": 50},
-            {"score": "mean", "min_segment_length": 2, "max_interval_length": 20},
+            {"score": L2Cost(), "min_segment_length": 5, "max_interval_length": 50},
+            {"score": L2Cost(), "min_segment_length": 2, "max_interval_length": 20},
+            {"score": L2Cost(), "threshold_scale": 5},
         ]
         return params
