@@ -109,7 +109,9 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    score: LocalAnomalyScore
+    score : BaseLocalAnomalyScore or BaseCost, optional (default=L2Cost())
+        The local anomaly score to use for anomaly detection. If a cost is given, it is
+        converted to a local anomaly score using the `LocalAnomalyScore` class.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
         `threshold_scale * 2 * p * np.sqrt(np.log(n))`, where `n` is the sample size
