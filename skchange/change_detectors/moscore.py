@@ -37,15 +37,16 @@ def moscore_transform(
     change_score: BaseChangeScore,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
-    n = len(X)
-    splits = np.arange(bandwidth - 1, n - bandwidth)
-    starts = splits - bandwidth + 1
-    ends = splits + bandwidth
-    intervals = np.column_stack((starts, splits + 1, ends + 1))
     change_score.fit(X)
-    scores = np.zeros(n)
-    change_scores = change_score.evaluate(intervals)
+
+    n = len(X)
+    splits = np.arange(bandwidth, n - bandwidth + 1)
+    starts = splits - bandwidth + 1
+    ends = splits + bandwidth + 1
+    change_scores = change_score.evaluate(np.column_stack((starts, splits, ends)))
     agg_change_scores = np.sum(change_scores, axis=1)
+
+    scores = np.zeros(n)
     scores[splits] = agg_change_scores
     return scores
 
