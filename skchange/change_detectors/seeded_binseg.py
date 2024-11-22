@@ -21,7 +21,7 @@ def make_seeded_intervals(
     n: int, min_length: int, max_length: int, growth_factor: float = 1.5
 ) -> tuple[np.ndarray, np.ndarray]:
     starts = [0]  # For numba to be able to compile type.
-    ends = [0]  # For numba to be able to compile type.
+    ends = [1]  # For numba to be able to compile type.
     step_factor = 1 - 1 / growth_factor
     max_length = min(max_length, n)
     n_lengths = int(np.ceil(np.log(max_length / min_length) / np.log(growth_factor)))
@@ -31,11 +31,9 @@ def make_seeded_intervals(
         n_steps = int(np.ceil((n - interval_len) / step))
         new_starts = [int(i * step) for i in range(n_steps + 1)]
         starts += new_starts
-        new_ends = [
-            int(min(i * step + interval_len - 1, n - 1)) for i in range(n_steps + 1)
-        ]
+        new_ends = [int(min(i * step + interval_len, n)) for i in range(n_steps + 1)]
         ends += new_ends
-        if ends[-1] - starts[-1] + 1 < min_length:
+        if ends[-1] - starts[-1] < min_length:
             starts[-1] = n - min_length
     return np.array(starts[1:]), np.array(ends[1:])
 
@@ -52,9 +50,9 @@ def greedy_changepoint_selection(
     cpts = []
     while np.any(scores > threshold):
         argmax = scores.argmax()
-        cpt = maximizers[argmax]
+        cpt = maximizers[argmax] - 1
         cpts.append(int(cpt))
-        scores[(cpt >= starts) & (cpt < ends)] = 0.0
+        scores[(cpt >= starts) & (cpt <= ends)] = 0.0
     cpts.sort()
     return cpts
 
@@ -78,16 +76,15 @@ def run_seeded_binseg(
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
-        splits_lower = start + min_segment_length - 1
-        splits = np.arange(splits_lower, end - min_segment_length + 1)
+        splits = np.arange(start + min_segment_length, end - min_segment_length + 2)
         intervals = np.column_stack(
-            (np.repeat(start, splits.size), splits + 1, np.repeat(end + 1, splits.size))
+            (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
         )
         scores = change_score.evaluate(intervals)
         agg_scores = np.sum(scores, axis=1)
         argmax = np.argmax(agg_scores)
         amoc_scores[i] = agg_scores[argmax]
-        maximizers[i] = splits_lower + argmax
+        maximizers[i] = splits[0] + argmax
 
     cpts = greedy_changepoint_selection(
         amoc_scores, maximizers, starts, ends, threshold
