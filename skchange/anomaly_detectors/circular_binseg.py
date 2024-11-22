@@ -45,6 +45,9 @@ def make_anomaly_intervals(
     starts = []
     ends = []
     for i in range(interval_start + 1, interval_end - min_segment_length + 2):
+        # TODO: Add support for anomaly_intervals starting at interval_start and ending
+        # at interval_end. Currently blocked by interval evaluators requiring
+        # strictly increasing interval input.
         for j in range(i + min_segment_length - 1, interval_end):
             baseline_n = interval_end - j + i - interval_start
             if baseline_n >= min_segment_length:
