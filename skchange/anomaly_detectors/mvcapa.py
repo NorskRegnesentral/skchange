@@ -280,16 +280,14 @@ def run_base_capa(
         # Collective anomalies
         t_array = np.array([t])
         starts = np.concatenate((starts, t_array - min_segment_length + 1))
-        ends = np.repeat(t, len(starts))
-        intervals = np.column_stack((starts, ends + 1))
-        collective_savings = saving.evaluate(intervals)
+        ends = np.repeat(t + 1, len(starts))
+        collective_savings = saving.evaluate(np.column_stack((starts, ends)))
         opt_collective_saving, opt_start, candidate_savings = optimise_savings(
             starts, opt_savings, collective_savings, collective_alpha, collective_betas
         )
 
         # Point anomalies
-        point_intervals = np.column_stack((t_array, t_array + 1))
-        point_savings = saving.evaluate(point_intervals)
+        point_savings = saving.evaluate(np.column_stack((t_array, t_array + 1)))
         opt_point_saving, _, _ = optimise_savings(
             t_array, opt_savings, point_savings, point_alpha, point_betas
         )
