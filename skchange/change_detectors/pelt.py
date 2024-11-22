@@ -76,9 +76,9 @@ def run_pelt(
 
     # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
     non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
-    non_changepoint_ends = np.arange(min_segment_length - 1, 2 * min_segment_length - 1)
+    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
     non_changepoint_intervals = np.column_stack(
-        (non_changepoint_starts, non_changepoint_ends + 1)
+        (non_changepoint_starts, non_changepoint_ends)
     )
     costs = cost.evaluate(non_changepoint_intervals)
     agg_costs = np.sum(costs, axis=1)
@@ -97,8 +97,8 @@ def run_pelt(
 
         # Add the next start to the admissible starts set:
         cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
-        cost_eval_ends = np.repeat(current_obs_ind, len(cost_eval_starts))
-        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends + 1))
+        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
+        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
         costs = cost.evaluate(cost_eval_intervals)
         agg_costs = np.sum(costs, axis=1)
 
