@@ -217,7 +217,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         return np.quantile(scores, 1 - self.level)
 
     @staticmethod
-    def get_default_threshold(n: int, p: int) -> float:
+    def get_default_threshold(n: int, p: int, max_interval_length) -> float:
         """Get the default threshold for Circular Binary Segmentation.
 
         Parameters
@@ -232,15 +232,15 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         threshold : float
             The default threshold.
         """
-        return 2 * p * np.log(n)
+        return 2 * p * np.log(n * max_interval_length)
 
     def _get_threshold(self, X: pd.DataFrame) -> float:
         if self.threshold_scale is None:
             return self._tune_threshold(X)
         else:
-            n = X.shape[0]
-            p = X.shape[1]
-            return self.threshold_scale * self.get_default_threshold(n, p)
+            return self.threshold_scale * self.get_default_threshold(
+                X.shape[0], X.shape[1], self.max_interval_length
+            )
 
     def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -338,8 +338,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         from skchange.costs import L2Cost
 
         params = [
+            {"score": L2Cost(), "threshold_scale": 5},
             {"score": L2Cost(), "min_segment_length": 5, "max_interval_length": 50},
             {"score": L2Cost(), "min_segment_length": 2, "max_interval_length": 20},
-            {"score": L2Cost(), "threshold_scale": 5},
         ]
         return params
