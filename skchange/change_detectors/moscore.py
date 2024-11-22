@@ -42,12 +42,12 @@ def moscore_transform(
     n = len(X)
     splits = np.arange(bandwidth, n - bandwidth + 1)
     starts = splits - bandwidth + 1
-    ends = splits + bandwidth + 1
+    ends = splits + bandwidth
     change_scores = change_score.evaluate(np.column_stack((starts, splits, ends)))
     agg_change_scores = np.sum(change_scores, axis=1)
 
     scores = np.zeros(n)
-    scores[splits] = agg_change_scores
+    scores[splits - 1] = agg_change_scores
     return scores
 
 
