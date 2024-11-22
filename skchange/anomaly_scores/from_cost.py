@@ -166,7 +166,29 @@ def to_local_anomaly_score(
 
 
 class LocalAnomalyScore(BaseLocalAnomalyScore):
-    """Local anomaly scores based on costs."""
+    """Local anomaly scores based on costs.
+
+    Local anomaly scores compare the data behaviour of an inner interval with the
+    surrounding data contained in an outer interval. In other words, the null
+    hypothesis within each outer interval is that the data is stationary, while the
+    alternative hypothesis is that there is a collective anomaly within the
+    outer interval.
+
+    Parameters
+    ----------
+    cost : BaseCost
+        The cost function to evaluate data subsets.
+
+    Notes
+    -----
+    Using costs to generate local anomaly scores will be significantly slower than using
+    anomaly scores that are implemented directly. This is because the local anomaly
+    score requires evaluating the cost at disjoint subsets of the data
+    (before and after an anomaly), which is not a natural operation for costs
+    implemented as interval evaluators. It is only possible by refitting the cost
+    function on the surrounding data for each interval, which is computationally
+    expensive.
+    """
 
     def __init__(self, cost: BaseCost = L2Cost()):
         self.cost = cost
