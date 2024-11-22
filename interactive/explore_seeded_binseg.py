@@ -9,7 +9,7 @@ from skchange.utils.benchmarking.profiler import Profiler
 df = generate_alternating_data(
     n_segments=2, mean=10, segment_length=20, p=1, random_state=7
 )
-detector = SeededBinarySegmentation(score="mean", growth_factor=2)
+detector = SeededBinarySegmentation(growth_factor=2)
 detector.fit_predict(df)
 
 px.line(df)
@@ -19,7 +19,7 @@ px.scatter(detector.scores, x="argmax_cpt", y="score", hover_data=["start", "end
 # Profiling
 n = int(1e6)
 df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
-detector = SeededBinarySegmentation("mean", growth_factor=1.5, min_segment_length=10)
+detector = SeededBinarySegmentation(growth_factor=1.5, min_segment_length=10)
 profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
@@ -33,8 +33,6 @@ df_train = generate_alternating_data(
 df_test = generate_alternating_data(
     n_segments=10, mean=5, segment_length=1000, p=1, random_state=5
 )
-detector = SeededBinarySegmentation(
-    score="mean", threshold_scale=None, min_segment_length=10
-)
+detector = SeededBinarySegmentation(threshold_scale=None, min_segment_length=10)
 detector.fit(df_train)
 changepoints = detector.predict(df_test)
