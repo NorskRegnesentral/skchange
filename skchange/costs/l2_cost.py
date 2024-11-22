@@ -29,6 +29,13 @@ def l2_cost_optim(
         Start indices of the segments.
     ends : `np.ndarray`
         End indices of the segments.
+    sums : `np.ndarray`
+        Cumulative sum of the input data, with a row of 0-entries as the first row.
+    sums2 : `np.ndarray`
+        Cumulative sum of the squared input data, with a row of 0-entries as the first
+        row.
+    sample_sizes : `np.ndarray`
+        Array of sample sizes for each interval.
 
     Returns
     -------
@@ -58,12 +65,19 @@ def l2_cost_fixed(
 
     Parameters
     ----------
-    mean : `np.ndarray`
-        Fixed mean for the cost calculation.
     starts : `np.ndarray`
         Start indices of the segments.
     ends : `np.ndarray`
         End indices of the segments.
+    sums : `np.ndarray`
+        Cumulative sum of the input data, with a row of 0-entries as the first row.
+    sums2 : `np.ndarray`
+        Cumulative sum of the squared input data, with a row of 0-entries as the first
+        row.
+    sample_sizes : `np.ndarray`
+        Array of sample sizes for each interval.
+    mean : `np.ndarray`
+        Fixed mean for the cost calculation.
 
     Returns
     -------
