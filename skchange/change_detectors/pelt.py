@@ -143,10 +143,10 @@ class Pelt(ChangeDetector):
     --------
     >>> from skchange.change_detectors import Pelt
     >>> from skchange.datasets.generate import generate_alternating_data
-    >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=10000, p=5)
+    >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=100, p=5)
     >>> detector = Pelt()
     >>> detector.fit_predict(df)
-    0    9999
+    0    99
     Name: changepoint, dtype: int64
     """
 
