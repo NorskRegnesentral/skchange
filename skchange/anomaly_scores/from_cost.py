@@ -136,6 +136,35 @@ class Saving(BaseSaving):
         return params
 
 
+def to_local_anomaly_score(
+    evaluator: Union[BaseCost, BaseLocalAnomalyScore],
+) -> BaseLocalAnomalyScore:
+    """Convert a cost function to a local anomaly score.
+
+    Parameters
+    ----------
+    evaluator : BaseCost or BaseLocalAnomalyScore
+        The evalutor to convert to a local anomaly score. If a cost, it must be a cost
+        with a fixed parameter. If a local anomaly score is provided, it is returned as
+        is.
+
+    Returns
+    -------
+    local_anomaly_score : BaseLocalAnomalyScore
+        The local anomaly score based on the cost function.
+    """
+    if isinstance(evaluator, BaseCost):
+        local_anomaly_score = LocalAnomalyScore(evaluator)
+    elif isinstance(evaluator, BaseLocalAnomalyScore):
+        local_anomaly_score = evaluator
+    else:
+        raise ValueError(
+            f"evaluator must be an instance of BaseLocalAnomalyScore or BaseCost. "
+            f"Got {type(evaluator)}."
+        )
+    return local_anomaly_score
+
+
 class LocalAnomalyScore(BaseLocalAnomalyScore):
     """Local anomaly scores based on costs."""
 
@@ -237,32 +266,3 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             {"cost": L2Cost()},
         ]
         return params
-
-
-def to_local_anomaly_score(
-    evaluator: Union[BaseCost, BaseLocalAnomalyScore],
-) -> BaseLocalAnomalyScore:
-    """Convert a cost function to a local anomaly score.
-
-    Parameters
-    ----------
-    evaluator : BaseCost or BaseLocalAnomalyScore
-        The evalutor to convert to a local anomaly score. If a cost, it must be a cost
-        with a fixed parameter. If a local anomaly score is provided, it is returned as
-        is.
-
-    Returns
-    -------
-    local_anomaly_score : BaseLocalAnomalyScore
-        The local anomaly score based on the cost function.
-    """
-    if isinstance(evaluator, BaseCost):
-        local_anomaly_score = LocalAnomalyScore(evaluator)
-    elif isinstance(evaluator, BaseLocalAnomalyScore):
-        local_anomaly_score = evaluator
-    else:
-        raise ValueError(
-            f"evaluator must be an instance of BaseLocalAnomalyScore or BaseCost. "
-            f"Got {type(evaluator)}."
-        )
-    return local_anomaly_score
