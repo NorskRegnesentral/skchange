@@ -32,8 +32,10 @@ def greedy_anomaly_selection(
         argmax = scores.argmax()
         anomaly_start = anomaly_starts[argmax]
         anomaly_end = anomaly_ends[argmax]
-        anomalies.append((anomaly_start, anomaly_end))
-        scores[(anomaly_end >= starts) & (anomaly_start < ends)] = 0.0
+        # TODO: -1 for now since the current CollectiveAnomalyDetector uses [start, end]
+        # intervals. This is going to be changed in the future.
+        anomalies.append((anomaly_start, anomaly_end - 1))
+        scores[(anomaly_end >= starts) & (anomaly_start <= ends)] = 0.0
     anomalies.sort()
     return anomalies
 
@@ -48,7 +50,7 @@ def make_anomaly_intervals(
         # TODO: Add support for anomaly_intervals starting at interval_start and ending
         # at interval_end. Currently blocked by interval evaluators requiring
         # strictly increasing interval input.
-        for j in range(i + min_segment_length - 1, interval_end):
+        for j in range(i + min_segment_length, interval_end):
             baseline_n = interval_end - j + i - interval_start
             if baseline_n >= min_segment_length:
                 starts.append(i)
@@ -84,8 +86,8 @@ def run_circular_binseg(
             (
                 np.repeat(start, anomaly_start_candidates.size),
                 anomaly_start_candidates,
-                anomaly_end_candidates + 1,
-                np.repeat(end + 1, anomaly_start_candidates.size),
+                anomaly_end_candidates,
+                np.repeat(end, anomaly_start_candidates.size),
             )
         )
         scores = score.evaluate(intervals)
