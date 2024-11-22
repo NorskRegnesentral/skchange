@@ -1,7 +1,12 @@
 import numpy as np
 import pytest
 
-from skchange.anomaly_scores.from_cost import Saving, to_saving
+from skchange.anomaly_scores import (
+    LocalAnomalyScore,
+    Saving,
+    to_local_anomaly_score,
+    to_saving,
+)
 from skchange.costs import COSTS
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
@@ -63,3 +68,29 @@ def test_to_saving_error():
         ValueError, match="evaluator must be an instance of BaseSaving or BaseCost."
     ):
         to_saving("invalid_evaluator")
+
+
+@pytest.mark.parametrize("cost_class", COSTS)
+def test_to_local_anomaly_score_with_base_cost(cost_class):
+    param = find_fixed_param_combination(cost_class)
+    cost_instance = cost_class().set_params(**param)
+    local_anomaly_score = to_local_anomaly_score(cost_instance)
+    assert isinstance(local_anomaly_score, LocalAnomalyScore)
+    assert local_anomaly_score.cost == cost_instance
+
+
+@pytest.mark.parametrize("cost_class", COSTS)
+def test_to_local_anomaly_score_with_local_anomaly_score(cost_class):
+    param = find_fixed_param_combination(cost_class)
+    cost_instance = cost_class().set_params(**param)
+    local_anomaly_score_instance = LocalAnomalyScore(cost=cost_instance)
+    result = to_local_anomaly_score(local_anomaly_score_instance)
+    assert result is local_anomaly_score_instance
+
+
+def test_to_local_anomaly_score_error():
+    with pytest.raises(
+        ValueError,
+        match="evaluator must be an instance of BaseLocalAnomalyScore or BaseCost.",
+    ):
+        to_local_anomaly_score("invalid_evaluator")
