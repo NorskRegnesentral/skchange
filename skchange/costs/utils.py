@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 MeanType = Union[ArrayLike, numbers.Number]
-CovType = ArrayLike
+CovType = Union[ArrayLike, numbers.Number]
 
 
 def check_mean(mean: MeanType, X: np.ndarray) -> np.ndarray:
@@ -46,10 +46,16 @@ def check_cov(cov: CovType, X: np.ndarray) -> np.ndarray:
     cov : np.ndarray
         Fixed covariance matrix for the cost calculation.
     """
-    cov = np.asarray(cov)
+    cov = np.array([[cov]]) if isinstance(cov, numbers.Number) else np.asarray(cov)
+
+    if cov.ndim != 2:
+        raise ValueError(f"cov must have 2 dimensions, got {cov.ndim}.")
+
     p = X.shape[1]
     if cov.shape[0] != p or cov.shape[1] != p:
         raise ValueError(
             f"cov must have shape (X.shape[1], X.shape[1]), got {cov.shape}."
         )
+    if not np.all(np.linalg.eigvals(cov) > 0):
+        raise ValueError("covariance matrix must be positive definite.")
     return cov
