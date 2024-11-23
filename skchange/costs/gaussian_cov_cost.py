@@ -169,8 +169,10 @@ class GaussianCovCost(BaseCost):
 
     Parameters
     ----------
-    param : tuple[np.ndarray, np.ndarray], optional (default=None)
-        The fixed mean and covariance matrix for the cost calculation.
+    param : 2-tuple of float or np.ndarray, or None (default=None)
+        Fixed mean and covariance matrix for the cost calculation.
+        If None, the maximum likelihood estimates are used.
+
     """
 
     def __init__(self, param: Union[tuple[MeanType, CovType], None] = None):
@@ -183,8 +185,8 @@ class GaussianCovCost(BaseCost):
 
         Parameters
         ----------
-        param : tuple[np.ndarray, np.ndarray]
-            The fixed mean and covariance matrix for the cost calculation.
+        param : 2-tuple of float or np.ndarray
+            Fixed mean and covariance matrix for the cost calculation.
         X : np.ndarray
             Input data.
 
