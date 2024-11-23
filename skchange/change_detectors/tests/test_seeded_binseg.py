@@ -6,7 +6,10 @@ import pytest
 
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
 from skchange.change_scores import CHANGE_SCORES
+from skchange.costs import COSTS
 from skchange.datasets.generate import generate_alternating_data
+
+SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 
 
 def test_invalid_parameters():
@@ -43,7 +46,7 @@ def test_invalid_data():
         detector.fit(pd.Series([1.0, np.nan, 1.0, 1.0]))
 
 
-@pytest.mark.parametrize("Score", CHANGE_SCORES)
+@pytest.mark.parametrize("Score", SCORES_AND_COSTS)
 def test_binseg_tuning(Score):
     """Test SeededBinarySegmentation tuning."""
     n_segments = 2

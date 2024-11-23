@@ -6,10 +6,13 @@ import pytest
 from skchange.anomaly_detectors.capa import Capa
 from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.anomaly_scores import SAVINGS
+from skchange.costs import COSTS
 from skchange.datasets.generate import generate_alternating_data
 
+COSTS_AND_SAVINGS = COSTS + SAVINGS
 
-@pytest.mark.parametrize("Saving", SAVINGS)
+
+@pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
 @pytest.mark.parametrize("Detector", [Capa, Mvcapa])
 def test_capa_anomalies(Detector, Saving):
     """Test Capa anomalies."""

@@ -5,10 +5,13 @@ import pytest
 
 from skchange.change_detectors.moscore import Moscore
 from skchange.change_scores import CHANGE_SCORES
+from skchange.costs import COSTS
 from skchange.datasets.generate import generate_alternating_data
 
+SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 
-@pytest.mark.parametrize("Score", CHANGE_SCORES)
+
+@pytest.mark.parametrize("Score", SCORES_AND_COSTS)
 def test_moscore_changepoint(Score):
     """Test Moscore changepoints."""
     n_segments = 2
@@ -21,7 +24,7 @@ def test_moscore_changepoint(Score):
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
 
 
-@pytest.mark.parametrize("Score", CHANGE_SCORES)
+@pytest.mark.parametrize("Score", SCORES_AND_COSTS)
 def test_moscore_scores(Score):
     """Test Moscore scores."""
     n_segments = 2
@@ -35,7 +38,7 @@ def test_moscore_scores(Score):
     assert len(scores) == len(df)
 
 
-@pytest.mark.parametrize("Score", CHANGE_SCORES)
+@pytest.mark.parametrize("Score", SCORES_AND_COSTS)
 def test_moscore_tuning(Score):
     """Test Moscore tuning."""
     n_segments = 2
