@@ -245,10 +245,7 @@ class GaussianCovCost(BaseCost):
         -------
         costs : np.ndarray
             A 2D array of costs. One row for each interval. The number of
-            columns is 1 if the cost is inherently multivariate. The number of columns
-            is equal to the number of columns in the input data if the cost is
-            univariate. In this case, each column represents the univariate cost for
-            the corresponding input data column.
+            columns is 1 since the GaussianCovCost is inherently multivariate.
         """
         return gaussian_cov_cost_optim(starts, ends, self.X_)
 
@@ -266,10 +263,7 @@ class GaussianCovCost(BaseCost):
         -------
         costs : np.ndarray
             A 2D array of costs. One row for each interval. The number of
-            columns is 1 if the cost is inherently multivariate. The number of columns
-            is equal to the number of columns in the input data if the cost is
-            univariate. In this case, each column represents the univariate cost for
-            the corresponding input data column.
+            columns is 1 since the GaussianCovCost is inherently multivariate.
         """
         return gaussian_cov_cost_fixed(
             starts, ends, self.X_, self._mean, self._log_det_cov, self._inv_cov
