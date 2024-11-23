@@ -169,8 +169,8 @@ class GaussianCovCost(BaseCost):
 
     Parameters
     ----------
-    param : float or array-like, optional (default=None)
-        Fixed mean for the cost calculation. If None, the optimal mean is calculated.
+    param : tuple[np.ndarray, np.ndarray], optional (default=None)
+        The fixed mean and covariance matrix for the cost calculation.
     """
 
     def __init__(self, param: Union[tuple[MeanType, CovType], None] = None):
