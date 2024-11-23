@@ -8,7 +8,6 @@ from numpy.typing import ArrayLike
 from skchange.costs.base import BaseCost
 from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
-from skchange.utils.numba.general import col_repeat
 from skchange.utils.numba.stats import col_cumsum
 from skchange.utils.validation.data import as_2d_array
 
@@ -19,7 +18,6 @@ def l2_cost_optim(
     ends: np.ndarray,
     sums: np.ndarray,
     sums2: np.ndarray,
-    sample_sizes: np.ndarray,
 ) -> np.ndarray:
     """Calculate the L2 cost for an optimal constant mean for each segment.
 
@@ -34,8 +32,6 @@ def l2_cost_optim(
     sums2 : `np.ndarray`
         Cumulative sum of the squared input data, with a row of 0-entries as the first
         row.
-    sample_sizes : `np.ndarray`
-        Array of sample sizes for each interval.
 
     Returns
     -------
@@ -48,7 +44,8 @@ def l2_cost_optim(
     """
     partial_sums = sums[ends] - sums[starts]
     partial_sums2 = sums2[ends] - sums2[starts]
-    costs = partial_sums2 - partial_sums**2 / sample_sizes[ends - starts]
+    n = (ends - starts).reshape(-1, 1)
+    costs = partial_sums2 - partial_sums**2 / n
     return costs
 
 
@@ -58,7 +55,6 @@ def l2_cost_fixed(
     ends: np.ndarray,
     sums: np.ndarray,
     sums2: np.ndarray,
-    sample_sizes: np.ndarray,
     mean: np.ndarray,
 ) -> np.ndarray:
     """Calculate the L2 cost for a fixed constant mean for each segment.
@@ -74,8 +70,6 @@ def l2_cost_fixed(
     sums2 : `np.ndarray`
         Cumulative sum of the squared input data, with a row of 0-entries as the first
         row.
-    sample_sizes : `np.ndarray`
-        Array of sample sizes for each interval.
     mean : `np.ndarray`
         Fixed mean for the cost calculation.
 
@@ -90,9 +84,8 @@ def l2_cost_fixed(
     """
     partial_sums = sums[ends] - sums[starts]
     partial_sums2 = sums2[ends] - sums2[starts]
-    costs = (
-        partial_sums2 - 2 * mean * partial_sums + sample_sizes[ends - starts] * mean**2
-    )
+    n = (ends - starts).reshape(-1, 1)
+    costs = partial_sums2 - 2 * mean * partial_sums + n * mean**2
     return costs
 
 
@@ -142,7 +135,6 @@ class L2Cost(BaseCost):
 
         self.sums_ = col_cumsum(X, init_zero=True)
         self.sums2_ = col_cumsum(X**2, init_zero=True)
-        self.sample_sizes_ = col_repeat(np.arange(0, X.shape[0] + 1), X.shape[1])
 
         return self
 
@@ -165,7 +157,7 @@ class L2Cost(BaseCost):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
-        return l2_cost_optim(starts, ends, self.sums_, self.sums2_, self.sample_sizes_)
+        return l2_cost_optim(starts, ends, self.sums_, self.sums2_)
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
@@ -186,9 +178,7 @@ class L2Cost(BaseCost):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
-        return l2_cost_fixed(
-            starts, ends, self.sums_, self.sums2_, self.sample_sizes_, self._mean
-        )
+        return l2_cost_fixed(starts, ends, self.sums_, self.sums2_, self._mean)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
