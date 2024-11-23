@@ -37,9 +37,9 @@ def test_saving_min_size(cost_class):
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_fit(cost_class):
     param = find_fixed_param_combination(cost_class)
-    cost_instance = cost_class().set_params(**param)
+    cost = cost_class().set_params(**param)
 
-    saving = Saving(baseline_cost=cost_instance)
+    saving = Saving(baseline_cost=cost)
     X = np.random.randn(100, 1)
     saving.fit(X)
     assert saving.baseline_cost.is_fitted
@@ -49,12 +49,12 @@ def test_saving_fit(cost_class):
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_evaluate(cost_class):
     param = find_fixed_param_combination(cost_class)
-    cost_instance = cost_class().set_params(**param)
+    cost = cost_class().set_params(**param)
 
-    saving = Saving(baseline_cost=cost_instance)
+    saving = Saving(baseline_cost=cost)
     X = np.random.randn(100, 1)
     saving.fit(X)
-    intervals = np.array([[0, 10], [10, 20], [20, 30]])
+    intervals = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
     savings = saving.evaluate(intervals)
     assert savings.shape == (3, 1)
 
@@ -77,19 +77,31 @@ def test_to_saving_error():
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_to_local_anomaly_score_with_base_cost(cost_class):
     param = find_fixed_param_combination(cost_class)
-    cost_instance = cost_class().set_params(**param)
-    local_anomaly_score = to_local_anomaly_score(cost_instance)
+    cost = cost_class().set_params(**param)
+    local_anomaly_score = to_local_anomaly_score(cost)
     assert isinstance(local_anomaly_score, LocalAnomalyScore)
-    assert local_anomaly_score.cost == cost_instance
+    assert local_anomaly_score.cost == cost
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_to_local_anomaly_score_with_local_anomaly_score(cost_class):
     param = find_fixed_param_combination(cost_class)
-    cost_instance = cost_class().set_params(**param)
-    local_anomaly_score_instance = LocalAnomalyScore(cost=cost_instance)
+    cost = cost_class().set_params(**param)
+    local_anomaly_score_instance = LocalAnomalyScore(cost=cost)
     result = to_local_anomaly_score(local_anomaly_score_instance)
     assert result is local_anomaly_score_instance
+
+
+@pytest.mark.parametrize("cost_class", COSTS)
+def test_local_anomaly_score_evaluate(cost_class):
+    param = find_fixed_param_combination(cost_class)
+    cost = cost_class().set_params(**param)
+    local_anomaly_score = LocalAnomalyScore(cost=cost)
+    X = np.random.randn(100, 1)
+    local_anomaly_score.fit(X)
+    intervals = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
+    scores = local_anomaly_score.evaluate(intervals)
+    assert scores.shape == (3, 1)
 
 
 def test_to_local_anomaly_score_error():
