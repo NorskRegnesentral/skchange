@@ -54,7 +54,7 @@ def test_saving_evaluate(cost_class):
     saving = Saving(baseline_cost=cost)
     X = np.random.randn(100, 1)
     saving.fit(X)
-    intervals = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
+    intervals = np.array([[0, 10], [10, 20], [20, 30]])
     savings = saving.evaluate(intervals)
     assert savings.shape == (3, 1)
 
