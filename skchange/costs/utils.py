@@ -71,12 +71,12 @@ def check_cov(cov: CovType, X: np.ndarray) -> np.ndarray:
     cov : np.ndarray
         Fixed covariance matrix for the cost calculation.
     """
-    cov = np.array([[cov]]) if isinstance(cov, numbers.Number) else np.asarray(cov)
+    p = X.shape[1]
+    cov = cov * np.eye(p) if isinstance(cov, numbers.Number) else np.asarray(cov)
 
     if cov.ndim != 2:
         raise ValueError(f"cov must have 2 dimensions, got {cov.ndim}.")
 
-    p = X.shape[1]
     if cov.shape[0] != p or cov.shape[1] != p:
         raise ValueError(
             f"cov must have shape (X.shape[1], X.shape[1]), got {cov.shape}."
