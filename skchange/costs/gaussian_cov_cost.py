@@ -113,12 +113,6 @@ def _gaussian_ll_at_fixed_for_segment(
         evaluated at the maximum likelihood parameter
         estimates for the mean and covariance matrix.
     """
-    if not end >= start - 2:
-        raise ValueError(
-            f"The 'end={end}' argument must be larger than 'start={start}'."
-            " Cannot compute a covariance matrix from a single observation."
-        )
-
     n = end - start
     p = X.shape[1]
 
