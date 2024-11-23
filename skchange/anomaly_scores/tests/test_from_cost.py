@@ -24,10 +24,14 @@ def test_saving_init(cost_class):
 @pytest.mark.parametrize("cost_class", COSTS)
 def test_saving_min_size(cost_class):
     param = find_fixed_param_combination(cost_class)
-    cost_instance = cost_class().set_params(**param)
+    cost = cost_class().set_params(**param)
+    saving = Saving(baseline_cost=cost)
 
-    saving = Saving(baseline_cost=cost_instance)
-    assert saving.min_size == cost_instance.min_size
+    np.random.seed(132)
+    X = np.random.randn(100, 1)
+    cost.fit(X)
+    saving.fit(X)
+    assert saving.min_size == cost.min_size
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
