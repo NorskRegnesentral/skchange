@@ -2,6 +2,7 @@
 
 from skchange.costs.base import BaseCost
 from skchange.costs.gaussian_cov_cost import GaussianCovCost
+from skchange.costs.gaussian_var_cost import GaussianVarCost
 from skchange.costs.l2_cost import L2Cost
 
 BASE_COSTS = [
@@ -9,6 +10,7 @@ BASE_COSTS = [
 ]
 COSTS = [
     GaussianCovCost,
+    GaussianVarCost,
     L2Cost,
 ]
 
