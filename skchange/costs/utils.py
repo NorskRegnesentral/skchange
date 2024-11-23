@@ -7,6 +7,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 MeanType = Union[ArrayLike, numbers.Number]
+VarType = Union[ArrayLike, numbers.Number]
 CovType = Union[ArrayLike, numbers.Number]
 
 
@@ -15,7 +16,7 @@ def check_mean(mean: MeanType, X: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    mean : np.ndarray or float
+    mean : np.ndarray or numbers.Number
         Fixed mean for the cost calculation.
     X : np.ndarray
         2d input data.
@@ -29,6 +30,30 @@ def check_mean(mean: MeanType, X: np.ndarray) -> np.ndarray:
     if len(mean) != 1 and len(mean) != X.shape[1]:
         raise ValueError(f"mean must have length 1 or X.shape[1], got {len(mean)}.")
     return mean
+
+
+def check_var(var: VarType, X: np.ndarray) -> np.ndarray:
+    """Check if the fixed variance parameter is valid.
+
+    Parameters
+    ----------
+    var : np.ndarray or numbers.Number
+        Fixed variance for the cost calculation.
+    X : np.ndarray
+        2d input data.
+
+    Returns
+    -------
+    var : np.ndarray
+        Fixed variance for the cost calculation.
+    """
+    var = np.array([var]) if isinstance(var, numbers.Number) else np.asarray(var)
+    if len(var) != 1 and len(var) != X.shape[1]:
+        raise ValueError(f"var must have length 1 or X.shape[1], got {len(var)}.")
+
+    if np.any(var <= 0):
+        raise ValueError("var must be positive.")
+    return var
 
 
 def check_cov(cov: CovType, X: np.ndarray) -> np.ndarray:
