@@ -172,8 +172,9 @@ class GaussianCovCost(BaseCost):
     param : 2-tuple of float or np.ndarray, or None (default=None)
         Fixed mean and covariance matrix for the cost calculation.
         If None, the maximum likelihood estimates are used.
-
     """
+
+    data_type = "multivariate"
 
     def __init__(self, param: Union[tuple[MeanType, CovType], None] = None):
         super().__init__(param)
