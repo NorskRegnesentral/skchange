@@ -42,6 +42,20 @@ class BaseCost(BaseIntervalEvaluator):
         """
         return param
 
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters in the cost function.
+
+        Defaults to 1 parameter per variable in the data. This method should be
+        overwritten in subclasses if the cost function has a different number of
+        parameters per variable.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return p
+
     def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
         """Evaluate on a set of intervals.
 

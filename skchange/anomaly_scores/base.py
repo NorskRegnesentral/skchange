@@ -18,6 +18,21 @@ class BaseSaving(BaseIntervalEvaluator):
     def __init__(self):
         super().__init__()
 
+    @staticmethod
+    def get_param_size(p: int) -> int:
+        """Get the number of parameters in the saving function.
+
+        Defaults to 1 parameter per variable in the data. This method should be
+        overwritten in subclasses if the cost function has a different number of
+        parameters per variable.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return p
+
 
 class BaseLocalAnomalyScore(BaseIntervalEvaluator):
     """Base class template for local anomaly scores.

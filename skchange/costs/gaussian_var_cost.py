@@ -162,6 +162,16 @@ class GaussianVarCost(BaseCost):
         """
         return 2
 
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters in the cost function.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return 2 * p
+
     def _fit(self, X: ArrayLike, y=None):
         """Fit the cost interval evaluator.
 

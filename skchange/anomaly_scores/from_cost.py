@@ -57,13 +57,27 @@ class Saving(BaseSaving):
             raise ValueError("The baseline cost must have a fixed parameter.")
 
         self.baseline_cost = baseline_cost
-        self.optimised_cost = baseline_cost.clone().set_params(param=None)
+        self.optimised_cost: BaseCost = baseline_cost.clone().set_params(param=None)
         super().__init__()
 
     @property
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate."""
         return self.optimised_cost.min_size
+
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters in the saving function.
+
+        Defaults to 1 parameter per variable in the data. This method should be
+        overwritten in subclasses if the cost function has a different number of
+        parameters per variable.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return self.optimised_cost.get_param_size(p)
 
     def _fit(self, X: ArrayLike, y=None):
         """Fit the saving evaluator.
