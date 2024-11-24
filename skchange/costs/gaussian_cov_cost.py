@@ -201,13 +201,15 @@ class GaussianCovCost(BaseCost):
         return mean, cov
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> Union[int, None]:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as intervals[i, -1] - intervals[i, 0].
         """
-        self.check_is_fitted()
-        return self.X_.shape[1] + 1
+        if self.is_fitted:
+            return self.X_.shape[1] + 1
+        else:
+            return None
 
     def _fit(self, X: ArrayLike, y=None):
         """Fit the cost interval evaluator.

@@ -17,6 +17,8 @@ Recommended but optional to implement for a concrete detector:
 __author__ = ["Tveten"]
 __all__ = ["BaseIntervalEvaluator"]
 
+from typing import Union
+
 import numpy as np
 from numpy.typing import ArrayLike
 from sktime.base import BaseEstimator
@@ -171,10 +173,17 @@ class BaseIntervalEvaluator(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> Union[int, None]:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as intervals[i, -1] - intervals[i, 0].
+
+        Returns
+        -------
+        int or None
+            The minimum size of the interval to evaluate. If None, it is unknown what
+            the minimum size is. E.g., the evaluator may need to be fitted first to
+            determine the minimum size.
         """
         return 1
 

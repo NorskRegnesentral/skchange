@@ -200,7 +200,10 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     @property
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate."""
-        return 2 * self.cost.min_size
+        if self.cost.min_size is None:
+            return None
+        else:
+            return 2 * self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
         """Fit the saving evaluator.
