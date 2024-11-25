@@ -33,8 +33,8 @@ def _gaussian_ll_at_mle_for_segment(
 
     Returns
     -------
-    mv_ll_at_mle : float
-        Log likelihood of the interval
+    log_likelihood : float
+        Twice the log likelihood of the interval
         [start, end) in the data matrix X,
         evaluated at the maximum likelihood parameter
         estimates for the mean and covariance matrix.
@@ -205,7 +205,7 @@ class GaussianCovCost(BaseCost):
     def min_size(self) -> Union[int, None]:
         """Minimum size of the interval to evaluate.
 
-        The size of each interval is defined as intervals[i, -1] - intervals[i, 0].
+        The size of each interval is defined as cuts[i, 1] - cuts[i, 0].
         """
         if self.is_fitted:
             return self.X_.shape[1] + 1
@@ -223,7 +223,7 @@ class GaussianCovCost(BaseCost):
         return p + p * (p + 1) // 2
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the cost interval evaluator.
+        """Fit the cost.
 
         This method precomputes quantities that speed up the cost evaluation.
 

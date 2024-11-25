@@ -119,7 +119,7 @@ class L2Cost(BaseCost):
         return check_mean(param, X)
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the cost interval evaluator.
+        """Fit the cost.
 
         This method precomputes quantities that speed up the cost evaluation.
 

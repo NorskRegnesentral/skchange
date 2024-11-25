@@ -158,7 +158,7 @@ class GaussianVarCost(BaseCost):
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate.
 
-        The size of each interval is defined as intervals[i, -1] - intervals[i, 0].
+        The size of each interval is defined as intervals[i, 1] - intervals[i, 0].
         """
         return 2
 
@@ -173,7 +173,7 @@ class GaussianVarCost(BaseCost):
         return 2 * p
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the cost interval evaluator.
+        """Fit the cost.
 
         This method precomputes quantities that speed up the cost evaluation.
 
