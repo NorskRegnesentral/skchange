@@ -470,7 +470,7 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
             raise ValueError("Collective saving must be univariate.")
         self._collective_saving = to_saving(collective_saving)
 
-        if point_saving.min_size is not None and point_saving.min_size > 1:
+        if point_saving.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
         self._point_saving = to_saving(point_saving)
 
