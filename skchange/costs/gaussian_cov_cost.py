@@ -174,7 +174,7 @@ class GaussianCovCost(BaseCost):
         If None, the maximum likelihood estimates are used.
     """
 
-    data_type = "multivariate"
+    evaluation_type = "multivariate"
 
     def __init__(self, param: Union[tuple[MeanType, CovType], None] = None):
         super().__init__(param)

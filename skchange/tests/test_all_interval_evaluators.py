@@ -45,7 +45,7 @@ def test_evaluator_evaluate(Evaluator):
 
 
 @pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
-def test_evaluator_evaluate_by_data_type(Evaluator):
+def test_evaluator_evaluate_by_evaluation_type(Evaluator):
     evaluator = Evaluator.create_test_instance()
     n_segments = 1
     seg_len = 50
@@ -65,9 +65,9 @@ def test_evaluator_evaluate_by_data_type(Evaluator):
 
     results = evaluator.evaluate(intervals)
 
-    if evaluator.data_type == "univariate":
+    if evaluator.evaluation_type == "univariate":
         assert results.shape == (2, p)
-    elif evaluator.data_type == "multivariate":
+    elif evaluator.evaluation_type == "multivariate":
         assert results.shape == (2, 1)
     else:
         raise ValueError("Invalid scitype:evaluator tag.")

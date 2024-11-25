@@ -52,14 +52,14 @@ class BaseIntervalEvaluator(BaseEstimator):
     # can be overridden in subclasses if splitting points are relevant, like for change
     # scores.
     expected_interval_entries = 2
-    # data_type tells whether the evaluator is univariate or multivariate.
+    # evaluation_type tells whether the evaluator is univariate or multivariate.
     # Univariate evaluators are vectorized over variables/columns in the data,
     # such that output is one column per variable.
     # Multivariate evaluators take the entire data as input and output a single
     # value, such that the output is a single column no matter how many variables.
     # TODO: Implement as tags?
     # For now a class variable to pass sktime conformance test.
-    data_type = "univariate"
+    evaluation_type = "univariate"
 
     def __init__(self):
         self._is_fitted = False

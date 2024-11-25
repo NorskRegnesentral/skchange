@@ -382,7 +382,7 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
     ----------
     collective_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
         The saving function to use for collective anomaly detection.
-        Only univariate savings are permitted (see the `data_type` attribute).
+        Only univariate savings are permitted (see the `evaluation_type` attribute).
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     point_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
@@ -466,7 +466,7 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        if collective_saving.data_type == "multivariate":
+        if collective_saving.evaluation_type == "multivariate":
             raise ValueError("Collective saving must be univariate.")
         self._collective_saving = to_saving(collective_saving)
 

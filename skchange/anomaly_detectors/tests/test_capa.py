@@ -22,7 +22,7 @@ def test_capa_anomalies(Detector, Saving):
         fixed_params = find_fixed_param_combination(Saving)
         saving = saving.set_params(**fixed_params)
 
-    if Detector is Mvcapa and saving.data_type == "multivariate":
+    if Detector is Mvcapa and saving.evaluation_type == "multivariate":
         # Mvcapa requires univariate saving.
         pytest.skip("Skipping test for Mvcapa with multivariate saving.")
 
