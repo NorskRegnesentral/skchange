@@ -56,15 +56,15 @@ class BaseCost(BaseIntervalScorer):
         """
         return p
 
-    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
+    def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate on a set of intervals.
 
         Parameters
         ----------
-        intervals : np.ndarray
+        cuts : np.ndarray
             A 2D array with two columns of integer location-based intervals to evaluate.
-            The subsets X[intervals[i, 0]:intervals[i, 1]] for
-            i = 0, ..., len(intervals) are evaluated.
+            The subsets X[cuts[i, 0]:cuts[i, 1]] for
+            i = 0, ..., len(cuts) are evaluated.
 
         Returns
         -------
@@ -75,7 +75,7 @@ class BaseCost(BaseIntervalScorer):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
-        starts, ends = intervals[:, 0], intervals[:, 1]
+        starts, ends = cuts[:, 0], cuts[:, 1]
         if self.param is None:
             costs = self._evaluate_optim_param(starts, ends)
         else:
