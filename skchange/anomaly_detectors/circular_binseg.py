@@ -178,14 +178,14 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        score: Union[BaseCost, BaseLocalAnomalyScore] = L2Cost(),
+        anomaly_score: Union[BaseCost, BaseLocalAnomalyScore] = L2Cost(),
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
         growth_factor: float = 1.5,
     ):
-        self.score = score
+        self.anomaly_score = anomaly_score
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_segment_length = min_segment_length
@@ -193,7 +193,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         self.growth_factor = growth_factor
         super().__init__()
 
-        self._score = to_local_anomaly_score(score)
+        self._anomaly_score = to_local_anomaly_score(anomaly_score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
@@ -226,7 +226,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         """
         _, scores, _, _, _ = run_circular_binseg(
             X.values,
-            self._score,
+            self._anomaly_score,
             np.inf,
             self.min_segment_length,
             self.max_interval_length,
@@ -317,7 +317,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         )
         anomalies, scores, maximizers, starts, ends = run_circular_binseg(
             X.values,
-            self._score,
+            self._anomaly_score,
             self.threshold_,
             self.min_segment_length,
             self.max_interval_length,
@@ -353,11 +353,15 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs import L2Cost
+        from skchange.costs import GaussianCovCost, L2Cost
 
         params = [
             {"score": L2Cost(), "threshold_scale": 5},
-            {"score": L2Cost(), "min_segment_length": 5, "max_interval_length": 50},
-            {"score": L2Cost(), "min_segment_length": 2, "max_interval_length": 20},
+            {"score": L2Cost(), "min_segment_length": 3, "max_interval_length": 50},
+            {
+                "score": GaussianCovCost(),
+                "min_segment_length": 5,
+                "max_interval_length": 20,
+            },
         ]
         return params
