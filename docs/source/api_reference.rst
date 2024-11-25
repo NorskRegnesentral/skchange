@@ -18,8 +18,9 @@ For Python Interactive examples, see the `interactive <https://github.com/NorskR
 
    api_reference/base
    api_reference/anomaly_detectors
+   api_reference/anoamly_scores
    api_reference/change_detectors
-   api_reference/scores
+   api_reference/change_scores
    api_reference/costs
    api_reference/datasets
    api_reference/utils

@@ -3,26 +3,24 @@
 Costs
 =====
 
-Costs
------
-
 .. currentmodule:: skchange.costs
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    cost_factory
-    init_mean_cost
-    mean_cost
+    BaseCost
+    L2Cost
+    GaussianVarCost
+    GaussianCovCost
 
-Savings
--------
+Utility functions
+-----------------
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    saving_factory
-    init_mean_saving
-    mean_saving
+    check_mean
+    check_var
+    check_cov
