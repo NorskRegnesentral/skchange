@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from skchange.costs import COSTS
+from skchange.datasets.generate import generate_alternating_data
 
 
 def find_fixed_param_combination(cost_class):
@@ -45,7 +46,7 @@ def test_expected_interval_entries(CostClass):
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_cost_evaluation(CostClass):
+def test_cost_evaluation_optim_gt_fixed(CostClass):
     optim_cost = CostClass()
     fixed_params = find_fixed_param_combination(CostClass)
     fixed_cost = CostClass().set_params(**fixed_params)
@@ -57,3 +58,16 @@ def test_cost_evaluation(CostClass):
     optim_costs = optim_cost.evaluate(intervals)
     fixed_costs = fixed_cost.evaluate(intervals)
     assert np.all(optim_costs <= fixed_costs)
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_cost_evaluation_positive(CostClass):
+    cost = CostClass.create_test_instance()
+    n = 50
+    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
+    cost.fit(df)
+    starts = np.arange(n - 10)
+    ends = np.repeat(n - 1, len(starts))
+    intervals = np.column_stack((starts, ends))
+    costs = cost.evaluate(intervals)
+    assert np.all(costs >= 0.0)
