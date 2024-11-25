@@ -7,6 +7,7 @@ from skchange.anomaly_scores.from_cost import (
     to_local_anomaly_score,
     to_saving,
 )
+from skchange.anomaly_scores.l2_saving import L2Saving
 
 BASE_LOCAL_ANOMALY_SCORES = [
     BaseLocalAnomalyScore,
@@ -19,6 +20,7 @@ BASE_SAVINGS = [
 ]
 SAVINGS = [
     Saving,
+    L2Saving,
 ]
 BASE_ANOMALY_SCORES = BASE_SAVINGS + BASE_LOCAL_ANOMALY_SCORES
 ANOMALY_SCORES = SAVINGS + LOCAL_ANOMALY_SCORES
