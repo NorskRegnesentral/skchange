@@ -64,11 +64,11 @@ def test_capa_anomalies(Detector, Saving):
 
 def test_mvcapa_errors():
     """Test Mvcapa error cases."""
-    # Test collective saving must be univariate
     cov_mat = np.eye(2)
     cost = GaussianCovCost([0.0, cov_mat])
     saving = Saving(cost)
 
+    # Test collective saving must be univariate
     with pytest.raises(ValueError):
         Mvcapa(collective_saving=saving)
 
