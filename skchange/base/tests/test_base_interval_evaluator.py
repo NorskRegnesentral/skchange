@@ -5,10 +5,8 @@ from skchange.base.base_interval_scorer import BaseIntervalScorer
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
-    def _evaluate(self, intervals):
-        return np.array(
-            [np.sum(self._X[interval[0] : interval[-1]]) for interval in intervals]
-        )
+    def _evaluate(self, cuts):
+        return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
 
 
 def test_fit():
@@ -23,8 +21,8 @@ def test_evaluate():
     evaluator = ConcreteIntervalEvaluator()
     X = np.array([1, 2, 3, 4, 5])
     evaluator.fit(X)
-    intervals = np.array([[0, 2], [2, 5]])
-    values = evaluator.evaluate(intervals)
+    cuts = np.array([[0, 2], [2, 5]])
+    values = evaluator.evaluate(cuts)
     expected_values = np.array([3, 12])
     assert np.array_equal(values, expected_values)
 
@@ -34,11 +32,11 @@ def test_min_size():
     assert evaluator.min_size == 1
 
 
-def test_check_intervals():
+def test_check_cuts():
     evaluator = ConcreteIntervalEvaluator()
-    intervals = np.array([[0, 2], [2, 5]])
-    checked_intervals = evaluator._check_intervals(intervals)
-    assert np.array_equal(checked_intervals, intervals)
+    cuts = np.array([[0, 2], [2, 5]])
+    checked_cuts = evaluator._check_cuts(cuts)
+    assert np.array_equal(checked_cuts, cuts)
 
 
 def test_not_implemented_evaluate():
