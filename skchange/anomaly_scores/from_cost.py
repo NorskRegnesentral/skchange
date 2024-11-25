@@ -11,13 +11,13 @@ from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
 
 
-def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
-    """Convert a cost function to a saving.
+def to_saving(scorer: Union[BaseCost, BaseSaving]) -> BaseSaving:
+    """Convert compatible scorers to a saving.
 
     Parameters
     ----------
-    evaluator : BaseCost or BaseSaving
-        The evalutor to convert to a saving. If a cost, it must be a cost with a fixed
+    scorer : BaseCost or BaseSaving
+        The scorer to convert to a saving. If a cost, it must be a cost with a fixed
         parameter. If a saving is provided, it is returned as is.
 
     Returns
@@ -25,14 +25,14 @@ def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
     saving : BaseSaving
         The saving based on the cost function.
     """
-    if isinstance(evaluator, BaseCost):
-        saving = Saving(evaluator)
-    elif isinstance(evaluator, BaseSaving):
-        saving = evaluator
+    if isinstance(scorer, BaseCost):
+        saving = Saving(scorer)
+    elif isinstance(scorer, BaseSaving):
+        saving = scorer
     else:
         raise ValueError(
-            f"evaluator must be an instance of BaseSaving or BaseCost. "
-            f"Got {type(evaluator)}."
+            f"scorer must be an instance of BaseSaving or BaseCost. "
+            f"Got {type(scorer)}."
         )
     return saving
 
@@ -81,7 +81,7 @@ class Saving(BaseSaving):
         return self.optimised_cost.get_param_size(p)
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the saving evaluator.
+        """Fit the saving scorer.
 
         Parameters
         ----------
@@ -152,30 +152,29 @@ class Saving(BaseSaving):
 
 
 def to_local_anomaly_score(
-    evaluator: Union[BaseCost, BaseLocalAnomalyScore],
+    scorer: Union[BaseCost, BaseLocalAnomalyScore],
 ) -> BaseLocalAnomalyScore:
-    """Convert a cost function to a local anomaly score.
+    """Convert compatible scorers to a saving.
 
     Parameters
     ----------
-    evaluator : BaseCost or BaseLocalAnomalyScore
-        The evalutor to convert to a local anomaly score. If a cost, it must be a cost
-        with a fixed parameter. If a local anomaly score is provided, it is returned as
-        is.
+    scorer : BaseCost or BaseLocalAnomalyScore
+        The scorer to convert to a local anomaly score. If a local anomaly score is
+        provided, it is returned as is.
 
     Returns
     -------
     local_anomaly_score : BaseLocalAnomalyScore
         The local anomaly score based on the cost function.
     """
-    if isinstance(evaluator, BaseCost):
-        local_anomaly_score = LocalAnomalyScore(evaluator)
-    elif isinstance(evaluator, BaseLocalAnomalyScore):
-        local_anomaly_score = evaluator
+    if isinstance(scorer, BaseCost):
+        local_anomaly_score = LocalAnomalyScore(scorer)
+    elif isinstance(scorer, BaseLocalAnomalyScore):
+        local_anomaly_score = scorer
     else:
         raise ValueError(
-            f"evaluator must be an instance of BaseLocalAnomalyScore or BaseCost. "
-            f"Got {type(evaluator)}."
+            f"scorer must be an instance of BaseLocalAnomalyScore or BaseCost. "
+            f"Got {type(scorer)}."
         )
     return local_anomaly_score
 
@@ -218,7 +217,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         return self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the saving evaluator.
+        """Fit the saving scorer.
 
         Parameters
         ----------

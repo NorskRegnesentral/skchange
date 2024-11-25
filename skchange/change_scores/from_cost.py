@@ -10,13 +10,13 @@ from skchange.costs.base import BaseCost
 from skchange.costs.l2_cost import L2Cost
 
 
-def to_change_score(evaluator: Union[BaseCost, BaseChangeScore]) -> BaseChangeScore:
-    """Convert a cost function to a change score.
+def to_change_score(scorer: Union[BaseCost, BaseChangeScore]) -> BaseChangeScore:
+    """Convert compatible scorers to a change score.
 
     Parameters
     ----------
-    evaluator : BaseCost or BaseChangeScore
-        The evalutor to convert to a change score. If a change score is provided, it is
+    scorer : BaseCost or BaseChangeScore
+        The scorer to convert to a change score. If a change score is provided, it is
         returned as is.
 
     Returns
@@ -24,14 +24,14 @@ def to_change_score(evaluator: Union[BaseCost, BaseChangeScore]) -> BaseChangeSc
     change_score : BaseChangeScore
         The change score based on the cost function.
     """
-    if isinstance(evaluator, BaseCost):
-        change_score = ChangeScore(evaluator)
-    elif isinstance(evaluator, BaseChangeScore):
-        change_score = evaluator
+    if isinstance(scorer, BaseCost):
+        change_score = ChangeScore(scorer)
+    elif isinstance(scorer, BaseChangeScore):
+        change_score = scorer
     else:
         raise ValueError(
-            f"evaluator must be an instance of BaseChangeScore or BaseCost. "
-            f"Got {type(evaluator)}."
+            f"scorer must be an instance of BaseChangeScore or BaseCost. "
+            f"Got {type(scorer)}."
         )
     return change_score
 
@@ -58,7 +58,7 @@ class ChangeScore(BaseChangeScore):
         return self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the change score evaluator.
+        """Fit the change score.
 
         Parameters
         ----------
