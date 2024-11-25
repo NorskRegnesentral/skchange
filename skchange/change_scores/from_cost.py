@@ -2,6 +2,7 @@
 
 from typing import Union
 
+import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
@@ -74,7 +75,7 @@ class ChangeScore(BaseChangeScore):
         self.cost.fit(X)
         return self
 
-    def _evaluate(self, intervals):
+    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
         """Evaluate the change score on a set of intervals.
 
         Parameters
