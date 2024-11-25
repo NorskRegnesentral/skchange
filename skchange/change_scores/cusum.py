@@ -38,19 +38,17 @@ def cusum_score(
     Returns
     -------
     `np.ndarray`
-        Scores for a difference in the mean at the given intervals and splits.
+        CUSUM scores for the intervals and splits.
     """
-    before_sum = sums[splits + 1] - sums[starts]
-    before_weight = np.sqrt(
-        (ends - splits) / ((ends - starts + 1) * (splits - starts + 1))
-    )
-    before_weight = before_weight.reshape(-1, 1)
-    after_sum = sums[ends + 1] - sums[splits + 1]
-    after_weight = np.sqrt(
-        (splits - starts + 1) / ((ends - starts + 1) * (ends - splits))
-    )
-    after_weight = after_weight.reshape(-1, 1)
-    return np.sum(np.abs(after_weight * after_sum - before_weight * before_sum), axis=1)
+    n = ends - starts
+    before_n = splits - starts
+    after_n = ends - splits
+    before_sum = sums[splits] - sums[starts]
+    after_sum = sums[ends] - sums[splits]
+    before_weight = np.sqrt(after_n / (n * before_n)).reshape(-1, 1)
+    after_weight = np.sqrt(before_n / (n * after_n)).reshape(-1, 1)
+    cusum = np.abs(before_weight * before_sum - after_weight * after_sum)
+    return cusum
 
 
 class CUSUM(BaseChangeScore):
