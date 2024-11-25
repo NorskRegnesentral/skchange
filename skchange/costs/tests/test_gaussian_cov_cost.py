@@ -76,6 +76,24 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
     assert np.allclose(cost_value, analytical_cost)
 
 
+@pytest.mark.parametrize(
+    "mean, cov",
+    [
+        (0.0, np.array([[1, 0], [0, -1]])),  # Negative eigenvalue
+        (0.0, np.array([[1, 2], [2, 1]])),  # Not positive definite
+        (0.0, np.array([[1, 0.5], [0.5, 0]])),  # Zero eigenvalue
+        (0.0, np.array([1.0, 2.0])),  # Wrong ndim
+        (0.0, np.array([[1.0]])),  # Wrong shape (should be 2 x 2 if array input)
+    ],
+)
+def test_invalid_fixed_covariance(mean, cov):
+    """Test that invalid fixed covariance matrix raises errors."""
+    X = np.random.randn(100, 2)
+    cost = GaussianCovCost(param=(mean, cov))
+    with pytest.raises(ValueError):
+        cost.fit(X)
+
+
 def test_mean_cov_cost_raises_on_non_positive_definite():
     """Test mean covariance cost raises on non-positive definite."""
     X = np.array([[1, 2], [2, 1], [1, 2]])
