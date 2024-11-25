@@ -13,7 +13,7 @@ class BaseSaving(BaseIntervalScorer):
     the parameter was optimised for the interval.
     """
 
-    expected_interval_entries = 2
+    expected_cut_entries = 2
 
     def __init__(self):
         super().__init__()
@@ -42,7 +42,7 @@ class BaseLocalAnomalyScore(BaseIntervalScorer):
     local interval.
     """
 
-    expected_interval_entries = 4
+    expected_cut_entries = 4
 
     def __init__(self):
         super().__init__()

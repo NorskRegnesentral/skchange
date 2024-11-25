@@ -63,7 +63,7 @@ class L2Saving(BaseSaving):
 
     @property
     def min_size(self) -> int:
-        """Minimum size of the interval to evaluate."""
+        """Minimum valid size of the interval to evaluate."""
         return 1
 
     def get_param_size(self, p: int) -> int:
@@ -99,15 +99,15 @@ class L2Saving(BaseSaving):
         self.sums_ = col_cumsum(X, init_zero=True)
         return self
 
-    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
+    def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the saving on a set of intervals.
 
         Parameters
         ----------
-        intervals : np.ndarray
+        cuts : np.ndarray
             A 2D array with two columns of integer location-based intervals to evaluate.
-            The subsets X[intervals[i, 0]:intervals[i, 1]] for
-            i = 0, ..., len(intervals) are evaluated.
+            The subsets X[cuts[i, 0]:cuts[i, 1]] for
+            i = 0, ..., len(cuts) are evaluated.
 
         Returns
         -------
@@ -118,8 +118,8 @@ class L2Saving(BaseSaving):
             univariate. In this case, each column represents the univariate saving for
             the corresponding input data column.
         """
-        starts = intervals[:, 0]
-        ends = intervals[:, 1]
+        starts = cuts[:, 0]
+        ends = cuts[:, 1]
         return l2_saving(starts, ends, self.sums_)
 
     @classmethod
@@ -131,7 +131,7 @@ class L2Saving(BaseSaving):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for interval evaluators.
+            There are currently no reserved values for interval scorer.
 
         Returns
         -------

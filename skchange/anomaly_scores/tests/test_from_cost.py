@@ -99,8 +99,8 @@ def test_local_anomaly_score_evaluate(cost_class):
     local_anomaly_score = LocalAnomalyScore(cost=cost)
     X = np.random.randn(100, 1)
     local_anomaly_score.fit(X)
-    intervals = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
-    scores = local_anomaly_score.evaluate(intervals)
+    cuts = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
+    scores = local_anomaly_score.evaluate(cuts)
     assert scores.shape == (3, 1)
 
 

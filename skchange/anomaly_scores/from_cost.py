@@ -63,7 +63,7 @@ class Saving(BaseSaving):
 
     @property
     def min_size(self) -> int:
-        """Minimum size of the interval to evaluate."""
+        """Minimum valid size of the interval to evaluate."""
         return self.optimised_cost.min_size
 
     def get_param_size(self, p: int) -> int:
@@ -99,15 +99,15 @@ class Saving(BaseSaving):
         self.optimised_cost.fit(X)
         return self
 
-    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
+    def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the saving on a set of intervals.
 
         Parameters
         ----------
-        intervals : np.ndarray
+        cuts : np.ndarray
             A 2D array with two columns of integer location-based intervals to evaluate.
-            The subsets X[intervals[i, 0]:intervals[i, 1]] for
-            i = 0, ..., len(intervals) are evaluated.
+            The subsets X[cuts[i, 0]:cuts[i, 1]] for
+            i = 0, ..., len(cuts) are evaluated.
 
         Returns
         -------
@@ -118,8 +118,8 @@ class Saving(BaseSaving):
             univariate. In this case, each column represents the univariate saving for
             the corresponding input data column.
         """
-        baseline_costs = self.baseline_cost.evaluate(intervals)
-        optimised_costs = self.optimised_cost.evaluate(intervals)
+        baseline_costs = self.baseline_cost.evaluate(cuts)
+        optimised_costs = self.optimised_cost.evaluate(cuts)
         savings = baseline_costs - optimised_costs
         return savings
 
@@ -132,7 +132,7 @@ class Saving(BaseSaving):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for interval evaluators.
+            There are currently no reserved values for interval scorers.
 
         Returns
         -------
@@ -200,8 +200,8 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     anomaly scores that are implemented directly. This is because the local anomaly
     score requires evaluating the cost at disjoint subsets of the data
     (before and after an anomaly), which is not a natural operation for costs
-    implemented as interval evaluators. It is only possible by refitting the cost
-    function on the surrounding data for each interval, which is computationally
+    implemented as interval scorers. It is only possible by refitting the cost
+    function on the surrounding data for each cut, which is computationally
     expensive.
     """
 
@@ -214,7 +214,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
 
     @property
     def min_size(self) -> int:
-        """Minimum size of the interval to evaluate."""
+        """Minimum valid size of the interval to evaluate."""
         return self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
@@ -235,34 +235,35 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         self._interval_cost.fit(X)
         return self
 
-    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
-        """Evaluate the saving on a set of intervals.
+    def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
+        """Evaluate the local anomaly score on sets of inner and outer intervals.
 
         Parameters
         ----------
-        intervals : np.ndarray
-            A 2D array with two columns of integer location-based intervals to evaluate.
-            The subsets X[intervals[i, 0]:intervals[i, 1]] for
-            i = 0, ..., len(intervals) are evaluated.
+        cuts : np.ndarray
+            A 2D array with two columns of integer location-based cuts to evaluate.
+            The first column is the start of the outer interval, the second column is
+            the start of the inner interval, the third column is the end of the inner
+            interval, and the fourth column is the end of the outer interval.
 
         Returns
         -------
         savings : np.ndarray
-            A 2D array of savings. One row for each interval. The number of
-            columns is 1 if the saving is inherently multivariate. The number of
-            columns is equal to the number of columns in the input data if the saving is
-            univariate. In this case, each column represents the univariate saving for
-            the corresponding input data column.
+            A 2D array of anomaly scores. One row for each interval. The number of
+            columns is 1 if the anomaly score is inherently multivariate. The number of
+            columns is equal to the number of columns in the input data if the anomaly
+            score is univariate. In this case, each column represents the univariate
+            anomaly score for the corresponding input data column.
         """
         X = as_2d_array(self._X)
 
-        inner_intervals = intervals[:, 1:3]
-        outer_intervals = intervals[:, [0, 3]]
+        inner_intervals = cuts[:, 1:3]
+        outer_intervals = cuts[:, [0, 3]]
         inner_costs = self._interval_cost.evaluate(inner_intervals)
         outer_costs = self._interval_cost.evaluate(outer_intervals)
 
         surrounding_costs = np.zeros_like(outer_costs)
-        for i, interval in enumerate(intervals):
+        for i, interval in enumerate(cuts):
             before_inner_interval = interval[0:2]
             after_inner_interval = interval[2:4]
 
@@ -277,40 +278,33 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         anomaly_scores = outer_costs - (inner_costs + surrounding_costs)
         return np.array(anomaly_scores)
 
-    def _check_intervals(self, intervals: np.ndarray) -> np.ndarray:
-        """Check intervals for compatibility.
+    def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
+        """Check cuts for compatibility.
 
         Parameters
         ----------
-        intervals : np.ndarray
-            A 2D array of integer location-based intervals to evaluate.
-            the subsets X[intervals[i, 0]:intervals[i, -1]] for
-            i = 0, ..., len(intervals) are evaluated.
-
-            If intervals contain additional columns, these represent splitting points
-            within the interval and need to be in increasing order.
-            If splitting points are given, the same slicing convention is used for the
-            intervals between the splitting points:
-            [start, split_1), [split_1, split_2), ..., [split_n, end).
+        cuts : np.ndarray
+            A 2D array of integer location-based cuts to evaluate. Each row in the array
+            must be sorted in increasing order.
 
         Returns
         -------
-        intervals : np.ndarray
-            The unmodified input intervals array.
+        cuts : np.ndarray
+            The unmodified input cuts array.
 
         Raises
         ------
         ValueError
-            If the intervals are not compatible.
+            If the cuts are not compatible.
         """
-        intervals = check_cuts_array(
-            intervals,
-            last_dim_size=self.expected_interval_entries,
+        cuts = check_cuts_array(
+            cuts,
+            last_dim_size=self.expected_cut_entries,
         )
 
-        inner_intervals_sizes = np.diff(intervals[:, [1, 2]], axis=1)
-        before_inner_sizes = np.diff(intervals[:, [0, 1]], axis=1)
-        after_inner_sizes = np.diff(intervals[:, [2, 3]], axis=1)
+        inner_intervals_sizes = np.diff(cuts[:, [1, 2]], axis=1)
+        before_inner_sizes = np.diff(cuts[:, [0, 1]], axis=1)
+        after_inner_sizes = np.diff(cuts[:, [2, 3]], axis=1)
         surrounding_intervals_sizes = before_inner_sizes + after_inner_sizes
         if not np.all(inner_intervals_sizes >= self.min_size):
             raise ValueError(
@@ -323,7 +317,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
                 f" in total. Got {surrounding_intervals_sizes.min()}."
             )
 
-        return intervals
+        return cuts
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -334,7 +328,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for interval evaluators.
+            There are currently no reserved values for interval scorers.
 
         Returns
         -------
@@ -344,10 +338,10 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs.l2_cost import L2Cost
+        from skchange.costs import GaussianVarCost, L2Cost
 
         params = [
             {"cost": L2Cost()},
-            {"cost": L2Cost()},
+            {"cost": GaussianVarCost()},
         ]
         return params

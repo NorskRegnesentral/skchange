@@ -57,7 +57,7 @@ class BaseCost(BaseIntervalScorer):
         return p
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
-        """Evaluate on a set of intervals.
+        """Evaluate the cost on a set of intervals.
 
         Parameters
         ----------
