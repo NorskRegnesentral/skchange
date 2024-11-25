@@ -40,9 +40,9 @@ def test_l2_cost_init(CostClass):
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_expected_interval_entries(CostClass):
+def test_expected_cut_entries(CostClass):
     cost = CostClass()
-    assert cost.expected_interval_entries == 2
+    assert cost.expected_cut_entries == 2
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
