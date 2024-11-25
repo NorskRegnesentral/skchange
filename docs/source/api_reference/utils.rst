@@ -13,6 +13,18 @@ Data validation
 
     check_data
 
+Cuts validation
+---------------
+
+.. currentmodule:: skchange.utils.validation.cuts
+
+.. autosummary::
+    :toctree: auto_generated/
+    :template: functions.rst
+
+    check_cuts_array
+
+
 Parameter validation
 --------------------
 .. currentmodule:: skchange.utils.validation.parameters
