@@ -15,8 +15,3 @@ class BaseChangeScore(BaseIntervalEvaluator):
 
     def __init__(self):
         super().__init__()
-
-    @property
-    def min_size(self) -> int:
-        """Minimum size of the interval to evaluate."""
-        return 2

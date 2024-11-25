@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.validation.data import as_2d_array
+from skchange.utils.validation.intervals import check_array_intervals
 
 
 def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
@@ -214,10 +215,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     @property
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate."""
-        if self.cost.min_size is None:
-            return None
-        else:
-            return 2 * self.cost.min_size
+        return self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
         """Fit the saving evaluator.
@@ -278,6 +276,54 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
 
         anomaly_scores = outer_costs - (inner_costs + surrounding_costs)
         return np.array(anomaly_scores)
+
+    def _check_intervals(self, intervals: np.ndarray) -> np.ndarray:
+        """Check intervals for compatibility.
+
+        Parameters
+        ----------
+        intervals : np.ndarray
+            A 2D array of integer location-based intervals to evaluate.
+            the subsets X[intervals[i, 0]:intervals[i, -1]] for
+            i = 0, ..., len(intervals) are evaluated.
+
+            If intervals contain additional columns, these represent splitting points
+            within the interval and need to be in increasing order.
+            If splitting points are given, the same slicing convention is used for the
+            intervals between the splitting points:
+            [start, split_1), [split_1, split_2), ..., [split_n, end).
+
+        Returns
+        -------
+        intervals : np.ndarray
+            The unmodified input intervals array.
+
+        Raises
+        ------
+        ValueError
+            If the intervals are not compatible.
+        """
+        intervals = check_array_intervals(
+            intervals,
+            last_dim_size=self.expected_interval_entries,
+        )
+
+        inner_intervals_sizes = np.diff(intervals[:, [1, 2]], axis=1)
+        before_inner_sizes = np.diff(intervals[:, [0, 1]], axis=1)
+        after_inner_sizes = np.diff(intervals[:, [2, 3]], axis=1)
+        surrounding_intervals_sizes = before_inner_sizes + after_inner_sizes
+        if not np.all(inner_intervals_sizes >= self.min_size):
+            raise ValueError(
+                f"The inner intervals must be at least min_size={self.min_size}."
+                f" Got {inner_intervals_sizes.min()}."
+            )
+        if not np.all(surrounding_intervals_sizes >= self.min_size):
+            raise ValueError(
+                f"The surrounding intervals must be at least min_size={self.min_size}."
+                f" in total. Got {surrounding_intervals_sizes.min()}."
+            )
+
+        return intervals
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

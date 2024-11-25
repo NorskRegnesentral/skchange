@@ -56,7 +56,7 @@ class BaseIntervalEvaluator(BaseEstimator):
     # Univariate evaluators are vectorized over variables/columns in the data,
     # such that output is one column per variable.
     # Multivariate evaluators take the entire data as input and output a single
-    # value, such taht the output is a single column no matter how many variables.
+    # value, such that the output is a single column no matter how many variables.
     # TODO: Implement as tags?
     # For now a class variable to pass sktime conformance test.
     data_type = "univariate"
@@ -184,7 +184,9 @@ class BaseIntervalEvaluator(BaseEstimator):
     def min_size(self) -> Union[int, None]:
         """Minimum size of the interval to evaluate.
 
-        The size of each interval is defined as intervals[i, -1] - intervals[i, 0].
+        The size of each interval is by default defined as np.diff(intervals[i, ]).
+        Subclasses can override the min_size to mean something else, for example in
+        cases where intervals are combined before evaluation.
 
         Returns
         -------
