@@ -7,8 +7,8 @@ from numpy.typing import ArrayLike
 
 from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
 from skchange.costs import BaseCost, L2Cost
+from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
-from skchange.utils.validation.intervals import check_array_intervals
 
 
 def to_saving(evaluator: Union[BaseCost, BaseSaving]) -> BaseSaving:
@@ -303,7 +303,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         ValueError
             If the intervals are not compatible.
         """
-        intervals = check_array_intervals(
+        intervals = check_cuts_array(
             intervals,
             last_dim_size=self.expected_interval_entries,
         )

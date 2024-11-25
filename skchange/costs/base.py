@@ -2,10 +2,10 @@
 
 import numpy as np
 
-from skchange.base import BaseIntervalEvaluator
+from skchange.base import BaseIntervalScorer
 
 
-class BaseCost(BaseIntervalEvaluator):
+class BaseCost(BaseIntervalScorer):
     """Base class template for cost functions.
 
     This is a common base class for cost functions. It is used to evaluate a cost

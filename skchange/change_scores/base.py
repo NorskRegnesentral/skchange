@@ -1,9 +1,9 @@
 """Scores for change detection."""
 
-from skchange.base import BaseIntervalEvaluator
+from skchange.base import BaseIntervalScorer
 
 
-class BaseChangeScore(BaseIntervalEvaluator):
+class BaseChangeScore(BaseIntervalScorer):
     """Base class template for change scores.
 
     Change scores are used to detect changes in a time series or sequence by evaluating

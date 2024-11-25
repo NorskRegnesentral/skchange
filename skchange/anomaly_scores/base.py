@@ -1,9 +1,9 @@
 """Base classes for anomaly scores."""
 
-from skchange.base import BaseIntervalEvaluator
+from skchange.base import BaseIntervalScorer
 
 
-class BaseSaving(BaseIntervalEvaluator):
+class BaseSaving(BaseIntervalScorer):
     """Base class template for savings.
 
     A saving is a measure of the difference between a cost with a fixed baseline
@@ -34,7 +34,7 @@ class BaseSaving(BaseIntervalEvaluator):
         return p
 
 
-class BaseLocalAnomalyScore(BaseIntervalEvaluator):
+class BaseLocalAnomalyScore(BaseIntervalScorer):
     """Base class template for local anomaly scores.
 
     Local anomaly scores are used to detect anomalies in a time series or sequence by

@@ -1,10 +1,10 @@
 import numpy as np
 import pytest
 
-from skchange.base.base_interval_evaluator import BaseIntervalEvaluator
+from skchange.base.base_interval_scorer import BaseIntervalScorer
 
 
-class ConcreteIntervalEvaluator(BaseIntervalEvaluator):
+class ConcreteIntervalEvaluator(BaseIntervalScorer):
     def _evaluate(self, intervals):
         return np.array(
             [np.sum(self._X[interval[0] : interval[-1]]) for interval in intervals]
@@ -42,6 +42,6 @@ def test_check_intervals():
 
 
 def test_not_implemented_evaluate():
-    evaluator = BaseIntervalEvaluator()
+    evaluator = BaseIntervalScorer()
     with pytest.raises(NotImplementedError):
         evaluator._evaluate(np.array([[0, 2]]))
