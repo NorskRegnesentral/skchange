@@ -39,13 +39,13 @@ def to_change_score(evaluator: Union[BaseCost, BaseChangeScore]) -> BaseChangeSc
 class ChangeScore(BaseChangeScore):
     """Change score based on a cost class.
 
-    The change score is calculated as the difference between the cost of an interval
-    and the sum of the costs on either side of a split point within the interval.
+    The change score is calculated as cost difference under a no-change hypothesis
+    versus a single change hypothesis.
 
     Parameters
     ----------
     cost : BaseCost
-        The cost function to evaluate on the intervals.
+        The cost function.
     """
 
     def __init__(self, cost: BaseCost = L2Cost()):
@@ -54,7 +54,7 @@ class ChangeScore(BaseChangeScore):
 
     @property
     def min_size(self) -> int:
-        """Minimum size of the interval to evaluate."""
+        """Minimum valid size of an interval to evaluate."""
         return self.cost.min_size
 
     def _fit(self, X: ArrayLike, y=None):
@@ -75,29 +75,33 @@ class ChangeScore(BaseChangeScore):
         self.cost.fit(X)
         return self
 
-    def _evaluate(self, intervals: np.ndarray) -> np.ndarray:
-        """Evaluate the change score on a set of intervals.
+    def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
+        """Evaluate the change score for a split within an interval.
 
         Parameters
         ----------
-        intervals : np.ndarray
-            A 2D array with three columns of integer location-based intervals to
-            evaluate. The difference between subsets X[intervals[i, 0]:intervals[i, 1]]
-            and X[intervals[i, 1]:intervals[i, 2]] are evaluated for
-            i = 0, ..., len(intervals).
+        cuts : np.ndarray
+            A 2D array with three columns of integer locations.
+            The first column is the start, the second is the split, and the third is
+            the end of the interval to evaluate.
+            The difference between subsets X[start:split] and X[split:end] is evaluated
+            for each row in cuts.
 
         Returns
         -------
         scores : np.ndarray
-            A 2D array of change scores. One row for each interval. The number of
+            A 2D array of change scores. One row for each cut. The number of
             columns is 1 if the change score is inherently multivariate. The number of
             columns is equal to the number of columns in the input data if the score is
             univariate. In this case, each column represents the univariate score for
             the corresponding input data column.
         """
-        left_costs = self.cost.evaluate(intervals[:, [0, 1]])
-        right_costs = self.cost.evaluate(intervals[:, [1, 2]])
-        no_change_costs = self.cost.evaluate(intervals[:, [0, 2]])
+        left_intervals = cuts[:, [0, 1]]
+        right_intervals = cuts[:, [1, 2]]
+        full_intervals = cuts[:, [0, 2]]
+        left_costs = self.cost.evaluate(left_intervals)
+        right_costs = self.cost.evaluate(right_intervals)
+        no_change_costs = self.cost.evaluate(full_intervals)
         change_scores = no_change_costs - (left_costs + right_costs)
         return change_scores
 
@@ -110,7 +114,7 @@ class ChangeScore(BaseChangeScore):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for interval evaluators.
+            There are currently no reserved values for interval scorers.
 
         Returns
         -------

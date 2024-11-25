@@ -17,13 +17,8 @@ def test_scores(ChangeScore):
     change_score.fit(df)
     scores = np.zeros(n)
     splits = np.arange(10, n - 10, dtype=int).reshape(-1, 1)
-    intervals = np.concatenate(
-        [
-            np.zeros(splits.shape, dtype=int),
-            splits,
-            np.full(splits.shape, n, dtype=int),
-        ],
-        axis=1,
+    cuts = np.column_stack(
+        (np.zeros(splits.shape, dtype=int), splits, np.full(splits.shape, n, dtype=int))
     )
-    scores = change_score.evaluate(intervals)
+    scores = change_score.evaluate(cuts)
     assert np.all(scores >= 0.0)

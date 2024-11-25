@@ -11,7 +11,7 @@ class BaseChangeScore(BaseIntervalScorer):
     changepoint.
     """
 
-    expected_interval_entries = 3
+    expected_cut_entries = 3
 
     def __init__(self):
         super().__init__()

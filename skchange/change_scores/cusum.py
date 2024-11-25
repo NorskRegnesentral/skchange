@@ -93,29 +93,30 @@ class CUSUM(BaseChangeScore):
         self.sums_ = col_cumsum(X, init_zero=True)
         return self
 
-    def _evaluate(self, intervals: np.ndarray):
-        """Evaluate the change score on a set of intervals.
+    def _evaluate(self, cuts: np.ndarray):
+        """Evaluate the change score for a split within an interval.
 
         Parameters
         ----------
-        intervals : np.ndarray
-            A 2D array with three columns of integer location-based intervals to
-            evaluate. The difference between subsets X[intervals[i, 0]:intervals[i, 1]]
-            and X[intervals[i, 1]:intervals[i, 2]] are evaluated for
-            i = 0, ..., len(intervals).
+        cuts : np.ndarray
+            A 2D array with three columns of integer locations.
+            The first column is the start, the second is the split, and the third is
+            the end of the interval to evaluate.
+            The difference between subsets X[start:split] and X[split:end] is evaluated
+            for each row in cuts.
 
         Returns
         -------
         scores : np.ndarray
-            A 2D array of change scores. One row for each interval. The number of
+            A 2D array of change scores. One row for each cut. The number of
             columns is 1 if the change score is inherently multivariate. The number of
             columns is equal to the number of columns in the input data if the score is
             univariate. In this case, each column represents the univariate score for
             the corresponding input data column.
         """
-        starts = intervals[:, 0]
-        splits = intervals[:, 1]
-        ends = intervals[:, 2]
+        starts = cuts[:, 0]
+        splits = cuts[:, 1]
+        ends = cuts[:, 2]
         return cusum_score(starts, ends, splits, self.sums_)
 
     @classmethod
@@ -127,7 +128,7 @@ class CUSUM(BaseChangeScore):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for interval evaluators.
+            There are currently no reserved values for interval scorers.
 
         Returns
         -------
@@ -138,5 +139,5 @@ class CUSUM(BaseChangeScore):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         # CUSUM does not have any parameters to set
-        params = [{}, {}]
+        params = [{}]
         return params

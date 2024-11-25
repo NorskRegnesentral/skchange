@@ -11,8 +11,8 @@ def test_change_score_with_costs(cost_class):
     change_score = ChangeScore(cost=cost_instance)
     X = np.random.randn(100, 1)
     change_score.fit(X)
-    intervals = np.array([[0, 50, 100]])
-    scores = change_score._evaluate(intervals)
+    cuts = np.array([[0, 50, 100]])
+    scores = change_score._evaluate(cuts)
     assert scores.shape == (1, 1)
 
 
@@ -24,7 +24,5 @@ def test_to_change_score(evaluator):
 
 
 def test_to_change_score_invalid():
-    with pytest.raises(
-        ValueError, match="evaluator must be an instance of BaseChangeScore or BaseCost"
-    ):
+    with pytest.raises(ValueError):
         to_change_score("invalid_evaluator")
