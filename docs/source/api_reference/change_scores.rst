@@ -16,6 +16,8 @@ Change scores
 Utility functions
 -----------------
 
+.. currentmodule:: skchange.change_scores
+
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst

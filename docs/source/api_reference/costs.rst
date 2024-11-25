@@ -17,7 +17,7 @@ Costs
 Utility functions
 -----------------
 
-.. currentmodule:: skchange.costs
+.. currentmodule:: skchange.costs.utils
 
 .. autosummary::
     :toctree: auto_generated/
