@@ -356,10 +356,14 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         from skchange.costs import GaussianCovCost, L2Cost
 
         params = [
-            {"score": L2Cost(), "threshold_scale": 5},
-            {"score": L2Cost(), "min_segment_length": 3, "max_interval_length": 50},
+            {"anomaly_score": L2Cost(), "threshold_scale": 5},
             {
-                "score": GaussianCovCost(),
+                "anomaly_score": L2Cost(),
+                "min_segment_length": 3,
+                "max_interval_length": 50,
+            },
+            {
+                "anomaly_score": GaussianCovCost(),
                 "min_segment_length": 5,
                 "max_interval_length": 20,
             },

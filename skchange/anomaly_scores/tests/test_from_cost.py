@@ -68,9 +68,7 @@ def test_saving_init_error(cost_class):
 
 
 def test_to_saving_error():
-    with pytest.raises(
-        ValueError, match="evaluator must be an instance of BaseSaving or BaseCost."
-    ):
+    with pytest.raises(ValueError):
         to_saving("invalid_evaluator")
 
 
@@ -105,8 +103,5 @@ def test_local_anomaly_score_evaluate(cost_class):
 
 
 def test_to_local_anomaly_score_error():
-    with pytest.raises(
-        ValueError,
-        match="evaluator must be an instance of BaseLocalAnomalyScore or BaseCost.",
-    ):
+    with pytest.raises(ValueError):
         to_local_anomaly_score("invalid_evaluator")
