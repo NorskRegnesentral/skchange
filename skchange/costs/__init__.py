@@ -1,26 +1,17 @@
 """Cost functions for cost-based change and anomaly detection."""
 
-from skchange.costs.cost_factory import (
-    VALID_COSTS,
-    cost_factory,
-)
-from skchange.costs.mean_cost import init_mean_cost, mean_cost
-from skchange.costs.mean_cov_cost import init_mean_cov_cost, mean_cov_cost
-from skchange.costs.mean_saving import init_mean_saving, mean_saving
-from skchange.costs.saving_factory import (
-    VALID_SAVINGS,
-    saving_factory,
-)
+from skchange.costs.base import BaseCost
+from skchange.costs.gaussian_cov_cost import GaussianCovCost
+from skchange.costs.gaussian_var_cost import GaussianVarCost
+from skchange.costs.l2_cost import L2Cost
 
-__all__ = [
-    init_mean_cost,
-    mean_cost,
-    init_mean_saving,
-    mean_saving,
-    init_mean_cov_cost,
-    mean_cov_cost,
-    cost_factory,
-    saving_factory,
-    VALID_COSTS,
-    VALID_SAVINGS,
+BASE_COSTS = [
+    BaseCost,
 ]
+COSTS = [
+    GaussianCovCost,
+    GaussianVarCost,
+    L2Cost,
+]
+
+__all__ = BASE_COSTS + COSTS

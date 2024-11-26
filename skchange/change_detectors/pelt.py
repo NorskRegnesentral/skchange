@@ -1,16 +1,16 @@
 """The pruned exact linear time (PELT) algorithm."""
 
-__author__ = ["Tveten"]
+__author__ = ["Tveten", "johannvk"]
 __all__ = ["Pelt"]
 
 
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from skchange.change_detectors.base import ChangeDetector
-from skchange.costs.cost_factory import cost_factory
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -27,11 +27,9 @@ def get_changepoints(prev_cpts: np.ndarray) -> list:
     return changepoints[:0:-1]  # Remove the artifical changepoint at the last index.
 
 
-@njit
 def run_pelt(
     X: np.ndarray,
-    cost_func,
-    cost_init_func,
+    cost: BaseCost,
     penalty,
     min_segment_length: int = 1,
     split_cost: float = 0.0,
@@ -47,10 +45,8 @@ def run_pelt(
     ----------
     X : np.ndarray
         The data to find changepoints in.
-    cost_func : Callable
-        The cost function to use.
-    cost_init_func : Callable
-        The cost function initialization function.
+    cost: BaseCost
+        The cost to use.
     penalty : float
         The penalty incurred for adding a changepoint.
     min_segment_length : int, optional
@@ -69,7 +65,7 @@ def run_pelt(
         The optimal costs and the changepoints.
     """
     num_obs = len(X)
-    cost_params = cost_init_func(X)
+    cost.fit(X)
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to -penalty.
@@ -80,10 +76,13 @@ def run_pelt(
 
     # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
     non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
-    non_changepoint_ends = np.arange(min_segment_length - 1, 2 * min_segment_length - 1)
-    opt_cost[min_segment_length : 2 * min_segment_length] = cost_func(
-        cost_params, non_changepoint_starts, non_changepoint_ends
+    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
+    non_changepoint_intervals = np.column_stack(
+        (non_changepoint_starts, non_changepoint_ends)
     )
+    costs = cost.evaluate(non_changepoint_intervals)
+    agg_costs = np.sum(costs, axis=1)
+    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
@@ -98,13 +97,12 @@ def run_pelt(
 
         # Add the next start to the admissible starts set:
         cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
-        cost_eval_ends = np.repeat(current_obs_ind, len(cost_eval_starts))
+        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
+        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        costs = cost.evaluate(cost_eval_intervals)
+        agg_costs = np.sum(costs, axis=1)
 
-        candidate_opt_costs = (
-            opt_cost[cost_eval_starts]
-            + cost_func(cost_params, cost_eval_starts, cost_eval_ends)
-            + penalty
-        )
+        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
@@ -125,11 +123,8 @@ class Pelt(ChangeDetector):
 
     Parameters
     ----------
-    cost : {"mean"}, tuple[Callable, Callable], default="mean
-        Name of cost function to use for changepoint detection.
-
-        * `"mean"`: The Gaussian mean likelihood cost is used,
-        * More cost functions will be added in the future.
+    cost : BaseCost, optional (default=`L2Cost`)
+        The cost function to use for the changepoint detection.
     penalty_scale : float, optional (default=2.0)
         Scaling factor for the penalty. The penalty is set to
         `penalty_scale * 2 * p * np.log(n)`, where `n` is the sample size
@@ -148,10 +143,10 @@ class Pelt(ChangeDetector):
     --------
     >>> from skchange.change_detectors import Pelt
     >>> from skchange.datasets.generate import generate_alternating_data
-    >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=10000, p=5)
+    >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=100, p=5)
     >>> detector = Pelt()
     >>> detector.fit_predict(df)
-    0    9999
+    0    99
     Name: changepoint, dtype: int64
     """
 
@@ -163,7 +158,7 @@ class Pelt(ChangeDetector):
 
     def __init__(
         self,
-        cost: Union[str, Callable] = "mean",
+        cost: BaseCost = L2Cost(),
         penalty_scale: Optional[float] = 2.0,
         min_segment_length: int = 2,
     ):
@@ -171,7 +166,6 @@ class Pelt(ChangeDetector):
         self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
         super().__init__()
-        self.cost_func, self.cost_init_func = cost_factory(self.cost)
 
         check_larger_than(0, penalty_scale, "penalty_scale", allow_none=True)
         check_larger_than(1, min_segment_length, "min_segment_length")
@@ -273,8 +267,7 @@ class Pelt(ChangeDetector):
         )
         opt_costs, changepoints = run_pelt(
             X.values,
-            self.cost_func,
-            self.cost_init_func,
+            self.cost,
             self.penalty_,
             self.min_segment_length,
         )
@@ -320,8 +313,10 @@ class Pelt(ChangeDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"cost": "mean", "min_segment_length": 5},
-            {"cost": "mean", "penalty_scale": 0.0, "min_segment_length": 1},
+            {"cost": L2Cost(), "min_segment_length": 5},
+            {"cost": L2Cost(), "penalty_scale": 0.0, "min_segment_length": 1},
         ]
         return params

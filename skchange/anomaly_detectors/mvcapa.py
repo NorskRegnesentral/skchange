@@ -10,14 +10,37 @@ import pandas as pd
 from scipy.stats import chi2
 
 from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
-from skchange.costs.saving_factory import saving_factory
+from skchange.anomaly_scores import BaseSaving, to_saving
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 
 
-def dense_capa_penalty(
-    n: int, p: int, n_params: int = 1, scale: float = 1.0
+def capa_penalty(n: int, n_params: int = 1, scale: float = 1.0) -> float:
+    """Get the default penalty for CAPA.
+
+    Parameters
+    ----------
+    n : int
+        Sample size.
+    n_params: int, optional (default=1)
+        Number of parameters per segment in the model across all variables.
+    scale : float, optional (default=1.0)
+        Scaling factor for the penalty components.
+
+    Returns
+    -------
+    penalty : float
+        Penalty value.
+    """
+    psi = np.log(n)
+    penalty = scale * (n_params + 2 * np.sqrt(n_params * psi) + 2 * psi)
+    return penalty
+
+
+def dense_mvcapa_penalty(
+    n: int, p: int, n_params_per_variable: int = 1, scale: float = 1.0
 ) -> tuple[float, np.ndarray]:
     """Penalty function for dense anomalies in CAPA.
 
@@ -25,10 +48,8 @@ def dense_capa_penalty(
     ----------
     n : int
         Sample size.
-    p : int
-        Dimension of the data.
-    n_params : int, optional (default=1)
-        Number of parameters per segment in the model.
+    n_params: int, optional (default=1)
+        Number of parameters per segment in the model across all variables.
     scale : float, optional (default=1.0)
         Scaling factor for the penalty components.
 
@@ -39,13 +60,11 @@ def dense_capa_penalty(
     betas : np.ndarray
         Per-component penalty terms.
     """
-    psi = np.log(n)
-    penalty = scale * (p * n_params + 2 * np.sqrt(p * n_params * psi) + 2 * psi)
-    return penalty, np.zeros(p)
+    return capa_penalty(n, p * n_params_per_variable, scale), np.zeros(p)
 
 
-def sparse_capa_penalty(
-    n: int, p: int, n_params: int = 1, scale: float = 1.0
+def sparse_mvcapa_penalty(
+    n: int, p: int, n_params_per_variable: int = 1, scale: float = 1.0
 ) -> tuple[float, np.ndarray]:
     """Penalty function for sparse anomalies in CAPA.
 
@@ -55,8 +74,8 @@ def sparse_capa_penalty(
         Sample size.
     p : int
         Dimension of the data.
-    n_params : int, optional (default=1)
-        Number of parameters per segment in the model.
+    n_params_per_variable : int, optional (default=1)
+        Number of parameters per variable and segment in the model.
     scale : float, optional (default=1.0)
         Scaling factor for the penalty components.
 
@@ -69,12 +88,12 @@ def sparse_capa_penalty(
     """
     psi = np.log(n)
     dense_penalty = 2 * scale * psi
-    sparse_penalty = 2 * scale * np.log(n_params * p)
+    sparse_penalty = 2 * scale * np.log(n_params_per_variable * p)
     return dense_penalty, np.full(p, sparse_penalty)
 
 
-def intermediate_capa_penalty(
-    n: int, p: int, n_params: int = 1, scale: float = 1.0
+def intermediate_mvcapa_penalty(
+    n: int, p: int, n_params_per_variable: int = 1, scale: float = 1.0
 ) -> tuple[float, np.ndarray]:
     """Penalty function balancing both dense and sparse anomalies in CAPA.
 
@@ -84,8 +103,8 @@ def intermediate_capa_penalty(
         Sample size.
     p : int
         Dimension of the data.
-    n_params : int, optional (default=1)
-        Number of parameters per segment in the model.
+    n_params_per_variable : int, optional (default=1)
+        Number of parameters per variable and segment in the model.
     scale : float, optional (default=1.0)
         Scaling factor for the penalty components.
 
@@ -101,13 +120,16 @@ def intermediate_capa_penalty(
 
     def penalty_func(j: int) -> float:
         psi = np.log(n)
-        c_j = chi2.ppf(1 - j / p, n_params)
-        f_j = chi2.pdf(c_j, n_params)
+        c_j = chi2.ppf(1 - j / p, n_params_per_variable)
+        f_j = chi2.pdf(c_j, n_params_per_variable)
         return scale * (
             2 * (psi + np.log(p))
-            + j * n_params
+            + j * n_params_per_variable
             + 2 * p * c_j * f_j
-            + 2 * np.sqrt((j * n_params + 2 * p * c_j * f_j) * (psi + np.log(p)))
+            + 2
+            * np.sqrt(
+                (j * n_params_per_variable + 2 * p * c_j * f_j) * (psi + np.log(p))
+            )
         )
 
     # Penalty function is not defined for j = p.
@@ -115,8 +137,8 @@ def intermediate_capa_penalty(
     return 0.0, np.diff(penalties, prepend=0.0, append=penalties[-1])
 
 
-def combined_capa_penalty(
-    n: int, p: int, n_params: int = 1, scale: float = 1.0
+def combined_mvcapa_penalty(
+    n: int, p: int, n_params_per_variable: int = 1, scale: float = 1.0
 ) -> tuple[float, np.ndarray]:
     """Pointwise minimum of dense, sparse and intermediate penalties in CAPA.
 
@@ -126,7 +148,7 @@ def combined_capa_penalty(
         Sample size.
     p : int
         Dimension of the data.
-    n_params : int, optional (default=1)
+    n_params_per_variable : int, optional (default=1)
         Number of parameters per segment in the model.
     scale : float, optional (default=1.0)
         Scaling factor for the penalty components.
@@ -139,12 +161,15 @@ def combined_capa_penalty(
         Per-component penalty terms.
     """
     if p < 2:
-        return dense_capa_penalty(n, 1, n_params, scale)
+        return dense_mvcapa_penalty(n, 1, n_params_per_variable, scale)
 
-    dense_alpha, dense_betas = dense_capa_penalty(n, p, n_params, scale)
-    sparse_alpha, sparse_betas = sparse_capa_penalty(n, p, n_params, scale)
-    intermediate_alpha, intermediate_betas = intermediate_capa_penalty(
-        n, p, n_params, scale
+    dense_alpha, dense_betas = dense_mvcapa_penalty(n, p * n_params_per_variable, scale)
+    dense_betas = np.zeros(p)
+    sparse_alpha, sparse_betas = sparse_mvcapa_penalty(
+        n, p, n_params_per_variable, scale
+    )
+    intermediate_alpha, intermediate_betas = intermediate_mvcapa_penalty(
+        n, p, n_params_per_variable, scale
     )
     dense_penalties = dense_alpha + np.cumsum(dense_betas)
     sparse_penalties = sparse_alpha + np.cumsum(sparse_betas)
@@ -174,13 +199,13 @@ def capa_penalty_factory(penalty: Union[str, Callable] = "combined") -> Callable
     if callable(penalty):
         return penalty
     elif penalty == "dense":
-        return dense_capa_penalty
+        return dense_mvcapa_penalty
     elif penalty == "sparse":
-        return sparse_capa_penalty
+        return sparse_mvcapa_penalty
     elif penalty == "intermediate":
-        return intermediate_capa_penalty
+        return intermediate_mvcapa_penalty
     elif penalty == "combined":
-        return combined_capa_penalty
+        return combined_mvcapa_penalty
     else:
         raise ValueError(f"Unknown penalty: {penalty}")
 
@@ -225,19 +250,18 @@ def penalise_savings(
     return penalised_savings
 
 
-@njit
 def find_affected_components(
-    params: Union[np.ndarray, tuple],
-    saving_func: Callable,
+    saving: BaseSaving,
     anomalies: list[tuple[int, int]],
     alpha: float,
     betas: np.ndarray,
 ) -> list[tuple[int, int, np.ndarray]]:
+    saving.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving = saving_func(params, np.array([start]), np.array([end]))[0]
-        saving_order = (-saving).argsort()  # Decreasing order.
-        penalised_saving = np.cumsum(saving[saving_order] - betas) - alpha
+        saving_values = saving.evaluate(np.array([start, end + 1]))[0]
+        saving_order = (-saving_values).argsort()  # Decreasing order.
+        penalised_saving = np.cumsum(saving_values[saving_order] - betas) - alpha
         argmax = np.argmax(penalised_saving)
         new_anomalies.append((start, end, saving_order[: argmax + 1]))
     return new_anomalies
@@ -258,11 +282,9 @@ def optimise_savings(
     return candidate_savings[argmax], opt_start, candidate_savings
 
 
-@njit
 def run_base_capa(
-    X: np.ndarray,
-    params: Union[np.ndarray, tuple],
-    saving_func: Callable,
+    collective_saving: BaseSaving,
+    point_saving: BaseSaving,
     collective_alpha: float,
     collective_betas: np.ndarray,
     point_alpha: float,
@@ -270,26 +292,29 @@ def run_base_capa(
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    n = X.shape[0]
+    collective_saving.check_is_fitted()
+    point_saving.check_is_fitted()
+
+    n = collective_saving._X.shape[0]
     opt_savings = np.zeros(n + 1)
     # Store the optimal start and affected components of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
     opt_anomaly_starts = np.repeat(np.nan, n)
-    starts = np.array([0])
+    starts = np.array([], dtype=int)
 
     ts = np.arange(min_segment_length - 1, n)
     for t in ts:
         # Collective anomalies
         t_array = np.array([t])
         starts = np.concatenate((starts, t_array - min_segment_length + 1))
-        ends = np.repeat(t, len(starts))
-        collective_savings = saving_func(params, starts, ends)
+        ends = np.repeat(t + 1, len(starts))
+        collective_savings = collective_saving.evaluate(np.column_stack((starts, ends)))
         opt_collective_saving, opt_start, candidate_savings = optimise_savings(
             starts, opt_savings, collective_savings, collective_alpha, collective_betas
         )
 
         # Point anomalies
-        point_savings = saving_func(params, t_array, t_array)
+        point_savings = point_saving.evaluate(np.column_stack((t_array, t_array + 1)))
         opt_point_saving, _, _ = optimise_savings(
             t_array, opt_savings, point_savings, point_alpha, point_betas
         )
@@ -314,11 +339,10 @@ def run_base_capa(
     return opt_savings[1:], collective_anomalies, point_anomalies
 
 
-@njit
 def run_mvcapa(
     X: np.ndarray,
-    saving_func: Callable,
-    saving_init_func: Callable,
+    collective_saving: BaseSaving,
+    point_saving: BaseSaving,
     collective_alpha: float,
     collective_betas: np.ndarray,
     point_alpha: float,
@@ -328,11 +352,11 @@ def run_mvcapa(
 ) -> tuple[
     np.ndarray, list[tuple[int, int, np.ndarray]], list[tuple[int, int, np.ndarray]]
 ]:
-    params = saving_init_func(X)
+    collective_saving.fit(X)
+    point_saving.fit(X)
     opt_savings, collective_anomalies, point_anomalies = run_base_capa(
-        X,
-        params,
-        saving_func,
+        collective_saving,
+        point_saving,
         collective_alpha,
         collective_betas,
         point_alpha,
@@ -341,14 +365,10 @@ def run_mvcapa(
         max_segment_length,
     )
     collective_anomalies = find_affected_components(
-        params,
-        saving_func,
-        collective_anomalies,
-        collective_alpha,
-        collective_betas,
+        collective_saving, collective_anomalies, collective_alpha, collective_betas
     )
     point_anomalies = find_affected_components(
-        params, saving_func, point_anomalies, point_alpha, point_betas
+        point_saving, point_anomalies, point_alpha, point_betas
     )
     return opt_savings, collective_anomalies, point_anomalies
 
@@ -360,8 +380,16 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
 
     Parameters
     ----------
-    saving : str, default="mean"
-        Saving function to use for anomaly detection.
+    collective_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+        The saving function to use for collective anomaly detection.
+        Only univariate savings are permitted (see the `evaluation_type` attribute).
+        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        cost must have a fixed parameter that represents the baseline cost.
+    point_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+        The saving function to use for point anomaly detection. Only savings with a
+        minimum size of 1 are permitted.
+        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        cost must have a fixed parameter that represents the baseline cost.
     collective_penalty : str or Callable, optional, default="combined"
         Penalty function to use for collective anomalies. If a string, must be one of
         "dense", "sparse", "intermediate" or "combined". If a Callable, must be a
@@ -402,6 +430,11 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
       anomaly_interval anomaly_columns
     0       [100, 119]             [0]
     1       [250, 299]       [2, 1, 0]
+
+    Notes
+    -----
+    The MVCAPA algorithm assumes the input data is centered before fitting and
+    predicting.
     """
 
     _tags = {
@@ -412,7 +445,8 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
 
     def __init__(
         self,
-        saving: Union[str, tuple[Callable, Callable]] = "mean",
+        collective_saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
+        point_saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
         collective_penalty: Union[str, Callable] = "combined",
         collective_penalty_scale: float = 2.0,
         point_penalty: Union[str, Callable] = "sparse",
@@ -421,7 +455,8 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
     ):
-        self.saving = saving
+        self.collective_saving = collective_saving
+        self.point_saving = point_saving
         self.collective_penalty = collective_penalty
         self.collective_penalty_scale = collective_penalty_scale
         self.point_penalty = point_penalty
@@ -431,7 +466,13 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        self.saving_func, self.saving_init_func = saving_factory(self.saving)
+        if collective_saving.evaluation_type == "multivariate":
+            raise ValueError("Collective saving must be univariate.")
+        self._collective_saving = to_saving(collective_saving)
+
+        if point_saving.min_size != 1:
+            raise ValueError("Point saving must have a minimum size of 1.")
+        self._point_saving = to_saving(point_saving)
 
         check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
@@ -444,14 +485,15 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         #     return self._tune_threshold(X)
         n = X.shape[0]
         p = X.shape[1]
-        n_params = 1  # TODO: Add support for depending on 'score'.
+        n_params_per_variable = self._collective_saving.get_param_size(1)
         collective_penalty_func = capa_penalty_factory(self.collective_penalty)
         collective_alpha, collective_betas = collective_penalty_func(
-            n, p, n_params, scale=self.collective_penalty_scale
+            n, p, n_params_per_variable, scale=self.collective_penalty_scale
         )
         point_penalty_func = capa_penalty_factory(self.point_penalty)
+        n_params_per_variable = self._point_saving.get_param_size(1)
         point_alpha, point_betas = point_penalty_func(
-            n, p, n_params, scale=self.point_penalty_scale
+            n, p, n_params_per_variable, scale=self.point_penalty_scale
         )
         return collective_alpha, collective_betas, point_alpha, point_betas
 
@@ -469,7 +511,7 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         Parameters
         ----------
         X : pd.DataFrame
-            training data to fit the threshold to.
+            Training data to fit the threshold to.
         y : pd.Series, optional
             Does nothing. Only here to make the fit method compatible with sktime
             and scikit-learn.
@@ -495,16 +537,18 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events and return the result in a sparse format.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.Series, pd.DataFrame or np.ndarray
+            Data to detect events in (time series).
 
         Returns
         -------
         y : pd.Series or pd.DataFrame
-            Annotations for sequence X, exact format depends on annotation type.
+            Each element or row corresponds to a detected event. Exact format depends on
+            the detector type.
         """
         X = check_data(
             X,
@@ -513,8 +557,8 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
         )
         opt_savings, collective_anomalies, point_anomalies = run_mvcapa(
             X.values,
-            self.saving_func,
-            self.saving_init_func,
+            self._collective_saving,
+            self._point_saving,
             self.collective_alpha_,
             self.collective_betas_,
             self.point_alpha_,
@@ -569,8 +613,20 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
-            {"saving": "mean", "min_segment_length": 2, "max_segment_length": 20},
+            {
+                "collective_saving": L2Cost(param=0.0),
+                "point_saving": L2Cost(param=0.0),
+                "min_segment_length": 5,
+                "max_segment_length": 100,
+            },
+            {
+                "collective_saving": L2Cost(param=0.0),
+                "point_saving": L2Cost(param=0.0),
+                "min_segment_length": 2,
+                "max_segment_length": 20,
+            },
         ]
         return params

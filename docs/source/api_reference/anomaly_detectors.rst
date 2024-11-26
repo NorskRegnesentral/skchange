@@ -3,7 +3,6 @@
 Anomaly detectors
 =================
 
-
 Base
 ----
 
@@ -26,7 +25,6 @@ Collective anomaly detectors
 
     Capa
     CircularBinarySegmentation
-    MoscoreAnomaly
     StatThresholdAnomaliser
 
 Subset collective anomaly detectors

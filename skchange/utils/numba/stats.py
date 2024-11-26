@@ -6,18 +6,36 @@ from skchange.utils.numba import njit
 
 
 @njit
-def col_cumsum(x: np.ndarray):
+def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
     """Calculate the cumulative sum of each column in a 2D array.
 
     Parameters
     ----------
     x : np.ndarray
         2D array.
+    init_zero : bool
+        Whether to let the first row be a row of zeros before the summing is
+        started or not.
+
+    Returns
+    -------
+    np.ndarray : Cumulative sums. If init_zero, the output contains one more
+        row compared to the input x.
+
     """
-    cumsum = np.zeros_like(x)
-    for j in range(x.shape[1]):
-        cumsum[:, j] = np.cumsum(x[:, j])
-    return cumsum
+    n = x.shape[0]
+    p = x.shape[1]
+    if init_zero:
+        sums = np.zeros((n + 1, p))
+        start = 1
+    else:
+        sums = np.zeros((n, p))
+        start = 0
+
+    for j in range(p):
+        sums[start:, j] = np.cumsum(x[:, j])
+
+    return sums
 
 
 @njit

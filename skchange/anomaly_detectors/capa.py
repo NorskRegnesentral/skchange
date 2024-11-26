@@ -3,36 +3,35 @@
 __author__ = ["Tveten"]
 __all__ = ["Capa"]
 
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
-from skchange.anomaly_detectors.mvcapa import dense_capa_penalty, run_base_capa
-from skchange.costs.saving_factory import saving_factory
-from skchange.utils.numba import njit
+from skchange.anomaly_detectors.mvcapa import capa_penalty, run_base_capa
+from skchange.anomaly_scores import BaseSaving, to_saving
+from skchange.costs import BaseCost, L2Cost
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
 
 
-@njit
 def run_capa(
     X: np.ndarray,
-    saving_func: Callable,
-    saving_init_func: Callable,
+    collective_saving: BaseSaving,
+    point_saving: BaseSaving,
     collective_alpha: float,
     point_alpha: float,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    params = saving_init_func(X)
     collective_betas = np.zeros(1)
     point_betas = np.zeros(1)
+    collective_saving.fit(X)
+    point_saving.fit(X)
     return run_base_capa(
-        X,
-        params,
-        saving_func,
+        collective_saving,
+        point_saving,
         collective_alpha,
         collective_betas,
         point_alpha,
@@ -55,8 +54,15 @@ class Capa(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    saving : str (default="mean")
-        Saving function to use for anomaly detection.
+    collective_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+        The saving function to use for collective anomaly detection.
+        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        cost must have a fixed parameter that represents the baseline cost.
+    point_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+        The saving function to use for point anomaly detection. Only savings with a
+        minimum size of 1 are permitted.
+        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        cost must have a fixed parameter that represents the baseline cost.
     collective_penalty_scale : float, optional (default=2.0)
         Scaling factor for the collective penalty.
     point_penalty_scale : float, optional (default=2.0)
@@ -108,14 +114,16 @@ class Capa(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        saving: Union[str, tuple[Callable, Callable]] = "mean",
+        collective_saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
+        point_saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
         collective_penalty_scale: float = 2.0,
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
     ):
-        self.saving = saving
+        self.collective_saving = collective_saving
+        self.point_saving = point_saving
         self.collective_penalty_scale = collective_penalty_scale
         self.point_penalty_scale = point_penalty_scale
         self.min_segment_length = min_segment_length
@@ -123,7 +131,11 @@ class Capa(CollectiveAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        self.saving_func, self.saving_init_func = saving_factory(self.saving)
+        self._collective_saving = to_saving(collective_saving)
+
+        if point_saving.min_size is not None and point_saving.min_size > 1:
+            raise ValueError("Point saving must have a minimum size of 1.")
+        self._point_saving = to_saving(point_saving)
 
         check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
@@ -136,15 +148,8 @@ class Capa(CollectiveAnomalyDetector):
         #     return self._tune_threshold(X)
         n = X.shape[0]
         p = X.shape[1]
-        # TODO: Add support for depending on 'score'. May interact with p.
-        #       E.g. if score is multivariate normal with unknown covariance.
-        n_params = 1
-        # The default penalty is inflated by a factor of 2 as it is based on Gaussian
-        # data. Most data is more heavy-tailed, so we use a bigger penalty.
-        # In addition, false positive control is often more important than higher power.
-        collective_penalty = dense_capa_penalty(
-            n, p, n_params, self.collective_penalty_scale
-        )[0]
+        n_params = self._collective_saving.get_param_size(p)
+        collective_penalty = capa_penalty(n, n_params, self.collective_penalty_scale)
         point_penalty = self.point_penalty_scale * n_params * p * np.log(n)
         return collective_penalty, point_penalty
 
@@ -208,8 +213,8 @@ class Capa(CollectiveAnomalyDetector):
         )
         opt_savings, collective_anomalies, point_anomalies = run_capa(
             X.values,
-            self.saving_func,
-            self.saving_init_func,
+            self._collective_saving,
+            self._point_saving,
             self.collective_penalty_,
             self.point_penalty_,
             self.min_segment_length,
@@ -262,8 +267,20 @@ class Capa(CollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.costs import L2Cost
+
         params = [
-            {"saving": "mean", "min_segment_length": 5, "max_segment_length": 100},
-            {"saving": "mean", "min_segment_length": 2, "max_segment_length": 20},
+            {
+                "collective_saving": L2Cost(param=0.0),
+                "point_saving": L2Cost(param=0.0),
+                "min_segment_length": 5,
+                "max_segment_length": 100,
+            },
+            {
+                "collective_saving": L2Cost(param=0.0),
+                "point_saving": L2Cost(param=0.0),
+                "min_segment_length": 2,
+                "max_segment_length": 20,
+            },
         ]
         return params

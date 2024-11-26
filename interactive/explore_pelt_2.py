@@ -10,7 +10,7 @@ from skchange.change_detectors.pelt import (
     run_pelt,
 )
 from skchange.change_detectors.tests.test_pelt import run_pelt_old
-from skchange.costs.cost_factory import cost_factory
+from skchange.costs_old.cost_factory import cost_factory
 from skchange.datasets.generate import generate_alternating_data
 
 # %%
