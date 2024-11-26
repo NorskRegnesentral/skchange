@@ -6,7 +6,7 @@
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-`skchange` provides sktime-compatible change detection and changepoint-based anomaly detection algorithms.
+`skchange` provides `sktime`-compatible change detection and changepoint-based anomaly detection algorithms.
 
 Experimental but maturing.
 
