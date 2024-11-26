@@ -59,6 +59,7 @@ class Saving(BaseSaving):
 
         self.baseline_cost = baseline_cost
         self.optimised_cost: BaseCost = baseline_cost.clone().set_params(param=None)
+        self.evaluation_type = self.baseline_cost.evaluation_type
         super().__init__()
 
     @property
@@ -206,6 +207,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
 
     def __init__(self, cost: BaseCost = L2Cost()):
         self.cost = cost
+        self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
         self._interval_cost = cost

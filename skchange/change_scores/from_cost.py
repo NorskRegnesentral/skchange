@@ -50,6 +50,7 @@ class ChangeScore(BaseChangeScore):
 
     def __init__(self, cost: BaseCost = L2Cost()):
         self.cost = cost
+        self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
     @property
