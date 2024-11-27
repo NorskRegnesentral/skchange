@@ -40,15 +40,15 @@ detector = MovingWindow(bandwidth=10)
 detector.fit_predict(df)
 ```
 ```python
-0     49
-1     99
-2    149
-3    199
-4    249
-5    299
-6    349
-7    399
-8    449
+0     50
+1    100
+2    150
+3    200
+4    250
+5    300
+6    350
+7    400
+8    450
 Name: changepoint, dtype: int64
 ```
 
@@ -59,7 +59,7 @@ from skchange.anomaly_detectors import MVCAPA
 from skchange.datasets.generate import generate_anomalous_data
 
 n = 300
-anomalies = [(100, 119), (250, 299)]
+anomalies = [(100, 120), (250, 300)]
 means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
 df = generate_anomalous_data(n, anomalies, means, random_state=3)
 
@@ -68,8 +68,8 @@ detector.fit_predict(df)
 ```
 ```python
   anomaly_interval anomaly_columns
-0       [100, 119]             [0]
-1       [250, 299]       [2, 1, 0]
+0       [100, 120)       [0, 2, 1]
+1       [250, 300)       [2, 1, 0]
 ```
 
 
