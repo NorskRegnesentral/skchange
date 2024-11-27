@@ -50,9 +50,10 @@ def greedy_changepoint_selection(
     cpts = []
     while np.any(scores > threshold):
         argmax = scores.argmax()
-        cpt = maximizers[argmax] - 1
+        cpt = maximizers[argmax]
         cpts.append(int(cpt))
-        scores[(cpt >= starts) & (cpt <= ends)] = 0.0
+        # remove intervals that contain the detected changepoint.
+        scores[(cpt >= starts) & (cpt <= ends - 1)] = 0.0
     cpts.sort()
     return cpts
 
