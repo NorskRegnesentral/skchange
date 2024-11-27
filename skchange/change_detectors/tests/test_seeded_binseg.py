@@ -1,4 +1,4 @@
-"""Tests for Moscore and all available scores."""
+"""Tests for MovingWindow and all available scores."""
 
 import numpy as np
 import pandas as pd

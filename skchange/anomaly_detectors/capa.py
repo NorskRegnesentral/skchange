@@ -1,7 +1,7 @@
 """The collective and point anomalies (CAPA) algorithm."""
 
 __author__ = ["Tveten"]
-__all__ = ["Capa"]
+__all__ = ["CAPA"]
 
 from typing import Optional, Union
 
@@ -41,16 +41,16 @@ def run_capa(
     )
 
 
-class Capa(CollectiveAnomalyDetector):
+class CAPA(CollectiveAnomalyDetector):
     """Collective and point anomaly detection.
 
     An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
     It is implemented using the 'savings' formulation of the problem given in [2]_ and
     [3]_.
 
-    `Capa` can be applied to both univariate and multivariate data, but does not infer
+    `CAPA` can be applied to both univariate and multivariate data, but does not infer
     the subset of affected components for each anomaly in the multivariate case. See
-    `Mvcapa` if such inference is desired.
+    `MVCAPA` if such inference is desired.
 
     Parameters
     ----------
@@ -78,7 +78,7 @@ class Capa(CollectiveAnomalyDetector):
 
     See Also
     --------
-    Mvcapa : Multivariate CAPA with subset inference.
+    MVCAPA : Multivariate CAPA with subset inference.
 
     References
     ----------
@@ -96,10 +96,10 @@ class Capa(CollectiveAnomalyDetector):
 
     Examples
     --------
-    >>> from skchange.anomaly_detectors import Capa
+    >>> from skchange.anomaly_detectors import CAPA
     >>> from skchange.datasets.generate import generate_alternating_data
     >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
-    >>> detector = Capa()
+    >>> detector = CAPA()
     >>> detector.fit_predict(df)
     0    [100, 199]
     1    [300, 399]

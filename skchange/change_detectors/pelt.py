@@ -1,7 +1,7 @@
 """The pruned exact linear time (PELT) algorithm."""
 
 __author__ = ["Tveten", "johannvk"]
-__all__ = ["Pelt"]
+__all__ = ["PELT"]
 
 
 from typing import Optional, Union
@@ -116,7 +116,7 @@ def run_pelt(
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
-class Pelt(ChangeDetector):
+class PELT(ChangeDetector):
     """Pruned exact linear time changepoint detection.
 
     An efficient implementation of the PELT algorithm [1]_ for changepoint detection.
@@ -141,10 +141,10 @@ class Pelt(ChangeDetector):
 
     Examples
     --------
-    >>> from skchange.change_detectors import Pelt
+    >>> from skchange.change_detectors import PELT
     >>> from skchange.datasets.generate import generate_alternating_data
     >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=100, p=5)
-    >>> detector = Pelt()
+    >>> detector = PELT()
     >>> detector.fit_predict(df)
     0    99
     Name: changepoint, dtype: int64

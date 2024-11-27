@@ -23,7 +23,7 @@ Collective anomaly detectors
     :toctree: auto_generated/
     :template: class.rst
 
-    Capa
+    CAPA
     CircularBinarySegmentation
     StatThresholdAnomaliser
 
@@ -35,4 +35,4 @@ Subset collective anomaly detectors
     :toctree: auto_generated/
     :template: class.rst
 
-    Mvcapa
+    MVCAPA

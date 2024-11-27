@@ -6,7 +6,7 @@
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-`skchange` provides sktime-compatible change detection and changepoint-based anomaly detection algorithms.
+`skchange` provides `sktime`-compatible change detection and changepoint-based anomaly detection algorithms.
 
 Experimental but maturing.
 
@@ -31,12 +31,12 @@ Requires Python >= 3.9, < 3.13.
 
 ### Changepoint detection / time series segmentation
 ```python
-from skchange.change_detectors.moscore import Moscore
+from skchange.change_detectors.moscore import MovingWindow
 from skchange.datasets.generate import generate_alternating_data
 
 df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 
-detector = Moscore(bandwidth=10)
+detector = MovingWindow(bandwidth=10)
 detector.fit_predict(df)
 ```
 ```python
@@ -55,7 +55,7 @@ Name: changepoint, dtype: int64
 ### Multivariate anomaly detection
 ```python
 import numpy as np
-from skchange.anomaly_detectors import Mvcapa
+from skchange.anomaly_detectors import MVCAPA
 from skchange.datasets.generate import generate_anomalous_data
 
 n = 300
@@ -63,7 +63,7 @@ anomalies = [(100, 119), (250, 299)]
 means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
 df = generate_anomalous_data(n, anomalies, means, random_state=3)
 
-detector = Mvcapa()
+detector = MVCAPA()
 detector.fit_predict(df)
 ```
 ```python

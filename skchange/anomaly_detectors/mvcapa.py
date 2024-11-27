@@ -1,7 +1,7 @@
 """The subset multivariate collective and point anomalies (MVCAPA) algorithm."""
 
 __author__ = ["Tveten"]
-__all__ = ["Mvcapa"]
+__all__ = ["MVCAPA"]
 
 from typing import Callable, Optional, Union
 
@@ -373,7 +373,7 @@ def run_mvcapa(
     return opt_savings, collective_anomalies, point_anomalies
 
 
-class Mvcapa(SubsetCollectiveAnomalyDetector):
+class MVCAPA(SubsetCollectiveAnomalyDetector):
     """Subset multivariate collective and point anomaly detection.
 
     An efficient implementation of the MVCAPA algorithm [1]_ for anomaly detection.
@@ -418,14 +418,14 @@ class Mvcapa(SubsetCollectiveAnomalyDetector):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.anomaly_detectors import Mvcapa
+    >>> from skchange.anomaly_detectors import MVCAPA
     >>> from skchange.datasets.generate import generate_anomalous_data
     >>> n = 300
     >>> means = [np.array([8.0, 0.0, 0.0]), np.array([2.0, 3.0, 5.0])]
     >>> df = generate_anomalous_data(
     >>>     n, anomalies=[(100, 119), (250, 299)], means=means, random_state=3
     >>> )
-    >>> detector = Mvcapa()
+    >>> detector = MVCAPA()
     >>> detector.fit_predict(df)
       anomaly_interval anomaly_columns
     0       [100, 119]             [0]

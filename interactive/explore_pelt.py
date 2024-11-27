@@ -1,6 +1,6 @@
-"""Interactive exploration of the Pelt change detector."""
+"""Interactive exploration of the PELT change detector."""
 
-from skchange.change_detectors.pelt import Pelt
+from skchange.change_detectors.pelt import PELT
 from skchange.datasets.generate import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
@@ -8,7 +8,7 @@ from skchange.utils.benchmarking.profiler import Profiler
 df = generate_alternating_data(
     n_segments=2, mean=10, segment_length=100, p=1, random_state=2
 )
-detector = Pelt(min_segment_length=1)
+detector = PELT(min_segment_length=1)
 detector.fit(df)
 detector.predict(df)
 detector.transform(df)
@@ -18,7 +18,7 @@ detector.transform_scores(df)
 # Profiling
 n = int(1e6)
 df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
-detector = Pelt()
+detector = PELT()
 profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
