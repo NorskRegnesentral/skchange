@@ -68,7 +68,7 @@ detector.fit_predict(df)
 ```
 ```python
   anomaly_interval anomaly_columns
-0       [100, 120)       [0, 2, 1]
+0       [100, 120)       [0]
 1       [250, 300)       [2, 1, 0]
 ```
 
