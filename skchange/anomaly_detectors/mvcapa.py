@@ -221,7 +221,7 @@ def get_anomalies(
         start_i = anomaly_starts[i]
         size = i - start_i + 1
         if size > 1:
-            collective_anomalies.append((int(start_i), i))
+            collective_anomalies.append((int(start_i), i + 1))
             i = int(start_i)
         elif size == 1:
             point_anomalies.append((i, i))
@@ -259,7 +259,7 @@ def find_affected_components(
     saving.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving_values = saving.evaluate(np.array([start, end + 1]))[0]
+        saving_values = saving.evaluate(np.array([start, end]))[0]
         saving_order = (-saving_values).argsort()  # Decreasing order.
         penalised_saving = np.cumsum(saving_values[saving_order] - betas) - alpha
         argmax = np.argmax(penalised_saving)
