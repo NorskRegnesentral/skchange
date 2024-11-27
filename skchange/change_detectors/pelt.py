@@ -20,7 +20,7 @@ from skchange.utils.validation.parameters import check_larger_than
 def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
     changepoints = []
     i = len(prev_cpts) - 1
-    while i > 0:
+    while i >= 0:
         cpt_i = prev_cpts[i]
         changepoints.append(cpt_i)
         i = cpt_i - 1
