@@ -1,4 +1,4 @@
-"""The Moving Score algorithm for multiple changepoint detection."""
+"""The Moving Window algorithm for multiple changepoint detection."""
 
 __author__ = ["Tveten"]
 __all__ = ["MovingWindow"]
@@ -52,7 +52,7 @@ def moscore_transform(
 
 
 class MovingWindow(ChangeDetector):
-    """Moving score algorithm for multiple changepoint detection.
+    """Moving window algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
     detection. It runs a test statistic for a single changepoint at the midpoint in a
@@ -174,14 +174,14 @@ class MovingWindow(ChangeDetector):
         p : int
             Number of variables.
         bandwidth : int
-            Bandwidth of the MovingWindow algorithm.
+            Bandwidth.
         level : float, optional (default=0.01)
             Significance level for the test statistic.
 
         Returns
         -------
         threshold : float
-            Threshold for the MovingWindow algorithm.
+            Threshold value.
         """
         u = n / bandwidth
         a = np.sqrt(2 * np.log(u))
