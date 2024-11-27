@@ -28,7 +28,7 @@ class ChangeDetector(BaseDetector):
     Changepoint detectors detect points in time where a change in the data occurs.
     Data between two changepoints is a segment where the data is considered to be
     homogeneous, i.e., of the same distribution. A changepoint is defined as the
-    location of the last element of a segment.
+    location of the first element of a segment.
 
     Output format of the `predict` method: See the `dense_to_sparse` method.
     Output format of the `transform` method: See the `sparse_to_dense` method.
@@ -76,8 +76,8 @@ class ChangeDetector(BaseDetector):
 
         Returns
         -------
-        pd.Series of changepoint locations. Changepoints are defined as the last element
-            of a segment.
+        pd.Series :
+            Changepoint iloc locations.
         """
         y_dense = y_dense.reset_index(drop=True)
         # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
