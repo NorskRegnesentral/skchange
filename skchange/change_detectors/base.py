@@ -56,10 +56,10 @@ class ChangeDetector(BaseDetector):
         """
         changepoints = y_sparse.to_list()
         n = len(index)
-        changepoints = [-1] + changepoints + [n - 1]
+        changepoints = [0] + changepoints + [n]
         segment_labels = np.zeros(n)
         for i in range(len(changepoints) - 1):
-            segment_labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
+            segment_labels[changepoints[i] : changepoints[i + 1]] = i
 
         return pd.Series(
             segment_labels, index=index, name="segment_label", dtype="int64"
@@ -80,8 +80,7 @@ class ChangeDetector(BaseDetector):
             Changepoint iloc locations.
         """
         y_dense = y_dense.reset_index(drop=True)
-        # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
-        is_changepoint = np.roll(y_dense.diff().abs() > 0, -1)
+        is_changepoint = y_dense.diff().abs() > 0
         changepoints = y_dense.index[is_changepoint]
         return ChangeDetector._format_sparse_output(changepoints)
 
