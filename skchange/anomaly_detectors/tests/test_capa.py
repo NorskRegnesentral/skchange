@@ -58,7 +58,7 @@ def test_capa_anomalies(Detector, Saving):
     assert (
         len(anomalies) == 1
         and anomalies.array.left[0] == seg_len
-        and anomalies.array.right[0] == 2 * seg_len - 1
+        and anomalies.array.right[0] == 2 * seg_len
     )
 
 

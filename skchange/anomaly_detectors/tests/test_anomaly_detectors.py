@@ -10,7 +10,7 @@ from skchange.anomaly_detectors import (
 from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
 
-true_anomalies = [(30, 34), (70, 75)]
+true_anomalies = [(30, 35), (70, 75)]
 anomaly_data = generate_anomalous_data(
     100, anomalies=true_anomalies, means=[10.0, 15.0], random_state=2
 )
@@ -51,7 +51,7 @@ def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetec
     # Similar test that does not depend on sparse_to_dense, just to be sure.
     assert labels.nunique() == len(true_anomalies) + 1
     for i, (start, end) in enumerate(true_anomalies):
-        assert (labels.iloc[start : end + 1] == i + 1).all()
+        assert (labels.iloc[start:end] == i + 1).all()
 
 
 @pytest.mark.parametrize("Estimator", ANOMALY_DETECTORS)
