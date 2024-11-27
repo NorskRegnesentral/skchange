@@ -12,7 +12,7 @@ SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 
 
 @pytest.mark.parametrize("Score", SCORES_AND_COSTS)
-def test_moscore_changepoint(Score):
+def test_moving_window_changepoint(Score):
     """Test MovingWindow changepoints."""
     n_segments = 2
     seg_len = 50
@@ -21,11 +21,11 @@ def test_moscore_changepoint(Score):
     )
     detector = MovingWindow(Score())
     changepoints = detector.fit_predict(df)
-    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
+    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len
 
 
 @pytest.mark.parametrize("Score", SCORES_AND_COSTS)
-def test_moscore_scores(Score):
+def test_moving_window_scores(Score):
     """Test MovingWindow scores."""
     n_segments = 2
     seg_len = 50
@@ -33,13 +33,13 @@ def test_moscore_scores(Score):
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
     detector = MovingWindow(Score())
-    scores = detector.fit(df).score_transform(df)
+    scores = detector.fit(df).transform_scores(df)
     assert np.all(scores >= 0.0)
     assert len(scores) == len(df)
 
 
 @pytest.mark.parametrize("Score", SCORES_AND_COSTS)
-def test_moscore_tuning(Score):
+def test_moving_window_tuning(Score):
     """Test MovingWindow tuning."""
     n_segments = 2
     seg_len = 50

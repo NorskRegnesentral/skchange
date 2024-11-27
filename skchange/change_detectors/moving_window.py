@@ -18,21 +18,21 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 
 
 @njit
-def get_moscore_changepoints(
-    moscores: np.ndarray, threshold: float, min_detection_interval: int
+def get_moving_window_changepoints(
+    scores: np.ndarray, threshold: float, min_detection_interval: int
 ) -> list:
-    detection_intervals = where(moscores > threshold)
+    detection_intervals = where(scores > threshold)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
         end = interval[1]
-        if end - start + 1 >= min_detection_interval:
-            cpt = np.argmax(moscores[start : end + 1]) + start
+        if end - start >= min_detection_interval:
+            cpt = np.argmax(scores[start:end]) + start
             changepoints.append(cpt)
     return changepoints
 
 
-def moscore_transform(
+def moving_window_transform(
     X: np.ndarray,
     change_score: BaseChangeScore,
     bandwidth: int,
@@ -47,7 +47,7 @@ def moscore_transform(
     agg_change_scores = np.sum(change_scores, axis=1)
 
     scores = np.zeros(n)
-    scores[splits - 1] = agg_change_scores
+    scores[splits] = agg_change_scores
     return scores
 
 
@@ -93,13 +93,13 @@ class MovingWindow(ChangeDetector):
     >>> from skchange.change_detectors import MovingWindow
     >>> from skchange.datasets.generate import generate_alternating_data
     >>> df = generate_alternating_data(
-            n_segments=4, mean=10, segment_length=100000, p=5
+            n_segments=4, mean=10, segment_length=100, p=5
         )
     >>> detector = MovingWindow()
     >>> detector.fit_predict(df)
-    0     99999
-    1    199999
-    2    299999
+    0    100
+    1    200
+    2    300
     Name: changepoint, dtype: int64
     """
 
@@ -150,7 +150,7 @@ class MovingWindow(ChangeDetector):
         X : pd.DataFrame
             Training data to tune the threshold on.
         """
-        scores = moscore_transform(
+        scores = moving_window_transform(
             X.values,
             self._change_score,
             self.bandwidth,
@@ -242,7 +242,7 @@ class MovingWindow(ChangeDetector):
         self.threshold_ = self._get_threshold(X)
         return self
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Return scores for predicted annotations on test/deployment data.
 
         Parameters
@@ -260,7 +260,7 @@ class MovingWindow(ChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        scores = moscore_transform(
+        scores = moving_window_transform(
             X.values,
             self._change_score,
             self.bandwidth,
@@ -279,8 +279,8 @@ class MovingWindow(ChangeDetector):
         y : pd.Series - annotations for sequence `X`
             exact format depends on annotation type
         """
-        self.scores = self.score_transform(X)
-        changepoints = get_moscore_changepoints(
+        self.scores = self.transform_scores(X)
+        changepoints = get_moving_window_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )
         return ChangeDetector._format_sparse_output(changepoints)

@@ -17,14 +17,14 @@ from skchange.utils.validation.parameters import check_larger_than
 
 
 @njit
-def get_changepoints(prev_cpts: np.ndarray) -> list:
+def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
     changepoints = []
     i = len(prev_cpts) - 1
     while i >= 0:
         cpt_i = prev_cpts[i]
-        changepoints.append(i)
-        i = cpt_i
-    return changepoints[:0:-1]  # Remove the artifical changepoint at the last index.
+        changepoints.append(cpt_i)
+        i = cpt_i - 1
+    return np.array(changepoints[-2::-1])  # Remove the artificial changepoint at 0.
 
 
 def run_pelt(
@@ -86,7 +86,7 @@ def run_pelt(
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(-1, num_obs)
+    prev_cpts = np.repeat(0, num_obs)
 
     # Evolving set of admissible segment starts.
     cost_eval_starts = np.array(([0]), dtype=np.int64)
@@ -106,7 +106,7 @@ def run_pelt(
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost] - 1
+        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
         # Trimming the admissible starts set: (reuse the array of optimal costs)
         cost_eval_starts = cost_eval_starts[
@@ -146,7 +146,7 @@ class PELT(ChangeDetector):
     >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=100, p=5)
     >>> detector = PELT()
     >>> detector.fit_predict(df)
-    0    99
+    0    100
     Name: changepoint, dtype: int64
     """
 
@@ -271,11 +271,11 @@ class PELT(ChangeDetector):
             self.penalty_,
             self.min_segment_length,
         )
-        # Store the scores for introspection without recomputing using score_transform
+        # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
         return ChangeDetector._format_sparse_output(changepoints)
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the pelt scores for the input data.
 
         Parameters

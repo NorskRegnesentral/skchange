@@ -8,7 +8,7 @@ Scitype defining methods:
     fitting                         - fit(self, X, y=None)
     detecting, sparse format        - predict(self, X)
     detecting, dense format         - transform(self, X)
-    detection scores, dense         - score_transform(self, X)  [optional]
+    detection scores, dense         - transform_scores(self, X)  [optional]
     updating (temporal)             - update(self, X, y=None)  [optional]
 
 Each detector type (e.g. point anomaly detector, collective anomaly detector,
@@ -39,7 +39,7 @@ Needs to be implemented for a concrete detector:
 
 Recommended but optional to implement for a concrete detector:
     dense_to_sparse(y_dense)
-    _score_transform(self, X)
+    _transform_scores(self, X)
     _update(self, X, y=None)
 """
 
@@ -67,7 +67,7 @@ class BaseDetector(BaseEstimator):
     The `predict` method returns the detections in a sparse format, where each element
     corresponds to a detected event. The `transform` method returns the detections in
     a dense format, where each element in the input data is annotated according to the
-    detection results. The `score_transform` method (if implemented) returns detection
+    detection results. The `transform_scores` method (if implemented) returns detection
     scores in a dense format.
 
     In addition, there are two special format defining and converting methods that
@@ -263,7 +263,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def score_transform(self, X):
+    def transform_scores(self, X):
         """Return detection scores on the input data.
 
         Parameters
@@ -278,9 +278,9 @@ class BaseDetector(BaseEstimator):
         """
         self.check_is_fitted()
         X = check_series(X, allow_index_names=True)
-        return self._score_transform(X)
+        return self._transform_scores(X)
 
-    def _score_transform(self, X):
+    def _transform_scores(self, X):
         """Return detection scores on the input data.
 
         The core logic for scoring the input data should be implemented here. This

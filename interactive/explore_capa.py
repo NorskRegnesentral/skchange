@@ -20,7 +20,7 @@ print(anomalies)
 anomaly_labels = detector.fit_transform(df)
 px.scatter(x=df.index, y=df, color=anomaly_labels.astype(str))
 
-scores = detector.score_transform(df)
+scores = detector.transform_scores(df)
 px.scatter(scores)
 
 # Multivariate
@@ -49,7 +49,7 @@ fig = px.line(df)
 fig.add_scatter(anomaly_labels)
 px.line(anomaly_labels)
 
-scores = detector.score_transform(df)
+scores = detector.transform_scores(df)
 px.scatter(scores)
 
 

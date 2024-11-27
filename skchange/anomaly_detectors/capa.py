@@ -101,8 +101,8 @@ class CAPA(CollectiveAnomalyDetector):
     >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
     >>> detector = CAPA()
     >>> detector.fit_predict(df)
-    0    [100, 199]
-    1    [300, 399]
+    0    [100, 200)
+    1    [300, 400)
     Name: anomaly_interval, dtype: interval
     """
 
@@ -229,7 +229,7 @@ class CAPA(CollectiveAnomalyDetector):
 
         return CollectiveAnomalyDetector._format_sparse_output(anomalies)
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the CAPA scores for the input data.
 
         Parameters

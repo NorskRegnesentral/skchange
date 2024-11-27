@@ -13,7 +13,7 @@ Needs to be implemented:
     _predict(self, X)
 
 Optional to implement:
-    _score_transform(self, X)
+    _transform_scores(self, X)
     _update(self, X, y=None)
 """
 
@@ -152,18 +152,18 @@ class CollectiveAnomalyDetector(BaseDetector):
         anomaly_starts = y_anomaly.index[anomaly_locations_diff > 1]
         anomaly_starts = np.insert(anomaly_starts, 0, first_anomaly_start)
 
-        last_anomaly_end = y_anomaly.index[-1:].to_numpy()
-        anomaly_ends = y_anomaly.index[np.roll(anomaly_locations_diff > 1, -1)]
+        last_anomaly_end = y_anomaly.index[-1:].to_numpy() + 1
+        anomaly_ends = y_anomaly.index[np.roll(anomaly_locations_diff > 1, -1)] + 1
         anomaly_ends = np.insert(anomaly_ends, len(anomaly_ends), last_anomaly_end)
 
         anomaly_intervals = list(zip(anomaly_starts, anomaly_ends))
         return CollectiveAnomalyDetector._format_sparse_output(
-            anomaly_intervals, closed="both"
+            anomaly_intervals, closed="left"
         )
 
     @staticmethod
     def _format_sparse_output(
-        anomaly_intervals: list[tuple[int, int]], closed: str = "both"
+        anomaly_intervals: list[tuple[int, int]], closed: str = "left"
     ) -> pd.Series:
         """Format the sparse output of collective anomaly detectors.
 
@@ -255,16 +255,16 @@ class SubsetCollectiveAnomalyDetector(BaseDetector):
             anomaly_columns = anomaly_mask.columns[which_columns].to_list()
             anomaly_start = anomaly_mask.index[which_rows][0]
             anomaly_end = anomaly_mask.index[which_rows][-1]
-            anomaly_intervals.append((anomaly_start, anomaly_end, anomaly_columns))
+            anomaly_intervals.append((anomaly_start, anomaly_end + 1, anomaly_columns))
 
         return SubsetCollectiveAnomalyDetector._format_sparse_output(
-            anomaly_intervals, closed="both"
+            anomaly_intervals, closed="left"
         )
 
     @staticmethod
     def _format_sparse_output(
         collective_anomalies: list[tuple[int, int, np.ndarray]],
-        closed: str = "both",
+        closed: str = "left",
     ) -> pd.DataFrame:
         """Format the sparse output of subset collective anomaly detectors.
 

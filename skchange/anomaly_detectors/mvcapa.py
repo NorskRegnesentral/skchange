@@ -221,7 +221,7 @@ def get_anomalies(
         start_i = anomaly_starts[i]
         size = i - start_i + 1
         if size > 1:
-            collective_anomalies.append((int(start_i), i))
+            collective_anomalies.append((int(start_i), i + 1))
             i = int(start_i)
         elif size == 1:
             point_anomalies.append((i, i))
@@ -259,7 +259,7 @@ def find_affected_components(
     saving.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving_values = saving.evaluate(np.array([start, end + 1]))[0]
+        saving_values = saving.evaluate(np.array([start, end]))[0]
         saving_order = (-saving_values).argsort()  # Decreasing order.
         penalised_saving = np.cumsum(saving_values[saving_order] - betas) - alpha
         argmax = np.argmax(penalised_saving)
@@ -343,15 +343,27 @@ def run_mvcapa(
     X: np.ndarray,
     collective_saving: BaseSaving,
     point_saving: BaseSaving,
-    collective_alpha: float,
-    collective_betas: np.ndarray,
-    point_alpha: float,
-    point_betas: np.ndarray,
+    collective_penalty: str,
+    collective_penalty_scale: float,
+    point_penalty: str,
+    point_penalty_scale: float,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[
     np.ndarray, list[tuple[int, int, np.ndarray]], list[tuple[int, int, np.ndarray]]
 ]:
+    n = X.shape[0]
+    p = X.shape[1]
+    collective_n_params_per_variable = collective_saving.get_param_size(1)
+    collective_penalty_func = capa_penalty_factory(collective_penalty)
+    collective_alpha, collective_betas = collective_penalty_func(
+        n, p, collective_n_params_per_variable, scale=collective_penalty_scale
+    )
+    point_penalty_func = capa_penalty_factory(point_penalty)
+    point_n_params_per_variable = point_saving.get_param_size(1)
+    point_alpha, point_betas = point_penalty_func(
+        n, p, point_n_params_per_variable, scale=point_penalty_scale
+    )
     collective_saving.fit(X)
     point_saving.fit(X)
     opt_savings, collective_anomalies, point_anomalies = run_base_capa(
@@ -364,8 +376,16 @@ def run_mvcapa(
         min_segment_length,
         max_segment_length,
     )
+
+    sparse_penalty_func = capa_penalty_factory("sparse")
+    sparse_alpha, sparse_betas = sparse_penalty_func(
+        n, p, collective_n_params_per_variable, scale=collective_penalty_scale
+    )
     collective_anomalies = find_affected_components(
-        collective_saving, collective_anomalies, collective_alpha, collective_betas
+        collective_saving,
+        collective_anomalies,
+        sparse_alpha,
+        sparse_betas,
     )
     point_anomalies = find_affected_components(
         point_saving, point_anomalies, point_alpha, point_betas
@@ -423,13 +443,13 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
     >>> n = 300
     >>> means = [np.array([8.0, 0.0, 0.0]), np.array([2.0, 3.0, 5.0])]
     >>> df = generate_anomalous_data(
-    >>>     n, anomalies=[(100, 119), (250, 299)], means=means, random_state=3
+    >>>     n, anomalies=[(100, 120), (250, 300)], means=means, random_state=3
     >>> )
     >>> detector = MVCAPA()
     >>> detector.fit_predict(df)
       anomaly_interval anomaly_columns
-    0       [100, 119]             [0]
-    1       [250, 299]       [2, 1, 0]
+    0       [100, 120)             [0]
+    1       [250, 300)       [2, 1, 0]
 
     Notes
     -----
@@ -479,24 +499,6 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
-    def _get_penalty_components(self, X: pd.DataFrame) -> tuple[np.ndarray, float]:
-        # TODO: Add penalty tuning.
-        # if self.tune:
-        #     return self._tune_threshold(X)
-        n = X.shape[0]
-        p = X.shape[1]
-        n_params_per_variable = self._collective_saving.get_param_size(1)
-        collective_penalty_func = capa_penalty_factory(self.collective_penalty)
-        collective_alpha, collective_betas = collective_penalty_func(
-            n, p, n_params_per_variable, scale=self.collective_penalty_scale
-        )
-        point_penalty_func = capa_penalty_factory(self.point_penalty)
-        n_params_per_variable = self._point_saving.get_param_size(1)
-        point_alpha, point_betas = point_penalty_func(
-            n, p, n_params_per_variable, scale=self.point_penalty_scale
-        )
-        return collective_alpha, collective_betas, point_alpha, point_betas
-
     def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
 
@@ -529,11 +531,6 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        penalty_components = self._get_penalty_components(X)
-        self.collective_alpha_ = penalty_components[0]
-        self.collective_betas_ = penalty_components[1]
-        self.point_alpha_ = penalty_components[2]
-        self.point_betas_ = penalty_components[3]
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -559,10 +556,10 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
             X.values,
             self._collective_saving,
             self._point_saving,
-            self.collective_alpha_,
-            self.collective_betas_,
-            self.point_alpha_,
-            self.point_betas_,
+            self.collective_penalty,
+            self.collective_penalty_scale,
+            self.point_penalty,
+            self.point_penalty_scale,
             self.min_segment_length,
             self.max_segment_length,
         )
@@ -575,7 +572,7 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
 
         return SubsetCollectiveAnomalyDetector._format_sparse_output(anomalies)
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the MVCAPA scores for the input data.
 
         Parameters

@@ -32,10 +32,9 @@ def greedy_anomaly_selection(
         argmax = scores.argmax()
         anomaly_start = anomaly_starts[argmax]
         anomaly_end = anomaly_ends[argmax]
-        # TODO: -1 for now since the current CollectiveAnomalyDetector uses [start, end]
-        # intervals. This is going to be changed in the future.
-        anomalies.append((anomaly_start, anomaly_end - 1))
-        scores[(anomaly_end >= starts) & (anomaly_start <= ends)] = 0.0
+        anomalies.append((anomaly_start, anomaly_end))
+        # remove intervals that overlap with the detected segment anomaly.
+        scores[(anomaly_end > starts) & (anomaly_start < ends)] = 0.0
     anomalies.sort()
     return anomalies
 
@@ -157,8 +156,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
     >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=20)
     >>> detector = CircularBinarySegmentation()
     >>> detector.fit_predict(df)
-    0    [20, 39]
-    1    [60, 79]
+    0    [20, 40)
+    1    [60, 80)
     Name: anomaly_interval, dtype: interval
 
     Notes

@@ -86,7 +86,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
         for _, segment in df.reset_index(drop=True).groupby("segment_label"):
             segment_stat = self.stat(segment.iloc[:, 0].values)
             if (segment_stat < self.stat_lower) | (segment_stat > self.stat_upper):
-                anomalies.append((int(segment.index[0]), int(segment.index[-1])))
+                anomalies.append((int(segment.index[0]), int(segment.index[-1] + 1)))
 
         return CollectiveAnomalyDetector._format_sparse_output(anomalies)
 

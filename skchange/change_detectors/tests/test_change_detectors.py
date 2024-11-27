@@ -18,7 +18,7 @@ def test_change_detector_predict(Estimator):
     """Test changepoint detector predict (sparse output)."""
     detector = Estimator.create_test_instance()
     changepoints = detector.fit_predict(changepoint_data)
-    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len - 1
+    assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len
 
 
 @pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)

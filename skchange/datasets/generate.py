@@ -12,7 +12,7 @@ from scipy.stats import multivariate_normal
 
 def generate_changing_data(
     n: int = 100,
-    changepoints: Union[int, list[int]] = 49,
+    changepoints: Union[int, list[int]] = 50,
     means: Union[float, list[float], list[np.ndarray]] = 0.0,
     variances: Union[float, list[float], list[np.ndarray]] = 1.0,
     random_state: int = None,
@@ -67,13 +67,11 @@ def generate_changing_data(
 
     p = len(means[0])
     x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
-    changepoints = [-1] + changepoints + [n - 1]
+    changepoints = [0] + changepoints + [n]
     for prev_cpt, next_cpt, mean, variance in zip(
         changepoints[:-1], changepoints[1:], means, variances
     ):
-        x[prev_cpt + 1 : next_cpt + 1] = (
-            mean + np.sqrt(variance) * x[prev_cpt + 1 : next_cpt + 1]
-        )
+        x[prev_cpt:next_cpt] = mean + np.sqrt(variance) * x[prev_cpt:next_cpt]
 
     df = pd.DataFrame(x, index=range(len(x)))
     return df
@@ -81,7 +79,7 @@ def generate_changing_data(
 
 def generate_anomalous_data(
     n: int = 100,
-    anomalies: Union[tuple[int, int], list[tuple[int, int]]] = (71, 80),
+    anomalies: Union[tuple[int, int], list[tuple[int, int]]] = (70, 80),
     means: Union[float, list[float], list[np.ndarray]] = 3.0,
     variances: Union[float, list[float], list[np.ndarray]] = 1.0,
     random_state: int = None,
@@ -94,7 +92,7 @@ def generate_anomalous_data(
     n : int, optional (default=100)
         Number of observations.
     anomalies : list of tuples, optional (default=[(71, 80)])
-        List of tuples of the form (start, end) indicating the start and end of an
+        List of tuples of the form [start, end) indicating the start and end of an
         anomaly.
     means : list of floats or list of arrays, optional (default=[0.0])
         List of means for each segment.
@@ -127,16 +125,16 @@ def generate_anomalous_data(
         raise ValueError("Number of anomalies, means and variances must be the same.")
     if any([len(anomaly) != 2 for anomaly in anomalies]):
         raise ValueError("Anomalies must be of length 2.")
-    if any([anomaly[0] > anomaly[1] for anomaly in anomalies]):
+    if any([anomaly[1] <= anomaly[0] for anomaly in anomalies]):
         raise ValueError("The start of an anomaly must be before its end.")
-    if any([anomaly[1] > n - 1 for anomaly in anomalies]):
+    if any([anomaly[1] > n for anomaly in anomalies]):
         raise ValueError("Anomalies must be within the range of the data.")
 
     p = len(means[0])
     x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
     for anomaly, mean, variance in zip(anomalies, means, variances):
         start, end = anomaly
-        x[start : end + 1] = mean + np.sqrt(variance) * x[start : end + 1]
+        x[start:end] = mean + np.sqrt(variance) * x[start:end]
     df = pd.DataFrame(x, index=range(len(x)))
     return df
 
@@ -218,7 +216,7 @@ def generate_alternating_data(
         vars.append(vars_vec)
 
     n = segment_length * n_segments
-    changepoints = [segment_length * i - 1 for i in range(1, n_segments)]
+    changepoints = [segment_length * i for i in range(1, n_segments)]
     x = generate_changing_data(n, changepoints, means, vars, random_state)
     df = pd.DataFrame(x, index=range(len(x)))
     return df

@@ -48,7 +48,7 @@ Example
     from skchange.datasets.generate import generate_anomalous_data
 
     n = 300
-    anomalies = [(100, 119), (250, 299)]
+    anomalies = [(100, 120), (250, 300)]
     means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
     df = generate_anomalous_data(n, anomalies, means, random_state=3)
 
@@ -58,8 +58,8 @@ Example
 .. code-block:: python
 
       anomaly_interval anomaly_columns
-    0       [100, 119]             [0]
-    1       [250, 299]       [2, 1, 0]
+    0       [100, 120]             [0]
+    1       [250, 300]       [2, 1, 0]
 
 Licence
 -------

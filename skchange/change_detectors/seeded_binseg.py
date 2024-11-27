@@ -50,9 +50,10 @@ def greedy_changepoint_selection(
     cpts = []
     while np.any(scores > threshold):
         argmax = scores.argmax()
-        cpt = maximizers[argmax] - 1
+        cpt = maximizers[argmax]
         cpts.append(int(cpt))
-        scores[(cpt >= starts) & (cpt <= ends)] = 0.0
+        # remove intervals that contain the detected changepoint.
+        scores[(cpt >= starts) & (cpt <= ends - 1)] = 0.0
     cpts.sort()
     return cpts
 
@@ -76,7 +77,7 @@ def run_seeded_binseg(
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
-        splits = np.arange(start + min_segment_length, end - min_segment_length + 2)
+        splits = np.arange(start + min_segment_length, end - min_segment_length + 1)
         intervals = np.column_stack(
             (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
         )
@@ -142,13 +143,13 @@ class SeededBinarySegmentation(ChangeDetector):
     >>> from skchange.change_detectors import SeededBinarySegmentation
     >>> from skchange.datasets.generate import generate_alternating_data
     >>> df = generate_alternating_data(
-            n_segments=4, mean=10, segment_length=100000, p=5
+            n_segments=4, mean=10, segment_length=100, p=5
         )
     >>> detector = SeededBinarySegmentation()
     >>> detector.fit_predict(df)
-    0     99999
-    1    199999
-    2    299999
+    0    100
+    1    200
+    2    300
     Name: changepoint, dtype: int64
     """
 

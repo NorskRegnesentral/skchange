@@ -11,7 +11,7 @@ Needs to be implemented:
     _predict(self, X)
 
 Optional to implement:
-    _score_transform(self, X)
+    _transform_scores(self, X)
     _update(self, X, y=None)
 
 """
@@ -28,7 +28,7 @@ class ChangeDetector(BaseDetector):
     Changepoint detectors detect points in time where a change in the data occurs.
     Data between two changepoints is a segment where the data is considered to be
     homogeneous, i.e., of the same distribution. A changepoint is defined as the
-    location of the last element of a segment.
+    location of the first element of a segment.
 
     Output format of the `predict` method: See the `dense_to_sparse` method.
     Output format of the `transform` method: See the `sparse_to_dense` method.
@@ -56,10 +56,10 @@ class ChangeDetector(BaseDetector):
         """
         changepoints = y_sparse.to_list()
         n = len(index)
-        changepoints = [-1] + changepoints + [n - 1]
+        changepoints = [0] + changepoints + [n]
         segment_labels = np.zeros(n)
         for i in range(len(changepoints) - 1):
-            segment_labels[changepoints[i] + 1 : changepoints[i + 1] + 1] = i
+            segment_labels[changepoints[i] : changepoints[i + 1]] = i
 
         return pd.Series(
             segment_labels, index=index, name="segment_label", dtype="int64"
@@ -76,12 +76,11 @@ class ChangeDetector(BaseDetector):
 
         Returns
         -------
-        pd.Series of changepoint locations. Changepoints are defined as the last element
-            of a segment.
+        pd.Series :
+            Changepoint iloc locations.
         """
         y_dense = y_dense.reset_index(drop=True)
-        # changepoint = end of segment, so the label diffs > 0 must be shiftet by -1.
-        is_changepoint = np.roll(y_dense.diff().abs() > 0, -1)
+        is_changepoint = y_dense.diff().abs() > 0
         changepoints = y_dense.index[is_changepoint]
         return ChangeDetector._format_sparse_output(changepoints)
 
