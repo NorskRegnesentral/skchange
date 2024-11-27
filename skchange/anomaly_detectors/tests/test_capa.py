@@ -6,7 +6,7 @@ import pytest
 
 from skchange.anomaly_detectors.capa import CAPA
 from skchange.anomaly_detectors.mvcapa import (
-    Mvcapa,
+    MVCAPA,
     capa_penalty_factory,
     combined_mvcapa_penalty,
     dense_mvcapa_penalty,
@@ -22,7 +22,7 @@ COSTS_AND_SAVINGS = COSTS + SAVINGS
 
 
 @pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
-@pytest.mark.parametrize("Detector", [CAPA, Mvcapa])
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
 def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
@@ -30,9 +30,9 @@ def test_capa_anomalies(Detector, Saving):
         fixed_params = find_fixed_param_combination(Saving)
         saving = saving.set_params(**fixed_params)
 
-    if Detector is Mvcapa and saving.evaluation_type == "multivariate":
-        # Mvcapa requires univariate saving.
-        pytest.skip("Skipping test for Mvcapa with multivariate saving.")
+    if Detector is MVCAPA and saving.evaluation_type == "multivariate":
+        # MVCAPA requires univariate saving.
+        pytest.skip("Skipping test for MVCAPA with multivariate saving.")
 
     n_segments = 2
     seg_len = 20
@@ -63,26 +63,26 @@ def test_capa_anomalies(Detector, Saving):
 
 
 def test_mvcapa_errors():
-    """Test Mvcapa error cases."""
+    """Test MVCAPA error cases."""
     cov_mat = np.eye(2)
     cost = GaussianCovCost([0.0, cov_mat])
     saving = Saving(cost)
 
     # Test collective saving must be univariate
     with pytest.raises(ValueError):
-        Mvcapa(collective_saving=saving)
+        MVCAPA(collective_saving=saving)
 
     # Test point saving must have a minimum size of 1
     with pytest.raises(ValueError):
-        Mvcapa(point_saving=saving)
+        MVCAPA(point_saving=saving)
 
     # Test min_segment_length must be greater than 2
     with pytest.raises(ValueError):
-        Mvcapa(min_segment_length=1)
+        MVCAPA(min_segment_length=1)
 
     # Test max_segment_length must be greater than min_segment_length
     with pytest.raises(ValueError):
-        Mvcapa(min_segment_length=5, max_segment_length=4)
+        MVCAPA(min_segment_length=5, max_segment_length=4)
 
 
 def test_capa_penalty_factory():

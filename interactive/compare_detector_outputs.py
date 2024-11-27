@@ -3,7 +3,7 @@
 import numpy as np
 import plotly.express as px
 
-from skchange.anomaly_detectors import CAPA, Mvcapa
+from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.change_detectors import Moscore
 from skchange.datasets.generate import generate_anomalous_data
 
@@ -37,7 +37,7 @@ print(anomalies)
 print(anomaly_labels)
 
 # Subset collective anomaly detector
-subset_anomaly_detector = Mvcapa()
+subset_anomaly_detector = MVCAPA()
 subset_anomalies = subset_anomaly_detector.fit_predict(df)
 subset_anomaly_labels = subset_anomaly_detector.transform(df)
 print(subset_anomalies)

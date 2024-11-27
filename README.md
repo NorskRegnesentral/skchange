@@ -55,7 +55,7 @@ Name: changepoint, dtype: int64
 ### Multivariate anomaly detection
 ```python
 import numpy as np
-from skchange.anomaly_detectors import Mvcapa
+from skchange.anomaly_detectors import MVCAPA
 from skchange.datasets.generate import generate_anomalous_data
 
 n = 300
@@ -63,7 +63,7 @@ anomalies = [(100, 119), (250, 299)]
 means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
 df = generate_anomalous_data(n, anomalies, means, random_state=3)
 
-detector = Mvcapa()
+detector = MVCAPA()
 detector.fit_predict(df)
 ```
 ```python

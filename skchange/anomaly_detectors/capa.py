@@ -50,7 +50,7 @@ class CAPA(CollectiveAnomalyDetector):
 
     `CAPA` can be applied to both univariate and multivariate data, but does not infer
     the subset of affected components for each anomaly in the multivariate case. See
-    `Mvcapa` if such inference is desired.
+    `MVCAPA` if such inference is desired.
 
     Parameters
     ----------
@@ -78,7 +78,7 @@ class CAPA(CollectiveAnomalyDetector):
 
     See Also
     --------
-    Mvcapa : Multivariate CAPA with subset inference.
+    MVCAPA : Multivariate CAPA with subset inference.
 
     References
     ----------
