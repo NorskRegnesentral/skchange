@@ -423,13 +423,13 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
     >>> n = 300
     >>> means = [np.array([8.0, 0.0, 0.0]), np.array([2.0, 3.0, 5.0])]
     >>> df = generate_anomalous_data(
-    >>>     n, anomalies=[(100, 119), (250, 299)], means=means, random_state=3
+    >>>     n, anomalies=[(100, 120), (250, 300)], means=means, random_state=3
     >>> )
     >>> detector = MVCAPA()
     >>> detector.fit_predict(df)
       anomaly_interval anomaly_columns
-    0       [100, 119]             [0]
-    1       [250, 299]       [2, 1, 0]
+    0       [100, 120)             [0]
+    1       [250, 300)       [2, 1, 0]
 
     Notes
     -----

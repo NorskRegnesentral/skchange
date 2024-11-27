@@ -146,7 +146,7 @@ class PELT(ChangeDetector):
     >>> df = generate_alternating_data(n_segments=2, mean=10, segment_length=100, p=5)
     >>> detector = PELT()
     >>> detector.fit_predict(df)
-    0    99
+    0    100
     Name: changepoint, dtype: int64
     """
 

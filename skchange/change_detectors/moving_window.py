@@ -93,13 +93,13 @@ class MovingWindow(ChangeDetector):
     >>> from skchange.change_detectors import MovingWindow
     >>> from skchange.datasets.generate import generate_alternating_data
     >>> df = generate_alternating_data(
-            n_segments=4, mean=10, segment_length=100000, p=5
+            n_segments=4, mean=10, segment_length=100, p=5
         )
     >>> detector = MovingWindow()
     >>> detector.fit_predict(df)
-    0     99999
-    1    199999
-    2    299999
+    0    100
+    1    200
+    2    300
     Name: changepoint, dtype: int64
     """
 
