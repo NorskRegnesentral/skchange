@@ -32,9 +32,8 @@ def greedy_anomaly_selection(
         argmax = scores.argmax()
         anomaly_start = anomaly_starts[argmax]
         anomaly_end = anomaly_ends[argmax]
-        # TODO: -1 for now since the current CollectiveAnomalyDetector uses [start, end]
-        # intervals. This is going to be changed in the future.
-        anomalies.append((anomaly_start, anomaly_end - 1))
+        anomalies.append((anomaly_start, anomaly_end))
+        # remove intervals that overlap with the detected segment anomaly.
         scores[(anomaly_end >= starts) & (anomaly_start <= ends)] = 0.0
     anomalies.sort()
     return anomalies
