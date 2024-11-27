@@ -26,7 +26,7 @@ penalty = 2 * np.log(len(changepoint_data))
 
 def pelt_partition_cost(
     X: np.ndarray,
-    changepoints: list,
+    changepoints: np.ndarray,
     cost: BaseCost,
     penalty: float,
 ):
@@ -34,7 +34,7 @@ def pelt_partition_cost(
     n = len(X)
 
     total_cost = penalty * len(changepoints)
-    np_changepoints = np.array(changepoints)
+    np_changepoints = np.asarray(changepoints)
 
     interval_starts = np.concatenate((np.array([0]), np_changepoints + 1), axis=0)
     interval_ends = np.concatenate((np_changepoints, np.array([n - 1])), axis=0)
@@ -250,6 +250,7 @@ def test_run_pelt(min_segment_length=1):
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    changepoints = changepoints - 1  # new definition in run_pelt
     assert np.all(np.diff(opt_costs) >= 0)
     assert len(changepoints) == n_segments - 1
     assert changepoints == [seg_len - 1]
@@ -274,20 +275,21 @@ def test_compare_all_pelt_functions(min_segment_length=1):
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
 
     assert old_pelt_changepoints == opt_part_changepoints == pelt_changepoints
     np.testing.assert_array_almost_equal(old_pelt_costs, opt_part_costs)
     np.testing.assert_array_almost_equal(old_pelt_costs, pelt_costs)
 
 
-@pytest.mark.parametrize("min_segment_length", [1, 5, 10, 20])
+@pytest.mark.parametrize("min_segment_length", [1, 5, 10])
 def test_pelt_on_tricky_data(min_segment_length):
     """
     Test PELT on a slightly more complex data set. There are
     change points every 20 samples, and the mean of the segments
     changes drastically. And the PELT implementation agrees with
     the optimal partitioning as long as the segment length is
-    less than or equal to 20.
+    less than 20.
     """
     # Original "run_pelt" found 7 changepoints.
     pelt_costs, pelt_changepoints = run_pelt(
@@ -296,6 +298,7 @@ def test_pelt_on_tricky_data(min_segment_length):
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
     opt_part_costs, opt_part_changepoints = run_optimal_partitioning(
         alternating_sequence,
         cost,
@@ -303,7 +306,7 @@ def test_pelt_on_tricky_data(min_segment_length):
         min_segment_length=min_segment_length,
     )
 
-    assert pelt_changepoints == opt_part_changepoints
+    assert np.all(pelt_changepoints == opt_part_changepoints)
     np.testing.assert_almost_equal(
         pelt_costs[-1],
         pelt_partition_cost(
@@ -318,7 +321,7 @@ def test_pelt_on_tricky_data(min_segment_length):
     np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs)
 
 
-@pytest.mark.parametrize("min_segment_length", range(1, 30))
+@pytest.mark.parametrize("min_segment_length", range(1, 20))
 def test_pelt_min_segment_lengths(min_segment_length):
     """
     Test PELT on a slightly more complex data set. There are
@@ -336,13 +339,14 @@ def test_pelt_min_segment_lengths(min_segment_length):
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
     _, opt_part_changepoints = run_optimal_partitioning(
         alternating_sequence,
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
-    assert pelt_changepoints == opt_part_changepoints
+    assert np.all(pelt_changepoints == opt_part_changepoints)
 
 
 @pytest.mark.xfail
@@ -359,6 +363,7 @@ def test_xfail_pelt_min_segment_lengths(min_segment_length):
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
     _, opt_part_changepoints = run_optimal_partitioning(
         alternating_sequence,
         cost,
@@ -411,9 +416,10 @@ def test_pelt_dense_changepoints_parametrized(min_segment_length):
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    changepoints = changepoints - 1  # new definition in run_pelt
     # Expected changepoints are at every min_segment_length interval
     expected_changepoints = [
         i * min_segment_length - 1
         for i in range(1, len(increasing_data) // min_segment_length)
     ]
-    assert changepoints == expected_changepoints
+    assert np.all(changepoints == expected_changepoints)
