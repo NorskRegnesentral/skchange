@@ -134,7 +134,7 @@ def generate_anomalous_data(
     x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
     for anomaly, mean, variance in zip(anomalies, means, variances):
         start, end = anomaly
-        x[start:end] = mean + np.sqrt(variance) * x[start : end + 1]
+        x[start:end] = mean + np.sqrt(variance) * x[start:end]
     df = pd.DataFrame(x, index=range(len(x)))
     return df
 
