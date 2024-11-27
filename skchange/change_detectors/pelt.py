@@ -17,14 +17,14 @@ from skchange.utils.validation.parameters import check_larger_than
 
 
 @njit
-def get_changepoints(prev_cpts: np.ndarray) -> list:
+def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
     changepoints = []
     i = len(prev_cpts) - 1
     while i > 0:
         cpt_i = prev_cpts[i]
         changepoints.append(cpt_i)
         i = cpt_i - 1
-    return changepoints[0::-1]  # Remove the articcial changepoint at index 0.
+    return np.array(changepoints[-2::-1])  # Remove the artificial changepoint at 0.
 
 
 def run_pelt(
