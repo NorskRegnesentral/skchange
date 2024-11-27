@@ -216,7 +216,7 @@ def generate_alternating_data(
         vars.append(vars_vec)
 
     n = segment_length * n_segments
-    changepoints = [segment_length * i - 1 for i in range(1, n_segments)]
+    changepoints = [segment_length * i for i in range(1, n_segments)]
     x = generate_changing_data(n, changepoints, means, vars, random_state)
     df = pd.DataFrame(x, index=range(len(x)))
     return df
