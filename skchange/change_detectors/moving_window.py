@@ -18,21 +18,21 @@ from skchange.utils.validation.parameters import check_in_interval, check_larger
 
 
 @njit
-def get_moscore_changepoints(
-    moscores: np.ndarray, threshold: float, min_detection_interval: int
+def get_moving_window_changepoints(
+    scores: np.ndarray, threshold: float, min_detection_interval: int
 ) -> list:
-    detection_intervals = where(moscores > threshold)
+    detection_intervals = where(scores > threshold)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
         end = interval[1]
         if end - start + 1 >= min_detection_interval:
-            cpt = np.argmax(moscores[start : end + 1]) + start
+            cpt = np.argmax(scores[start : end + 1]) + start
             changepoints.append(cpt)
     return changepoints
 
 
-def moscore_transform(
+def moving_window_transform(
     X: np.ndarray,
     change_score: BaseChangeScore,
     bandwidth: int,
@@ -150,7 +150,7 @@ class MovingWindow(ChangeDetector):
         X : pd.DataFrame
             Training data to tune the threshold on.
         """
-        scores = moscore_transform(
+        scores = moving_window_transform(
             X.values,
             self._change_score,
             self.bandwidth,
@@ -260,7 +260,7 @@ class MovingWindow(ChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        scores = moscore_transform(
+        scores = moving_window_transform(
             X.values,
             self._change_score,
             self.bandwidth,
@@ -280,7 +280,7 @@ class MovingWindow(ChangeDetector):
             exact format depends on annotation type
         """
         self.scores = self.transform_scores(X)
-        changepoints = get_moscore_changepoints(
+        changepoints = get_moving_window_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )
         return ChangeDetector._format_sparse_output(changepoints)
