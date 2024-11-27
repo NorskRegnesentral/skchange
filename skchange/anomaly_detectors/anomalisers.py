@@ -109,7 +109,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.change_detectors.moscore import MovingWindow
+        from skchange.change_detectors.moving_window import MovingWindow
 
         params = [
             {

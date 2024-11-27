@@ -3,7 +3,7 @@
 import numpy as np
 
 from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
-from skchange.change_detectors.moscore import MovingWindow
+from skchange.change_detectors.moving_window import MovingWindow
 from skchange.change_detectors.pelt import PELT
 from skchange.datasets.generate import generate_anomalous_data
 

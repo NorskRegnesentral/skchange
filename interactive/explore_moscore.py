@@ -2,7 +2,7 @@
 
 import plotly.express as px
 
-from skchange.change_detectors.moscore import MovingWindow
+from skchange.change_detectors.moving_window import MovingWindow
 from skchange.datasets.generate import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 

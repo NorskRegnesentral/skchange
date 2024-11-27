@@ -1,7 +1,7 @@
 """Change detection algorithms."""
 
 from skchange.change_detectors.base import ChangeDetector
-from skchange.change_detectors.moscore import MovingWindow
+from skchange.change_detectors.moving_window import MovingWindow
 from skchange.change_detectors.pelt import PELT
 from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
 
