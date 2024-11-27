@@ -271,7 +271,7 @@ class PELT(ChangeDetector):
             self.penalty_,
             self.min_segment_length,
         )
-        # Store the scores for introspection without recomputing using score_transform
+        # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
         return ChangeDetector._format_sparse_output(changepoints)
 

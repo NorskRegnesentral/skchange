@@ -51,12 +51,12 @@ def test_detector_transform(Detector: BaseDetector):
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
-def test_detector_score_transform(Detector: BaseDetector):
-    """Test score_transform method output."""
+def test_detector_transform_scores(Detector: BaseDetector):
+    """Test transform_scores method output."""
     detector = Detector.create_test_instance()
     x = generate_anomalous_data(means=10, random_state=62)
     try:
-        y = detector.fit(x).score_transform(x)
+        y = detector.fit(x).transform_scores(x)
         assert isinstance(y, (pd.Series, pd.DataFrame))
     except NotImplementedError:
         pass
@@ -87,7 +87,7 @@ def test_detector_not_implemented_methods():
     with pytest.raises(NotImplementedError):
         detector.transform(x)
     with pytest.raises(NotImplementedError):
-        detector.score_transform(x)
+        detector.transform_scores(x)
     with pytest.raises(NotImplementedError):
         detector.dense_to_sparse(x)
     with pytest.raises(NotImplementedError):

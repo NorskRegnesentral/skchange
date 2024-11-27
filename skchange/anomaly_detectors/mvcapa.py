@@ -575,7 +575,7 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
 
         return SubsetCollectiveAnomalyDetector._format_sparse_output(anomalies)
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the MVCAPA scores for the input data.
 
         Parameters

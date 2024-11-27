@@ -13,7 +13,7 @@ df = generate_alternating_data(
 detector = MovingWindow()
 changepoints = detector.fit_predict(df)
 labels = detector.transform(df)
-scores = detector.score_transform(df)
+scores = detector.transform_scores(df)
 px.scatter(scores)
 
 

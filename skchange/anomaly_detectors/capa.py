@@ -229,7 +229,7 @@ class CAPA(CollectiveAnomalyDetector):
 
         return CollectiveAnomalyDetector._format_sparse_output(anomalies)
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the CAPA scores for the input data.
 
         Parameters

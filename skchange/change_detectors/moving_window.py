@@ -242,7 +242,7 @@ class MovingWindow(ChangeDetector):
         self.threshold_ = self._get_threshold(X)
         return self
 
-    def _score_transform(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Return scores for predicted annotations on test/deployment data.
 
         Parameters
@@ -279,7 +279,7 @@ class MovingWindow(ChangeDetector):
         y : pd.Series - annotations for sequence `X`
             exact format depends on annotation type
         """
-        self.scores = self.score_transform(X)
+        self.scores = self.transform_scores(X)
         changepoints = get_moscore_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )

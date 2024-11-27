@@ -33,7 +33,7 @@ def test_moscore_scores(Score):
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
     detector = MovingWindow(Score())
-    scores = detector.fit(df).score_transform(df)
+    scores = detector.fit(df).transform_scores(df)
     assert np.all(scores >= 0.0)
     assert len(scores) == len(df)
 

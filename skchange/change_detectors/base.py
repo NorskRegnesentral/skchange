@@ -11,7 +11,7 @@ Needs to be implemented:
     _predict(self, X)
 
 Optional to implement:
-    _score_transform(self, X)
+    _transform_scores(self, X)
     _update(self, X, y=None)
 
 """
