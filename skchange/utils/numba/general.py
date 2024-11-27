@@ -65,11 +65,11 @@ def where(indicator: np.ndarray) -> list:
         if val and start is None:
             start = i
         elif not val and start is not None:
-            end = i - 1
+            end = i
             intervals.append((start, end))
             start, end = None, None
     if start is not None:
-        intervals.append((start, len(indicator) - 1))
+        intervals.append((start, len(indicator)))
     return intervals
 
 
