@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors.capa import Capa
+from skchange.anomaly_detectors.capa import CAPA
 from skchange.anomaly_detectors.mvcapa import (
     Mvcapa,
     capa_penalty_factory,
@@ -22,9 +22,9 @@ COSTS_AND_SAVINGS = COSTS + SAVINGS
 
 
 @pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
-@pytest.mark.parametrize("Detector", [Capa, Mvcapa])
+@pytest.mark.parametrize("Detector", [CAPA, Mvcapa])
 def test_capa_anomalies(Detector, Saving):
-    """Test Capa anomalies."""
+    """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
     if isinstance(saving, BaseCost):
         fixed_params = find_fixed_param_combination(Saving)

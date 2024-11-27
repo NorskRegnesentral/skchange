@@ -3,7 +3,7 @@
 import numpy as np
 import plotly.express as px
 
-from skchange.anomaly_detectors import Capa, Mvcapa
+from skchange.anomaly_detectors import CAPA, Mvcapa
 from skchange.change_detectors import Moscore
 from skchange.datasets.generate import generate_anomalous_data
 
@@ -30,7 +30,7 @@ print(changepoints)
 print(changepoint_labels)
 
 # Collective anomaly detector
-anomaly_detector = Capa()
+anomaly_detector = CAPA()
 anomalies = anomaly_detector.fit_predict(df)
 anomaly_labels = anomaly_detector.transform(df)
 print(anomalies)

@@ -1,9 +1,9 @@
-"""Interactive exploration of the Capa and Mvcapa anomaly detectors."""
+"""Interactive exploration of the CAPA and Mvcapa anomaly detectors."""
 
 import pandas as pd
 import plotly.express as px
 
-from skchange.anomaly_detectors.capa import Capa
+from skchange.anomaly_detectors.capa import CAPA
 from skchange.anomaly_detectors.mvcapa import Mvcapa
 from skchange.datasets.generate import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
@@ -12,7 +12,7 @@ from skchange.utils.benchmarking.profiler import Profiler
 df = generate_alternating_data(
     n_segments=5, segment_length=10, mean=10, random_state=2
 )[0]
-detector = Capa(max_segment_length=20)
+detector = CAPA(max_segment_length=20)
 
 anomalies = detector.fit_predict(df)
 print(anomalies)
@@ -56,7 +56,7 @@ px.scatter(scores)
 # Profiling
 n = int(1e5)
 df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
-detector = Capa(
+detector = CAPA(
     max_segment_length=100, collective_penalty_scale=5, point_penalty_scale=5
 )
 detector = Mvcapa(
