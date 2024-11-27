@@ -3,8 +3,8 @@
 import numpy as np
 import plotly.express as px
 
-from skchange.anomaly_detectors import Capa, Mvcapa
-from skchange.change_detectors import Moscore
+from skchange.anomaly_detectors import CAPA, MVCAPA
+from skchange.change_detectors import MovingWindow
 from skchange.datasets.generate import generate_anomalous_data
 
 # Generate data
@@ -23,21 +23,21 @@ fig = px.line(plot_df, x="time", y="value", facet_row="variable")
 fig.show()
 
 # Change detector
-change_detector = Moscore(threshold_scale=1.0)
+change_detector = MovingWindow(threshold_scale=1.0)
 changepoints = change_detector.fit_predict(df)
 changepoint_labels = change_detector.transform(df)
 print(changepoints)
 print(changepoint_labels)
 
 # Collective anomaly detector
-anomaly_detector = Capa()
+anomaly_detector = CAPA()
 anomalies = anomaly_detector.fit_predict(df)
 anomaly_labels = anomaly_detector.transform(df)
 print(anomalies)
 print(anomaly_labels)
 
 # Subset collective anomaly detector
-subset_anomaly_detector = Mvcapa()
+subset_anomaly_detector = MVCAPA()
 subset_anomalies = subset_anomaly_detector.fit_predict(df)
 subset_anomaly_labels = subset_anomaly_detector.transform(df)
 print(subset_anomalies)

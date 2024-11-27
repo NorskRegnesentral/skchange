@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors.pelt import Pelt
+from skchange.change_detectors.pelt import PELT
 from skchange.costs import L2Cost
 from skchange.datasets.generate import generate_alternating_data
 
@@ -30,5 +30,5 @@ df = generate_alternating_data(
 n = 10000
 df = pd.DataFrame(np.random.normal(0, 1, size=n))
 cost = L2Cost()
-detector = Pelt(cost=cost)
+detector = PELT(cost=cost)
 detector.fit_predict(df)
