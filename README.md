@@ -31,12 +31,12 @@ Requires Python >= 3.9, < 3.13.
 
 ### Changepoint detection / time series segmentation
 ```python
-from skchange.change_detectors.moscore import Moscore
+from skchange.change_detectors.moscore import MovingWindow
 from skchange.datasets.generate import generate_alternating_data
 
 df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 
-detector = Moscore(bandwidth=10)
+detector = MovingWindow(bandwidth=10)
 detector.fit_predict(df)
 ```
 ```python

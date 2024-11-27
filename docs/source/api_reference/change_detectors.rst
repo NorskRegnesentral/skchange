@@ -22,6 +22,6 @@ Change detectors
    :toctree: auto_generated/
    :template: class.rst
 
-   Moscore
+   MovingWindow
    PELT
    SeededBinarySegmentation

@@ -4,7 +4,7 @@ import numpy as np
 import plotly.express as px
 
 from skchange.anomaly_detectors import CAPA, MVCAPA
-from skchange.change_detectors import Moscore
+from skchange.change_detectors import MovingWindow
 from skchange.datasets.generate import generate_anomalous_data
 
 # Generate data
@@ -23,7 +23,7 @@ fig = px.line(plot_df, x="time", y="value", facet_row="variable")
 fig.show()
 
 # Change detector
-change_detector = Moscore(threshold_scale=1.0)
+change_detector = MovingWindow(threshold_scale=1.0)
 changepoints = change_detector.fit_predict(df)
 changepoint_labels = change_detector.transform(df)
 print(changepoints)

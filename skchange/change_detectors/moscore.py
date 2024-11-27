@@ -1,7 +1,7 @@
 """The Moving Score algorithm for multiple changepoint detection."""
 
 __author__ = ["Tveten"]
-__all__ = ["Moscore"]
+__all__ = ["MovingWindow"]
 
 from typing import Optional, Union
 
@@ -51,7 +51,7 @@ def moscore_transform(
     return scores
 
 
-class Moscore(ChangeDetector):
+class MovingWindow(ChangeDetector):
     """Moving score algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
@@ -90,12 +90,12 @@ class Moscore(ChangeDetector):
 
     Examples
     --------
-    >>> from skchange.change_detectors import Moscore
+    >>> from skchange.change_detectors import MovingWindow
     >>> from skchange.datasets.generate import generate_alternating_data
     >>> df = generate_alternating_data(
             n_segments=4, mean=10, segment_length=100000, p=5
         )
-    >>> detector = Moscore()
+    >>> detector = MovingWindow()
     >>> detector.fit_predict(df)
     0     99999
     1    199999
@@ -135,7 +135,7 @@ class Moscore(ChangeDetector):
         )
 
     def _tune_threshold(self, X: pd.DataFrame) -> float:
-        """Tune the threshold for the Moscore algorithm.
+        """Tune the threshold for the MovingWindow algorithm.
 
         The threshold is set to the (1-`level`)-quantile of the score on the training
         data `X`. For this to be correct, the training data must contain no
@@ -162,7 +162,7 @@ class Moscore(ChangeDetector):
     def get_default_threshold(
         n: int, p: int, bandwidth: int, level: float = 0.01
     ) -> float:
-        """Get the default threshold for the Moscore algorithm.
+        """Get the default threshold for the MovingWindow algorithm.
 
         It is the asymptotic critical value of the univariate 'mean' test statitic,
         multiplied by `p` to account for the multivariate case.
@@ -174,14 +174,14 @@ class Moscore(ChangeDetector):
         p : int
             Number of variables.
         bandwidth : int
-            Bandwidth of the Moscore algorithm.
+            Bandwidth of the MovingWindow algorithm.
         level : float, optional (default=0.01)
             Significance level for the test statistic.
 
         Returns
         -------
         threshold : float
-            Threshold for the Moscore algorithm.
+            Threshold for the MovingWindow algorithm.
         """
         u = n / bandwidth
         a = np.sqrt(2 * np.log(u))
@@ -215,7 +215,7 @@ class Moscore(ChangeDetector):
         number, the threshold is set to `threshold_scale` times the default threshold
         for the detector. The default threshold depends at least on the data's shape,
         but could also depend on more parameters.
-        In the case of the Moscore algorithm, the default threshold depends on the
+        In the case of the MovingWindow algorithm, the default threshold depends on the
         sample size, the number of variables, `bandwidth` and `level`.
 
         Parameters
