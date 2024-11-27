@@ -71,9 +71,9 @@ def compute_segment_lengths(change_points, num_obs):
 
 
 # %%
-from pelt import Pelt
+from pelt import PELT
 
-cpd = Pelt(
+cpd = PELT(
     cost="mean",
     penalty_scale=100.0 / (2 * 1 * np.log(len(X_complex_10_segments_n_200))),
     min_segment_length=21,

@@ -23,5 +23,5 @@ Change detectors
    :template: class.rst
 
    Moscore
-   Pelt
+   PELT
    SeededBinarySegmentation

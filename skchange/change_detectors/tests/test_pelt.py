@@ -1,4 +1,4 @@
-"""Tests for the Pelt implementation."""
+"""Tests for the PELT implementation."""
 
 import numpy as np
 import pytest
