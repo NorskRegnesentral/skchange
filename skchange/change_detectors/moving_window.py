@@ -26,8 +26,8 @@ def get_moving_window_changepoints(
     for interval in detection_intervals:
         start = interval[0]
         end = interval[1]
-        if end - start + 1 >= min_detection_interval:
-            cpt = np.argmax(scores[start : end + 1]) + start
+        if end - start >= min_detection_interval:
+            cpt = np.argmax(scores[start:end]) + start
             changepoints.append(cpt)
     return changepoints
 
@@ -47,7 +47,7 @@ def moving_window_transform(
     agg_change_scores = np.sum(change_scores, axis=1)
 
     scores = np.zeros(n)
-    scores[splits - 1] = agg_change_scores
+    scores[splits] = agg_change_scores
     return scores
 
 
