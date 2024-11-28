@@ -208,7 +208,7 @@ class GaussianCovCost(BaseCost):
         The size of each interval is defined as cuts[i, 1] - cuts[i, 0].
         """
         if self.is_fitted:
-            return self.X_.shape[1] + 1
+            return self._X.shape[1] + 1
         else:
             return None
 
@@ -243,7 +243,7 @@ class GaussianCovCost(BaseCost):
             _, self._log_det_cov = np.linalg.slogdet(cov)
 
         # Stored as np.ndarray for use in _evaluate. self._X can many types.
-        self.X_ = X
+        self._X = X
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
