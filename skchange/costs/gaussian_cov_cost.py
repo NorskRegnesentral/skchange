@@ -262,7 +262,7 @@ class GaussianCovCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of
             columns is 1 since the GaussianCovCost is inherently multivariate.
         """
-        return gaussian_cov_cost_optim(starts, ends, self.X_)
+        return gaussian_cov_cost_optim(starts, ends, self._X)
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
@@ -281,7 +281,7 @@ class GaussianCovCost(BaseCost):
             columns is 1 since the GaussianCovCost is inherently multivariate.
         """
         return gaussian_cov_cost_fixed(
-            starts, ends, self.X_, self._mean, self._log_det_cov, self._inv_cov
+            starts, ends, self._X, self._mean, self._log_det_cov, self._inv_cov
         )
 
     @classmethod
