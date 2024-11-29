@@ -120,7 +120,10 @@ def compute_bartlett_corrections(
     -------
     bartlett_corr_log_lr : float
     """
-    bartlett_corrections = np.empty_like(len(sequence_lengths), dtype=np.float64)
+    bartlett_corrections = np.zeros(
+        shape=(sequence_lengths.shape[0], 1), dtype=np.float64
+    )
+
     for i, (sequence_length, cut_point) in enumerate(zip(sequence_lengths, cut_points)):
         g_k_n = likelihood_ratio_expected_value(
             sequence_length=sequence_length, cut_point=cut_point, dimension=dimension
@@ -191,17 +194,20 @@ class GaussianCovScore(BaseChangeScore):
         """
         start_intervals = cuts[:, [0, 1]]
         end_intervals = cuts[:, [1, 2]]
-        raw_scores = self._gaussian_cov_cost.evaluate(
-            start_intervals
-        ) - self._gaussian_cov_cost.evaluate(end_intervals)
+        total_intervals = cuts[:, [0, 2]]
+
+        raw_scores = self._gaussian_cov_cost.evaluate(total_intervals) - (
+            self._gaussian_cov_cost.evaluate(start_intervals)
+            + self._gaussian_cov_cost.evaluate(end_intervals)
+        )
 
         if self._apply_bartlett_correction:
-            sequence_lengths = cuts[:, 2] - cuts[:, 0]
-            cut_points = cuts[:, 1]
+            segment_lengths = cuts[:, 2] - cuts[:, 0]
+            segment_splits = cuts[:, 1] - cuts[:, 0]
             bartlett_corrections = compute_bartlett_corrections(
-                sequence_lengths=sequence_lengths,
-                cut_points=cut_points,
-                dimension=self._gaussian_cov_cost.dimension(),
+                sequence_lengths=segment_lengths,
+                cut_points=segment_splits,
+                dimension=self._gaussian_cov_cost.dimension,
             )
             return bartlett_corrections * raw_scores
         else:

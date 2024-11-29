@@ -56,6 +56,14 @@ class BaseCost(BaseIntervalScorer):
         """
         return p
 
+    @property
+    def dimension(self) -> int:
+        """Dimension of the fitted data."""
+        if self.is_fitted:
+            return self._X.shape[1]
+        else:
+            return None
+
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the cost on a set of intervals.
 

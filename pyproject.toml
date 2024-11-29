@@ -64,6 +64,7 @@ dev = [
     "ipykernel",
     "plotly",
     "nbformat>=4.2.0",
+    "scipy>=1.14.1,<2.0.0"
 ]
 
 docs = [

@@ -212,14 +212,6 @@ class GaussianCovCost(BaseCost):
         else:
             return None
 
-    @property
-    def dimension(self) -> int:
-        """Dimension of the fitted data."""
-        if self.is_fitted:
-            return self._X.shape[1]
-        else:
-            return None
-
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
@@ -250,8 +242,6 @@ class GaussianCovCost(BaseCost):
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)
 
-        # Stored as np.ndarray for use in _evaluate. self._X can many types.
-        self._X = X
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
