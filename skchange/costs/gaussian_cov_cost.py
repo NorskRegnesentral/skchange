@@ -208,7 +208,15 @@ class GaussianCovCost(BaseCost):
         The size of each interval is defined as cuts[i, 1] - cuts[i, 0].
         """
         if self.is_fitted:
-            return self._X.shape[1] + 1
+            return self.dimension + 1
+        else:
+            return None
+
+    @property
+    def dimension(self) -> int:
+        """Dimension of the fitted data."""
+        if self.is_fitted:
+            return self._X.shape[1]
         else:
             return None
 

@@ -7,17 +7,128 @@ from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.gaussian_cov_cost import GaussianCovCost
+from skchange.utils.numba import njit
 
-# TODO: Retrieve Bartlett correction functions.
+
+@njit
+def half_integer_digamma(twice_n: int) -> float:
+    """Calculate the digamma function for half integer values, i.e. `twice_n/2`.
+
+    The digamma function is the logarithmic derivative of the gamma function.
+    This function is capable of calculating the
+    digamma function for half integer values.
+
+    Source: https://en.wikipedia.org/wiki/Digamma_function
+
+    Parameters
+    ----------
+    twice_n : int
+        Twice the integer value.
+
+    Returns
+    -------
+    res : float
+        Value of the digamma function for the half integer value.
+    """
+    assert twice_n > 0, "n must be a positive integer."
+
+    if twice_n % 2 == 0:
+        # Even integer: twice_n = 2n
+        res = -np.euler_gamma
+        n = twice_n // 2
+        for k in range(0, n - 1):
+            res += 1.0 / (k + 1.0)
+    else:
+        res = -2 * np.log(2) - np.euler_gamma
+        # Odd integer: twice_n = 2n + 1
+        n = (twice_n - 1) // 2
+        for k in range(1, n + 1):
+            res += 2.0 / (2.0 * k - 1.0)
+
+    return res
 
 
-def bartlett_correction(
-    start_intervals: np.ndarray,
-    end_intervals: np.ndarray,
-    num_vars: int,
-) -> np.ndarray:
-    """Calculate the Bartlett correction for the Gaussian covariance change score."""
-    pass
+@njit
+def likelihood_ratio_expected_value(
+    sequence_length: int, cut_point: int, dimension: int
+) -> float:
+    """Calculate the expected value of twice the negative log likelihood ratio.
+
+    We check that the cut point is within the sequence length, and that both `k` and `n`
+    are large enough relative to the dimension `p`, to ensure that the expected
+    value is finite.
+    Should at least have `p+1` points on each side of a split, for `p` dimensional data.
+
+    Parameters
+    ----------
+    sequence_length : int
+        Length of the sequence.
+    cut_point : int
+        Cut point of the sequence.
+    dimension : int
+        Dimension of the data.
+
+    Returns
+    -------
+    g_k_n : float
+        Expected value of twice the negative log likelihood ratio.
+    """
+    n, k, p = sequence_length, cut_point, dimension
+
+    assert 0 < k < n, "Cut point `k` must be within the sequence length `n`."
+    assert p > 0, "Dimension `p` must be a positive integer."
+    assert k > (p + 1), "Cut point `k` must be larger than the dimension + 1."
+    assert n - k > (
+        p + 1
+    ), "Run length after cut point `n - k` must be larger than dimension + 1."
+
+    g_k_n = p * (
+        np.log(2)
+        + (n - 1) * np.log(n - 1)
+        - (n - k - 1) * np.log(n - k - 1)
+        - (k - 1) * np.log(k - 1)
+    )
+
+    for j in range(1, p + 1):
+        g_k_n += (
+            (n - 1) * half_integer_digamma(n - j)
+            - (k - 1) * half_integer_digamma(k - j)
+            - (n - k - 1) * half_integer_digamma(n - k - j)
+        )
+
+    return g_k_n
+
+
+@njit
+def compute_bartlett_corrections(
+    sequence_lengths: np.ndarray, cut_points: np.ndarray, dimension: int
+):
+    """Calculate the Bartlett correction for the twice negated log likelihood ratio.
+
+    Parameters
+    ----------
+    twice_negated_log_lr : float
+        Twice the negative log likelihood ratio.
+    sequence_length : int
+        Length of the sequence.
+    cut_point : int
+        Cut point of the sequence.
+    dimension : int
+        Dimension of the data.
+
+    Returns
+    -------
+    bartlett_corr_log_lr : float
+    """
+    bartlett_corrections = np.empty_like(len(sequence_lengths), dtype=np.float64)
+    for i, (sequence_length, cut_point) in enumerate(zip(sequence_lengths, cut_points)):
+        g_k_n = likelihood_ratio_expected_value(
+            sequence_length=sequence_length, cut_point=cut_point, dimension=dimension
+        )
+        bartlett_correction_factor = dimension * (dimension + 3.0) / g_k_n
+        bartlett_corrections[i] = bartlett_correction_factor
+
+    return bartlett_corrections
 
 
 class GaussianCovScore(BaseChangeScore):
@@ -85,8 +196,13 @@ class GaussianCovScore(BaseChangeScore):
         ) - self._gaussian_cov_cost.evaluate(end_intervals)
 
         if self._apply_bartlett_correction:
-            raise NotImplementedError("Bartlett correction not yet implemented.")
-            bartlett_corrections = 2
+            sequence_lengths = cuts[:, 2] - cuts[:, 0]
+            cut_points = cuts[:, 1]
+            bartlett_corrections = compute_bartlett_corrections(
+                sequence_lengths=sequence_lengths,
+                cut_points=cut_points,
+                dimension=self._gaussian_cov_cost.dimension(),
+            )
             return bartlett_corrections * raw_scores
         else:
             return raw_scores
