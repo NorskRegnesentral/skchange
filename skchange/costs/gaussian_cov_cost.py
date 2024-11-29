@@ -242,6 +242,11 @@ class GaussianCovCost(BaseCost):
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)
 
+        # TODO: Standardize the handling of input data. Currently, the input
+        # data can be a pd.Series, pd.DataFrame, or np.ndarray. Validation and
+        # conversion of the input data should be handled in the base '.fit' method.
+        self._X = X
+
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
