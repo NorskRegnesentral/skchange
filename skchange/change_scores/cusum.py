@@ -89,7 +89,6 @@ class CUSUM(BaseChangeScore):
         self :
             Reference to self.
         """
-        X = as_2d_array(X)
         self.sums_ = col_cumsum(X, init_zero=True)
         return self
 

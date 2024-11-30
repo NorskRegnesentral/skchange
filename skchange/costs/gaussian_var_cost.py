@@ -184,7 +184,6 @@ class GaussianVarCost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
-        X = as_2d_array(X)
         self._param = self._check_param(self.param, X)
 
         self.sums_ = col_cumsum(X, init_zero=True)

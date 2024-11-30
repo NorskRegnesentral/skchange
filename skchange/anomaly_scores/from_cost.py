@@ -256,7 +256,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             score is univariate. In this case, each column represents the univariate
             anomaly score for the corresponding input data column.
         """
-        X = as_2d_array(self._X)
+        X = self._X
 
         inner_intervals = cuts[:, 1:3]
         outer_intervals = cuts[:, [0, 3]]
@@ -273,7 +273,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             surrounding_data = np.concatenate((before_data, after_data))
             self._any_subset_cost.fit(surrounding_data)
             surrounding_costs[i] = self._any_subset_cost.evaluate(
-                [0, surrounding_data.shape[0]]
+                np.array([0, surrounding_data.shape[0]])
             )
 
         anomaly_scores = outer_costs - (inner_costs + surrounding_costs)

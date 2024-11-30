@@ -102,7 +102,7 @@ def test_mean_cov_cost_raises_on_non_positive_definite():
     cost.fit(X)
 
     with pytest.raises(RuntimeError):
-        cost.evaluate([0, n])
+        cost.evaluate(np.array([0, n]))
 
     # Check that the analytical function raises on the same input:
     with pytest.raises(ValueError):
