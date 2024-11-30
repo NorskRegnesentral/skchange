@@ -3,8 +3,8 @@ import pytest
 from sktime.utils._testing.annotation import make_annotation_problem
 from sktime.utils.estimator_checks import check_estimator, parametrize_with_checks
 
-from skchange.base.base_interval_scorer import BaseIntervalScorer
 from skchange.anomaly_scores import ANOMALY_SCORES
+from skchange.base.base_interval_scorer import BaseIntervalScorer
 from skchange.change_scores import CHANGE_SCORES
 from skchange.costs import COSTS
 from skchange.datasets import generate_alternating_data

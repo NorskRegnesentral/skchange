@@ -8,7 +8,6 @@ from numpy.typing import ArrayLike
 from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.validation.cuts import check_cuts_array
-from skchange.utils.validation.data import as_2d_array
 
 
 def to_saving(scorer: Union[BaseCost, BaseSaving]) -> BaseSaving:

@@ -8,7 +8,6 @@ from numpy.typing import ArrayLike
 from skchange.change_scores.base import BaseChangeScore
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
-from skchange.utils.validation.data import as_2d_array
 
 
 @njit

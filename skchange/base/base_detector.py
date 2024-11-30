@@ -46,12 +46,13 @@ Recommended but optional to implement for a concrete detector:
 __author__ = ["Tveten"]
 __all__ = ["BaseDetector"]
 
-import pandas as pd
-import numpy as np
 from typing import Union
 
+import numpy as np
+import pandas as pd
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
+
 from skchange.utils.validation.data import as_2d_array
 
 PandasInput = Union[pd.DataFrame, pd.Series]
@@ -60,6 +61,7 @@ OutputType = Union[pd.DataFrame, pd.Series]
 
 OptionalInput = Union[InputType, None]
 OptionalArray = Union[np.ndarray, None]
+
 
 class BaseDetector(BaseEstimator):
     """Base class for all detectors in skchange.
@@ -117,7 +119,7 @@ class BaseDetector(BaseEstimator):
 
         super().__init__()
 
-    def fit(self, X: InputType, y: OptionalInput=None, copy=False):
+    def fit(self, X: InputType, y: OptionalInput = None, copy=False):
         """Fit detector to training data.
 
         Fit trains the detector on the input data, for example by tuning a detection
@@ -154,7 +156,7 @@ class BaseDetector(BaseEstimator):
 
             self._y = y
             self._y_array = y_array
-        
+
         else:
             self._y = y
             self._y_array = None
@@ -327,7 +329,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def update(self, X: InputType, y: OptionalInput=None):
+    def update(self, X: InputType, y: OptionalInput = None):
         """Update model with new data and optional ground truth detections.
 
         Parameters
@@ -365,7 +367,7 @@ class BaseDetector(BaseEstimator):
 
         return self
 
-    def _update(self, X: PandasInput, y: OptionalInput=None):
+    def _update(self, X: PandasInput, y: OptionalInput = None):
         """Update model with new data and optional ground truth detections.
 
         The core logic for updating the detector with new data should be implemented
