@@ -86,13 +86,14 @@ class BaseIntervalScorer(BaseEstimator):
         Updates the fitted model and sets attributes ending in "_".
         """
         X = check_series(X, allow_index_names=True)
+        X = as_2d_array(X)
         self._X = X
 
         self._fit(X=X, y=y)
         self._is_fitted = True
         return self
 
-    def _fit(self, X, y=None):
+    def _fit(self, X: np.ndarray, y: Union[np.ndarray, None]=None):
         """Fit the interval scorer to training data.
 
         The core logic of fitting an interval scorer to training data is implemented

@@ -234,18 +234,12 @@ class GaussianCovCost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
-        X = as_2d_array(X)
         self._param = self._check_param(self.param, X)
 
         if self.param is not None:
             self._mean, cov = self._param
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)
-
-        # TODO: Standardize the handling of input data. Currently, the input
-        # data can be a pd.Series, pd.DataFrame, or np.ndarray. Validation and
-        # conversion of the input data should be handled in the base '.fit' method.
-        self._X = X
 
         return self
 
