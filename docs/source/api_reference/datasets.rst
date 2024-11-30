@@ -17,10 +17,10 @@ Generate toy data
     add_linspace_outliers
 
 Load real datasets
+------------------
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
     load_hvac_system_data
-"""
