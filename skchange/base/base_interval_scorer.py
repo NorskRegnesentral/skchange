@@ -93,7 +93,7 @@ class BaseIntervalScorer(BaseEstimator):
         self._is_fitted = True
         return self
 
-    def _fit(self, X: np.ndarray, y: Union[np.ndarray, None]=None):
+    def _fit(self, X: np.ndarray, y: Union[np.ndarray, None] = None):
         """Fit the interval scorer to training data.
 
         The core logic of fitting an interval scorer to training data is implemented
