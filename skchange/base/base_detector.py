@@ -48,7 +48,7 @@ __all__ = ["BaseDetector"]
 
 import pandas as pd
 import numpy as np
-from typing import Union, Self
+from typing import Union
 
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
@@ -117,7 +117,7 @@ class BaseDetector(BaseEstimator):
 
         super().__init__()
 
-    def fit(self, X: InputType, y: OptionalInput=None, copy=False) -> Self:
+    def fit(self, X: InputType, y: OptionalInput=None, copy=False):
         """Fit detector to training data.
 
         Fit trains the detector on the input data, for example by tuning a detection
@@ -168,7 +168,7 @@ class BaseDetector(BaseEstimator):
 
         return self
 
-    def _fit(self, X: np.ndarray, y: OptionalArray = None) -> Self:
+    def _fit(self, X: np.ndarray, y: OptionalArray = None):
         """Fit detector to training data.
 
         The core logic for fitting the detector to training data should be implemented
