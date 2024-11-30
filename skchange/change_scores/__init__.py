@@ -2,6 +2,7 @@
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.change_scores.cusum import CUSUM
+from skchange.change_scores.gaussian_cov_score import GaussianCovScore
 from skchange.change_scores.from_cost import ChangeScore, to_change_score
 
 BASE_CHANGE_SCORES = [
@@ -9,6 +10,7 @@ BASE_CHANGE_SCORES = [
 ]
 CHANGE_SCORES = [
     ChangeScore,
+    GaussianCovScore,
     CUSUM,
 ]
 

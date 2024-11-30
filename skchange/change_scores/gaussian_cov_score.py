@@ -137,10 +137,12 @@ def compute_bartlett_corrections(
 class GaussianCovScore(BaseChangeScore):
     """Gaussian covariance change score for a change in mean and/or covariance."""
 
+    evaluation_type = "multivariate"
+
     def __init__(self, apply_bartlett_correction: bool = True):
         super().__init__()
         self._gaussian_cov_cost = GaussianCovCost()
-        self._apply_bartlett_correction = apply_bartlett_correction
+        self.apply_bartlett_correction = apply_bartlett_correction
 
     @property
     def min_size(self) -> int:
@@ -198,7 +200,7 @@ class GaussianCovScore(BaseChangeScore):
             + self._gaussian_cov_cost.evaluate(end_intervals)
         )
 
-        if self._apply_bartlett_correction:
+        if self.apply_bartlett_correction:
             segment_lengths = cuts[:, 2] - cuts[:, 0]
             segment_splits = cuts[:, 1] - cuts[:, 0]
             bartlett_corrections = compute_bartlett_corrections(
@@ -229,4 +231,8 @@ class GaussianCovScore(BaseChangeScore):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        raise NotImplementedError("Test parameters not yet implemented.")
+        params = [
+            {"apply_bartlett_correction": True},
+            {"apply_bartlett_correction": False},
+        ]
+        return params
