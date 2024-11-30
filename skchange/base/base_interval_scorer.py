@@ -11,7 +11,7 @@ Needs to be implemented for a concrete detector:
     _evaluate(self, cuts)
 """
 
-__author__ = ["Tveten"]
+__author__ = ["Tveten", "johannvk", "fkiraly"]
 __all__ = ["BaseIntervalScorer"]
 
 from typing import Union
@@ -43,7 +43,7 @@ class BaseIntervalScorer(BaseEstimator):
 
     _tags = {
         "object_type": "interval_scorer",  # type of object
-        "authors": "Tveten",  # author(s) of the object
+        "authors": ["Tveten", "johannvk", "fkiraly"],  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
     }  # for unit test cases
 
