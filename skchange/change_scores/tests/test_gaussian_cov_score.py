@@ -41,9 +41,12 @@ def test_scores_differ_with_Bartlett_correction():
     cuts = np.array([[0, 25, 50], [0, 50, 100], [50, 100, 150], [0, 100, 200]])
 
     raw_scores = GaussianCovScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
-    corrected_scores = GaussianCovScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
+    corrected_scores = (
+        GaussianCovScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
+    )
 
     assert np.all(raw_scores > corrected_scores)
+
 
 def test_non_fitted_GaussianCovScore_no_min_size():
     assert GaussianCovScore().min_size is None

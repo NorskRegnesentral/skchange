@@ -137,9 +137,7 @@ def compute_bartlett_corrections(
 class GaussianCovScore(BaseChangeScore):
     """Gaussian covariance change score for a change in mean and/or covariance."""
 
-    def __init__(
-        self, apply_bartlett_correction: bool = True
-    ):
+    def __init__(self, apply_bartlett_correction: bool = True):
         super().__init__()
         self._gaussian_cov_cost = GaussianCovCost()
         self._apply_bartlett_correction = apply_bartlett_correction
