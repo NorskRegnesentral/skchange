@@ -30,3 +30,20 @@ def test_GaussianCovScore():
 
     assert scores.shape == (cuts.shape[0], 1)
     assert np.all(scores >= 0)
+
+
+def test_scores_differ_with_Bartlett_correction():
+    np.random.seed(123)
+    X_1 = np.random.normal(size=(100, 3), loc=[1.0, -0.2, 0.5], scale=[1.0, 0.5, 1.5])
+    X_2 = np.random.normal(size=(100, 3), loc=[-1.0, 0.2, -0.5], scale=[4.0, 1.5, 2.8])
+
+    X = np.concatenate([X_1, X_2], axis=0)
+    cuts = np.array([[0, 25, 50], [0, 50, 100], [50, 100, 150], [0, 100, 200]])
+
+    raw_scores = GaussianCovScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
+    corrected_scores = GaussianCovScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
+
+    assert np.all(raw_scores > corrected_scores)
+
+def test_non_fitted_GaussianCovScore_no_min_size():
+    assert GaussianCovScore().min_size is None

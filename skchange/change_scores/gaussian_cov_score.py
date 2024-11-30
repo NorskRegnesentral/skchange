@@ -138,11 +138,10 @@ class GaussianCovScore(BaseChangeScore):
     """Gaussian covariance change score for a change in mean and/or covariance."""
 
     def __init__(
-        self, cache_covariance: bool = False, apply_bartlett_correction: bool = True
+        self, apply_bartlett_correction: bool = True
     ):
         super().__init__()
         self._gaussian_cov_cost = GaussianCovCost()
-        self._cache_covariance = cache_covariance
         self._apply_bartlett_correction = apply_bartlett_correction
 
     @property

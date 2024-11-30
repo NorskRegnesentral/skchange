@@ -181,6 +181,14 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return 1
 
+    @property
+    def dimension(self) -> int:
+        """Dimension of the fitted data."""
+        if self.is_fitted:
+            return self._X.shape[1]
+        else:
+            return None
+
     def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
         """Check cuts for compatibility.
 

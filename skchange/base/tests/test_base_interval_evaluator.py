@@ -16,6 +16,9 @@ def test_fit():
     assert evaluator._is_fitted
     assert np.array_equal(evaluator._X, X.reshape(-1, 1))
 
+def test_not_fitted_dimension_is_None():
+    evaluator = ConcreteIntervalEvaluator()
+    assert evaluator.dimension is None
 
 def test_evaluate():
     evaluator = ConcreteIntervalEvaluator()
