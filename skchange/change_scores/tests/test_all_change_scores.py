@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from skchange.change_scores.base import BaseChangeScore
 from skchange.change_scores import CHANGE_SCORES, to_change_score
+from skchange.change_scores.base import BaseChangeScore
 from skchange.costs import COSTS
 from skchange.datasets.generate import generate_alternating_data
 
