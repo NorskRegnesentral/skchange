@@ -355,9 +355,9 @@ class BaseDetector(BaseEstimator):
             self._y = y.combine_first(self._y)
             self._update(X=self._X.to_numpy(), y=self._y.to_numpy())
 
-        else: 
+        else:
             self._update(X=self._X.to_numpy())
-            
+
         return self
 
     def _update(self, X: np.ndarray, y: OptionalArray = None):

@@ -14,6 +14,7 @@ def to_DataFrame(X: Union[pd.DataFrame, pd.Series, ArrayLike]):
         X = X.to_frame()
     return X
 
+
 def check_data(
     X: Union[pd.DataFrame, pd.Series, np.ndarray],
     min_length: int,
