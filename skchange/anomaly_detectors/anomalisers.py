@@ -82,7 +82,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
         """
         # This is the required output format for the rest of the code to work.
         segments = self.change_detector_.transform(X)
-        df = pd.concat([X, segments], axis=1)
+        df = pd.concat([pd.DataFrame(X), segments], axis=1)
         anomalies = []
         for _, segment in df.reset_index(drop=True).groupby("segment_label"):
             segment_stat = self.stat(segment.iloc[:, 0].values)

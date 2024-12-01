@@ -62,6 +62,7 @@ class BaseIntervalScorer(BaseEstimator):
 
     def __init__(self):
         self._is_fitted = False
+        self._fit_to_dataframe = None
         self._X = None
 
         super().__init__()
