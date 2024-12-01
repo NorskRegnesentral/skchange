@@ -150,16 +150,16 @@ class BaseDetector(BaseEstimator):
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
         # TODO: Standardize call to '_fit()' to only accept 2D numpy arrays?
         if self._y is not None:
-            self._fit(X=self._X.to_numpy(), y=self._y.to_numpy())
+            self._fit(X=self._X, y=self._y)
         else:
-            self._fit(X=self._X.to_numpy())
+            self._fit(X=self._X)
 
         # this should happen last
         self._is_fitted = True
 
         return self
 
-    def _fit(self, X: np.ndarray, y: OptionalArray = None):
+    def _fit(self, X: PandasInput, y: OptionalInput = None):
         """Fit detector to training data.
 
         The core logic for fitting the detector to training data should be implemented
@@ -205,10 +205,10 @@ class BaseDetector(BaseEstimator):
 
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
 
-        y = self._predict(X=X.to_numpy())
+        y = self._predict(X=X)
         return y
 
-    def _predict(self, X: np.ndarray) -> OutputType:
+    def _predict(self, X: PandasInput) -> OutputType:
         """Detect events and return the result in a sparse format.
 
         The core logic for detecting events in the input data should be implemented
