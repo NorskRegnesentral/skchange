@@ -73,7 +73,8 @@ def generate_changing_data(
     ):
         x[prev_cpt:next_cpt] = mean + np.sqrt(variance) * x[prev_cpt:next_cpt]
 
-    df = pd.DataFrame(x, index=range(len(x)))
+    out_columns = [f"var{i}" for i in range(p)]
+    df = pd.DataFrame(x, index=range(len(x)), columns=out_columns)
     return df
 
 
@@ -135,7 +136,9 @@ def generate_anomalous_data(
     for anomaly, mean, variance in zip(anomalies, means, variances):
         start, end = anomaly
         x[start:end] = mean + np.sqrt(variance) * x[start:end]
-    df = pd.DataFrame(x, index=range(len(x)))
+
+    out_columns = [f"var{i}" for i in range(p)]
+    df = pd.DataFrame(x, index=range(len(x)), columns=out_columns)
     return df
 
 
@@ -217,6 +220,4 @@ def generate_alternating_data(
 
     n = segment_length * n_segments
     changepoints = [segment_length * i for i in range(1, n_segments)]
-    x = generate_changing_data(n, changepoints, means, vars, random_state)
-    df = pd.DataFrame(x, index=range(len(x)))
-    return df
+    return generate_changing_data(n, changepoints, means, vars, random_state)
