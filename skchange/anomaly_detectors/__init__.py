@@ -3,7 +3,6 @@
 from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
 from skchange.anomaly_detectors.base import (
     CollectiveAnomalyDetector,
-    PointAnomalyDetector,
     SubsetCollectiveAnomalyDetector,
 )
 from skchange.anomaly_detectors.capa import CAPA
@@ -12,7 +11,6 @@ from skchange.anomaly_detectors.mvcapa import MVCAPA
 
 BASE_ANOMALY_DETECTORS = [
     CollectiveAnomalyDetector,
-    PointAnomalyDetector,
     SubsetCollectiveAnomalyDetector,
 ]
 COLLECTIVE_ANOMALY_DETECTORS = [

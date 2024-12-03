@@ -13,7 +13,6 @@ Base
 
     CollectiveAnomalyDetector
     SubsetCollectiveAnomalyDetector
-    PointAnomalyDetector
 
 Collective anomaly detectors
 ----------------------------

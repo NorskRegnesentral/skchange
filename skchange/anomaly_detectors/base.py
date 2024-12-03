@@ -1,7 +1,6 @@
 """Base classes for anomaly detectors.
 
     classes:
-        PointAnomalyDetector
         CollectiveAnomalyDetector
         SubsetCollectiveAnomalyDetector
 
@@ -21,67 +20,6 @@ import numpy as np
 import pandas as pd
 
 from skchange.base import BaseDetector
-
-
-class PointAnomalyDetector(BaseDetector):
-    """Base class for point anomaly detectors.
-
-    Point anomaly detectors detect individual data points that are considered anomalous.
-
-    Output format of the predict method: See the dense_to_sparse method.
-    Output format of the transform method: See the sparse_to_dense method.
-    """
-
-    @staticmethod
-    def sparse_to_dense(
-        y_sparse: pd.Series, index: pd.Index, columns: pd.Index = None
-    ) -> pd.Series:
-        """Convert the sparse output from the predict method to a dense format.
-
-        Parameters
-        ----------
-        y_sparse : pd.Series
-            The sparse output from an anomaly detector's predict method.
-        index : array-like
-            Indices that are to be annotated according to ``y_sparse``.
-        columns: array-like
-            Not used. Only for API compatibility.
-
-        Returns
-        -------
-        pd.Series where 0-entries are normal and 1-entries are anomalous.
-        """
-        y_dense = pd.Series(0, index=index, name="anomaly_label", dtype="int64")
-        y_dense.iloc[y_sparse.values] = 1
-        return y_dense
-
-    @staticmethod
-    def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
-        """Convert the dense output from the transform method to a sparse format.
-
-        Parameters
-        ----------
-        y_dense : pd.Series
-            The dense output from an anomaly detector's transform method.
-            0-entries are normal and >0-entries are anomalous.
-
-        Returns
-        -------
-        pd.Series of the integer locations of the anomalous data points.
-        """
-        # The sparse format only uses integer positions, so we reset the index.
-        y_dense = y_dense.reset_index(drop=True)
-
-        anomalies = y_dense.iloc[y_dense.values > 0].index
-        return PointAnomalyDetector._format_sparse_output(anomalies)
-
-    @staticmethod
-    def _format_sparse_output(anomalies) -> pd.Series:
-        """Format the sparse output of anomaly detectors.
-
-        Can be reused by subclasses to format the output of the _predict method.
-        """
-        return pd.Series(anomalies, name="anomaly", dtype="int64")
 
 
 class CollectiveAnomalyDetector(BaseDetector):
