@@ -175,7 +175,7 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
+        y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
         """
@@ -201,7 +201,7 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
+        y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
         """
@@ -217,10 +217,19 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
-            Detections for sequence X. The returned detections will be in the dense
-            format, meaning that each element in X will be annotated according to the
-            detection results in some meaningful way depending on the detector type.
+        y : pd.DataFrame
+            If the detector does not have the capability to identify subsets of
+            variables that are affected by the detected events, out output will be a
+            `pd.DataFrame` with the same index as X and one column:
+
+            * `"labels"`: Integer labels starting from 0.
+
+            If the detector has this capability, the output will be a `pd.DataFrame`
+            with the same index as X and as many columns as there are columns in X
+            of the following format:
+
+            * `"labels_<X.columns[i]>"` for each column index i in X.columns: Integer
+            labels starting from 0.
         """
         y = self.predict(X)
         X_inner = pd.DataFrame(X)
