@@ -56,10 +56,9 @@ Example
     detector.fit_predict(df)
 
 .. code-block:: python
-
-      anomaly_interval anomaly_columns
-    0       [100, 120)             [0]
-    1       [250, 300)       [2, 1, 0]
+            ilocs  labels   icolumns
+    0  [100, 120)       1        [0]
+    1  [250, 300)       2  [2, 1, 0]
 
 Licence
 -------
