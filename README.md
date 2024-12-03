@@ -40,6 +40,7 @@ detector = MovingWindow(bandwidth=10)
 detector.fit_predict(df)
 ```
 ```python
+   ilocs
 0     50
 1    100
 2    150
@@ -49,7 +50,6 @@ detector.fit_predict(df)
 6    350
 7    400
 8    450
-Name: changepoint, dtype: int64
 ```
 
 ### Multivariate anomaly detection
@@ -67,9 +67,9 @@ detector = MVCAPA()
 detector.fit_predict(df)
 ```
 ```python
-  anomaly_interval anomaly_columns
-0       [100, 120)       [0]
-1       [250, 300)       [2, 1, 0]
+        ilocs  labels   icolumns
+0  [100, 120)       1        [0]
+1  [250, 300)       2  [2, 1, 0]
 ```
 
 
