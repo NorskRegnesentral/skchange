@@ -80,10 +80,10 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
             exact format depends on annotation type
         """
         # This is the required output format for the rest of the code to work.
-        segments = self.change_detector_.transform(X)
+        segments = self.change_detector_.transform(X)["labels"]
         df = pd.concat([X, segments], axis=1)
         anomalies = []
-        for _, segment in df.reset_index(drop=True).groupby("segment_label"):
+        for _, segment in df.reset_index(drop=True).groupby("labels"):
             segment_stat = self.stat(segment.iloc[:, 0].values)
             if (segment_stat < self.stat_lower) | (segment_stat > self.stat_upper):
                 anomalies.append((int(segment.index[0]), int(segment.index[-1] + 1)))
