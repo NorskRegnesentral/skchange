@@ -175,7 +175,7 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
+        y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
         """
@@ -201,7 +201,7 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
+        y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
         """
