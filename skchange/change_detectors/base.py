@@ -77,8 +77,9 @@ class ChangeDetector(BaseDetector):
 
         Returns
         -------
-        pd.Series :
-            Changepoint iloc locations.
+        pd.DataFrame :
+            A `pd.DataFrame` with a range index and one column:
+            * ``"ilocs"`` - integer locations of the changepoints.
         """
         y_dense = y_dense.reset_index(drop=True)
         is_changepoint = y_dense.diff().abs() > 0
@@ -90,5 +91,16 @@ class ChangeDetector(BaseDetector):
         """Format the sparse output of changepoint detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
+
+        Parameters
+        ----------
+        changepoints : list
+            List of changepoint locations.
+
+        Returns
+        -------
+        pd.DataFrame :
+            A `pd.DataFrame` with a range index and one column:
+            * ``"ilocs"`` - integer locations of the changepoints.
         """
         return pd.DataFrame(changepoints, columns=["ilocs"], dtype="int64")
