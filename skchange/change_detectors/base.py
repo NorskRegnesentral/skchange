@@ -67,7 +67,7 @@ class ChangeDetector(BaseDetector):
         )
 
     @staticmethod
-    def dense_to_sparse(y_dense: pd.DataFrame) -> pd.Series:
+    def dense_to_sparse(y_dense: pd.DataFrame) -> pd.DataFrame:
         """Convert the dense output from the `transform` method to a sparse format.
 
         Parameters
