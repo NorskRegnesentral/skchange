@@ -3,7 +3,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-from sktime.utils._testing.annotation import make_annotation_problem
 from sktime.utils.estimator_checks import check_estimator, parametrize_with_checks
 
 from skchange.anomaly_detectors import ANOMALY_DETECTORS
@@ -23,7 +22,8 @@ def test_sktime_compatible_estimators(obj, test_name):
 def test_detector_fit(Detector: BaseDetector):
     """Test fit method output."""
     detector = Detector.create_test_instance()
-    x = make_annotation_problem(n_timepoints=50, estimator_type="None")
+    x = generate_anomalous_data()
+    x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
     y = pd.Series(np.zeros(len(x)))  # For coverage testing.
     fit_detector = detector.fit(x, y)
     assert issubclass(detector.__class__, BaseDetector)
@@ -66,9 +66,10 @@ def test_detector_transform_scores(Detector: BaseDetector):
 def test_detector_update(Detector: BaseDetector):
     """Test update method output."""
     detector = Detector.create_test_instance()
-    x = make_annotation_problem(n_timepoints=30, estimator_type="None")
-    x_train = x[:20].to_frame()
-    x_next = x[20:].to_frame()
+    x = generate_anomalous_data()
+    x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
+    x_train = x.iloc[:20]
+    x_next = x[20:]
     detector.fit(x_train)
     detector.update_predict(x_next)
     assert issubclass(detector.__class__, BaseDetector)
@@ -77,7 +78,8 @@ def test_detector_update(Detector: BaseDetector):
 
 def test_detector_not_implemented_methods():
     detector = BaseDetector()
-    x = make_annotation_problem(n_timepoints=20, estimator_type="None")
+    x = generate_anomalous_data()
+    x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
     with pytest.raises(NotImplementedError):
         detector.fit(x)
 
