@@ -45,7 +45,7 @@ def test_change_detector_sparse_to_dense(Estimator):
 def test_change_detector_dense_to_sparse(Estimator):
     """Test that transform + dense_to_sparse == predict."""
     detector = Estimator.create_test_instance()
-    labels = detector.fit_transform(changepoint_data)["labels"]
+    labels = detector.fit_transform(changepoint_data)
     changepoints = detector.dense_to_sparse(labels)["ilocs"]
     changepoints_predict = detector.fit_predict(changepoint_data)["ilocs"]
     assert changepoints.equals(changepoints_predict)

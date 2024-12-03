@@ -67,12 +67,12 @@ class ChangeDetector(BaseDetector):
         )
 
     @staticmethod
-    def dense_to_sparse(y_dense: pd.Series) -> pd.Series:
+    def dense_to_sparse(y_dense: pd.DataFrame) -> pd.Series:
         """Convert the dense output from the `transform` method to a sparse format.
 
         Parameters
         ----------
-        y_dense : pd.Series
+        y_dense : pd.DataFrame
             The dense output from a changepoint detector's `transform` method.
 
         Returns
@@ -81,8 +81,7 @@ class ChangeDetector(BaseDetector):
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the changepoints.
         """
-        y_dense = y_dense.reset_index(drop=True)
-        is_changepoint = y_dense.diff().abs() > 0
+        is_changepoint = y_dense["labels"].diff().abs() > 0
         changepoints = y_dense.index[is_changepoint]
         return ChangeDetector._format_sparse_output(changepoints)
 
