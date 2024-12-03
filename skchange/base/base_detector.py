@@ -204,6 +204,26 @@ class BaseDetector(BaseEstimator):
         y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
+
+        y : pd.DataFrame with RangeIndex
+            Detected or predicted events.
+
+            Each (axis 0) index of ``y`` is a detected event.
+
+            Has the following columns:
+
+            * ``"ilocs"`` - always. Values are ``iloc`` references to indices of ``X``,
+            signifying the integer location of the detected event in ``X``.
+            * ``"label"`` - optional, additional label information.
+
+            The meaning of entries in the ``"ilocs"`` column and ``"labels"``
+            column is as follows:
+            * If ``task`` is ``"anomaly_detection"`` or ``"change_point_detection"``,
+              ``"ilocs"`` contains the iloc index of the event, and
+              labels (if present) signify types of events.
+            * If ``task`` is ``"segmentation"``, ``"ilocs"`` contains left-closed
+              intervals of iloc based segments, and labels (if present)
+              are types of segments.
         """
         raise NotImplementedError("abstract method")
 
