@@ -56,6 +56,7 @@ Example
     detector.fit_predict(df)
 
 .. code-block:: python
+
             ilocs  labels   icolumns
     0  [100, 120)       1        [0]
     1  [250, 300)       2  [2, 1, 0]
