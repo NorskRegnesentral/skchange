@@ -40,8 +40,8 @@ class CollectiveAnomalyDetector(BaseDetector):
 
         Parameters
         ----------
-        y_sparse : pd.Series[pd.Interval]
-            The collective anomaly intervals.
+        y_sparse : pd.DataFrame
+            The sparse output from the `predict` method. See `dense_to_sparse`.
         index : array-like
             Indices that are to be annotated according to `y_sparse`.
         columns: array-like
@@ -53,13 +53,13 @@ class CollectiveAnomalyDetector(BaseDetector):
             * ``"label"`` - integer labels 1, ..., K for each segment anomaly.
             0 is reserved for the normal instances.
         """
-        labels = pd.IntervalIndex(y_sparse).get_indexer(index)
+        labels = pd.IntervalIndex(y_sparse["ilocs"]).get_indexer(index)
         # `get_indexer` return values 0 for the values inside the first interval, 1 to
         # the values within the next interval and so on, and -1 for values outside any
         # interval. The `skchange` convention is that 0 is normal and > 0 is anomalous,
         # so we add 1 to the result.
         labels += 1
-        return pd.Series(labels, index=index, name="anomaly_label", dtype="int64")
+        return pd.DataFrame(labels, index=index, columns=["labels"], dtype="int64")
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.DataFrame) -> pd.DataFrame:
@@ -68,9 +68,7 @@ class CollectiveAnomalyDetector(BaseDetector):
         Parameters
         ----------
         y_dense : pd.Series
-            The dense output from a collective anomaly detector's `transform` method:
-            An integer series where 0-entries are normal and each collective anomaly
-            are labelled from 1, ..., K.
+            The dense output from the `transform` method.  See `sparse_to_dense`.
 
         Returns
         -------
@@ -85,7 +83,7 @@ class CollectiveAnomalyDetector(BaseDetector):
         `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
         """
         # The sparse format only uses integer positions, so we reset the index.
-        y_dense = y_dense.reset_index(drop=True)
+        y_dense = y_dense["labels"].reset_index(drop=True)
 
         y_anomaly = y_dense.loc[y_dense.values > 0]
         anomaly_locations_diff = y_anomaly.index.diff()
@@ -128,9 +126,13 @@ class CollectiveAnomalyDetector(BaseDetector):
         The start and end points of the intervals can be accessed by
         `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
         """
-        return pd.Series(
-            pd.IntervalIndex.from_tuples(anomaly_intervals, closed=closed),
-            name="anomaly_interval",
+        return pd.DataFrame(
+            {
+                "ilocs": pd.IntervalIndex.from_tuples(
+                    anomaly_intervals, closed=closed, dtype="int64"
+                ),
+                "labels": pd.RangeIndex(1, len(anomaly_intervals) + 1),
+            },
         )
 
 
