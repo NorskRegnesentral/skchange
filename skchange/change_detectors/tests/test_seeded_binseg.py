@@ -70,6 +70,6 @@ def test_min_segment_length(min_segment_length):
     )
     detector = SeededBinarySegmentation.create_test_instance()
     detector.set_params(min_segment_length=min_segment_length, threshold_scale=0.0)
-    changepoints = detector.fit_predict(df)
+    changepoints = detector.fit_predict(df)["ilocs"]
     changepoints = np.concatenate([[0], changepoints, [len(df)]])
     assert np.all(np.diff(changepoints) >= min_segment_length)

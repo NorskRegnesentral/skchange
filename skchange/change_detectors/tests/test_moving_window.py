@@ -20,7 +20,7 @@ def test_moving_window_changepoint(Score):
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
     detector = MovingWindow(Score())
-    changepoints = detector.fit_predict(df)
+    changepoints = detector.fit_predict(df)["ilocs"]
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len
 
 
