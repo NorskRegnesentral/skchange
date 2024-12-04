@@ -7,7 +7,6 @@ from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.base import BaseCost
-from skchange.costs.l2_cost import L2Cost
 
 
 def to_change_score(scorer: Union[BaseCost, BaseChangeScore]) -> BaseChangeScore:
@@ -48,7 +47,7 @@ class ChangeScore(BaseChangeScore):
         The cost function.
     """
 
-    def __init__(self, cost: BaseCost = L2Cost()):
+    def __init__(self, cost: BaseCost):
         self.cost = cost
         self.evaluation_type = self.cost.evaluation_type
         super().__init__()

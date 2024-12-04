@@ -49,11 +49,11 @@ class Saving(BaseSaving):
     Parameters
     ----------
     baseline_cost : BaseCost
-        The baseline cost function with a fixed parameter. The optimised cost is
+        The baseline cost with a fixed parameter. The optimised cost is
         constructed by copying the baseline cost and setting the parameter to None.
     """
 
-    def __init__(self, baseline_cost: BaseCost = L2Cost(param=0.0)):
+    def __init__(self, baseline_cost: BaseCost):
         if baseline_cost.param is None:
             raise ValueError("The baseline cost must have a fixed parameter.")
 
@@ -205,7 +205,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     expensive.
     """
 
-    def __init__(self, cost: BaseCost = L2Cost()):
+    def __init__(self, cost: BaseCost):
         self.cost = cost
         self.evaluation_type = self.cost.evaluation_type
         super().__init__()
@@ -339,7 +339,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs import GaussianVarCost, L2Cost
+        from skchange.costs import GaussianVarCost
 
         params = [
             {"cost": L2Cost()},
