@@ -82,9 +82,10 @@ class BaseDetector(BaseEstimator):
     """
 
     _tags = {
-        "object_type": "detector",  # type of object
+        # "object_type": "detector",  # type of object
         "authors": "Tveten",  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
+        "distribution_type": None,
     }  # for unit test cases
 
     def __init__(self):
