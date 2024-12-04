@@ -49,6 +49,6 @@ def test_moving_window_tuning(Score):
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
     score = Score.create_test_instance()
-    detector = MovingWindow(score)
+    detector = MovingWindow(score, threshold_scale=None)
     detector.fit(df)
     assert detector.threshold_ > 0.0
