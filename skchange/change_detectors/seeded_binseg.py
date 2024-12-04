@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors.base import ChangeDetector
+from skchange.change_detectors import ChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -154,9 +154,8 @@ class SeededBinarySegmentation(ChangeDetector):
     """
 
     _tags = {
-        "capability:missing_values": False,
-        "capability:multivariate": True,
-        "fit_is_empty": False,
+        "authors": ["Tveten"],
+        "maintainers": ["Tveten"],
     }
 
     def __init__(
@@ -303,7 +302,7 @@ class SeededBinarySegmentation(ChangeDetector):
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
         )
-        return ChangeDetector._format_sparse_output(cpts)
+        return cpts
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -331,11 +330,13 @@ class SeededBinarySegmentation(ChangeDetector):
                 "change_score": L2Cost(),
                 "min_segment_length": 5,
                 "max_interval_length": 100,
+                "threshold_scale": 5.0,
             },
             {
                 "change_score": L2Cost(),
                 "min_segment_length": 1,
                 "max_interval_length": 20,
+                "threshold_scale": 1.0,
             },
         ]
         return params
