@@ -23,16 +23,19 @@ from skchange.base import BaseDetector
 
 
 class ChangeDetector(BaseDetector):
-    """Base class for changepoint detectors.
+    """Base class for change detectors.
 
     Changepoint detectors detect points in time where a change in the data occurs.
     Data between two changepoints is a segment where the data is considered to be
     homogeneous, i.e., of the same distribution. A changepoint is defined as the
     location of the first element of a segment.
-
-    Output format of the `predict` method: See the `dense_to_sparse` method.
-    Output format of the `transform` method: See the `sparse_to_dense` method.
     """
+
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": ["Tveten"],
+        "task": "change_point_detection",
+    }
 
     @staticmethod
     def sparse_to_dense(
@@ -83,23 +86,4 @@ class ChangeDetector(BaseDetector):
         """
         is_changepoint = y_dense["labels"].diff().abs() > 0
         changepoints = y_dense.index[is_changepoint]
-        return ChangeDetector._format_sparse_output(changepoints)
-
-    @staticmethod
-    def _format_sparse_output(changepoints) -> pd.DataFrame:
-        """Format the sparse output of changepoint detectors.
-
-        Can be reused by subclasses to format the output of the `_predict` method.
-
-        Parameters
-        ----------
-        changepoints : list
-            List of changepoint locations.
-
-        Returns
-        -------
-        pd.DataFrame :
-            A `pd.DataFrame` with a range index and one column:
-            * ``"ilocs"`` - integer locations of the changepoints.
-        """
         return pd.DataFrame(changepoints, columns=["ilocs"], dtype="int64")
