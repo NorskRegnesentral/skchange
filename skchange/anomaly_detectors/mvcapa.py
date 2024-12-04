@@ -10,8 +10,8 @@ import pandas as pd
 from scipy.stats import chi2
 
 from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
-from skchange.anomaly_scores import BaseSaving, to_saving
-from skchange.costs import BaseCost, L2Cost
+from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
+from skchange.costs import BaseCost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -400,12 +400,12 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
 
     Parameters
     ----------
-    collective_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+    collective_saving : BaseSaving or BaseCost, optional, default=L2Saving()
         The saving function to use for collective anomaly detection.
         Only univariate savings are permitted (see the `evaluation_type` attribute).
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    point_saving : BaseSaving or BaseCost, optional (default=L2Cost(0.0))
+    point_saving : BaseSaving or BaseCost, optional, default=L2Saving()
         The saving function to use for point anomaly detection. Only savings with a
         minimum size of 1 are permitted.
         If a `BaseCost` is given, the saving function is constructed from the cost. The
@@ -465,8 +465,8 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
 
     def __init__(
         self,
-        collective_saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
-        point_saving: Union[BaseSaving, BaseCost] = L2Cost(0.0),
+        collective_saving: Optional[Union[BaseSaving, BaseCost]] = None,
+        point_saving: Optional[Union[BaseSaving, BaseCost]] = None,
         collective_penalty: Union[str, Callable] = "combined",
         collective_penalty_scale: float = 2.0,
         point_penalty: Union[str, Callable] = "sparse",
@@ -488,11 +488,15 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
 
         if collective_saving.evaluation_type == "multivariate":
             raise ValueError("Collective saving must be univariate.")
-        self._collective_saving = to_saving(collective_saving)
+        _collective_saving = (
+            L2Saving() if collective_saving is None else collective_saving
+        )
+        self._collective_saving = to_saving(_collective_saving)
 
         if point_saving.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
-        self._point_saving = to_saving(point_saving)
+        _point_saving = L2Saving() if point_saving is None else point_saving
+        self._point_saving = to_saving(_point_saving)
 
         check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
