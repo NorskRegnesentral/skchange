@@ -337,7 +337,6 @@ def main():
         UpdateVersion(),
         CheckVersionNumber(),
         UpdateReadme(),
-        # UpdateChangelog(),
         MakeDocs(),
         CheckLocalDocs(),
         MakeDist(),
