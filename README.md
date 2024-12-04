@@ -1,10 +1,11 @@
-# `skchange`
+# [`skchange`](https://skchange.readthedocs.io/en/latest/)
 
 [![codecov](https://codecov.io/gh/NorskRegnesentral/skchange/graph/badge.svg?token=QSS3AY45KY)](https://codecov.io/gh/NorskRegnesentral/skchange)
 [![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml/badge.svg)](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml)
 [![docs](https://readthedocs.org/projects/skchange/badge/?version=latest)](https://skchange.readthedocs.io/en/latest/?badge=latest)
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 
 [`skchange`]((https://skchange.readthedocs.io/en/latest/)) provides [`sktime`](https://www.sktime.net/)-compatible change detection and changepoint-based anomaly detection algorithms.
 
@@ -26,8 +27,6 @@ Alternatively, you can install `skchange` without `numba`:
 ```sh
 pip install skchange
 ```
-Requires Python >= 3.9, < 3.13.
-
 
 ## Quickstart
 
