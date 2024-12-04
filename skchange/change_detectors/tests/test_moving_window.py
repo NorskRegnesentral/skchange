@@ -19,7 +19,8 @@ def test_moving_window_changepoint(Score):
     df = generate_alternating_data(
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
-    detector = MovingWindow(Score())
+    score = Score.create_test_instance()
+    detector = MovingWindow(score)
     changepoints = detector.fit_predict(df)["ilocs"]
     assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len
 
@@ -32,7 +33,8 @@ def test_moving_window_scores(Score):
     df = generate_alternating_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
-    detector = MovingWindow(Score())
+    score = Score.create_test_instance()
+    detector = MovingWindow(score)
     scores = detector.fit(df).transform_scores(df)
     assert np.all(scores >= 0.0)
     assert len(scores) == len(df)
@@ -46,6 +48,7 @@ def test_moving_window_tuning(Score):
     df = generate_alternating_data(
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
     )
-    detector = MovingWindow(Score(), threshold_scale=None)
+    score = Score.create_test_instance()
+    detector = MovingWindow(score)
     detector.fit(df)
     assert detector.threshold_ > 0.0
