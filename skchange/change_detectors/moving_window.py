@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 
 from skchange.change_detectors import ChangeDetector
-from skchange.change_scores import BaseChangeScore, to_change_score
-from skchange.costs import BaseCost, L2Cost
+from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
+from skchange.costs import BaseCost
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
@@ -61,7 +61,7 @@ class MovingWindow(ChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost, optional, default=`L2Cost`
+    change_score : BaseChangeScore or BaseCost, optional, default=`CUSUM()`
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
     bandwidth : int, default=30
@@ -124,7 +124,7 @@ class MovingWindow(ChangeDetector):
         self.min_detection_interval = min_detection_interval
         super().__init__()
 
-        _change_score = L2Cost() if change_score is None else change_score
+        _change_score = CUSUM() if change_score is None else change_score
         self._change_score = to_change_score(_change_score)
 
         check_larger_than(1, self.bandwidth, "bandwidth")
