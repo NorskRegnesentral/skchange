@@ -204,7 +204,7 @@ class MakeDist(Step):
 
     def action(self, context):
         """Carry out action."""
-        self.do_cmd("make build")
+        self.do_cmd("make dist")
 
 
 class CheckDist(Step):
