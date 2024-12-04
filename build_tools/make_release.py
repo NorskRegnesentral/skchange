@@ -222,7 +222,7 @@ class UploadToTestPyPI(Step):
     def action(self, context):
         """Carry out action."""
         self.instruct("Upload to TestPyPI")
-        cmd = "twine upload dist/*"
+        cmd = "twine upload --repository testpypi dist/*"
         self.do_cmd(cmd)
 
 
