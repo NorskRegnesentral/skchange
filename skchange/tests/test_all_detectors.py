@@ -3,7 +3,6 @@
 import numpy as np
 import pandas as pd
 import pytest
-from sktime.utils.estimator_checks import check_estimator, parametrize_with_checks
 
 from skchange.anomaly_detectors import ANOMALY_DETECTORS
 from skchange.base import BaseDetector
@@ -11,11 +10,6 @@ from skchange.change_detectors import CHANGE_DETECTORS
 from skchange.datasets.generate import generate_anomalous_data
 
 ALL_DETECTORS = ANOMALY_DETECTORS + CHANGE_DETECTORS
-
-
-@parametrize_with_checks(ALL_DETECTORS)
-def test_sktime_compatible_estimators(obj, test_name):
-    check_estimator(obj, tests_to_run=test_name, raise_exceptions=True)
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)

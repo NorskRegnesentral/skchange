@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 
 from skchange.change_detectors.base import ChangeDetector
-from skchange.change_scores import BaseChangeScore, to_change_score
-from skchange.costs import BaseCost, L2Cost
+from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
+from skchange.costs import BaseCost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
@@ -107,7 +107,7 @@ class SeededBinarySegmentation(ChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost, default=L2Cost()
+    change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
     threshold_scale : float, default=2.0
@@ -161,7 +161,7 @@ class SeededBinarySegmentation(ChangeDetector):
 
     def __init__(
         self,
-        change_score: Union[BaseChangeScore, BaseCost] = L2Cost(),
+        change_score: Optional[Union[BaseChangeScore, BaseCost]] = None,
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
@@ -169,13 +169,15 @@ class SeededBinarySegmentation(ChangeDetector):
         growth_factor: float = 1.5,
     ):
         self.change_score = change_score
-        self._change_score = to_change_score(change_score)
         self.threshold_scale = threshold_scale  # Just holds the input value.
         self.level = level
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         super().__init__()
+
+        _change_score = CUSUM() if change_score is None else change_score
+        self._change_score = to_change_score(_change_score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")

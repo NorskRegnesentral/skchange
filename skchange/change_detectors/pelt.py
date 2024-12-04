@@ -123,14 +123,14 @@ class PELT(ChangeDetector):
 
     Parameters
     ----------
-    cost : BaseCost, optional (default=`L2Cost`)
+    cost : BaseCost, optional, default=`L2Cost`
         The cost function to use for the changepoint detection.
-    penalty_scale : float, optional (default=2.0)
+    penalty_scale : float, optional, default=2.0
         Scaling factor for the penalty. The penalty is set to
         `penalty_scale * 2 * p * np.log(n)`, where `n` is the sample size
         and `p` is the number of variables. If None, the penalty is tuned on the data
         input to `fit` (not supported yet).
-    min_segment_length : int, optional (default=2)
+    min_segment_length : int, optional, default=2
         Minimum length of a segment.
 
     References
@@ -158,7 +158,7 @@ class PELT(ChangeDetector):
 
     def __init__(
         self,
-        cost: BaseCost = L2Cost(),
+        cost: BaseCost = None,
         penalty_scale: Optional[float] = 2.0,
         min_segment_length: int = 2,
     ):
@@ -166,6 +166,8 @@ class PELT(ChangeDetector):
         self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
         super().__init__()
+
+        self._cost = L2Cost() if cost is None else cost
 
         check_larger_than(0, penalty_scale, "penalty_scale", allow_none=True)
         check_larger_than(1, min_segment_length, "min_segment_length")
@@ -267,7 +269,7 @@ class PELT(ChangeDetector):
         )
         opt_costs, changepoints = run_pelt(
             X.values,
-            self.cost,
+            self._cost,
             self.penalty_,
             self.min_segment_length,
         )
