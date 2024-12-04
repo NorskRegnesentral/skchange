@@ -8,6 +8,10 @@ A python library for fast collective anomaly and changepoint detection.
 The library is designed to be compatible with `sktime <https://www.sktime.net>`_.
 `Numba <https://numba.readthedocs.io>`_ is used for computational speed.
 
+!New!
+-----
+`Notebook tutorial <https://github.com/sktime/sktime-tutorial-pydata-global-2024>`_ from `PyData Global 2024 <https://pydata.org/global2024>`_ available in the :ref:`user_guide`.
+
 Installation
 ------------
 The library can be installed via pip:
