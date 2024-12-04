@@ -486,16 +486,16 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        if collective_saving.evaluation_type == "multivariate":
-            raise ValueError("Collective saving must be univariate.")
         _collective_saving = (
             L2Saving() if collective_saving is None else collective_saving
         )
+        if _collective_saving.evaluation_type == "multivariate":
+            raise ValueError("Collective saving must be univariate.")
         self._collective_saving = to_saving(_collective_saving)
 
-        if point_saving.min_size != 1:
-            raise ValueError("Point saving must have a minimum size of 1.")
         _point_saving = L2Saving() if point_saving is None else point_saving
+        if _point_saving.min_size != 1:
+            raise ValueError("Point saving must have a minimum size of 1.")
         self._point_saving = to_saving(_point_saving)
 
         check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
