@@ -22,9 +22,7 @@ def test_collective_anomaly_detector_predict(Estimator: CollectiveAnomalyDetecto
     """Test collective anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
-    anomalies = detector.predict(anomaly_data)
-    if isinstance(anomalies, pd.DataFrame):
-        anomalies = anomalies.iloc[:, 0]
+    anomalies = detector.predict(anomaly_data)["ilocs"]
 
     assert len(anomalies) == len(true_anomalies)
     for i, (start, end) in enumerate(true_anomalies):
@@ -37,11 +35,11 @@ def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetec
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
     labels = detector.transform(anomaly_data)
-    if isinstance(labels, pd.DataFrame):
-        labels = labels.iloc[:, 0]
+    # if isinstance(labels, pd.DataFrame):
+    #     labels = labels.iloc[:, 0]
 
-    true_collective_anomalies = pd.IntervalIndex.from_tuples(
-        true_anomalies, closed="both"
+    true_collective_anomalies = pd.DataFrame(
+        {"ilocs": pd.IntervalIndex.from_tuples(true_anomalies, closed="left")}
     )
     true_anomaly_labels = CollectiveAnomalyDetector.sparse_to_dense(
         true_collective_anomalies, anomaly_data.index
@@ -49,6 +47,7 @@ def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetec
     labels.equals(true_anomaly_labels)
 
     # Similar test that does not depend on sparse_to_dense, just to be sure.
+    labels = labels.iloc[:, 0]
     assert labels.nunique() == len(true_anomalies) + 1
     for i, (start, end) in enumerate(true_anomalies):
         assert (labels.iloc[start:end] == i + 1).all()
