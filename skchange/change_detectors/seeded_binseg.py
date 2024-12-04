@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors import ChangeDetector
+from skchange.change_detectors import BaseChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -93,7 +93,7 @@ def run_seeded_binseg(
     return cpts, amoc_scores, maximizers, starts, ends
 
 
-class SeededBinarySegmentation(ChangeDetector):
+class SeededBinarySegmentation(BaseChangeDetector):
     """Seeded binary segmentation algorithm for multiple changepoint detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data

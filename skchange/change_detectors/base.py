@@ -1,7 +1,7 @@
 """Base classes for changepoint detectors.
 
     classes:
-        ChangeDetector
+        BaseChangeDetector
 
 By inheriting from these classes the remaining methods of the BaseDetector class to
 implement to obtain a fully functional anomaly detector are given below.
@@ -22,7 +22,7 @@ import pandas as pd
 from skchange.base import BaseDetector
 
 
-class ChangeDetector(BaseDetector):
+class BaseChangeDetector(BaseDetector):
     """Base class for change detectors.
 
     Changepoint detectors detect points in time where a change in the data occurs.

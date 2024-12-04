@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from skchange.change_detectors import CHANGE_DETECTORS, ChangeDetector
+from skchange.change_detectors import CHANGE_DETECTORS, BaseChangeDetector
 from skchange.datasets.generate import generate_alternating_data
 
 n_segments = 3
@@ -22,7 +22,7 @@ def test_change_detector_predict(Estimator):
 
 
 @pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
-def test_change_detector_transform(Estimator: ChangeDetector):
+def test_change_detector_transform(Estimator: BaseChangeDetector):
     """Test changepoint detector transform (dense output)."""
     detector = Estimator.create_test_instance()
     labels: pd.Series = detector.fit_transform(changepoint_data)["labels"]

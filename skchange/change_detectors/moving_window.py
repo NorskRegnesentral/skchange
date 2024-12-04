@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors import ChangeDetector
+from skchange.change_detectors import BaseChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -51,7 +51,7 @@ def moving_window_transform(
     return scores
 
 
-class MovingWindow(ChangeDetector):
+class MovingWindow(BaseChangeDetector):
     """Moving window algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint

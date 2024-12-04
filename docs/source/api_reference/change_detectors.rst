@@ -12,7 +12,7 @@ Base
    :toctree: auto_generated/
    :template: class.rst
 
-   ChangeDetector
+   BaseChangeDetector
 
 Change detectors
 ----------------

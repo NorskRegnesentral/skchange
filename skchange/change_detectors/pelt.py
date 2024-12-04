@@ -9,7 +9,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors import ChangeDetector
+from skchange.change_detectors import BaseChangeDetector
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
@@ -116,7 +116,7 @@ def run_pelt(
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
-class PELT(ChangeDetector):
+class PELT(BaseChangeDetector):
     """Pruned exact linear time changepoint detection.
 
     An efficient implementation of the PELT algorithm [1]_ for changepoint detection.
