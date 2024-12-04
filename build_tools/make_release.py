@@ -222,7 +222,8 @@ class UploadToTestPyPI(Step):
     def action(self, context):
         """Carry out action."""
         self.instruct("Upload to TestPyPI")
-        self.do_cmd("twine upload -r testpypi dist/*")
+        cmd = "twine upload --repository-url https://test.pypi.org/legacy/ dist/*"
+        self.do_cmd(cmd)
 
 
 class InstallFromTestPyPI(Step):
