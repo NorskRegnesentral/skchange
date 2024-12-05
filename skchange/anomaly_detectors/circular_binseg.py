@@ -118,7 +118,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     Parameters
     ----------
-    anomaly_score : BaseLocalAnomalyScore or BaseCost, optional (default=L2Cost())
+    anomaly_score : BaseLocalAnomalyScore or BaseCost, optional, default=L2Cost()
         The local anomaly score to use for anomaly detection. If a cost is given, it is
         converted to a local anomaly score using the `LocalAnomalyScore` class.
     threshold_scale : float, default=2.0
@@ -177,7 +177,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        anomaly_score: Union[BaseCost, BaseLocalAnomalyScore] = L2Cost(),
+        anomaly_score: Optional[Union[BaseCost, BaseLocalAnomalyScore]] = None,
         threshold_scale: Optional[float] = 2.0,
         level: float = 1e-8,
         min_segment_length: int = 5,
@@ -192,7 +192,8 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
         self.growth_factor = growth_factor
         super().__init__()
 
-        self._anomaly_score = to_local_anomaly_score(anomaly_score)
+        _anomaly_score = L2Cost() if anomaly_score is None else anomaly_score
+        self._anomaly_score = to_local_anomaly_score(_anomaly_score)
 
         check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
         check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")

@@ -18,10 +18,10 @@ help:
 		 %s\n", $$1, $$2}'
 
 release: ## Make a release
-	python3 $(BUILD_TOOLS)/make_release.py
+	python $(BUILD_TOOLS)/make_release.py
 
 install: ## Install for the current user using the default python command
-	python3 setup.py build_ext --inplace && python setup.py install --user
+	python setup.py build_ext --inplace && python setup.py install --user
 
 test: ## Run unit tests
 	-rm -rf ${TEST_DIR}
@@ -55,10 +55,10 @@ clean: ## Clean build dist and egg directories left after install
 	find . -type d -name '__pycache__' -empty -delete
 
 dist: ## Make Python source distribution
-	python3 setup.py sdist bdist_wheel
+	$(MAKE) build
 
 build:
-	python -m build --sdist --wheel --outdir wheelhouse
+	python -m build --sdist --wheel
 
 doc: ## Build documentation with Sphinx
 	$(MAKE) -C $(DOC_DIR) html

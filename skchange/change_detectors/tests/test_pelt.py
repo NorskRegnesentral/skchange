@@ -14,11 +14,11 @@ n_segments = 2
 seg_len = 50
 changepoint_data = generate_alternating_data(
     n_segments=n_segments, mean=20, segment_length=seg_len, p=1, random_state=2
-)[0].values.reshape(-1, 1)
+).values.reshape(-1, 1)
 
 alternating_sequence = generate_alternating_data(
     n_segments=5, mean=10.5, variance=0.5, segment_length=20, p=1, random_state=5
-)[0].values.reshape(-1, 1)
+).values.reshape(-1, 1)
 
 cost = L2Cost()
 penalty = 2 * np.log(len(changepoint_data))

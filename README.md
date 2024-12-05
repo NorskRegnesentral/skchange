@@ -1,31 +1,30 @@
-# [skchange](https://skchange.readthedocs.io/en/latest/)
+# [`skchange`](https://skchange.readthedocs.io/en/latest/)
 
 [![codecov](https://codecov.io/gh/NorskRegnesentral/skchange/graph/badge.svg?token=QSS3AY45KY)](https://codecov.io/gh/NorskRegnesentral/skchange)
 [![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml/badge.svg)](https://github.com/NorskRegnesentral/skchange/actions/workflows/tests.yaml)
 [![docs](https://readthedocs.org/projects/skchange/badge/?version=latest)](https://skchange.readthedocs.io/en/latest/?badge=latest)
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 
-`skchange` provides `sktime`-compatible change detection and changepoint-based anomaly detection algorithms.
+[`skchange`]((https://skchange.readthedocs.io/en/latest/)) provides [`sktime`](https://www.sktime.net/)-compatible change detection and changepoint-based anomaly detection algorithms.
 
 Experimental but maturing.
 
-## [Documentation](https://skchange.readthedocs.io/en/latest/)
-Now available.
+## Documentation
+[Docs](https://skchange.readthedocs.io/) | [Notebook tutorial](https://github.com/sktime/sktime-tutorial-pydata-global-2024)
 
 
 ## Installation
-It is recommended to install skchange with numba for faster performance:
+It is recommended to install skchange with [`numba`](https://numba.readthedocs.io/en/stable/) for faster performance:
 ```sh
 pip install skchange[numba]
 ```
 
-Alternatively, you can install skchange without numba:
+Alternatively, you can install `skchange` without `numba`:
 ```sh
 pip install skchange
 ```
-Requires Python >= 3.9, < 3.13.
-
 
 ## Quickstart
 
@@ -40,6 +39,7 @@ detector = MovingWindow(bandwidth=10)
 detector.fit_predict(df)
 ```
 ```python
+   ilocs
 0     50
 1    100
 2    150
@@ -49,7 +49,6 @@ detector.fit_predict(df)
 6    350
 7    400
 8    450
-Name: changepoint, dtype: int64
 ```
 
 ### Multivariate anomaly detection
@@ -67,9 +66,9 @@ detector = MVCAPA()
 detector.fit_predict(df)
 ```
 ```python
-  anomaly_interval anomaly_columns
-0       [100, 120)       [0]
-1       [250, 300)       [2, 1, 0]
+        ilocs  labels   icolumns
+0  [100, 120)       1        [0]
+1  [250, 300)       2  [2, 1, 0]
 ```
 
 

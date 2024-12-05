@@ -204,7 +204,7 @@ class MakeDist(Step):
 
     def action(self, context):
         """Carry out action."""
-        self.do_cmd("python -m build")
+        self.do_cmd("make dist")
 
 
 class CheckDist(Step):
@@ -222,7 +222,8 @@ class UploadToTestPyPI(Step):
     def action(self, context):
         """Carry out action."""
         self.instruct("Upload to TestPyPI")
-        self.do_cmd("twine upload -r testpypi dist/*")
+        cmd = "twine upload --repository testpypi dist/*"
+        self.do_cmd(cmd)
 
 
 class InstallFromTestPyPI(Step):
@@ -336,7 +337,6 @@ def main():
         UpdateVersion(),
         CheckVersionNumber(),
         UpdateReadme(),
-        # UpdateChangelog(),
         MakeDocs(),
         CheckLocalDocs(),
         MakeDist(),

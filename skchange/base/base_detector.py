@@ -94,9 +94,10 @@ class BaseDetector(BaseEstimator):
     """
 
     _tags = {
-        "object_type": "detector",  # type of object
+        # "object_type": "detector",  # type of object
         "authors": "Tveten",  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
+        "distribution_type": None,
     }  # for unit test cases
 
     def __init__(self):
@@ -194,7 +195,7 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
+        y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
         """
@@ -221,9 +222,29 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
+        y : pd.DataFrame
             Each element or row corresponds to a detected event. Exact format depends on
             the detector type.
+
+        y : pd.DataFrame with RangeIndex
+            Detected or predicted events.
+
+            Each (axis 0) index of ``y`` is a detected event.
+
+            Has the following columns:
+
+            * ``"ilocs"`` - always. Values are ``iloc`` references to indices of ``X``,
+            signifying the integer location of the detected event in ``X``.
+            * ``"label"`` - optional, additional label information.
+
+            The meaning of entries in the ``"ilocs"`` column and ``"labels"``
+            column is as follows:
+            * If ``task`` is ``"anomaly_detection"`` or ``"change_point_detection"``,
+              ``"ilocs"`` contains the iloc index of the event, and
+              labels (if present) signify types of events.
+            * If ``task`` is ``"segmentation"``, ``"ilocs"`` contains left-closed
+              intervals of iloc based segments, and labels (if present)
+              are types of segments.
         """
         raise NotImplementedError("abstract method")
 
@@ -237,10 +258,19 @@ class BaseDetector(BaseEstimator):
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
-            Detections for sequence X. The returned detections will be in the dense
-            format, meaning that each element in X will be annotated according to the
-            detection results in some meaningful way depending on the detector type.
+        y : pd.DataFrame
+            If the detector does not have the capability to identify subsets of
+            variables that are affected by the detected events, out output will be a
+            `pd.DataFrame` with the same index as X and one column:
+
+            * `"labels"`: Integer labels starting from 0.
+
+            If the detector has this capability, the output will be a `pd.DataFrame`
+            with the same index as X and as many columns as there are columns in X
+            of the following format:
+
+            * `"labels_<X.columns[i]>"` for each column index i in X.columns: Integer
+            labels starting from 0.
         """
         y = self.predict(X)
 

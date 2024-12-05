@@ -1,26 +1,21 @@
 import numpy as np
+import pandas as pd
 import pytest
-from sktime.utils._testing.annotation import make_annotation_problem
-from sktime.utils.estimator_checks import check_estimator, parametrize_with_checks
 
 from skchange.anomaly_scores import ANOMALY_SCORES
 from skchange.base.base_interval_scorer import BaseIntervalScorer
 from skchange.change_scores import CHANGE_SCORES
 from skchange.costs import COSTS
-from skchange.datasets import generate_alternating_data
+from skchange.datasets import generate_alternating_data, generate_anomalous_data
 
 INTERVAL_EVALUATORS = COSTS + CHANGE_SCORES + ANOMALY_SCORES
-
-
-@parametrize_with_checks(INTERVAL_EVALUATORS)
-def test_sktime_compatible_estimators(obj, test_name):
-    check_estimator(obj, tests_to_run=test_name, raise_exceptions=True)
 
 
 @pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
 def test_evaluator_fit(Evaluator):
     evaluator = Evaluator.create_test_instance()
-    x = make_annotation_problem(n_timepoints=50, estimator_type="None")
+    x = generate_anomalous_data()
+    x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
     fit_evaluator = evaluator.fit(x)
     assert fit_evaluator._is_fitted
 
@@ -28,7 +23,8 @@ def test_evaluator_fit(Evaluator):
 @pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
 def test_evaluator_evaluate(Evaluator):
     evaluator = Evaluator.create_test_instance()
-    x = make_annotation_problem(n_timepoints=50, estimator_type="None")
+    x = generate_anomalous_data()
+    x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
     evaluator.fit(x)
     cut1 = np.linspace(0, 10, evaluator.expected_cut_entries, dtype=int)
 
@@ -77,7 +73,8 @@ def test_evaluator_evaluate_by_evaluation_type(Evaluator: BaseIntervalScorer):
 @pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
 def test_evaluator_invalid_cuts(Evaluator: BaseIntervalScorer):
     evaluator = Evaluator.create_test_instance()
-    x = make_annotation_problem(n_timepoints=50, estimator_type="None")
+    x = generate_anomalous_data()
+    x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
     evaluator.fit(x)
     with pytest.raises(ValueError):
         cut = np.linspace(0, 10, evaluator.expected_cut_entries, dtype=float)
