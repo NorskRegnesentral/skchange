@@ -11,6 +11,7 @@ from skchange.costs.base import BaseCost
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import njit, prange
 from skchange.utils.numba.stats import log_det_covariance
+from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -207,7 +208,7 @@ class GaussianCovCost(BaseCost):
         The size of each interval is defined as cuts[i, 1] - cuts[i, 0].
         """
         if self.is_fitted:
-            return self.dimension + 1
+            return self.data_dimension_ + 1
         else:
             return None
 
@@ -239,6 +240,8 @@ class GaussianCovCost(BaseCost):
             self._mean, cov = self._param
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)
+
+        self.data_dimension_ = as_2d_array(X).shape[1]
 
         return self
 

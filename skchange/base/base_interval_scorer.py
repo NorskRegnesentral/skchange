@@ -62,7 +62,6 @@ class BaseIntervalScorer(BaseEstimator):
 
     def __init__(self):
         self._is_fitted = False
-        self._fit_to_dataframe = None
         self._X = None
 
         super().__init__()
@@ -87,14 +86,13 @@ class BaseIntervalScorer(BaseEstimator):
         Updates the fitted model and sets attributes ending in "_".
         """
         X = check_series(X, allow_index_names=True)
-        X = as_2d_array(X)
         self._X = X
 
         self._fit(X=X, y=y)
         self._is_fitted = True
         return self
 
-    def _fit(self, X: np.ndarray, y: Union[np.ndarray, None] = None):
+    def _fit(self, X, y=None):
         """Fit the interval scorer to training data.
 
         The core logic of fitting an interval scorer to training data is implemented
@@ -181,14 +179,6 @@ class BaseIntervalScorer(BaseEstimator):
             determine the minimum size.
         """
         return 1
-
-    @property
-    def dimension(self) -> int:
-        """Dimension of the fitted data."""
-        if self.is_fitted:
-            return self._X.shape[1]
-        else:
-            return None
 
     def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
         """Check cuts for compatibility.

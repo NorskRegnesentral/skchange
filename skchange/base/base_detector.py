@@ -46,21 +46,12 @@ Recommended but optional to implement for a concrete detector:
 __author__ = ["Tveten"]
 __all__ = ["BaseDetector"]
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
 
-from skchange.utils.validation.data import to_DataFrame
-
-PandasInput = Union[pd.DataFrame, pd.Series]
-InputType = Union[PandasInput, np.ndarray]
-OutputType = Union[pd.DataFrame, pd.Series]
-
-OptionalInput = Union[InputType, None]
-OptionalArray = Union[np.ndarray, None]
+from skchange.utils.validation.data import to_data_frame
 
 
 class BaseDetector(BaseEstimator):
@@ -106,15 +97,12 @@ class BaseDetector(BaseEstimator):
 
         self._is_fitted = False
 
-        self._X: Union[pd.DataFrame, None]
         self._X = None
-
-        self._y: Union[pd.DataFrame, pd.Series, None]
         self._y = None
 
         super().__init__()
 
-    def fit(self, X: InputType, y: OptionalInput = None):
+    def fit(self, X, y=None):
         """Fit detector to training data.
 
         Fit trains the detector on the input data, for example by tuning a detection
@@ -140,27 +128,23 @@ class BaseDetector(BaseEstimator):
         `_is_fitted` flag to True.
         """
         X = check_series(X, allow_index_names=True)
-        X = to_DataFrame(X)
-        self._X = X
 
         if y is not None:
             y = check_series(y, allow_index_names=True)
-            y = to_DataFrame(y)
+
+        self._X = X
         self._y = y
 
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
-        # TODO: Standardize call to '_fit()' to only accept 2D numpy arrays?
-        if self._y is not None:
-            self._fit(X=self._X, y=self._y)
-        else:
-            self._fit(X=self._X)
+
+        self._fit(X=X, y=y)
 
         # this should happen last
         self._is_fitted = True
 
         return self
 
-    def _fit(self, X: PandasInput, y: OptionalInput = None):
+    def _fit(self, X, y=None):
         """Fit detector to training data.
 
         The core logic for fitting the detector to training data should be implemented
@@ -185,7 +169,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def predict(self, X: InputType) -> OutputType:
+    def predict(self, X):
         """Detect events and return the result in a sparse format.
 
         Parameters
@@ -202,14 +186,14 @@ class BaseDetector(BaseEstimator):
         self.check_is_fitted()
 
         X = check_series(X, allow_index_names=True)
-        X = to_DataFrame(X)
+        X = to_data_frame(X)
 
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
 
         y = self._predict(X=X)
         return y
 
-    def _predict(self, X: PandasInput) -> OutputType:
+    def _predict(self, X):
         """Detect events and return the result in a sparse format.
 
         The core logic for detecting events in the input data should be implemented
@@ -248,7 +232,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def transform(self, X: InputType) -> OutputType:
+    def transform(self, X):
         """Detect events and return the result in a dense format.
 
         Parameters
@@ -273,9 +257,7 @@ class BaseDetector(BaseEstimator):
             labels starting from 0.
         """
         y = self.predict(X)
-
-        X_inner: pd.DataFrame
-        X_inner = to_DataFrame(X)
+        X_inner = pd.DataFrame(X)
         y_dense = self.sparse_to_dense(y, X_inner.index, X_inner.columns)
         return y_dense
 
@@ -315,7 +297,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def transform_scores(self, X: InputType):
+    def transform_scores(self, X):
         """Return detection scores on the input data.
 
         Parameters
@@ -330,10 +312,9 @@ class BaseDetector(BaseEstimator):
         """
         self.check_is_fitted()
         X = check_series(X, allow_index_names=True)
-        X = to_DataFrame(X)
         return self._transform_scores(X)
 
-    def _transform_scores(self, X: np.ndarray) -> OutputType:
+    def _transform_scores(self, X: np.ndarray):
         """Return detection scores on the input data.
 
         The core logic for scoring the input data should be implemented here. This
@@ -352,7 +333,7 @@ class BaseDetector(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def update(self, X: InputType, y: OptionalInput = None):
+    def update(self, X, y=None):
         """Update model with new data and optional ground truth detections.
 
         Parameters
@@ -374,23 +355,19 @@ class BaseDetector(BaseEstimator):
         self.check_is_fitted()
 
         X = check_series(X, allow_index_names=True)
-        X = to_DataFrame(X)
         if y is not None:
             y = check_series(y, allow_index_names=True)
 
         self._X = X.combine_first(self._X)
 
         if y is not None:
-            y = to_DataFrame(y)
             self._y = y.combine_first(self._y)
-            self._update(X=self._X.to_numpy(), y=self._y.to_numpy())
 
-        else:
-            self._update(X=self._X.to_numpy())
+        self._update(X=X, y=y)
 
         return self
 
-    def _update(self, X: np.ndarray, y: OptionalArray = None):
+    def _update(self, X: np.ndarray, y=None):
         """Update model with new data and optional ground truth detections.
 
         The core logic for updating the detector with new data should be implemented

@@ -7,7 +7,7 @@ import pandas as pd
 from numpy.typing import ArrayLike
 
 
-def to_DataFrame(X: Union[pd.DataFrame, pd.Series, ArrayLike]):
+def to_data_frame(X: Union[pd.DataFrame, pd.Series, ArrayLike]):
     if isinstance(X, np.ndarray):
         X = pd.DataFrame(X)
     if X.ndim < 2:
@@ -39,7 +39,7 @@ def check_data(
     X : pd.DataFrame
         Input data in pd.DataFrame format.
     """
-    X = to_DataFrame(X)
+    X = to_data_frame(X)
 
     if not allow_missing_values and X.isna().any(axis=None):
         raise ValueError(
@@ -47,7 +47,7 @@ def check_data(
         )
 
     n = X.shape[0]
-    if min_length is not None and n < min_length:
+    if n < min_length:
         raise ValueError(
             f"X must have at least {min_length_name}={min_length} samples"
             + f" (X.shape[0]={n})"

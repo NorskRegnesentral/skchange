@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.gaussian_cov_cost import GaussianCovCost
 from skchange.utils.numba import njit
+from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -167,7 +168,7 @@ class GaussianCovScore(BaseChangeScore):
         self :
             Reference to self.
         """
-        self._gaussian_cov_cost.fit(X)
+        self._gaussian_cov_cost.fit(as_2d_array(X))
         return self
 
     def _evaluate(self, cuts: np.ndarray):
@@ -206,7 +207,7 @@ class GaussianCovScore(BaseChangeScore):
             bartlett_corrections = compute_bartlett_corrections(
                 sequence_lengths=segment_lengths,
                 cut_points=segment_splits,
-                dimension=self._gaussian_cov_cost.dimension,
+                dimension=self._gaussian_cov_cost.data_dimension_,
             )
             return bartlett_corrections * raw_scores
         else:

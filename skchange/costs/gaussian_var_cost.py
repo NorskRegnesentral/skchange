@@ -12,6 +12,7 @@ from skchange.costs.utils import MeanType, VarType, check_mean, check_var
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import truncate_below
 from skchange.utils.numba.stats import col_cumsum
+from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -183,6 +184,7 @@ class GaussianVarCost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
+        X = as_2d_array(X)
         self._param = self._check_param(self.param, X)
 
         self.sums_ = col_cumsum(X, init_zero=True)

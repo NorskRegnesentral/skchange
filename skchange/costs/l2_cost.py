@@ -9,6 +9,7 @@ from skchange.costs.base import BaseCost
 from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
+from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -129,6 +130,7 @@ class L2Cost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
+        X = as_2d_array(X)
         self._mean = self._check_param(self.param, X)
 
         self.sums_ = col_cumsum(X, init_zero=True)

@@ -14,12 +14,7 @@ def test_fit():
     X = np.array([1, 2, 3, 4, 5])
     evaluator.fit(X)
     assert evaluator._is_fitted
-    assert np.array_equal(evaluator._X, X.reshape(-1, 1))
-
-
-def test_not_fitted_dimension_is_None():
-    evaluator = ConcreteIntervalEvaluator()
-    assert evaluator.dimension is None
+    assert np.array_equal(evaluator._X, X)
 
 
 def test_evaluate():

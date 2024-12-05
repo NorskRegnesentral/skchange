@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.validation.cuts import check_cuts_array
+from skchange.utils.validation.data import as_2d_array
 
 
 def to_saving(scorer: Union[BaseCost, BaseSaving]) -> BaseSaving:
@@ -255,7 +256,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             score is univariate. In this case, each column represents the univariate
             anomaly score for the corresponding input data column.
         """
-        X = self._X
+        X = as_2d_array(self._X)
 
         inner_intervals = cuts[:, 1:3]
         outer_intervals = cuts[:, [0, 3]]

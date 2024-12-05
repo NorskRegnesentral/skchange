@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 from skchange.anomaly_scores.base import BaseSaving
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
+from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -94,6 +95,7 @@ class L2Saving(BaseSaving):
         self :
             Reference to self.
         """
+        X = as_2d_array(X)
         self.sums_ = col_cumsum(X, init_zero=True)
         return self
 
