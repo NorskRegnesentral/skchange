@@ -111,7 +111,7 @@ class BaseDetector(BaseEstimator):
         ----------
         X : pd.Series, pd.DataFrame or np.ndarray
             Training data to fit model to (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional.
+        y : pd.Series, pd.DataFrame or np.ndarray, optional
             Ground truth detections for training if detector is supervised.
 
         Returns
