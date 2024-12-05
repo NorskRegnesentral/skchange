@@ -12,7 +12,6 @@ Base
     :template: class.rst
 
     CollectiveAnomalyDetector
-    SubsetCollectiveAnomalyDetector
 
 Collective anomaly detectors
 ----------------------------
