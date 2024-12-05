@@ -8,6 +8,7 @@ from numpy.typing import ArrayLike
 
 
 def to_data_frame(X: Union[pd.DataFrame, pd.Series, ArrayLike]):
+    """Convert input data to a pd.DataFrame."""
     if isinstance(X, np.ndarray):
         X = pd.DataFrame(X)
     if X.ndim < 2:
