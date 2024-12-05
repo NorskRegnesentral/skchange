@@ -86,4 +86,23 @@ class BaseChangeDetector(BaseDetector):
         """
         is_changepoint = y_dense["labels"].diff().abs() > 0
         changepoints = y_dense.index[is_changepoint]
+        return BaseChangeDetector._format_sparse_output(changepoints)
+
+    @staticmethod
+    def _format_sparse_output(changepoints) -> pd.DataFrame:
+        """Format the sparse output of changepoint detectors.
+
+        Can be reused by subclasses to format the output of the `_predict` method.
+
+        Parameters
+        ----------
+        changepoints : list
+            List of changepoint locations.
+
+        Returns
+        -------
+        pd.DataFrame :
+            A `pd.DataFrame` with a range index and one column:
+            * ``"ilocs"`` - integer locations of the changepoints.
+        """
         return pd.DataFrame(changepoints, columns=["ilocs"], dtype="int64")
