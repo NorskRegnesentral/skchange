@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from skchange.anomaly_detectors.base import SubsetCollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
 from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -393,7 +393,7 @@ def run_mvcapa(
     return opt_savings, collective_anomalies, point_anomalies
 
 
-class MVCAPA(SubsetCollectiveAnomalyDetector):
+class MVCAPA(CollectiveAnomalyDetector):
     """Subset multivariate collective and point anomaly detection.
 
     An efficient implementation of the MVCAPA algorithm [1]_ for anomaly detection.
@@ -462,6 +462,7 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
         "capability:multivariate": True,
         "fit_is_empty": False,
     }
+    capability_variable_identification = True
 
     def __init__(
         self,
@@ -574,7 +575,7 @@ class MVCAPA(SubsetCollectiveAnomalyDetector):
             anomalies += point_anomalies
         anomalies = sorted(anomalies)
 
-        return SubsetCollectiveAnomalyDetector._format_sparse_output(anomalies)
+        return self._format_sparse_output(anomalies)
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the MVCAPA scores for the input data.

@@ -332,7 +332,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
                 "score": scores,
             }
         )
-        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
+        return self._format_sparse_output(anomalies)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

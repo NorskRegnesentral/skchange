@@ -88,7 +88,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
             if (segment_stat < self.stat_lower) | (segment_stat > self.stat_upper):
                 anomalies.append((int(segment.index[0]), int(segment.index[-1] + 1)))
 
-        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
+        return self._format_sparse_output(anomalies)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
