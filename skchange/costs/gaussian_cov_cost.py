@@ -241,7 +241,10 @@ class GaussianCovCost(BaseCost):
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)
 
-        self.data_dimension_ = as_2d_array(X).shape[1]
+        # Store the data as a 2D, because we're not guaranteed that the input is a
+        # 2D numpy array. This is a common pattern in the cost functions.
+        self.array_X_ = as_2d_array(X)
+        self.data_dimension_ = self.array_X_.shape[1]
 
         return self
 
@@ -261,7 +264,7 @@ class GaussianCovCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of
             columns is 1 since the GaussianCovCost is inherently multivariate.
         """
-        return gaussian_cov_cost_optim(starts, ends, self._X)
+        return gaussian_cov_cost_optim(starts, ends, self.array_X_)
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
@@ -280,7 +283,7 @@ class GaussianCovCost(BaseCost):
             columns is 1 since the GaussianCovCost is inherently multivariate.
         """
         return gaussian_cov_cost_fixed(
-            starts, ends, self._X, self._mean, self._log_det_cov, self._inv_cov
+            starts, ends, self.array_X_, self._mean, self._log_det_cov, self._inv_cov
         )
 
     @classmethod

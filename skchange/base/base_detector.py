@@ -50,8 +50,6 @@ import pandas as pd
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
 
-from skchange.utils.validation.data import to_data_frame
-
 
 class BaseDetector(BaseEstimator):
     """Base class for all detectors in skchange.
