@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_scores import ANOMALY_SCORES
+from skchange.base.base_interval_scorer import BaseIntervalScorer
 from skchange.change_scores import CHANGE_SCORES
 from skchange.costs import COSTS
 from skchange.datasets import generate_alternating_data, generate_anomalous_data
@@ -41,7 +42,7 @@ def test_evaluator_evaluate(Evaluator):
 
 
 @pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
-def test_evaluator_evaluate_by_evaluation_type(Evaluator):
+def test_evaluator_evaluate_by_evaluation_type(Evaluator: BaseIntervalScorer):
     evaluator = Evaluator.create_test_instance()
     n_segments = 1
     seg_len = 50
@@ -70,7 +71,7 @@ def test_evaluator_evaluate_by_evaluation_type(Evaluator):
 
 
 @pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
-def test_evaluator_invalid_cuts(Evaluator):
+def test_evaluator_invalid_cuts(Evaluator: BaseIntervalScorer):
     evaluator = Evaluator.create_test_instance()
     x = generate_anomalous_data()
     x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")

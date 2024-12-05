@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from scipy.stats import multivariate_normal
 
-from skchange.costs import GaussianCovCost
+from skchange.costs import MultivariateGaussianCost
 
 
 def analytical_mv_ll_at_mle(X: np.ndarray):
@@ -56,7 +56,7 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
     np.random.seed(seed)
     X = np.random.randn(n, p)
 
-    cost = GaussianCovCost.create_test_instance()
+    cost = MultivariateGaussianCost.create_test_instance()
     cost.fit(X)
     cost_value = cost.evaluate(np.array([[0, n]]))[0, 0]
 
@@ -89,7 +89,7 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
 def test_invalid_fixed_covariance(mean, cov):
     """Test that invalid fixed covariance matrix raises errors."""
     X = np.random.randn(100, 2)
-    cost = GaussianCovCost(param=(mean, cov))
+    cost = MultivariateGaussianCost(param=(mean, cov))
     with pytest.raises(ValueError):
         cost.fit(X)
 
@@ -98,11 +98,11 @@ def test_mean_cov_cost_raises_on_non_positive_definite():
     """Test mean covariance cost raises on non-positive definite."""
     X = np.array([[1, 2], [2, 1], [1, 2]])
     n = X.shape[0]
-    cost = GaussianCovCost.create_test_instance()
+    cost = MultivariateGaussianCost.create_test_instance()
     cost.fit(X)
 
     with pytest.raises(RuntimeError):
-        cost.evaluate([0, n])
+        cost.evaluate(np.array([0, n]))
 
     # Check that the analytical function raises on the same input:
     with pytest.raises(ValueError):
@@ -113,7 +113,7 @@ def test_mean_cov_cost_raises_on_single_observation():
     """Test mean covariance cost raises on single observation."""
     X = np.array([[1, 2]])
     n = X.shape[0]
-    cost = GaussianCovCost.create_test_instance()
+    cost = MultivariateGaussianCost.create_test_instance()
     cost.fit(X)
 
     with pytest.raises(ValueError):
