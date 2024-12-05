@@ -40,7 +40,9 @@ def test_scores_differ_with_Bartlett_correction():
     X = np.concatenate([X_1, X_2], axis=0)
     cuts = np.array([[0, 25, 50], [0, 50, 100], [50, 100, 150], [0, 100, 200]])
 
-    raw_scores = MultivariateGaussianScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
+    raw_scores = (
+        MultivariateGaussianScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
+    )
     corrected_scores = (
         MultivariateGaussianScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
     )
