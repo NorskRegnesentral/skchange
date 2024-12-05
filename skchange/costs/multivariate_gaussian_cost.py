@@ -1,6 +1,7 @@
 """Multivariate Gaussian likelihood cost."""
 
 __author__ = ["johannvk", "Tveten"]
+__all__ = ["MultivariateGaussianCost"]
 
 from typing import Union
 
@@ -15,12 +16,12 @@ from skchange.utils.validation.data import as_2d_array
 
 
 @njit
-def _gaussian_ll_at_mle_for_segment(
+def _gaussian_ll_at_mle_params(
     X: np.ndarray,
     start: int,
     end: int,
 ) -> float:
-    """Calculate the Gaussian log likelihood at the MLE for a segment.
+    """Calculate the Gaussian log likelihood at the MLE parameters for a segment.
 
     Parameters
     ----------
@@ -34,8 +35,8 @@ def _gaussian_ll_at_mle_for_segment(
     Returns
     -------
     log_likelihood : float
-        Twice the log likelihood of the interval
-        [start, end) in the data matrix X,
+        The log likelihood of the observations in the
+        interval [start, end) in the data matrix X,
         evaluated at the maximum likelihood parameter
         estimates for the mean and covariance matrix.
     """
@@ -51,50 +52,15 @@ def _gaussian_ll_at_mle_for_segment(
             + " Quick and dirty fix: Add a tiny amount of random noise to the data."
         )
 
-    log_likelihood = -n * p * np.log(2 * np.pi) - n * log_det_cov - p * n
-    return log_likelihood
+    twice_log_likelihood = -n * p * np.log(2 * np.pi) - n * log_det_cov - p * n
+    return twice_log_likelihood / 2.0
 
 
 @njit
-def gaussian_cov_cost_optim(
+def gaussian_cost_mle_params(
     starts: np.ndarray, ends: np.ndarray, X: np.ndarray
 ) -> np.ndarray:
-    """Calculate the L2 cost for an optimal constant mean for each segment.
-
-    Parameters
-    ----------
-    starts : `np.ndarray`
-        Start indices of the segments.
-    ends : `np.ndarray`
-        End indices of the segments.
-
-    Returns
-    -------
-    costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of
-        columns is 1 if the cost is inherently multivariate. The number of columns
-        is equal to the number of columns in the input data if the cost is
-        univariate. In this case, each column represents the univariate cost for
-        the corresponding input data column.
-    """
-    num_starts = len(starts)
-    costs = np.zeros(num_starts).reshape(-1, 1)
-    for i in prange(num_starts):
-        segment_log_likelihood = _gaussian_ll_at_mle_for_segment(X, starts[i], ends[i])
-        costs[i, 0] = -segment_log_likelihood
-    return costs
-
-
-@njit
-def _gaussian_ll_at_fixed_for_segment(
-    X: np.ndarray,
-    start: int,
-    end: int,
-    mean: np.ndarray,
-    log_det_cov: float,
-    inv_cov: np.ndarray,
-) -> float:
-    """Calculate the Gaussian log likelihood at a fixed parameter for a segment.
+    """Calculate the Gaussian log likelihood at fixed parameters for a segment.
 
     Parameters
     ----------
@@ -107,11 +73,53 @@ def _gaussian_ll_at_fixed_for_segment(
 
     Returns
     -------
-    mv_ll_at_mle : float
-        Log likelihood of the interval
-        [start, end) in the data matrix X,
-        evaluated at the maximum likelihood parameter
-        estimates for the mean and covariance matrix.
+    log_likelihood : float
+        The log likelihood of the observations in the
+        interval [start, end) in the data matrix X,
+        evaluated at the fixed mean and covariance matrix
+        parameters provided.
+    """
+    num_starts = len(starts)
+    costs = np.zeros(num_starts).reshape(-1, 1)
+    for i in prange(num_starts):
+        segment_log_likelihood = _gaussian_ll_at_mle_params(X, starts[i], ends[i])
+        costs[i, 0] = -2.0 * segment_log_likelihood
+    return costs
+
+
+@njit
+def _gaussian_ll_at_fixed_params(
+    X: np.ndarray,
+    start: int,
+    end: int,
+    mean: np.ndarray,
+    log_det_cov: float,
+    inv_cov: np.ndarray,
+) -> float:
+    """Calculate the Gaussian log likelihood at fixed parameters for a segment.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Data matrix. Rows are observations and columns are variables.
+    start : int
+        Start index of the segment (inclusive).
+    end : int
+        End index of the segment (exclusive).
+    mean : np.ndarray
+        Fixed mean for the cost calculation.
+    log_det_cov : float
+        Log determinant of the fixed covariance matrix.
+    inv_cov : np.ndarray
+        Inverse of the fixed covariance matrix.
+
+    Returns
+    -------
+    log_likelihood : float
+        The log likelihood of the observations in the
+        interval [start, end) in the data matrix X,
+        evaluated at the fixed mean and covariance matrix
+        parameters provided.
     """
     n = end - start
     p = X.shape[1]
@@ -119,14 +127,14 @@ def _gaussian_ll_at_fixed_for_segment(
     X_segment = X[start:end]
     X_centered = X_segment - mean
     quadratic_form = np.sum(X_centered @ inv_cov * X_centered, axis=1)
-    log_likelihood = (
+    twice_log_likelihood = (
         -n * p * np.log(2 * np.pi) - n * log_det_cov - np.sum(quadratic_form)
     )
-    return log_likelihood
+    return twice_log_likelihood / 2.0
 
 
 @njit
-def gaussian_cov_cost_fixed(
+def gaussian_cost_fixed_params(
     starts: np.ndarray,
     ends: np.ndarray,
     X: np.ndarray,
@@ -134,37 +142,39 @@ def gaussian_cov_cost_fixed(
     log_det_cov: float,
     inv_cov: np.ndarray,
 ) -> np.ndarray:
-    """Calculate the L2 cost for a fixed constant mean for each segment.
+    """Calculate the Gaussian log likelihood at fixed parameters for a segment.
 
     Parameters
     ----------
-    mean : `np.ndarray`
+    mean : np.ndarray
         Fixed mean for the cost calculation.
-    starts : `np.ndarray`
+    starts : np.ndarray
         Start indices of the segments.
-    ends : `np.ndarray`
+    ends : np.ndarray
         End indices of the segments.
+    X : np.ndarray
+        Data matrix. Rows are observations and columns are variables.
+    log_det_cov : float
+        Log determinant of the fixed covariance matrix.
+    inv_cov : np.ndarray
+        Inverse of the fixed covariance matrix.
 
     Returns
     -------
     costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of
-        columns is 1 if the cost is inherently multivariate. The number of columns
-        is equal to the number of columns in the input data if the cost is
-        univariate. In this case, each column represents the univariate cost for
-        the corresponding input data column.
+        A 2D array of costs. One row for each interval.
     """
     num_starts = len(starts)
     costs = np.zeros(num_starts).reshape(-1, 1)
     for i in prange(num_starts):
-        segment_log_likelihood = _gaussian_ll_at_fixed_for_segment(
+        segment_log_likelihood = _gaussian_ll_at_fixed_params(
             X, starts[i], ends[i], mean, log_det_cov, inv_cov
         )
-        costs[i, 0] = -segment_log_likelihood
+        costs[i, 0] = -2.0 * segment_log_likelihood
     return costs
 
 
-class GaussianCovCost(BaseCost):
+class MultivariateGaussianCost(BaseCost):
     """Multivariate Gaussian likelihood cost.
 
     Parameters
@@ -249,7 +259,7 @@ class GaussianCovCost(BaseCost):
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
-        """Evaluate the cost for the optimal parameter.
+        """Evaluate the cost for the optimal parameters.
 
         Parameters
         ----------
@@ -261,13 +271,13 @@ class GaussianCovCost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 since the GaussianCovCost is inherently multivariate.
+            A 2D array of costs. One row for each interval. The number of columns
+            is 1 since the MultivariateGaussianCost is inherently multivariate.
         """
-        return gaussian_cov_cost_optim(starts, ends, self.array_X_)
+        return gaussian_cost_mle_params(starts, ends, self.array_X_)
 
     def _evaluate_fixed_param(self, starts, ends):
-        """Evaluate the cost for the fixed parameter.
+        """Evaluate the cost for the fixed parameters.
 
         Parameters
         ----------
@@ -279,10 +289,10 @@ class GaussianCovCost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 since the GaussianCovCost is inherently multivariate.
+            A 2D array of costs. One row for each interval. The number of columns
+            is 1 since the MultivariateGaussianCost is inherently multivariate.
         """
-        return gaussian_cov_cost_fixed(
+        return gaussian_cost_fixed_params(
             starts, ends, self.array_X_, self._mean, self._log_det_cov, self._inv_cov
         )
 

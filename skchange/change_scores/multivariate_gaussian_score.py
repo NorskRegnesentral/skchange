@@ -1,18 +1,19 @@
-"""The CUSUM test statistic for a change in the mean."""
+"""The multivariate Gaussian test statistic for a change in mean and/or covariance."""
 
 __author__ = ["johannvk"]
+__all__ = ["MultivariateGaussianScore"]
 
 import numpy as np
 from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
-from skchange.costs.gaussian_cov_cost import GaussianCovCost
+from skchange.costs.multivariate_gaussian_cost import MultivariateGaussianCost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import as_2d_array
 
 
 @njit
-def half_integer_digamma(twice_n: int) -> float:
+def _half_integer_digamma(twice_n: int) -> float:
     """Calculate the digamma function for half integer values, i.e. `twice_n/2`.
 
     The digamma function is the logarithmic derivative of the gamma function.
@@ -92,9 +93,9 @@ def likelihood_ratio_expected_value(
 
     for j in range(1, p + 1):
         g_k_n += (
-            (n - 1) * half_integer_digamma(n - j)
-            - (k - 1) * half_integer_digamma(k - j)
-            - (n - k - 1) * half_integer_digamma(n - k - j)
+            (n - 1) * _half_integer_digamma(n - j)
+            - (k - 1) * _half_integer_digamma(k - j)
+            - (n - k - 1) * _half_integer_digamma(n - k - j)
         )
 
     return g_k_n
@@ -135,26 +136,48 @@ def compute_bartlett_corrections(
     return bartlett_corrections
 
 
-class GaussianCovScore(BaseChangeScore):
-    """Gaussian covariance change score for a change in mean and/or covariance."""
+class MultivariateGaussianScore(BaseChangeScore):
+    """Multivariate Gaussian change score for a change in mean and/or covariance.
+
+    Scores are calculated as the likelihood ratio scores for a change
+    in mean and covariance under a multivariate Gaussian distribution[1]_.
+
+    To stabilize the score, the Bartlett correction can be applied,
+    which adjusts the score for the relative sizes of the left and right segments.
+
+    Applying the Bartlett correction results in a more stable score,
+    especially for small sample sizes, ensuring that the scores
+    approach the chi-squared distribution asymptotically.
+
+    Parameters
+    ----------
+    apply_bartlett_correction : bool, default=True
+        Whether to apply the Bartlett correction to the change scores.
+
+    References
+    ----------
+    .. [1] Zamba, K. D., & Hawkins, D. M. (2009). A Multivariate Change-Point Model\
+    for Change in Mean Vector and/or Covariance Structure. \
+    Journal of Quality Technology, 41(3), 285-303.
+    """
 
     evaluation_type = "multivariate"
 
     def __init__(self, apply_bartlett_correction: bool = True):
         super().__init__()
-        self._gaussian_cov_cost = GaussianCovCost()
+        self._cost = MultivariateGaussianCost()
         self.apply_bartlett_correction = apply_bartlett_correction
 
     @property
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate."""
         if self._is_fitted:
-            return self._gaussian_cov_cost.min_size
+            return self._cost.min_size
         else:
             return None
 
     def _fit(self, X: ArrayLike, y=None):
-        """Fit the change score evaluator.
+        """Fit the multivariate Gaussian change score evaluator.
 
         Parameters
         ----------
@@ -168,7 +191,7 @@ class GaussianCovScore(BaseChangeScore):
         self :
             Reference to self.
         """
-        self._gaussian_cov_cost.fit(as_2d_array(X))
+        self._cost.fit(as_2d_array(X))
         return self
 
     def _evaluate(self, cuts: np.ndarray):
@@ -196,9 +219,8 @@ class GaussianCovScore(BaseChangeScore):
         end_intervals = cuts[:, [1, 2]]
         total_intervals = cuts[:, [0, 2]]
 
-        raw_scores = self._gaussian_cov_cost.evaluate(total_intervals) - (
-            self._gaussian_cov_cost.evaluate(start_intervals)
-            + self._gaussian_cov_cost.evaluate(end_intervals)
+        raw_scores = self._cost.evaluate(total_intervals) - (
+            self._cost.evaluate(start_intervals) + self._cost.evaluate(end_intervals)
         )
 
         if self.apply_bartlett_correction:
@@ -207,7 +229,7 @@ class GaussianCovScore(BaseChangeScore):
             bartlett_corrections = compute_bartlett_corrections(
                 sequence_lengths=segment_lengths,
                 cut_points=segment_splits,
-                dimension=self._gaussian_cov_cost.data_dimension_,
+                dimension=self._cost.data_dimension_,
             )
             return bartlett_corrections * raw_scores
         else:

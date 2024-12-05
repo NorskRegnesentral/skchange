@@ -1,9 +1,9 @@
 import numpy as np
 from scipy.special import digamma
 
-from skchange.change_scores.gaussian_cov_score import (
-    GaussianCovScore,
-    half_integer_digamma,
+from skchange.change_scores.multivariate_gaussian_score import (
+    MultivariateGaussianScore,
+    _half_integer_digamma,
 )
 
 
@@ -12,7 +12,7 @@ def test_digamma():
 
     integer_vals = np.concatenate([integer_vals, 100 + integer_vals])
 
-    manual_digamma = np.array(list(map(half_integer_digamma, 2 * integer_vals)))
+    manual_digamma = np.array(list(map(_half_integer_digamma, 2 * integer_vals)))
     scipy_digamma = digamma(integer_vals)
 
     np.testing.assert_allclose(manual_digamma, scipy_digamma)
@@ -26,7 +26,7 @@ def test_GaussianCovScore():
     X = np.concatenate([X_1, X_2, X_1], axis=0)
     cuts = np.array([[0, 50, 100], [0, 100, 200], [100, 200, 300], [0, 150, 300]])
 
-    scores = GaussianCovScore().fit(X).evaluate(cuts)
+    scores = MultivariateGaussianScore().fit(X).evaluate(cuts)
 
     assert scores.shape == (cuts.shape[0], 1)
     assert np.all(scores >= 0)
@@ -40,13 +40,13 @@ def test_scores_differ_with_Bartlett_correction():
     X = np.concatenate([X_1, X_2], axis=0)
     cuts = np.array([[0, 25, 50], [0, 50, 100], [50, 100, 150], [0, 100, 200]])
 
-    raw_scores = GaussianCovScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
+    raw_scores = MultivariateGaussianScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
     corrected_scores = (
-        GaussianCovScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
+        MultivariateGaussianScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
     )
 
     assert np.all(raw_scores > corrected_scores)
 
 
 def test_non_fitted_GaussianCovScore_no_min_size():
-    assert GaussianCovScore().min_size is None
+    assert MultivariateGaussianScore().min_size is None
