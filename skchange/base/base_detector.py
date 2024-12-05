@@ -46,7 +46,6 @@ Recommended but optional to implement for a concrete detector:
 __author__ = ["Tveten"]
 __all__ = ["BaseDetector"]
 
-import numpy as np
 import pandas as pd
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
@@ -153,9 +152,9 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : np.ndarray
+        X : pd.Series, pd.DataFrame or np.ndarray
             Training data to fit model to (time series).
-        y : np.ndarray, optional
+        y : pd.Series, pd.DataFrame or np.ndarray
             Ground truth detections for training if detector is supervised.
 
         Returns
@@ -186,7 +185,6 @@ class BaseDetector(BaseEstimator):
         self.check_is_fitted()
 
         X = check_series(X, allow_index_names=True)
-        X = to_data_frame(X)
 
         # fkiraly: insert checks/conversions here, after PR #1012 I suggest
 
@@ -201,7 +199,7 @@ class BaseDetector(BaseEstimator):
 
         Parameters
         ----------
-        X : np.ndarray
+        X : pd.Series, pd.DataFrame or np.ndarray
             Data to detect events in (time series).
 
         Returns
@@ -314,7 +312,7 @@ class BaseDetector(BaseEstimator):
         X = check_series(X, allow_index_names=True)
         return self._transform_scores(X)
 
-    def _transform_scores(self, X: np.ndarray):
+    def _transform_scores(self, X):
         """Return detection scores on the input data.
 
         The core logic for scoring the input data should be implemented here. This
@@ -355,6 +353,7 @@ class BaseDetector(BaseEstimator):
         self.check_is_fitted()
 
         X = check_series(X, allow_index_names=True)
+
         if y is not None:
             y = check_series(y, allow_index_names=True)
 
@@ -367,7 +366,7 @@ class BaseDetector(BaseEstimator):
 
         return self
 
-    def _update(self, X: np.ndarray, y=None):
+    def _update(self, X, y=None):
         """Update model with new data and optional ground truth detections.
 
         The core logic for updating the detector with new data should be implemented
@@ -391,7 +390,7 @@ class BaseDetector(BaseEstimator):
         Updates fitted model that updates attributes ending in "_".
         """
         # default/fallback: re-fit to all data
-        self._fit(X, y)
+        self._fit(self._X, self._y)
 
         return self
 
