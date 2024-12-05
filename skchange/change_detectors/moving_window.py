@@ -284,7 +284,7 @@ class MovingWindow(BaseChangeDetector):
         changepoints = get_moving_window_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )
-        return changepoints
+        return self._format_sparse_output(changepoints)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

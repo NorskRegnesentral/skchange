@@ -274,7 +274,7 @@ class PELT(BaseChangeDetector):
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
-        return changepoints
+        return self._format_sparse_output(changepoints)
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the pelt scores for the input data.

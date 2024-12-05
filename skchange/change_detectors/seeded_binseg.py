@@ -302,7 +302,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
         )
-        return cpts
+        return self._format_sparse_output(cpts)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
