@@ -5,11 +5,11 @@ from typing import Callable, Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
 from skchange.change_detectors.base import BaseChangeDetector
 
 
-class StatThresholdAnomaliser(CollectiveAnomalyDetector):
+class StatThresholdAnomaliser(BaseCollectiveAnomalyDetector):
     """Anomaly detection based on thresholding the values of segment statistics.
 
     Parameters

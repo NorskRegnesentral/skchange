@@ -11,7 +11,7 @@ Base
     :toctree: auto_generated/
     :template: class.rst
 
-    CollectiveAnomalyDetector
+    BaseCollectiveAnomalyDetector
 
 Collective anomaly detectors
 ----------------------------

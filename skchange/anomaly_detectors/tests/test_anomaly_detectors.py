@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_detectors import COLLECTIVE_ANOMALY_DETECTORS
-from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
 
 true_anomalies = [(30, 35), (70, 75)]
@@ -15,7 +15,7 @@ anomaly_free_data = generate_anomalous_data(100, random_state=1)
 
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
-def test_collective_anomaly_detector_predict(Estimator: CollectiveAnomalyDetector):
+def test_collective_anomaly_detector_predict(Estimator: BaseCollectiveAnomalyDetector):
     """Test collective anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
@@ -27,7 +27,9 @@ def test_collective_anomaly_detector_predict(Estimator: CollectiveAnomalyDetecto
 
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
-def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetector):
+def test_collective_anomaly_detector_transform(
+    Estimator: BaseCollectiveAnomalyDetector,
+):
     """Test collective anomaly detector's transform method (dense output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
@@ -35,7 +37,7 @@ def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetec
     true_collective_anomalies = pd.DataFrame(
         {"ilocs": pd.IntervalIndex.from_tuples(true_anomalies, closed="left")}
     )
-    true_anomaly_labels = CollectiveAnomalyDetector.sparse_to_dense(
+    true_anomaly_labels = BaseCollectiveAnomalyDetector.sparse_to_dense(
         true_collective_anomalies, anomaly_data.index
     )
     labels.equals(true_anomaly_labels)
