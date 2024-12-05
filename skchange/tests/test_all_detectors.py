@@ -70,6 +70,28 @@ def test_detector_update(Detector: BaseDetector):
     assert isinstance(detector, Detector)
 
 
+@pytest.mark.parametrize("Detector", ALL_DETECTORS)
+def test_detector_sparse_to_dense(Detector):
+    """Test that predict + sparse_to_dense == transform."""
+    detector = Detector.create_test_instance()
+    x = generate_anomalous_data(means=10, random_state=63)
+    detections = detector.fit_predict(x)
+    labels = detector.sparse_to_dense(detections, x.index, x.columns)
+    labels_transform = detector.fit_transform(x)
+    assert labels.equals(labels_transform)
+
+
+@pytest.mark.parametrize("Detector", ALL_DETECTORS)
+def test_detector_dense_to_sparse(Detector):
+    """Test that transform + dense_to_sparse == predict."""
+    detector = Detector.create_test_instance()
+    x = generate_anomalous_data(means=10, random_state=63)
+    labels = detector.fit_transform(x)
+    detections = detector.dense_to_sparse(labels)
+    detections_predict = detector.fit_predict(x)
+    assert detections.equals(detections_predict)
+
+
 def test_detector_not_implemented_methods():
     detector = BaseDetector()
     x = generate_anomalous_data()

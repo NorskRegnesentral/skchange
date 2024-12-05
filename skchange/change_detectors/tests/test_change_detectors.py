@@ -29,23 +29,3 @@ def test_change_detector_transform(Estimator: BaseChangeDetector):
 
     assert labels.nunique() == n_segments
     assert labels[seg_len - 1] == 0.0 and labels[seg_len] == 1.0
-
-
-@pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
-def test_change_detector_sparse_to_dense(Estimator):
-    """Test that predict + sparse_to_dense == transform."""
-    detector = Estimator.create_test_instance()
-    changepoints = detector.fit_predict(changepoint_data)
-    labels = detector.sparse_to_dense(changepoints, changepoint_data.index)["labels"]
-    labels_transform = detector.fit_transform(changepoint_data)["labels"]
-    assert labels.equals(labels_transform)
-
-
-@pytest.mark.parametrize("Estimator", CHANGE_DETECTORS)
-def test_change_detector_dense_to_sparse(Estimator):
-    """Test that transform + dense_to_sparse == predict."""
-    detector = Estimator.create_test_instance()
-    labels = detector.fit_transform(changepoint_data)
-    changepoints = detector.dense_to_sparse(labels)["ilocs"]
-    changepoints_predict = detector.fit_predict(changepoint_data)["ilocs"]
-    assert changepoints.equals(changepoints_predict)
