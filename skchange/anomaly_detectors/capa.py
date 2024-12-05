@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
 from skchange.anomaly_detectors.mvcapa import capa_penalty, run_base_capa
 from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
 from skchange.costs import BaseCost
@@ -41,7 +41,7 @@ def run_capa(
     )
 
 
-class CAPA(CollectiveAnomalyDetector):
+class CAPA(BaseCollectiveAnomalyDetector):
     """Collective and point anomaly detection.
 
     An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
@@ -231,7 +231,7 @@ class CAPA(CollectiveAnomalyDetector):
             anomalies += point_anomalies
         anomalies = sorted(anomalies)
 
-        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
+        return self._format_sparse_output(anomalies)
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the CAPA scores for the input data.

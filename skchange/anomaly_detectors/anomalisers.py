@@ -5,16 +5,16 @@ from typing import Callable, Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
-from skchange.change_detectors.base import ChangeDetector
+from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
+from skchange.change_detectors.base import BaseChangeDetector
 
 
-class StatThresholdAnomaliser(CollectiveAnomalyDetector):
+class StatThresholdAnomaliser(BaseCollectiveAnomalyDetector):
     """Anomaly detection based on thresholding the values of segment statistics.
 
     Parameters
     ----------
-    change_detector : `ChangeDetector`
+    change_detector : `BaseChangeDetector`
         Change detector to use for detecting segments.
     stat : `callable`, optional (default=`np.mean`)
         Statistic to calculate per segment.
@@ -32,7 +32,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
 
     def __init__(
         self,
-        change_detector: ChangeDetector,
+        change_detector: BaseChangeDetector,
         stat: Callable = np.mean,
         stat_lower: float = -1.0,
         stat_upper: float = 1.0,
@@ -88,7 +88,7 @@ class StatThresholdAnomaliser(CollectiveAnomalyDetector):
             if (segment_stat < self.stat_lower) | (segment_stat > self.stat_upper):
                 anomalies.append((int(segment.index[0]), int(segment.index[-1] + 1)))
 
-        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
+        return self._format_sparse_output(anomalies)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

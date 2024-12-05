@@ -9,7 +9,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors.base import ChangeDetector
+from skchange.change_detectors import BaseChangeDetector
 from skchange.costs import BaseCost, L2Cost
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
@@ -116,7 +116,7 @@ def run_pelt(
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
-class PELT(ChangeDetector):
+class PELT(BaseChangeDetector):
     """Pruned exact linear time changepoint detection.
 
     An efficient implementation of the PELT algorithm [1]_ for changepoint detection.
@@ -151,9 +151,8 @@ class PELT(ChangeDetector):
     """
 
     _tags = {
-        "capability:missing_values": False,
-        "capability:multivariate": True,
-        "fit_is_empty": False,
+        "authors": ["Tveten", "johannvk"],
+        "maintainers": ["Tveten", "johannvk"],
     }
 
     def __init__(
@@ -275,7 +274,7 @@ class PELT(ChangeDetector):
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
-        return ChangeDetector._format_sparse_output(changepoints)
+        return self._format_sparse_output(changepoints)
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
         """Compute the pelt scores for the input data.

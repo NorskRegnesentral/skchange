@@ -11,8 +11,7 @@ Base
     :toctree: auto_generated/
     :template: class.rst
 
-    CollectiveAnomalyDetector
-    SubsetCollectiveAnomalyDetector
+    BaseCollectiveAnomalyDetector
 
 Collective anomaly detectors
 ----------------------------
@@ -26,8 +25,8 @@ Collective anomaly detectors
     CircularBinarySegmentation
     StatThresholdAnomaliser
 
-Subset collective anomaly detectors
------------------------------
+Collective anomaly detectors with variable identification
+---------------------------------------------------------
 .. currentmodule:: skchange.anomaly_detectors
 
 .. autosummary::

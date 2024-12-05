@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors import ChangeDetector
+from skchange.change_detectors import BaseChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -51,7 +51,7 @@ def moving_window_transform(
     return scores
 
 
-class MovingWindow(ChangeDetector):
+class MovingWindow(BaseChangeDetector):
     """Moving window algorithm for multiple changepoint detection.
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
@@ -104,9 +104,8 @@ class MovingWindow(ChangeDetector):
     """
 
     _tags = {
-        "capability:missing_values": False,
-        "capability:multivariate": True,
-        "fit_is_empty": False,
+        "authors": ["Tveten"],
+        "maintainers": ["Tveten"],
     }
 
     def __init__(
@@ -285,7 +284,7 @@ class MovingWindow(ChangeDetector):
         changepoints = get_moving_window_changepoints(
             self.scores.values, self.threshold_, self.min_detection_interval
         )
-        return ChangeDetector._format_sparse_output(changepoints)
+        return self._format_sparse_output(changepoints)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -309,7 +308,7 @@ class MovingWindow(ChangeDetector):
         from skchange.costs import L2Cost
 
         params = [
-            {"change_score": L2Cost(), "bandwidth": 5},
-            {"change_score": L2Cost(), "bandwidth": 5},
+            {"change_score": L2Cost(), "bandwidth": 5, "threshold_scale": 5.0},
+            {"change_score": L2Cost(), "bandwidth": 5, "threshold_scale": None},
         ]
         return params
