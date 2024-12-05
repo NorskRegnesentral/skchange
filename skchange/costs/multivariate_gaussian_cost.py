@@ -73,11 +73,9 @@ def gaussian_cost_mle_params(
 
     Returns
     -------
-    log_likelihood : float
-        The log likelihood of the observations in the
-        interval [start, end) in the data matrix X,
-        evaluated at the fixed mean and covariance matrix
-        parameters provided.
+    costs : np.ndarray
+        A 2D array of twice negated log likelihood costs. One row for each interval,
+        and a single column.
     """
     num_starts = len(starts)
     costs = np.zeros(num_starts).reshape(-1, 1)
@@ -162,7 +160,8 @@ def gaussian_cost_fixed_params(
     Returns
     -------
     costs : np.ndarray
-        A 2D array of costs. One row for each interval.
+        A 2D array of twice negated log likelihood costs. One row for each interval,
+        and a single column.
     """
     num_starts = len(starts)
     costs = np.zeros(num_starts).reshape(-1, 1)
