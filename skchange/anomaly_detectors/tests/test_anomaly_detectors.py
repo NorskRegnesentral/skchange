@@ -47,3 +47,10 @@ def test_collective_anomaly_detector_transform(
     assert labels.nunique() == len(true_anomalies) + 1
     for i, (start, end) in enumerate(true_anomalies):
         assert (labels.iloc[start:end] == i + 1).all()
+
+
+def test_dense_to_sparse_invalid_columns():
+    """Test dense_to_sparse method with invalid DataFrame input columns."""
+    invalid_df = pd.DataFrame({"invalid_column": [0, 1, 0, 1]})
+    with pytest.raises(ValueError):
+        BaseCollectiveAnomalyDetector.dense_to_sparse(invalid_df)
