@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
 from skchange.anomaly_scores import BaseLocalAnomalyScore, to_local_anomaly_score
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals
 from skchange.costs import BaseCost, L2Cost
@@ -102,7 +102,7 @@ def run_circular_binseg(
     return anomalies, anomaly_scores, maximizers, starts, ends
 
 
-class CircularBinarySegmentation(CollectiveAnomalyDetector):
+class CircularBinarySegmentation(BaseCollectiveAnomalyDetector):
     """Circular binary segmentation algorithm for multiple collective anomaly detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data
@@ -332,7 +332,7 @@ class CircularBinarySegmentation(CollectiveAnomalyDetector):
                 "score": scores,
             }
         )
-        return CollectiveAnomalyDetector._format_sparse_output(anomalies)
+        return self._format_sparse_output(anomalies)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

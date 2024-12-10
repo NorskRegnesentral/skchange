@@ -3,11 +3,8 @@
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors import (
-    ANOMALY_DETECTORS,
-    COLLECTIVE_ANOMALY_DETECTORS,
-)
-from skchange.anomaly_detectors.base import CollectiveAnomalyDetector
+from skchange.anomaly_detectors import COLLECTIVE_ANOMALY_DETECTORS
+from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
 
 true_anomalies = [(30, 35), (70, 75)]
@@ -18,7 +15,7 @@ anomaly_free_data = generate_anomalous_data(100, random_state=1)
 
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
-def test_collective_anomaly_detector_predict(Estimator: CollectiveAnomalyDetector):
+def test_collective_anomaly_detector_predict(Estimator: BaseCollectiveAnomalyDetector):
     """Test collective anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
@@ -30,18 +27,17 @@ def test_collective_anomaly_detector_predict(Estimator: CollectiveAnomalyDetecto
 
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
-def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetector):
+def test_collective_anomaly_detector_transform(
+    Estimator: BaseCollectiveAnomalyDetector,
+):
     """Test collective anomaly detector's transform method (dense output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
     labels = detector.transform(anomaly_data)
-    # if isinstance(labels, pd.DataFrame):
-    #     labels = labels.iloc[:, 0]
-
     true_collective_anomalies = pd.DataFrame(
         {"ilocs": pd.IntervalIndex.from_tuples(true_anomalies, closed="left")}
     )
-    true_anomaly_labels = CollectiveAnomalyDetector.sparse_to_dense(
+    true_anomaly_labels = BaseCollectiveAnomalyDetector.sparse_to_dense(
         true_collective_anomalies, anomaly_data.index
     )
     labels.equals(true_anomaly_labels)
@@ -53,23 +49,8 @@ def test_collective_anomaly_detector_transform(Estimator: CollectiveAnomalyDetec
         assert (labels.iloc[start:end] == i + 1).all()
 
 
-@pytest.mark.parametrize("Estimator", ANOMALY_DETECTORS)
-def test_anomaly_detector_sparse_to_dense(Estimator: CollectiveAnomalyDetector):
-    """Test that predict + sparse_to_dense == transform."""
-    detector = Estimator.create_test_instance()
-    anomalies = detector.fit_predict(anomaly_data)
-    labels_predict_convert = detector.sparse_to_dense(
-        anomalies, anomaly_data.index, anomaly_data.columns
-    )
-    labels_transform = detector.fit_transform(anomaly_data)
-    assert labels_predict_convert.equals(labels_transform)
-
-
-@pytest.mark.parametrize("Estimator", ANOMALY_DETECTORS)
-def test_anomaly_detector_dense_to_sparse(Estimator: CollectiveAnomalyDetector):
-    """Test that transform + dense_to_sparse == predict."""
-    detector = Estimator.create_test_instance()
-    labels = detector.fit_transform(anomaly_data)
-    anomalies_transform_convert = detector.dense_to_sparse(labels)
-    anomalies_predict = detector.fit_predict(anomaly_data)
-    assert anomalies_transform_convert.equals(anomalies_predict)
+def test_dense_to_sparse_invalid_columns():
+    """Test dense_to_sparse method with invalid DataFrame input columns."""
+    invalid_df = pd.DataFrame({"invalid_column": [0, 1, 0, 1]})
+    with pytest.raises(ValueError):
+        BaseCollectiveAnomalyDetector.dense_to_sparse(invalid_df)

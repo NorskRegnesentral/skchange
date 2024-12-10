@@ -2,7 +2,7 @@
 
     class name: BaseDetector
 
-    Adapted from the BaseSeriesAnnotator class in sktime.
+    Adapted from the BaseDetector class in sktime.
 
 Scitype defining methods:
     fitting                         - fit(self, X, y=None)
@@ -35,7 +35,7 @@ State:
 Needs to be implemented for a concrete detector:
     _fit(self, X, y=None)
     _predict(self, X)
-    sparse_to_dense(y_sparse, index)
+    sparse_to_dense(y_sparse, index)  - implemented by sub base classes in skchange
 
 Recommended but optional to implement for a concrete detector:
     dense_to_sparse(y_dense)
@@ -46,418 +46,291 @@ Recommended but optional to implement for a concrete detector:
 __author__ = ["Tveten"]
 __all__ = ["BaseDetector"]
 
+import numpy as np
 import pandas as pd
-from sktime.base import BaseEstimator
-from sktime.utils.validation.series import check_series
+from sktime.detection.base import BaseDetector as _BaseDetector
 
 
-class BaseDetector(BaseEstimator):
+class BaseDetector(_BaseDetector):
     """Base class for all detectors in skchange.
 
-    A detector is a model that detects events in time series data. Events can be
-    anomalies, changepoints, or any other type of event that the detector is designed
-    to detect. The output from a detector is a series of detections, where each element
-    corresponds to a detected event. The format of the output depends on the detector
-    type.
+    Adjusts the BaseDetector class in sktime to fit the skchange framework as follows:
 
-    The base detector class defines the interface for all detectors in skchange. It
-    defines the methods that all detectors should implement, as well as some optional
-    methods that can be implemented if they are relevant for a specific detector type.
-
-    The `predict` method returns the detections in a sparse format, where each element
-    corresponds to a detected event. The `transform` method returns the detections in
-    a dense format, where each element in the input data is annotated according to the
-    detection results. The `transform_scores` method (if implemented) returns detection
-    scores in a dense format.
-
-    In addition, there are two special format defining and converting methods that
-    should be implemented for each detector type: `sparse_to_dense` and
-    `dense_to_sparse`. These methods define the format of the output from the detector
-    and how to convert between the sparse and dense formats. The `transform` method
-    uses `sparse_to_dense` to convert the output from `predict` to a dense format.
-    It will not work if `sparse_to_dense` is not implemented.
-
-    Note that the `BaseDetector` serves as an alternative to the `BaseSeriesAnnotator`
-    class in sktime, specifically tailored for detection-oriented tasks.
+        * Sets reasonable default values for the tags.
     """
 
     _tags = {
-        # "object_type": "detector",  # type of object
-        "authors": "Tveten",  # author(s) of the object
-        "maintainers": "Tveten",  # current maintainer(s) of the object
-        "distribution_type": None,
-    }  # for unit test cases
+        # packaging info
+        # --------------
+        "authors": ["Tveten"],  # author(s) of the object
+        "maintainers": ["Tveten"],  # current maintainer(s) of the object
+        "python_version": None,  # PEP 440 python version specifier to limit versions
+        "python_dependencies": None,  # str or list of str, package soft dependencies
+        # estimator tags
+        # --------------
+        "object_type": "detector",  # type of object
+        "learning_type": "unsupervised",  # supervised, unsupervised
+        "task": "None",  # anomaly_detection, change_point_detection, segmentation
+        "capability:multivariate": True,
+        "capability:missing_values": False,
+        "capability:update": False,
+        # todo: distribution_type does not seem to be used - refactor or remove
+        "distribution_type": "None",
+        "X_inner_mtype": "pd.DataFrame",
+        "fit_is_empty": False,
+    }
+    capability_variable_identification = False
 
-    def __init__(self):
-        self.task = self.get_class_tag("task")
-        self.learning_type = self.get_class_tag("learning_type")
-
-        self._is_fitted = False
-
-        self._X = None
-        self._y = None
-
-        super().__init__()
-
-    def fit(self, X, y=None):
-        """Fit detector to training data.
-
-        Fit trains the detector on the input data, for example by tuning a detection
-        threshold or other hyperparameters. Detection of events does not happen here,
-        but in the `predict` or `transform` methods, after the detector has been
-        fit.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to fit model to (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional
-            Ground truth detections for training if detector is supervised.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        Notes
-        -----
-        Creates fitted model that updates attributes ending in "_". Sets
-        `_is_fitted` flag to True.
-        """
-        X = check_series(X, allow_index_names=True)
-
-        if y is not None:
-            y = check_series(y, allow_index_names=True)
-
-        self._X = X
-        self._y = y
-
-        # fkiraly: insert checks/conversions here, after PR #1012 I suggest
-
-        self._fit(X=X, y=y)
-
-        # this should happen last
-        self._is_fitted = True
-
-        return self
-
-    def _fit(self, X, y=None):
-        """Fit detector to training data.
-
-        The core logic for fitting the detector to training data should be implemented
-        here. A typical example is to tune a detection threshold to training data.
-        This method must be implemented by all detectors.
+    def transform(self, X) -> pd.DataFrame:
+        """Create labels on test/deployment data.
 
         Parameters
         ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to fit model to (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional
-            Ground truth detections for training if detector is supervised.
+        X : pd.DataFrame, pd.Series or np.ndarray
+            Time series subject to detection, which will be assigned labels or scores.
 
         Returns
         -------
-        self :
-            Reference to self.
+        y : pd.DataFrame with same index as X
+            Labels for sequence ``X``.
 
-        Notes
-        -----
-        Updates fitted model that updates attributes ending in "_".
+            * If ``task`` is ``"anomaly_detection"``, the values are integer labels.
+              A value of 0 indicates that ``X``, at the same time index, has no anomaly.
+              Other values indicate an anomaly.
+              Most detectors will return 0 or 1, but some may return more values,
+              if they can detect different types of anomalies.
+              indicating whether ``X``, at the same
+              index, is an anomaly, 0 for no, 1 for yes.
+            * If ``task`` is ``"changepoint_detection"``, the values are integer labels,
+              indicating labels for segments between changepoints.
+              Possible labels are integers starting from 0.
+            * If ``task`` is "segmentation", the values are integer labels of the
+              segments. Possible labels are integers starting from 0.
         """
-        raise NotImplementedError("abstract method")
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(X)
+        columns = X.columns
+        index = X.index
 
-    def predict(self, X):
-        """Detect events and return the result in a sparse format.
+        y_sparse = self.predict(X)
+        y_dense = self.sparse_to_dense(y_sparse, range(len(X)), columns)
 
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to detect events in (time series).
-
-        Returns
-        -------
-        y : pd.DataFrame
-            Each element or row corresponds to a detected event. Exact format depends on
-            the detector type.
-        """
-        self.check_is_fitted()
-
-        X = check_series(X, allow_index_names=True)
-
-        # fkiraly: insert checks/conversions here, after PR #1012 I suggest
-
-        y = self._predict(X=X)
-        return y
-
-    def _predict(self, X):
-        """Detect events and return the result in a sparse format.
-
-        The core logic for detecting events in the input data should be implemented
-        here. This method must be implemented by all detectors.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to detect events in (time series).
-
-        Returns
-        -------
-        y : pd.DataFrame
-            Each element or row corresponds to a detected event. Exact format depends on
-            the detector type.
-
-        y : pd.DataFrame with RangeIndex
-            Detected or predicted events.
-
-            Each (axis 0) index of ``y`` is a detected event.
-
-            Has the following columns:
-
-            * ``"ilocs"`` - always. Values are ``iloc`` references to indices of ``X``,
-            signifying the integer location of the detected event in ``X``.
-            * ``"label"`` - optional, additional label information.
-
-            The meaning of entries in the ``"ilocs"`` column and ``"labels"``
-            column is as follows:
-            * If ``task`` is ``"anomaly_detection"`` or ``"change_point_detection"``,
-              ``"ilocs"`` contains the iloc index of the event, and
-              labels (if present) signify types of events.
-            * If ``task`` is ``"segmentation"``, ``"ilocs"`` contains left-closed
-              intervals of iloc based segments, and labels (if present)
-              are types of segments.
-        """
-        raise NotImplementedError("abstract method")
-
-    def transform(self, X):
-        """Detect events and return the result in a dense format.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to detect events in (time series).
-
-        Returns
-        -------
-        y : pd.DataFrame
-            If the detector does not have the capability to identify subsets of
-            variables that are affected by the detected events, out output will be a
-            `pd.DataFrame` with the same index as X and one column:
-
-            * `"labels"`: Integer labels starting from 0.
-
-            If the detector has this capability, the output will be a `pd.DataFrame`
-            with the same index as X and as many columns as there are columns in X
-            of the following format:
-
-            * `"labels_<X.columns[i]>"` for each column index i in X.columns: Integer
-            labels starting from 0.
-        """
-        y = self.predict(X)
-        X_inner = pd.DataFrame(X)
-        y_dense = self.sparse_to_dense(y, X_inner.index, X_inner.columns)
+        y_dense.index = index
         return y_dense
 
-    @staticmethod
-    def sparse_to_dense(y_sparse, index, columns=None):
-        """Convert the sparse output from a detector to a dense format.
-
-        Parameters
-        ----------
-        y_sparse : pd.Series
-            The sparse output from a detector's `predict` method. The format of the
-            series depends on the task and capability of the annotator.
-        index : array-like
-            Indices that are to be annotated according to `y_sparse`.
-        columns : array-like, optional
-            Columns that are to be annotated according to `y_sparse`.
-
-        Returns
-        -------
-        pd.Series or pd.DataFrame of detection labels.
-        """
-        raise NotImplementedError("abstract method")
-
-    @staticmethod
-    def dense_to_sparse(y_dense):
-        """Convert the dense output from a detector to a sparse format.
-
-        Parameters
-        ----------
-        y_dense : pd.Series
-            The dense output from a detector's `transform` method. The format of the
-            series depends on the task and capability of the annotator.
-
-        Returns
-        -------
-        pd.Series
-        """
-        raise NotImplementedError("abstract method")
-
-    def transform_scores(self, X):
-        """Return detection scores on the input data.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to score (time series).
-
-        Returns
-        -------
-        y : pd.Series or pd.DataFrame
-            Scores for sequence X. Exact format depends on the concrete detector.
-        """
-        self.check_is_fitted()
-        X = check_series(X, allow_index_names=True)
-        return self._transform_scores(X)
-
-    def _transform_scores(self, X):
-        """Return detection scores on the input data.
-
-        The core logic for scoring the input data should be implemented here. This
-        method is optional to implement, but is useful for detectors that provide
-        detection scores.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to score (time series).
-
-        Returns
-        -------
-        y : pd.Series or pd.DataFrame
-            Scores for sequence X. Exact format depends on the concrete detector.
-        """
-        raise NotImplementedError("abstract method")
-
-    def update(self, X, y=None):
-        """Update model with new data and optional ground truth detections.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to update model with (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional
-            Ground truth detections for training if detector is supervised.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        Notes
-        -----
-        Updates fitted model that updates attributes ending in "_".
-        """
-        self.check_is_fitted()
-
-        X = check_series(X, allow_index_names=True)
-
-        if y is not None:
-            y = check_series(y, allow_index_names=True)
-
-        self._X = X.combine_first(self._X)
-
-        if y is not None:
-            self._y = y.combine_first(self._y)
-
-        self._update(X=X, y=y)
-
-        return self
-
-    def _update(self, X, y=None):
-        """Update model with new data and optional ground truth detections.
-
-        The core logic for updating the detector with new data should be implemented
-        here. This method is optional to implement, but is useful for detectors that
-        can be efficiently updated with new data.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to update model with (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional
-            Ground truth detections for training if detector is supervised.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        Notes
-        -----
-        Updates fitted model that updates attributes ending in "_".
-        """
-        # default/fallback: re-fit to all data
-        self._fit(self._X, self._y)
-
-        return self
-
-    def update_predict(self, X, y=None):
-        """Update model with new data and detect events in it.
-
-        Parameters
-        ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Training data to update model with and detect events in (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional
-            Ground truth detections for training if detector is supervised.
-
-        Returns
-        -------
-        y : pd.Series or pd.DataFrame
-            Each element or row corresponds to a detected event. Exact format depends on
-            the detector type.
-
-        Notes
-        -----
-        Updates fitted model that updates attributes ending in "_".
-        """
-        self.update(X=X)
-        y = self.predict(X=X)
-
-        return y
-
-    def fit_predict(self, X, y=None):
-        """Fit to data, then predict it.
-
-        Fits model to `X` and `y` with given detector parameters and returns the
-        detected events.
-
-        Parameters
-        ----------
-        X : pd.DataFrame, pd.Series or np.ndarray
-            Training data to fit model with and detect events in (time series).
-        y : pd.Series, pd.DataFrame or np.ndarray, optional
-            Ground truth detections for training if detector is supervised.
-
-        Returns
-        -------
-        y : pd.Series or pd.DataFrame
-            Each element or row corresponds to a detected event. Exact format depends on
-            the detector type.
-        """
-        # Non-optimized default implementation; override when a better
-        # method is possible for a given algorithm.
-        return self.fit(X, y).predict(X)
-
-    def fit_transform(self, X, y=None):
+    def fit_transform(self, X, y=None) -> pd.DataFrame:
         """Fit to data, then transform it.
 
-        Fits model to `X` and `y` with given detector parameters and returns the
-        detected events in a dense format.
+        Fits model to X and Y with given detection parameters
+        and returns the detection labels made by the model.
 
         Parameters
         ----------
         X : pd.DataFrame, pd.Series or np.ndarray
-            Training data to fit model with and detect events in (time series).
+            Data to be transformed
         y : pd.Series or np.ndarray, optional (default=None)
-            Target values of data to be detected.
+            Target values of data to be predicted.
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
-            Detections for sequence `X`. The returned detections will be in the dense
-            format, meaning that each element in `X` will be annotated according to the
-            detection results in some meaningful way depending on the detector type.
+        y : pd.DataFrame with same index as X
+            Labels for sequence ``X``.
+
+            * If ``task`` is ``"anomaly_detection"``, the values are integer labels.
+              A value of 0 indicatesthat ``X``, at the same time index, has no anomaly.
+              Other values indicate an anomaly.
+              Most detectors will return 0 or 1, but some may return more values,
+              if they can detect different types of anomalies.
+              indicating whether ``X``, at the same
+              index, is an anomaly, 0 for no, 1 for yes.
+            * If ``task`` is ``"changepoint_detection"``, the values are integer labels,
+              indicating labels for segments between changepoints.
+              Possible labels are integers starting from 0.
+            * If ``task`` is "segmentation", the values are integer labels of the
+              segments. Possible labels are integers starting from 0.
         """
-        return self.fit(X, y).transform(X)
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(X)
+        columns = X.columns
+        index = X.index
+
+        y_sparse = self.fit_predict(X)
+        y_dense = self.sparse_to_dense(y_sparse, range(len(X)), columns)
+
+        y_dense.index = index
+        return y_dense
+
+    def predict_segments(self, X) -> pd.DataFrame:
+        """Predict segments on test/deployment data.
+
+        The main difference to ``predict`` is that this method always returns
+        a ``pd.DataFrame`` with segments of interest, even if the task is not
+        segmentation.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Time series subject to detection, which will be assigned labels or scores.
+
+        Returns
+        -------
+        y : pd.DataFrame with RangeIndex
+
+            ``pd.DataFrame`` with the following columns:
+
+            * ``"ilocs"`` - always. Values are left-closed intervals with
+              left/right values being ``iloc`` references to indices of ``X``,
+              signifying segments.
+            * ``"labels"`` - if the task, by tags, is supervised or semi-supervised
+              segmentation, or segment clustering.
+
+            The meaning of segments in the ``"ilocs"`` column and ``"labels"``
+            column is as follows:
+
+            * If ``task`` is ``"anomaly_detection"`` or ``"change_point_detection"``,
+              the intervals are intervals between changepoints/anomalies, and
+              potential labels are consecutive integers starting from 0.
+            * If ``task`` is ``"segmentation"``, the values are segmentation labels.
+        """
+        self.check_is_fitted()
+
+        task = self.get_tag("task")
+        if task in ["anomaly_detection", "change_point_detection"]:
+            y_pred_pts = self.predict_points(X)
+            y_pred = self.change_points_to_segments(y_pred_pts, start=0, end=len(X))
+        elif task == "segmentation":
+            y_pred = self._predict_segments(X)
+
+        return y_pred
+
+    @staticmethod
+    def change_points_to_segments(y_sparse, start=None, end=None) -> pd.DataFrame:
+        """Convert an series of change point indexes to segments.
+
+        Parameters
+        ----------
+        y_sparse : pd.DataFrame with RangeIndex
+            Detected change points. Must have the following column:
+
+            * ``"ilocs"`` - the iloc indices at which the change points take place.
+            Sorted in ascending order.
+        start : optional, default=0
+            Starting point of the first segment (inclusive).
+            Must be before the first change point, i.e., < y_sparse[0].
+        end : optional, default=y_sparse[-1] + 1
+            End point of the last segment (exclusive).
+            Must be after the last change point, i.e., > y_sparse[-1].
+
+        Returns
+        -------
+        pd.DataFrame with RangeIndex
+            Segments corresponding to the change points. Must have the following column:
+
+            * ``"ilocs"`` -  left-closed intervals of iloc based segments.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from skchange.base import BaseDetector
+        >>> change_points = pd.Series([1, 2, 5])
+        >>> BaseDetector.change_points_to_segments(change_points, 0, 7)
+            ilocs  labels
+        0  [0, 1)       0
+        1  [1, 2)       1
+        2  [2, 5)       2
+        3  [5, 7)       3
+        """
+        if len(y_sparse) == 0:
+            return BaseDetector._empty_segments()
+
+        # y_sparse could contain multiple columns, so need to extract the relevant one.
+        breaks = y_sparse["ilocs"].values
+        if not np.all(np.diff(breaks) > 0):
+            raise ValueError("Change points must be sorted in ascending order.")
+
+        # change points can only occur in the range (start, end)
+        if start is not None and start >= breaks.min():
+            raise ValueError("The start index must be before the first change point.")
+        if end is not None and breaks.max() >= end:
+            raise ValueError("The end index must be after the last change point.")
+
+        if start is None:
+            start = 0
+        if end is None:
+            end = breaks[-1] + 1
+
+        breaks = np.concatenate(([start], breaks, [end]))
+        ilocs = pd.IntervalIndex.from_breaks(breaks, copy=True, closed="left")
+        labels = np.arange(len(ilocs), dtype="int64")
+        segments = pd.DataFrame({"ilocs": ilocs, "labels": labels})
+        return segments
+
+    @staticmethod
+    def segments_to_change_points(y_sparse) -> pd.DataFrame:
+        """Convert segments to change points.
+
+        Parameters
+        ----------
+        y_sparse : pd.DataFrame with RangeIndex
+            Detected segments. Must have the following column:
+
+            * ``"ilocs"`` -  left-closed intervals of iloc based segments, interpreted
+                as the range of indices over which the event takes place.
+
+        Returns
+        -------
+        pd.DataFrame with RangeIndex
+            Corresponding change points for the segments. A change point is defined as
+            the left boundary of segments. A left boundary at index 0 is not included.
+            Contains the following column:
+
+            * ``"ilocs"`` - the iloc index at which the change points takes place.
+
+        Examples
+        --------
+        >>> import pandas as pd
+        >>> from skchange.base import BaseDetector
+        >>> segments = pd.DataFrame({
+        ...     "labels": [0, 1, 2],
+        ...     "ilocs": pd.IntervalIndex.from_breaks([2, 5, 7, 9], closed="left")
+        ... })
+        >>> BaseDetector.segments_to_change_points(segments)
+         ilocs
+        0    2
+        1    5
+        2    7
+        dtype: int64
+        """
+        if len(y_sparse) == 0:
+            return BaseDetector._empty_points()
+        segment_starts = y_sparse["ilocs"].array.left
+        change_points = segment_starts[segment_starts > 0]
+        return pd.DataFrame(change_points, columns=["ilocs"], dtype="int64")
+
+    @staticmethod
+    def _empty_points() -> pd.DataFrame:
+        """Return an empty sparse series in point format.
+
+        Returns
+        -------
+        pd.DataFrame
+            An empty data frame with an integer ``"ilocs"`` column.
+        """
+        return pd.DataFrame({"ilocs": pd.Series([], dtype="int64")})
+
+    @staticmethod
+    def _empty_segments() -> pd.DataFrame:
+        """Return an empty sparse series in segmentation format.
+
+        Returns
+        -------
+        pd.DataFrame
+            An empty data frame with an integer interval ``"ilocs"`` column and an
+            integer ``"labels"`` column.
+        """
+        return pd.DataFrame(
+            {
+                "ilocs": pd.IntervalIndex([], closed="left"),
+                "labels": pd.Series([], dtype="int64"),
+            }
+        )
