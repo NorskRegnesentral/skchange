@@ -29,7 +29,7 @@ changepoint_labels = change_detector.transform(df)
 print(changepoints)
 print(changepoint_labels)
 
-# Collective anomaly detector
+# Segment anomaly detector
 anomaly_detector = CAPA()
 anomalies = anomaly_detector.fit_predict(df)
 anomaly_labels = anomaly_detector.transform(df)
