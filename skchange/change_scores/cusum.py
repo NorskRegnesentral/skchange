@@ -3,12 +3,10 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
-from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -74,13 +72,13 @@ class CUSUM(BaseChangeScore):
         """Minimum size of the interval to evaluate."""
         return 1
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the change score evaluator.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 
@@ -89,8 +87,7 @@ class CUSUM(BaseChangeScore):
         self :
             Reference to self.
         """
-        X = as_2d_array(X)
-        self.sums_ = col_cumsum(X, init_zero=True)
+        self._sums = col_cumsum(X, init_zero=True)
         return self
 
     def _evaluate(self, cuts: np.ndarray):
@@ -117,7 +114,7 @@ class CUSUM(BaseChangeScore):
         starts = cuts[:, 0]
         splits = cuts[:, 1]
         ends = cuts[:, 2]
-        return cusum_score(starts, ends, splits, self.sums_)
+        return cusum_score(starts, ends, splits, self._sums)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

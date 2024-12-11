@@ -3,13 +3,11 @@
 from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.costs.base import BaseCost
 from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
-from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -118,23 +116,22 @@ class L2Cost(BaseCost):
         """
         return check_mean(param, X)
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
 
         This method precomputes quantities that speed up the cost evaluation.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y: None
             Ignored. Included for API consistency by convention.
         """
-        X = as_2d_array(X)
         self._mean = self._check_param(self.param, X)
 
-        self.sums_ = col_cumsum(X, init_zero=True)
-        self.sums2_ = col_cumsum(X**2, init_zero=True)
+        self._sums = col_cumsum(X, init_zero=True)
+        self._sums2 = col_cumsum(X**2, init_zero=True)
 
         return self
 
@@ -157,7 +154,7 @@ class L2Cost(BaseCost):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
-        return l2_cost_optim(starts, ends, self.sums_, self.sums2_)
+        return l2_cost_optim(starts, ends, self._sums, self._sums2)
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
@@ -178,7 +175,7 @@ class L2Cost(BaseCost):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
-        return l2_cost_fixed(starts, ends, self.sums_, self.sums2_, self._mean)
+        return l2_cost_fixed(starts, ends, self._sums, self._sums2, self._mean)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

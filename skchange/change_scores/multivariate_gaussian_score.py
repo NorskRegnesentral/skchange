@@ -4,12 +4,10 @@ __author__ = ["johannvk"]
 __all__ = ["MultivariateGaussianScore"]
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.multivariate_gaussian_cost import MultivariateGaussianCost
 from skchange.utils.numba import njit
-from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -176,13 +174,13 @@ class MultivariateGaussianScore(BaseChangeScore):
         else:
             return None
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the multivariate Gaussian change score evaluator.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 
@@ -191,7 +189,7 @@ class MultivariateGaussianScore(BaseChangeScore):
         self :
             Reference to self.
         """
-        self._cost.fit(as_2d_array(X))
+        self._cost.fit(X)
         return self
 
     def _evaluate(self, cuts: np.ndarray):
@@ -229,7 +227,7 @@ class MultivariateGaussianScore(BaseChangeScore):
             bartlett_corrections = compute_bartlett_corrections(
                 sequence_lengths=segment_lengths,
                 cut_points=segment_splits,
-                dimension=self._cost.data_dimension_,
+                dimension=self._X.shape[1],
             )
             return bartlett_corrections * raw_scores
         else:

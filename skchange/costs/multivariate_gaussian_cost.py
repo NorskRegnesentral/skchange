@@ -6,13 +6,11 @@ __all__ = ["MultivariateGaussianCost"]
 from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.costs.base import BaseCost
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import njit, prange
 from skchange.utils.numba.stats import log_det_covariance
-from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -217,7 +215,7 @@ class MultivariateGaussianCost(BaseCost):
         The size of each interval is defined as cuts[i, 1] - cuts[i, 0].
         """
         if self.is_fitted:
-            return self.data_dimension_ + 1
+            return self._X.shape[1] + 1
         else:
             return None
 
@@ -231,15 +229,15 @@ class MultivariateGaussianCost(BaseCost):
         """
         return p + p * (p + 1) // 2
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
 
         This method precomputes quantities that speed up the cost evaluation.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y: None
             Ignored. Included for API consistency by convention.
         """
@@ -249,11 +247,6 @@ class MultivariateGaussianCost(BaseCost):
             self._mean, cov = self._param
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)
-
-        # Store the data as a 2D, because we're not guaranteed that the input is a
-        # 2D numpy array. This is a common pattern in the cost functions.
-        self.array_X_ = as_2d_array(X)
-        self.data_dimension_ = self.array_X_.shape[1]
 
         return self
 
@@ -273,7 +266,7 @@ class MultivariateGaussianCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of columns
             is 1 since the MultivariateGaussianCost is inherently multivariate.
         """
-        return gaussian_cost_mle_params(starts, ends, self.array_X_)
+        return gaussian_cost_mle_params(starts, ends, self._X)
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameters.
@@ -292,7 +285,7 @@ class MultivariateGaussianCost(BaseCost):
             is 1 since the MultivariateGaussianCost is inherently multivariate.
         """
         return gaussian_cost_fixed_params(
-            starts, ends, self.array_X_, self._mean, self._log_det_cov, self._inv_cov
+            starts, ends, self._X, self._mean, self._log_det_cov, self._inv_cov
         )
 
     @classmethod

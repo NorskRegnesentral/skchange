@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.costs import GaussianVarCost
+from skchange.costs import GaussianCost
 
 
 @pytest.mark.parametrize(
@@ -14,6 +14,6 @@ from skchange.costs import GaussianVarCost
 def test_invalid_fixed_covariance(mean, var):
     """Test that invalid fixed covariance matrix raises errors."""
     X = np.random.randn(100, 2)
-    cost = GaussianVarCost(param=(mean, var))
+    cost = GaussianCost(param=(mean, var))
     with pytest.raises(ValueError):
         cost.fit(X)

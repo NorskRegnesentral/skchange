@@ -11,7 +11,7 @@ Costs
 
     BaseCost
     L2Cost
-    GaussianVarCost
+    GaussianCost
     GaussianCovCost
 
 Utility functions

@@ -72,7 +72,7 @@ class BaseIntervalScorer(BaseEstimator):
         Parameters
         ----------
         X : pd.Series, pd.DataFrame, or np.ndarray
-            Data to score.
+            Data to evaluate.
         y : None
             Ignored. Included for API consistency by convention.
 
@@ -86,13 +86,13 @@ class BaseIntervalScorer(BaseEstimator):
         Updates the fitted model and sets attributes ending in "_".
         """
         X = check_series(X, allow_index_names=True)
-        self._X = X
+        self._X = as_2d_array(X)
 
-        self._fit(X=X, y=y)
+        self._fit(X=self._X, y=y)
         self._is_fitted = True
         return self
 
-    def _fit(self, X, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the interval scorer to training data.
 
         The core logic of fitting an interval scorer to training data is implemented
@@ -100,8 +100,8 @@ class BaseIntervalScorer(BaseEstimator):
 
         Parameters
         ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to score.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 
