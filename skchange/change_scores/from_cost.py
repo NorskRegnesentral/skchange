@@ -124,10 +124,10 @@ class ChangeScore(BaseChangeScore):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs import GaussianVarCost, L2Cost
+        from skchange.costs import GaussianCost, L2Cost
 
         params = [
             {"cost": L2Cost()},
-            {"cost": GaussianVarCost()},
+            {"cost": GaussianCost()},
         ]
         return params

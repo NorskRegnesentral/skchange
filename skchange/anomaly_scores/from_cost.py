@@ -339,10 +339,10 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs import GaussianVarCost
+        from skchange.costs import GaussianCost
 
         params = [
             {"cost": L2Cost()},
-            {"cost": GaussianVarCost()},
+            {"cost": GaussianCost()},
         ]
         return params

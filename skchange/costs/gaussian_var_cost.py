@@ -119,7 +119,7 @@ def gaussian_var_cost_fixed(
     return -log_likelihood
 
 
-class GaussianVarCost(BaseCost):
+class GaussianCost(BaseCost):
     """Univariate Gaussian likelihood cost.
 
     Parameters
