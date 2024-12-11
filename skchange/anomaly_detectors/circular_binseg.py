@@ -103,7 +103,7 @@ def run_circular_binseg(
 
 
 class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
-    """Circular binary segmentation algorithm for multiple collective anomaly detection.
+    """Circular binary segmentation algorithm for multiple segment anomaly detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data
     into two segments, and test whether the two segments are different. Circular binary
@@ -111,7 +111,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
     (anomaly score) is applied to compare the data behaviour of an inner interval subset
     with the surrounding data contained in an outer interval.
     In other words, the null hypothesis within each outer interval is that the data
-    is stationary, while the alternative hypothesis is that there is a collective
+    is stationary, while the alternative hypothesis is that there is a segment
     anomaly within the outer interval.
 
     Efficently implemented using numba.
@@ -303,7 +303,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
 
         Returns
         -------
-        pd.Series[pd.Interval] containing the collective anomaly intervals.
+        pd.Series[pd.Interval] containing the segment anomaly intervals.
 
         Notes
         -----

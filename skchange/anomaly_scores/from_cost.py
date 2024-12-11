@@ -185,7 +185,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     Local anomaly scores compare the data behaviour of an inner interval with the
     surrounding data contained in an outer interval. In other words, the null
     hypothesis within each outer interval is that the data is stationary, while the
-    alternative hypothesis is that there is a collective anomaly within the
+    alternative hypothesis is that there is a segment anomaly within the
     outer interval.
 
     Parameters
