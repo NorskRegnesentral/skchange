@@ -1,13 +1,13 @@
 """Anomaly detection algorithms."""
 
 from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
-from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.anomaly_detectors.capa import CAPA
 from skchange.anomaly_detectors.circular_binseg import CircularBinarySegmentation
 from skchange.anomaly_detectors.mvcapa import MVCAPA
 
 BASE_ANOMALY_DETECTORS = [
-    BaseCollectiveAnomalyDetector,
+    BaseSegmentAnomalyDetector,
 ]
 COLLECTIVE_ANOMALY_DETECTORS = [
     CAPA,

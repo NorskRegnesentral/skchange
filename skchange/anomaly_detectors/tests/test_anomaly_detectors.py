@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_detectors import COLLECTIVE_ANOMALY_DETECTORS
-from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.datasets.generate import generate_anomalous_data
 
 true_anomalies = [(30, 35), (70, 75)]
@@ -15,7 +15,7 @@ anomaly_free_data = generate_anomalous_data(100, random_state=1)
 
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
-def test_collective_anomaly_detector_predict(Estimator: BaseCollectiveAnomalyDetector):
+def test_collective_anomaly_detector_predict(Estimator: BaseSegmentAnomalyDetector):
     """Test collective anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
@@ -28,7 +28,7 @@ def test_collective_anomaly_detector_predict(Estimator: BaseCollectiveAnomalyDet
 
 @pytest.mark.parametrize("Estimator", COLLECTIVE_ANOMALY_DETECTORS)
 def test_collective_anomaly_detector_transform(
-    Estimator: BaseCollectiveAnomalyDetector,
+    Estimator: BaseSegmentAnomalyDetector,
 ):
     """Test collective anomaly detector's transform method (dense output)."""
     detector = Estimator.create_test_instance()
@@ -37,7 +37,7 @@ def test_collective_anomaly_detector_transform(
     true_collective_anomalies = pd.DataFrame(
         {"ilocs": pd.IntervalIndex.from_tuples(true_anomalies, closed="left")}
     )
-    true_anomaly_labels = BaseCollectiveAnomalyDetector.sparse_to_dense(
+    true_anomaly_labels = BaseSegmentAnomalyDetector.sparse_to_dense(
         true_collective_anomalies, anomaly_data.index
     )
     labels.equals(true_anomaly_labels)
@@ -53,4 +53,4 @@ def test_dense_to_sparse_invalid_columns():
     """Test dense_to_sparse method with invalid DataFrame input columns."""
     invalid_df = pd.DataFrame({"invalid_column": [0, 1, 0, 1]})
     with pytest.raises(ValueError):
-        BaseCollectiveAnomalyDetector.dense_to_sparse(invalid_df)
+        BaseSegmentAnomalyDetector.dense_to_sparse(invalid_df)

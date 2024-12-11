@@ -1,7 +1,7 @@
 """Base classes for anomaly detectors.
 
     classes:
-        BaseCollectiveAnomalyDetector
+        BaseSegmentAnomalyDetector
 
 By inheriting from these classes the remaining methods of the BaseDetector class to
 implement to obtain a fully functional anomaly detector are given below.
@@ -23,7 +23,7 @@ import pandas as pd
 from skchange.base import BaseDetector
 
 
-class BaseCollectiveAnomalyDetector(BaseDetector):
+class BaseSegmentAnomalyDetector(BaseDetector):
     """Base class for collective anomaly detectors.
 
     Collective anomaly detectors detect segments of data points that are considered
@@ -68,10 +68,10 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
             0 is reserved for the normal instances.
         """
         if "icolumns" in y_sparse:
-            return BaseCollectiveAnomalyDetector._sparse_to_dense_icolumns(
+            return BaseSegmentAnomalyDetector._sparse_to_dense_icolumns(
                 y_sparse, index, columns
             )
-        return BaseCollectiveAnomalyDetector._sparse_to_dense_ilocs(y_sparse, index)
+        return BaseSegmentAnomalyDetector._sparse_to_dense_ilocs(y_sparse, index)
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.DataFrame) -> pd.DataFrame:
@@ -104,9 +104,9 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
         `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
         """
         if "labels" in y_dense.columns:
-            return BaseCollectiveAnomalyDetector._dense_to_sparse_ilocs(y_dense)
+            return BaseSegmentAnomalyDetector._dense_to_sparse_ilocs(y_dense)
         elif y_dense.columns.str.startswith("labels_").all():
-            return BaseCollectiveAnomalyDetector._dense_to_sparse_icolumns(y_dense)
+            return BaseSegmentAnomalyDetector._dense_to_sparse_icolumns(y_dense)
         raise ValueError(
             "Invalid columns in `y_dense`. Expected 'labels' or 'labels_*'."
             f" Got: {y_dense.columns}"
@@ -221,7 +221,7 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
         anomaly_ends = np.insert(anomaly_ends, len(anomaly_ends), last_anomaly_end)
 
         anomaly_intervals = list(zip(anomaly_starts, anomaly_ends))
-        return BaseCollectiveAnomalyDetector._format_sparse_output_ilocs(
+        return BaseSegmentAnomalyDetector._format_sparse_output_ilocs(
             anomaly_intervals, closed="left"
         )
 
@@ -337,7 +337,7 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
             anomaly_end = anomaly_mask.index[which_rows][-1]
             anomaly_intervals.append((anomaly_start, anomaly_end + 1, anomaly_columns))
 
-        return BaseCollectiveAnomalyDetector._format_sparse_output_icolumns(
+        return BaseSegmentAnomalyDetector._format_sparse_output_icolumns(
             anomaly_intervals, closed="left"
         )
 

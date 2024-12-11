@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -393,7 +393,7 @@ def run_mvcapa(
     return opt_savings, collective_anomalies, point_anomalies
 
 
-class MVCAPA(BaseCollectiveAnomalyDetector):
+class MVCAPA(BaseSegmentAnomalyDetector):
     """Subset multivariate collective and point anomaly detection.
 
     An efficient implementation of the MVCAPA algorithm [1]_ for anomaly detection.
