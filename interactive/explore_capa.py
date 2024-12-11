@@ -27,7 +27,7 @@ px.scatter(scores)
 df = generate_alternating_data(
     5, 10, p=10, mean=10, affected_proportion=0.2, random_state=2
 )
-detector = MVCAPA(collective_penalty="sparse")
+detector = MVCAPA(segment_penalty="sparse")
 
 anomalies = detector.fit_predict(df)
 print(anomalies)
@@ -56,13 +56,11 @@ px.scatter(scores)
 # Profiling
 n = int(1e5)
 df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
-detector = CAPA(
-    max_segment_length=100, collective_penalty_scale=5, point_penalty_scale=5
-)
+detector = CAPA(max_segment_length=100, segment_penalty_scale=5, point_penalty_scale=5)
 detector = MVCAPA(
     max_segment_length=1000,
-    collective_penalty="sparse",
-    collective_penalty_scale=5,
+    segment_penalty="sparse",
+    segment_penalty_scale=5,
     point_penalty_scale=5,
 )
 profiler = Profiler().start()
