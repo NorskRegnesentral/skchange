@@ -4,7 +4,7 @@
 Welcome to skchange
 ===================
 
-A python library for fast collective anomaly and changepoint detection.
+A python library for fast change point and segment anomaly detection.
 The library is designed to be compatible with `sktime <https://www.sktime.net>`_.
 `Numba <https://numba.readthedocs.io>`_ is used for computational speed.
 
@@ -34,8 +34,8 @@ Key features
 - **Fast**: `Numba <https://numba.readthedocs.io>`_ is used for performance.
 - **Easy to use**: Follows the conventions of `sktime <https://www.sktime.net>`_ and `scikit-learn <https://scikit-learn.org>`_.
 - **Easy to extend**: Make your own detectors by inheriting from the base class templates. Create custom detection scores and cost functions.
-- **Collective anomaly detection**: Detect intervals of anomalous behaviour in time series data.
-- **Subset collective anomaly detection**: Detect intervals of anomalous behaviour in time series data, and infer the subset of variables that are responsible for the anomaly.
+- **Segment anomaly detection**: Detect intervals of anomalous behaviour in time series data.
+- **Subset anomaly detection**: Detect intervals of anomalous behaviour in time series data, and infer the subset of variables that are responsible for the anomaly.
 
 Mission
 -------
