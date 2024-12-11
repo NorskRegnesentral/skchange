@@ -18,22 +18,22 @@ from skchange.utils.validation.parameters import check_larger_than
 
 def run_capa(
     X: np.ndarray,
-    collective_saving: BaseSaving,
+    segment_saving: BaseSaving,
     point_saving: BaseSaving,
-    collective_alpha: float,
+    segment_alpha: float,
     point_alpha: float,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    collective_betas = np.zeros(1)
+    segment_betas = np.zeros(1)
     point_betas = np.zeros(1)
-    collective_saving.fit(X)
+    segment_saving.fit(X)
     point_saving.fit(X)
     return run_base_capa(
-        collective_saving,
+        segment_saving,
         point_saving,
-        collective_alpha,
-        collective_betas,
+        segment_alpha,
+        segment_betas,
         point_alpha,
         point_betas,
         min_segment_length,
@@ -54,8 +54,8 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    collective_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for collective anomaly detection.
+    segment_saving : BaseSaving or BaseCost, optional, default=L2Saving()
+        The saving function to use for segment anomaly detection.
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     point_saving : BaseSaving or BaseCost, optional, default=L2Saving()
@@ -63,8 +63,8 @@ class CAPA(BaseSegmentAnomalyDetector):
         minimum size of 1 are permitted.
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    collective_penalty_scale : float, optional, default=2.0
-        Scaling factor for the collective penalty.
+    segment_penalty_scale : float, optional, default=2.0
+        Scaling factor for the segment penalty.
     point_penalty_scale : float, optional, default=2.0
         Scaling factor for the point penalty.
     min_segment_length : int, optional, default=2
@@ -73,8 +73,8 @@ class CAPA(BaseSegmentAnomalyDetector):
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional, default=False
         If True, detected point anomalies are not returned by `predict`. I.e., only
-        collective anomalies are returned. If False, point anomalies are included in the
-        output as collective anomalies of length 1.
+        segment anomalies are returned. If False, point anomalies are included in the
+        output as segment anomalies of length 1.
 
     See Also
     --------
@@ -114,34 +114,32 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        collective_saving: Optional[Union[BaseSaving, BaseCost]] = None,
+        segment_saving: Optional[Union[BaseSaving, BaseCost]] = None,
         point_saving: Optional[Union[BaseSaving, BaseCost]] = None,
-        collective_penalty_scale: float = 2.0,
+        segment_penalty_scale: float = 2.0,
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
     ):
-        self.collective_saving = collective_saving
+        self.segment_saving = segment_saving
         self.point_saving = point_saving
-        self.collective_penalty_scale = collective_penalty_scale
+        self.segment_penalty_scale = segment_penalty_scale
         self.point_penalty_scale = point_penalty_scale
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        _collective_saving = (
-            L2Saving() if collective_saving is None else collective_saving
-        )
-        self._collective_saving = to_saving(_collective_saving)
+        _segment_saving = L2Saving() if segment_saving is None else segment_saving
+        self._segment_saving = to_saving(_segment_saving)
 
         _point_saving = L2Saving() if point_saving is None else point_saving
         if _point_saving.min_size is not None and _point_saving.min_size > 1:
             raise ValueError("Point saving must have a minimum size of 1.")
         self._point_saving = to_saving(_point_saving)
 
-        check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
+        check_larger_than(0, segment_penalty_scale, "segment_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
@@ -152,10 +150,10 @@ class CAPA(BaseSegmentAnomalyDetector):
         #     return self._tune_threshold(X)
         n = X.shape[0]
         p = X.shape[1]
-        n_params = self._collective_saving.get_param_size(p)
-        collective_penalty = capa_penalty(n, n_params, self.collective_penalty_scale)
+        n_params = self._segment_saving.get_param_size(p)
+        segment_penalty = capa_penalty(n, n_params, self.segment_penalty_scale)
         point_penalty = self.point_penalty_scale * n_params * p * np.log(n)
-        return collective_penalty, point_penalty
+        return segment_penalty, point_penalty
 
     def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -189,7 +187,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        self.collective_penalty_, self.point_penalty_ = self._get_penalty_components(X)
+        self.segment_penalty_, self.point_penalty_ = self._get_penalty_components(X)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -203,7 +201,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         Returns
         -------
         pd.Series[pd.Interval]
-            Containing the collective anomaly intervals.
+            Containing the segment anomaly intervals.
 
         Notes
         -----
@@ -215,18 +213,18 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        opt_savings, collective_anomalies, point_anomalies = run_capa(
+        opt_savings, segment_anomalies, point_anomalies = run_capa(
             X.values,
-            self._collective_saving,
+            self._segment_saving,
             self._point_saving,
-            self.collective_penalty_,
+            self.segment_penalty_,
             self.point_penalty_,
             self.min_segment_length,
             self.max_segment_length,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 
-        anomalies = collective_anomalies
+        anomalies = segment_anomalies
         if not self.ignore_point_anomalies:
             anomalies += point_anomalies
         anomalies = sorted(anomalies)
@@ -275,13 +273,13 @@ class CAPA(BaseSegmentAnomalyDetector):
 
         params = [
             {
-                "collective_saving": L2Cost(param=0.0),
+                "segment_saving": L2Cost(param=0.0),
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 5,
                 "max_segment_length": 100,
             },
             {
-                "collective_saving": L2Cost(param=0.0),
+                "segment_saving": L2Cost(param=0.0),
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 2,
                 "max_segment_length": 20,

@@ -24,7 +24,7 @@ from skchange.base import BaseDetector
 
 
 class BaseSegmentAnomalyDetector(BaseDetector):
-    """Base class for collective anomaly detectors.
+    """Base class for segment anomaly detectors.
 
     Collective anomaly detectors detect segments of data points that are considered
     anomalous.
@@ -114,19 +114,19 @@ class BaseSegmentAnomalyDetector(BaseDetector):
 
     def _format_sparse_output(
         self,
-        collective_anomalies: Union[
+        segment_anomalies: Union[
             list[tuple[int, int]], list[tuple[int, int, np.ndarray]]
         ],
         closed: str = "left",
     ) -> pd.DataFrame:
-        """Format the sparse output of collective anomaly detectors.
+        """Format the sparse output of segment anomaly detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------
-        collective_anomalies : list
-            List of tuples containing start and end indices of collective anomalies,
+        segment_anomalies : list
+            List of tuples containing start and end indices of segment anomalies,
             and optionally a np.array of the identified variables/components/columns.
         closed : str
             Whether the (start, end) tuple correspond to intervals that are closed
@@ -144,11 +144,11 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         The start and end points of the intervals can be accessed by
         `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
         """
-        # Cannot extract this from collective_anomalies as it may be an empty list.
+        # Cannot extract this from segment_anomalies as it may be an empty list.
         if self.capability_variable_identification:
-            return self._format_sparse_output_icolumns(collective_anomalies, closed)
+            return self._format_sparse_output_icolumns(segment_anomalies, closed)
         else:
-            return self._format_sparse_output_ilocs(collective_anomalies, closed)
+            return self._format_sparse_output_ilocs(segment_anomalies, closed)
 
     @staticmethod
     def _sparse_to_dense_ilocs(
@@ -229,14 +229,14 @@ class BaseSegmentAnomalyDetector(BaseDetector):
     def _format_sparse_output_ilocs(
         anomaly_intervals: list[tuple[int, int]], closed: str = "left"
     ) -> pd.DataFrame:
-        """Format the sparse output of collective anomaly detectors.
+        """Format the sparse output of segment anomaly detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------
         anomaly_intervals : list
-            List of tuples containing start and end indices of collective anomalies.
+            List of tuples containing start and end indices of segment anomalies.
 
         Returns
         -------
@@ -343,17 +343,17 @@ class BaseSegmentAnomalyDetector(BaseDetector):
 
     @staticmethod
     def _format_sparse_output_icolumns(
-        collective_anomalies: list[tuple[int, int, np.ndarray]],
+        segment_anomalies: list[tuple[int, int, np.ndarray]],
         closed: str = "left",
     ) -> pd.DataFrame:
-        """Format the sparse output of subset collective anomaly detectors.
+        """Format the sparse output of subset segment anomaly detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------
-        collective_anomalies : list
-            List of tuples containing start and end indices of collective
+        segment_anomalies : list
+            List of tuples containing start and end indices of segment
             anomalies and a np.array of the affected components/columns.
         closed : str
             Whether the (start, end) tuple correspond to intervals that are closed
@@ -367,10 +367,10 @@ class BaseSegmentAnomalyDetector(BaseDetector):
             * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
             * ``"icolumns"`` - list of affected columns for each anomaly.
         """
-        ilocs = [(int(start), int(end)) for start, end, _ in collective_anomalies]
+        ilocs = [(int(start), int(end)) for start, end, _ in segment_anomalies]
         icolumns = [
             np.array(components, dtype="int64")
-            for _, _, components in collective_anomalies
+            for _, _, components in segment_anomalies
         ]
         return pd.DataFrame(
             {
