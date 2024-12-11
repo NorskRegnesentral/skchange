@@ -88,7 +88,7 @@ class BaseIntervalScorer(BaseEstimator):
         X = check_series(X, allow_index_names=True)
         self._X = as_2d_array(X)
 
-        self._fit(X=X, y=y)
+        self._fit(X=self._X, y=y)
         self._is_fitted = True
         return self
 
