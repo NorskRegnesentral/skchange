@@ -11,7 +11,7 @@ class ConcreteIntervalEvaluator(BaseIntervalScorer):
 
 def test_fit():
     evaluator = ConcreteIntervalEvaluator()
-    X = np.array([1, 2, 3, 4, 5])
+    X = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
     evaluator.fit(X)
     assert evaluator._is_fitted
     assert np.array_equal(evaluator._X, X)

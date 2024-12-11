@@ -86,7 +86,7 @@ class BaseIntervalScorer(BaseEstimator):
         Updates the fitted model and sets attributes ending in "_".
         """
         X = check_series(X, allow_index_names=True)
-        self._X = X
+        self._X = as_2d_array(X)
 
         self._fit(X=X, y=y)
         self._is_fitted = True
