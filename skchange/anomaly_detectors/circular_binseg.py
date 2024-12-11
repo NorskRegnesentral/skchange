@@ -8,7 +8,7 @@ from typing import Optional, Union
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.anomaly_scores import BaseLocalAnomalyScore, to_local_anomaly_score
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals
 from skchange.costs import BaseCost, L2Cost
@@ -102,8 +102,8 @@ def run_circular_binseg(
     return anomalies, anomaly_scores, maximizers, starts, ends
 
 
-class CircularBinarySegmentation(BaseCollectiveAnomalyDetector):
-    """Circular binary segmentation algorithm for multiple collective anomaly detection.
+class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
+    """Circular binary segmentation algorithm for multiple segment anomaly detection.
 
     Binary segmentation type changepoint detection algorithms recursively split the data
     into two segments, and test whether the two segments are different. Circular binary
@@ -111,7 +111,7 @@ class CircularBinarySegmentation(BaseCollectiveAnomalyDetector):
     (anomaly score) is applied to compare the data behaviour of an inner interval subset
     with the surrounding data contained in an outer interval.
     In other words, the null hypothesis within each outer interval is that the data
-    is stationary, while the alternative hypothesis is that there is a collective
+    is stationary, while the alternative hypothesis is that there is a segment
     anomaly within the outer interval.
 
     Efficently implemented using numba.
@@ -303,7 +303,7 @@ class CircularBinarySegmentation(BaseCollectiveAnomalyDetector):
 
         Returns
         -------
-        pd.Series[pd.Interval] containing the collective anomaly intervals.
+        pd.Series[pd.Interval] containing the segment anomaly intervals.
 
         Notes
         -----

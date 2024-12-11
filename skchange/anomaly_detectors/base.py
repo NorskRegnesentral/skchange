@@ -1,7 +1,7 @@
 """Base classes for anomaly detectors.
 
     classes:
-        BaseCollectiveAnomalyDetector
+        BaseSegmentAnomalyDetector
 
 By inheriting from these classes the remaining methods of the BaseDetector class to
 implement to obtain a fully functional anomaly detector are given below.
@@ -23,10 +23,10 @@ import pandas as pd
 from skchange.base import BaseDetector
 
 
-class BaseCollectiveAnomalyDetector(BaseDetector):
-    """Base class for collective anomaly detectors.
+class BaseSegmentAnomalyDetector(BaseDetector):
+    """Base class for segment anomaly detectors.
 
-    Collective anomaly detectors detect segments of data points that are considered
+    Segment anomaly detectors detect segments of data points that are considered
     anomalous.
 
     Output format of the `predict` method: See the `dense_to_sparse` method.
@@ -68,10 +68,10 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
             0 is reserved for the normal instances.
         """
         if "icolumns" in y_sparse:
-            return BaseCollectiveAnomalyDetector._sparse_to_dense_icolumns(
+            return BaseSegmentAnomalyDetector._sparse_to_dense_icolumns(
                 y_sparse, index, columns
             )
-        return BaseCollectiveAnomalyDetector._sparse_to_dense_ilocs(y_sparse, index)
+        return BaseSegmentAnomalyDetector._sparse_to_dense_ilocs(y_sparse, index)
 
     @staticmethod
     def dense_to_sparse(y_dense: pd.DataFrame) -> pd.DataFrame:
@@ -104,9 +104,9 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
         `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
         """
         if "labels" in y_dense.columns:
-            return BaseCollectiveAnomalyDetector._dense_to_sparse_ilocs(y_dense)
+            return BaseSegmentAnomalyDetector._dense_to_sparse_ilocs(y_dense)
         elif y_dense.columns.str.startswith("labels_").all():
-            return BaseCollectiveAnomalyDetector._dense_to_sparse_icolumns(y_dense)
+            return BaseSegmentAnomalyDetector._dense_to_sparse_icolumns(y_dense)
         raise ValueError(
             "Invalid columns in `y_dense`. Expected 'labels' or 'labels_*'."
             f" Got: {y_dense.columns}"
@@ -114,19 +114,19 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
 
     def _format_sparse_output(
         self,
-        collective_anomalies: Union[
+        segment_anomalies: Union[
             list[tuple[int, int]], list[tuple[int, int, np.ndarray]]
         ],
         closed: str = "left",
     ) -> pd.DataFrame:
-        """Format the sparse output of collective anomaly detectors.
+        """Format the sparse output of segment anomaly detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------
-        collective_anomalies : list
-            List of tuples containing start and end indices of collective anomalies,
+        segment_anomalies : list
+            List of tuples containing start and end indices of segment anomalies,
             and optionally a np.array of the identified variables/components/columns.
         closed : str
             Whether the (start, end) tuple correspond to intervals that are closed
@@ -144,11 +144,11 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
         The start and end points of the intervals can be accessed by
         `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
         """
-        # Cannot extract this from collective_anomalies as it may be an empty list.
+        # Cannot extract this from segment_anomalies as it may be an empty list.
         if self.capability_variable_identification:
-            return self._format_sparse_output_icolumns(collective_anomalies, closed)
+            return self._format_sparse_output_icolumns(segment_anomalies, closed)
         else:
-            return self._format_sparse_output_ilocs(collective_anomalies, closed)
+            return self._format_sparse_output_ilocs(segment_anomalies, closed)
 
     @staticmethod
     def _sparse_to_dense_ilocs(
@@ -221,7 +221,7 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
         anomaly_ends = np.insert(anomaly_ends, len(anomaly_ends), last_anomaly_end)
 
         anomaly_intervals = list(zip(anomaly_starts, anomaly_ends))
-        return BaseCollectiveAnomalyDetector._format_sparse_output_ilocs(
+        return BaseSegmentAnomalyDetector._format_sparse_output_ilocs(
             anomaly_intervals, closed="left"
         )
 
@@ -229,14 +229,14 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
     def _format_sparse_output_ilocs(
         anomaly_intervals: list[tuple[int, int]], closed: str = "left"
     ) -> pd.DataFrame:
-        """Format the sparse output of collective anomaly detectors.
+        """Format the sparse output of segment anomaly detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------
         anomaly_intervals : list
-            List of tuples containing start and end indices of collective anomalies.
+            List of tuples containing start and end indices of segment anomalies.
 
         Returns
         -------
@@ -337,23 +337,23 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
             anomaly_end = anomaly_mask.index[which_rows][-1]
             anomaly_intervals.append((anomaly_start, anomaly_end + 1, anomaly_columns))
 
-        return BaseCollectiveAnomalyDetector._format_sparse_output_icolumns(
+        return BaseSegmentAnomalyDetector._format_sparse_output_icolumns(
             anomaly_intervals, closed="left"
         )
 
     @staticmethod
     def _format_sparse_output_icolumns(
-        collective_anomalies: list[tuple[int, int, np.ndarray]],
+        segment_anomalies: list[tuple[int, int, np.ndarray]],
         closed: str = "left",
     ) -> pd.DataFrame:
-        """Format the sparse output of subset collective anomaly detectors.
+        """Format the sparse output of subset segment anomaly detectors.
 
         Can be reused by subclasses to format the output of the `_predict` method.
 
         Parameters
         ----------
-        collective_anomalies : list
-            List of tuples containing start and end indices of collective
+        segment_anomalies : list
+            List of tuples containing start and end indices of segment
             anomalies and a np.array of the affected components/columns.
         closed : str
             Whether the (start, end) tuple correspond to intervals that are closed
@@ -367,10 +367,10 @@ class BaseCollectiveAnomalyDetector(BaseDetector):
             * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
             * ``"icolumns"`` - list of affected columns for each anomaly.
         """
-        ilocs = [(int(start), int(end)) for start, end, _ in collective_anomalies]
+        ilocs = [(int(start), int(end)) for start, end, _ in segment_anomalies]
         icolumns = [
             np.array(components, dtype="int64")
-            for _, _, components in collective_anomalies
+            for _, _, components in segment_anomalies
         ]
         return pd.DataFrame(
             {

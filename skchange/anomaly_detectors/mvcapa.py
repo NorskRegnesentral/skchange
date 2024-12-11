@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from skchange.anomaly_detectors.base import BaseCollectiveAnomalyDetector
+from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
@@ -214,19 +214,19 @@ def capa_penalty_factory(penalty: Union[str, Callable] = "combined") -> Callable
 def get_anomalies(
     anomaly_starts: np.ndarray,
 ) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
-    collective_anomalies = []
+    segment_anomalies = []
     point_anomalies = []
     i = anomaly_starts.size - 1
     while i >= 0:
         start_i = anomaly_starts[i]
         size = i - start_i + 1
         if size > 1:
-            collective_anomalies.append((int(start_i), i + 1))
+            segment_anomalies.append((int(start_i), i + 1))
             i = int(start_i)
         elif size == 1:
             point_anomalies.append((i, i))
         i -= 1
-    return collective_anomalies, point_anomalies
+    return segment_anomalies, point_anomalies
 
 
 @njit
@@ -283,19 +283,19 @@ def optimise_savings(
 
 
 def run_base_capa(
-    collective_saving: BaseSaving,
+    segment_saving: BaseSaving,
     point_saving: BaseSaving,
-    collective_alpha: float,
-    collective_betas: np.ndarray,
+    segment_alpha: float,
+    segment_betas: np.ndarray,
     point_alpha: float,
     point_betas: np.ndarray,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    collective_saving.check_is_fitted()
+    segment_saving.check_is_fitted()
     point_saving.check_is_fitted()
 
-    n = collective_saving._X.shape[0]
+    n = segment_saving._X.shape[0]
     opt_savings = np.zeros(n + 1)
     # Store the optimal start and affected components of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
@@ -304,13 +304,13 @@ def run_base_capa(
 
     ts = np.arange(min_segment_length - 1, n)
     for t in ts:
-        # Collective anomalies
+        # Segment anomalies
         t_array = np.array([t])
         starts = np.concatenate((starts, t_array - min_segment_length + 1))
         ends = np.repeat(t + 1, len(starts))
-        collective_savings = collective_saving.evaluate(np.column_stack((starts, ends)))
-        opt_collective_saving, opt_start, candidate_savings = optimise_savings(
-            starts, opt_savings, collective_savings, collective_alpha, collective_betas
+        segment_savings = segment_saving.evaluate(np.column_stack((starts, ends)))
+        opt_segment_saving, opt_start, candidate_savings = optimise_savings(
+            starts, opt_savings, segment_savings, segment_alpha, segment_betas
         )
 
         # Point anomalies
@@ -320,7 +320,7 @@ def run_base_capa(
         )
 
         # Combine and store results
-        savings = np.array([opt_savings[t], opt_collective_saving, opt_point_saving])
+        savings = np.array([opt_savings[t], opt_segment_saving, opt_point_saving])
         argmax = np.argmax(savings)
         opt_savings[t + 1] = savings[argmax]
         if argmax == 1:
@@ -329,22 +329,22 @@ def run_base_capa(
             opt_anomaly_starts[t] = t
 
         # Pruning the admissible starts
-        penalty_sum = collective_alpha + collective_betas.sum()
+        penalty_sum = segment_alpha + segment_betas.sum()
         saving_too_low = candidate_savings + penalty_sum < opt_savings[t + 1]
         too_long_segment = starts < t - max_segment_length + 2
         prune = saving_too_low | too_long_segment
         starts = starts[~prune]
 
-    collective_anomalies, point_anomalies = get_anomalies(opt_anomaly_starts)
-    return opt_savings[1:], collective_anomalies, point_anomalies
+    segment_anomalies, point_anomalies = get_anomalies(opt_anomaly_starts)
+    return opt_savings[1:], segment_anomalies, point_anomalies
 
 
 def run_mvcapa(
     X: np.ndarray,
-    collective_saving: BaseSaving,
+    segment_saving: BaseSaving,
     point_saving: BaseSaving,
-    collective_penalty: str,
-    collective_penalty_scale: float,
+    segment_penalty: str,
+    segment_penalty_scale: float,
     point_penalty: str,
     point_penalty_scale: float,
     min_segment_length: int,
@@ -354,23 +354,23 @@ def run_mvcapa(
 ]:
     n = X.shape[0]
     p = X.shape[1]
-    collective_n_params_per_variable = collective_saving.get_param_size(1)
-    collective_penalty_func = capa_penalty_factory(collective_penalty)
-    collective_alpha, collective_betas = collective_penalty_func(
-        n, p, collective_n_params_per_variable, scale=collective_penalty_scale
+    segment_n_params_per_variable = segment_saving.get_param_size(1)
+    segment_penalty_func = capa_penalty_factory(segment_penalty)
+    segment_alpha, segment_betas = segment_penalty_func(
+        n, p, segment_n_params_per_variable, scale=segment_penalty_scale
     )
     point_penalty_func = capa_penalty_factory(point_penalty)
     point_n_params_per_variable = point_saving.get_param_size(1)
     point_alpha, point_betas = point_penalty_func(
         n, p, point_n_params_per_variable, scale=point_penalty_scale
     )
-    collective_saving.fit(X)
+    segment_saving.fit(X)
     point_saving.fit(X)
-    opt_savings, collective_anomalies, point_anomalies = run_base_capa(
-        collective_saving,
+    opt_savings, segment_anomalies, point_anomalies = run_base_capa(
+        segment_saving,
         point_saving,
-        collective_alpha,
-        collective_betas,
+        segment_alpha,
+        segment_betas,
         point_alpha,
         point_betas,
         min_segment_length,
@@ -379,29 +379,29 @@ def run_mvcapa(
 
     sparse_penalty_func = capa_penalty_factory("sparse")
     sparse_alpha, sparse_betas = sparse_penalty_func(
-        n, p, collective_n_params_per_variable, scale=collective_penalty_scale
+        n, p, segment_n_params_per_variable, scale=segment_penalty_scale
     )
-    collective_anomalies = find_affected_components(
-        collective_saving,
-        collective_anomalies,
+    segment_anomalies = find_affected_components(
+        segment_saving,
+        segment_anomalies,
         sparse_alpha,
         sparse_betas,
     )
     point_anomalies = find_affected_components(
         point_saving, point_anomalies, point_alpha, point_betas
     )
-    return opt_savings, collective_anomalies, point_anomalies
+    return opt_savings, segment_anomalies, point_anomalies
 
 
-class MVCAPA(BaseCollectiveAnomalyDetector):
+class MVCAPA(BaseSegmentAnomalyDetector):
     """Subset multivariate collective and point anomaly detection.
 
     An efficient implementation of the MVCAPA algorithm [1]_ for anomaly detection.
 
     Parameters
     ----------
-    collective_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for collective anomaly detection.
+    segment_saving : BaseSaving or BaseCost, optional, default=L2Saving()
+        The saving function to use for segment anomaly detection.
         Only univariate savings are permitted (see the `evaluation_type` attribute).
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
@@ -410,15 +410,15 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
         minimum size of 1 are permitted.
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    collective_penalty : str or Callable, optional, default="combined"
-        Penalty function to use for collective anomalies. If a string, must be one of
+    segment_penalty : str or Callable, optional, default="combined"
+        Penalty function to use for segment anomalies. If a string, must be one of
         "dense", "sparse", "intermediate" or "combined". If a Callable, must be a
         function returning a penalty and per-component penalties, given n, p, n_params
         and scale.
-    collective_penalty_scale : float, optional, default=1.0
-        Scaling factor for the collective penalty.
+    segment_penalty_scale : float, optional, default=1.0
+        Scaling factor for the segment penalty.
     point_penalty : str or Callable, optional, default="sparse"
-        Penalty function to use for point anomalies. See `collective_penalty`.
+        Penalty function to use for point anomalies. See `segment_penalty`.
     point_penalty_scale : float, optional, default=1.0
         Scaling factor for the point penalty.
     min_segment_length : int, optional, default=2
@@ -427,12 +427,12 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional, default=False
         If True, detected point anomalies are not returned by `predict`. I.e., only
-        collective anomalies are returned.
+        segment anomalies are returned.
 
     References
     ----------
     .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
-       collective and point anomaly detection. Journal of Computational and Graphical
+       segment and point anomaly detection. Journal of Computational and Graphical
        Statistics, 31(2), 574-585.
 
     Examples
@@ -466,20 +466,20 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
 
     def __init__(
         self,
-        collective_saving: Optional[Union[BaseSaving, BaseCost]] = None,
+        segment_saving: Optional[Union[BaseSaving, BaseCost]] = None,
         point_saving: Optional[Union[BaseSaving, BaseCost]] = None,
-        collective_penalty: Union[str, Callable] = "combined",
-        collective_penalty_scale: float = 2.0,
+        segment_penalty: Union[str, Callable] = "combined",
+        segment_penalty_scale: float = 2.0,
         point_penalty: Union[str, Callable] = "sparse",
         point_penalty_scale: float = 2.0,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
     ):
-        self.collective_saving = collective_saving
+        self.segment_saving = segment_saving
         self.point_saving = point_saving
-        self.collective_penalty = collective_penalty
-        self.collective_penalty_scale = collective_penalty_scale
+        self.segment_penalty = segment_penalty
+        self.segment_penalty_scale = segment_penalty_scale
         self.point_penalty = point_penalty
         self.point_penalty_scale = point_penalty_scale
         self.min_segment_length = min_segment_length
@@ -487,19 +487,17 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        _collective_saving = (
-            L2Saving() if collective_saving is None else collective_saving
-        )
-        if _collective_saving.evaluation_type == "multivariate":
-            raise ValueError("Collective saving must be univariate.")
-        self._collective_saving = to_saving(_collective_saving)
+        _segment_saving = L2Saving() if segment_saving is None else segment_saving
+        if _segment_saving.evaluation_type == "multivariate":
+            raise ValueError("Segment saving must be univariate.")
+        self._segment_saving = to_saving(_segment_saving)
 
         _point_saving = L2Saving() if point_saving is None else point_saving
         if _point_saving.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
         self._point_saving = to_saving(_point_saving)
 
-        check_larger_than(0, collective_penalty_scale, "collective_penalty_scale")
+        check_larger_than(0, segment_penalty_scale, "segment_penalty_scale")
         check_larger_than(0, point_penalty_scale, "point_penalty_scale")
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
@@ -557,12 +555,12 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        opt_savings, collective_anomalies, point_anomalies = run_mvcapa(
+        opt_savings, segment_anomalies, point_anomalies = run_mvcapa(
             X.values,
-            self._collective_saving,
+            self._segment_saving,
             self._point_saving,
-            self.collective_penalty,
-            self.collective_penalty_scale,
+            self.segment_penalty,
+            self.segment_penalty_scale,
             self.point_penalty,
             self.point_penalty_scale,
             self.min_segment_length,
@@ -570,7 +568,7 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 
-        anomalies = collective_anomalies
+        anomalies = segment_anomalies
         if not self.ignore_point_anomalies:
             anomalies += point_anomalies
         anomalies = sorted(anomalies)
@@ -619,13 +617,13 @@ class MVCAPA(BaseCollectiveAnomalyDetector):
 
         params = [
             {
-                "collective_saving": L2Cost(param=0.0),
+                "segment_saving": L2Cost(param=0.0),
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 5,
                 "max_segment_length": 100,
             },
             {
-                "collective_saving": L2Cost(param=0.0),
+                "segment_saving": L2Cost(param=0.0),
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 2,
                 "max_segment_length": 20,

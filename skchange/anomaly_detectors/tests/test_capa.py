@@ -46,8 +46,8 @@ def test_capa_anomalies(Detector, Saving):
         random_state=8,
     )
     detector = Detector(
-        collective_saving=saving,
-        collective_penalty_scale=2.0,
+        segment_saving=saving,
+        segment_penalty_scale=2.0,
         min_segment_length=p + 1,
         ignore_point_anomalies=True,  # To get test coverage.
     )
@@ -68,9 +68,9 @@ def test_mvcapa_errors():
     cost = MultivariateGaussianCost([0.0, cov_mat])
     saving = Saving(cost)
 
-    # Test collective saving must be univariate
+    # Test segment saving must be univariate
     with pytest.raises(ValueError):
-        MVCAPA(collective_saving=saving)
+        MVCAPA(segment_saving=saving)
 
     # Test point saving must have a minimum size of 1
     with pytest.raises(ValueError):

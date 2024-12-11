@@ -11,7 +11,7 @@ Scitype defining methods:
     detection scores, dense         - transform_scores(self, X)  [optional]
     updating (temporal)             - update(self, X, y=None)  [optional]
 
-Each detector type (e.g. point anomaly detector, collective anomaly detector,
+Each detector type (e.g. point anomaly detector, segment anomaly detector,
 changepoint detector) are subclasses of BaseDetector (task tag in sktime).
 A detector type is defined by the content and format of the output of the predict
 method. Each detector type therefore has the following methods for converting between
