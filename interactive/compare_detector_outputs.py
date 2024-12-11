@@ -36,7 +36,7 @@ anomaly_labels = anomaly_detector.transform(df)
 print(anomalies)
 print(anomaly_labels)
 
-# Subset collective anomaly detector
+# Subset segment anomaly detector
 subset_anomaly_detector = MVCAPA()
 subset_anomalies = subset_anomaly_detector.fit_predict(df)
 subset_anomaly_labels = subset_anomaly_detector.transform(df)
