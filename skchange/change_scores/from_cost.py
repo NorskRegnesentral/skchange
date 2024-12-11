@@ -3,7 +3,6 @@
 from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.base import BaseCost
@@ -57,13 +56,13 @@ class ChangeScore(BaseChangeScore):
         """Minimum valid size of an interval to evaluate."""
         return self.cost.min_size
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the change score.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 

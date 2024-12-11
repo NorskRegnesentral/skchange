@@ -3,12 +3,10 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.anomaly_scores.base import BaseSaving
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
-from skchange.utils.validation.data import as_2d_array
 
 
 @njit
@@ -80,13 +78,13 @@ class L2Saving(BaseSaving):
         """
         return p
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the saving evaluator.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 
@@ -95,8 +93,7 @@ class L2Saving(BaseSaving):
         self :
             Reference to self.
         """
-        X = as_2d_array(X)
-        self.sums_ = col_cumsum(X, init_zero=True)
+        self._sums = col_cumsum(X, init_zero=True)
         return self
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
@@ -120,7 +117,7 @@ class L2Saving(BaseSaving):
         """
         starts = cuts[:, 0]
         ends = cuts[:, 1]
-        return l2_saving(starts, ends, self.sums_)
+        return l2_saving(starts, ends, self._sums)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

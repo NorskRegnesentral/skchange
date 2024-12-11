@@ -3,7 +3,6 @@
 from typing import Union
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
 from skchange.costs import BaseCost, L2Cost
@@ -81,13 +80,13 @@ class Saving(BaseSaving):
         """
         return self.optimised_cost.get_param_size(p)
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 
@@ -218,13 +217,13 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         """Minimum valid size of the interval to evaluate."""
         return self.cost.min_size
 
-    def _fit(self, X: ArrayLike, y=None):
+    def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
 
         Parameters
         ----------
-        X : array-like
-            Input data.
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
         y : None
             Ignored. Included for API consistency by convention.
 
