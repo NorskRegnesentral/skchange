@@ -353,7 +353,7 @@ class CircularBinarySegmentation(BaseCollectiveAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs import GaussianCovCost, L2Cost
+        from skchange.costs import L2Cost, MultivariateGaussianCost
 
         params = [
             {"anomaly_score": L2Cost(), "threshold_scale": 5},
@@ -363,7 +363,7 @@ class CircularBinarySegmentation(BaseCollectiveAnomalyDetector):
                 "max_interval_length": 50,
             },
             {
-                "anomaly_score": GaussianCovCost(),
+                "anomaly_score": MultivariateGaussianCost(),
                 "min_segment_length": 5,
                 "max_interval_length": 20,
             },

@@ -14,7 +14,7 @@ from skchange.anomaly_detectors.mvcapa import (
     sparse_mvcapa_penalty,
 )
 from skchange.anomaly_scores import SAVINGS, Saving
-from skchange.costs import COSTS, BaseCost, GaussianCovCost
+from skchange.costs import COSTS, BaseCost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets.generate import generate_alternating_data
 
@@ -65,7 +65,7 @@ def test_capa_anomalies(Detector, Saving):
 def test_mvcapa_errors():
     """Test MVCAPA error cases."""
     cov_mat = np.eye(2)
-    cost = GaussianCovCost([0.0, cov_mat])
+    cost = MultivariateGaussianCost([0.0, cov_mat])
     saving = Saving(cost)
 
     # Test collective saving must be univariate

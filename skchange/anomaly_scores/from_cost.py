@@ -273,7 +273,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             surrounding_data = np.concatenate((before_data, after_data))
             self._any_subset_cost.fit(surrounding_data)
             surrounding_costs[i] = self._any_subset_cost.evaluate(
-                [0, surrounding_data.shape[0]]
+                np.array([0, surrounding_data.shape[0]])
             )
 
         anomaly_scores = outer_costs - (inner_costs + surrounding_costs)

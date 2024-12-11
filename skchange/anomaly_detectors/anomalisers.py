@@ -63,6 +63,7 @@ class StatThresholdAnomaliser(BaseCollectiveAnomalyDetector):
         -------
         self : returns a reference to self
         """
+        self.change_detector_: ChangeDetector
         self.change_detector_ = self.change_detector.clone()
         self.change_detector_.fit(X, y)
         return self
