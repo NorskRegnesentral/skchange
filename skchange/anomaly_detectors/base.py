@@ -26,7 +26,7 @@ from skchange.base import BaseDetector
 class BaseSegmentAnomalyDetector(BaseDetector):
     """Base class for segment anomaly detectors.
 
-    Collective anomaly detectors detect segments of data points that are considered
+    Segment anomaly detectors detect segments of data points that are considered
     anomalous.
 
     Output format of the `predict` method: See the `dense_to_sparse` method.

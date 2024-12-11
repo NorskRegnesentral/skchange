@@ -42,7 +42,7 @@ def run_capa(
 
 
 class CAPA(BaseSegmentAnomalyDetector):
-    """Collective and point anomaly detection.
+    """The collective and point anomaly (CAPA) detection algorithm.
 
     An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
     It is implemented using the 'savings' formulation of the problem given in [2]_ and
