@@ -28,16 +28,19 @@ classifiers = [
     "Operating System :: POSIX",
     "Operating System :: Unix",
     "Operating System :: MacOS",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.9,<3.14"
 dependencies = [
   "numpy>=1.21",
   "pandas>=1.1",
-  "sktime>=0.33",
+  "sktime>=0.35",
 ]
 
 [project.urls]
@@ -51,8 +54,6 @@ numba = [
 
 # all_extras - all soft dependencies, install via "pip install skchange[all_extras]"
 all_extras = [
-  "optuna>=3.1.1",
-  "plotly>=5.13.0",
   "numba>=0.56",
 ]
 
