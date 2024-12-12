@@ -78,7 +78,7 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     See Also
     --------
-    `MVCAPA` : Multivariate CAPA with affected variable inference.
+    MVCAPA : Multivariate CAPA with affected variable inference.
 
     References
     ----------
