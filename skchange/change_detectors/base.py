@@ -4,7 +4,7 @@
         BaseChangeDetector
 
 By inheriting from these classes the remaining methods of the BaseDetector class to
-implement to obtain a fully functional anomaly detector are given below.
+implement to obtain a fully functional changepoint detector are given below.
 
 Needs to be implemented:
     _fit(self, X, y=None)
@@ -13,7 +13,6 @@ Needs to be implemented:
 Optional to implement:
     _transform_scores(self, X)
     _update(self, X, y=None)
-
 """
 
 import numpy as np
@@ -55,7 +54,7 @@ class BaseChangeDetector(BaseDetector):
         Returns
         -------
         pd.DataFrame with the input data index and one column:
-        * ``"label"`` - integer labels 0, ..., K for each segment between two
+        * ``"label"`` - integer labels ``0, ..., K`` for each segment between two
         changepoints.
         """
         changepoints = y_sparse["ilocs"].to_list()
