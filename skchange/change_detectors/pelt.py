@@ -119,7 +119,7 @@ def run_pelt(
 class PELT(BaseChangeDetector):
     """Pruned exact linear time changepoint detection.
 
-    An efficient implementation of the PELT algorithm [1]_ for changepoint detection.
+    The PELT algorithm [1]_ for changepoint detection.
 
     Parameters
     ----------
@@ -127,9 +127,9 @@ class PELT(BaseChangeDetector):
         The cost function to use for the changepoint detection.
     penalty_scale : float, optional, default=2.0
         Scaling factor for the penalty. The penalty is set to
-        `penalty_scale * 2 * p * np.log(n)`, where `n` is the sample size
-        and `p` is the number of variables. If None, the penalty is tuned on the data
-        input to `fit` (not supported yet).
+        ``penalty_scale * 2 * p * np.log(n)``, where ``n`` is the sample size
+        and ``p`` is the number of variables. If ``None``, the penalty is tuned on the
+        data input to `fit` (not supported yet).
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
 
@@ -222,9 +222,9 @@ class PELT(BaseChangeDetector):
         """Fit to training data.
 
         Sets the penalty of the detector.
-        If `penalty_scale` is None, the penalty is set to the (1-`level`)-quantile
-        of the change/anomaly scores on the training data. For this to be correct,
-        the training data must contain no changepoints. If `penalty_scale` is a
+        If `penalty_scale` is ``None``, the penalty is set to the ``1-level`` quantile
+        of the change scores on the training data. For this to be correct,
+        the training data must contain no change points. If `penalty_scale` is a
         number, the penalty is set to `penalty_scale` times the default penalty
         for the detector. The default penalty depends at least on the data's shape,
         but could also depend on more parameters.
@@ -232,14 +232,19 @@ class PELT(BaseChangeDetector):
         Parameters
         ----------
         X : pd.DataFrame
-            training data to fit the penalty to.
+            training data to fit the threshold to.
         y : pd.Series, optional
-            Does nothing. Only here to make the `fit` method compatible with `sktime`
+            Does nothing. Only here to make the fit method compatible with `sktime`
             and `scikit-learn`.
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
+
+        State change
+        ------------
+        Creates fitted model that updates attributes ending in "_".
         """
         X = check_data(
             X,
@@ -250,16 +255,18 @@ class PELT(BaseChangeDetector):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Time series to detect change points in.
 
         Returns
         -------
-        y : pd.Series - annotations for sequence `X`
-            exact format depends on annotation type
+        y_sparse : pd.DataFrame
+            A `pd.DataFrame` with a range index and one column:
+            * ``"ilocs"`` - integer locations of the changepoints.
         """
         X = check_data(
             X,
@@ -277,15 +284,17 @@ class PELT(BaseChangeDetector):
         return self._format_sparse_output(changepoints)
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Compute the pelt scores for the input data.
+        """Return scores for predicted labels on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to compute scores for, time series
+        X : pd.DataFrame, pd.Series or np.ndarray
+            Data to score (time series).
 
         Returns
         -------
-        scores : pd.Series - scores for sequence `X`
+        scores : pd.DataFrame with same index as X
+            Scores for sequence `X`.
 
         Notes
         -----
@@ -303,7 +312,7 @@ class PELT(BaseChangeDetector):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for annotators.
 
         Returns
