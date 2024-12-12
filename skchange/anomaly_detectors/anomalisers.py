@@ -49,7 +49,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
             raise ValueError(message)
 
     def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
-        """Fits the change detector to training data.
+        """Fit to training data.
 
         Parameters
         ----------
@@ -68,7 +68,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
 
         Parameters
         ----------
