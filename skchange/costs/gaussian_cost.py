@@ -22,18 +22,18 @@ def var_from_sums(
     Parameters
     ----------
     sums : np.ndarray
-        Cumulative sums of `X`, where the first row are 0s.
+        Cumulative sums of ``X``, where the first row are ``0``s.
     sums2 : np.ndarray
-        Cumulative sums of `X**2`, where the first row are 0s.
+        Cumulative sums of ``X**2``, where the first row are ``0``s.
     starts : np.ndarray
-        Start indices in the original data `X`.
+        Start indices in the original data ``X``.
     ends : np.ndarray
-        End indices in the original data `X`.
+        End indices in the original data ``X``.
 
     Returns
     -------
     var : float
-        Variance of `X[i:j]`.
+        Variance of ``X[i:j]``.
     """
     n = (ends - starts).reshape(-1, 1)
     partial_sums = sums[ends] - sums[starts]
@@ -53,15 +53,15 @@ def gaussian_var_cost_optim(
 
     Parameters
     ----------
-    starts : `np.ndarray`
+    starts : np.ndarray
         Start indices of the segments.
-    ends : `np.ndarray`
+    ends : np.ndarray
         End indices of the segments.
-    sums : `np.ndarray`
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : `np.ndarray`
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
+    sums : np.ndarray
+        Cumulative sum of the input data, with a row of ``0``-entries as the first row.
+    sums2 : np.ndarray
+        Cumulative sum of the squared input data, with a row of ``0``-entries as the
+        first row.
 
     Returns
     -------
@@ -88,18 +88,18 @@ def gaussian_var_cost_fixed(
 
     Parameters
     ----------
-    starts : `np.ndarray`
+    starts : np.ndarray
         Start indices of the segments.
-    ends : `np.ndarray`
+    ends : np.ndarray
         End indices of the segments.
-    sums : `np.ndarray`
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : `np.ndarray`
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
-    mean : `np.ndarray`
+    sums : np.ndarray
+        Cumulative sum of the input data, with a row of ``0``-entries as the first row.
+    sums2 : np.ndarray
+        Cumulative sum of the squared input data, with a row of ``0``-entries as the
+        first row.
+    mean : np.ndarray
         Fixed mean for the cost calculation.
-    var : `np.ndarray`
+    var : np.ndarray
         Fixed variance for the cost calculation.
 
     Returns
@@ -124,7 +124,7 @@ class GaussianCost(BaseCost):
     ----------
     param : 2-tuple of float or np.ndarray, or None (default=None)
         Fixed mean(s) and variance(s) for the cost calculation.
-        If None, the maximum likelihood estimates are used.
+        If ``None``, the maximum likelihood estimates are used.
     """
 
     def __init__(self, param: Union[tuple[MeanType, VarType], None] = None):
@@ -156,7 +156,7 @@ class GaussianCost(BaseCost):
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate.
 
-        The size of each interval is defined as intervals[i, 1] - intervals[i, 0].
+        The size of each interval is defined as ``intervals[i, 1] - intervals[i, 0]``.
         """
         return 2
 
@@ -201,8 +201,9 @@ class GaussianCost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 since the GaussianCovCost is inherently multivariate.
+            A 2D array of costs. One row for each interval. The number of columns
+            is equal to the number of columns in the input data, where each column
+            represents the univariate cost for the corresponding input data column.
         """
         return gaussian_var_cost_optim(starts, ends, self._sums, self._sums2)
 
@@ -219,8 +220,9 @@ class GaussianCost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 since the GaussianCovCost is inherently multivariate.
+            A 2D array of costs. One row for each interval. The number of columns
+            is equal to the number of columns in the input data, where each column
+            represents the univariate cost for the corresponding input data column.
         """
         mean, var = self._param
         return gaussian_var_cost_fixed(starts, ends, self._sums, self._sums2, mean, var)
@@ -233,7 +235,7 @@ class GaussianCost(BaseCost):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return "default" set.
             There are currently no reserved values for interval evaluators.
 
         Returns
