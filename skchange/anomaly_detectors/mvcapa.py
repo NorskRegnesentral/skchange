@@ -187,9 +187,10 @@ def capa_penalty_factory(penalty: Union[str, Callable] = "combined") -> Callable
     Parameters
     ----------
     penalty : str or Callable, optional (default="combined")
-        Penalty function to use for CAPA. If a string, must be one of "dense",
-        "sparse", "intermediate" or "combined". If a Callable, must be a function
-        returning a penalty and per-component penalties, given n, p, n_params and scale.
+        Penalty function to use for CAPA. If a string, must be one of ``"dense"``,
+        ``"sparse"``, ``"intermediate"`` or ``"combined"``. If a Callable, must be a
+        function returning a penalty and per-component penalties, given
+        ``n``, ``p``, ``n_params`` and ``scale``.
 
     Returns
     -------
@@ -396,7 +397,7 @@ def run_mvcapa(
 class MVCAPA(BaseSegmentAnomalyDetector):
     """Subset multivariate collective and point anomaly detection.
 
-    An efficient implementation of the MVCAPA algorithm [1]_ for anomaly detection.
+    The MVCAPA algorithm [1]_ for anomaly detection.
 
     Parameters
     ----------
@@ -412,9 +413,9 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : str or Callable, optional, default="combined"
         Penalty function to use for segment anomalies. If a string, must be one of
-        "dense", "sparse", "intermediate" or "combined". If a Callable, must be a
-        function returning a penalty and per-component penalties, given n, p, n_params
-        and scale.
+        ``"dense"``, ``"sparse"``, ``"intermediate"`` or ``"combined"``. If a
+        callable, must be a function returning a penalty and per-component penalties,
+        given ``n``, ``p``, ``n_params`` and ``scale``.
     segment_penalty_scale : float, optional, default=1.0
         Scaling factor for the segment penalty.
     point_penalty : str or Callable, optional, default="sparse"
@@ -450,11 +451,6 @@ class MVCAPA(BaseSegmentAnomalyDetector):
       anomaly_interval anomaly_columns
     0       [100, 120)             [0]
     1       [250, 300)       [2, 1, 0]
-
-    Notes
-    -----
-    The MVCAPA algorithm assumes the input data is centered before fitting and
-    predicting.
     """
 
     _tags = {
@@ -506,7 +502,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         """Fit to training data.
 
         Sets the penalty of the detector.
-        If `penalty_scale` is None, the penalty is set to the (1-`level`)-quantile
+        If `penalty_scale` is ``None``, the penalty is set to the ``1-level`` quantile
         of the change/anomaly scores on the training data. For this to be correct,
         the training data must contain no changepoints. If `penalty_scale` is a
         number, the penalty is set to `penalty_scale` times the default penalty
@@ -516,18 +512,19 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         Parameters
         ----------
         X : pd.DataFrame
-            Training data to fit the threshold to.
+            training data to fit the threshold to.
         y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+            Does nothing. Only here to make the fit method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
 
         State change
         ------------
-        creates fitted model (attributes ending in "_")
+        Creates fitted model that updates attributes ending in "_".
         """
         X = check_data(
             X,
@@ -537,18 +534,19 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Detect events and return the result in a sparse format.
+        """Detect events in test/deployment data.
 
         Parameters
         ----------
-        X : pd.Series, pd.DataFrame or np.ndarray
-            Data to detect events in (time series).
+        X : pd.DataFrame
+            Time series to detect anomalies in.
 
         Returns
         -------
-        y : pd.Series or pd.DataFrame
-            Each element or row corresponds to a detected event. Exact format depends on
-            the detector type.
+        y_sparse: pd.DataFrame
+            A `pd.DataFrame` with a range index and two columns:
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
         """
         X = check_data(
             X,
@@ -576,19 +574,21 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         return self._format_sparse_output(anomalies)
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Compute the MVCAPA scores for the input data.
+        """Return scores for predicted labels on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to compute scores for, time series
+        X : pd.DataFrame, pd.Series or np.ndarray
+            Data to score (time series).
 
         Returns
         -------
-        scores : pd.Series - scores for sequence X
+        scores : pd.DataFrame with same index as X
+            Scores for sequence `X`.
 
         Notes
         -----
-        The MVCAPA scores are the cumulative optimal savings, so the scores are
+        The `MVCAPA` scores are the cumulative optimal savings, so the scores are
         increasing and are not per observation scores.
         """
         self.predict(X)
@@ -602,7 +602,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for annotators.
 
         Returns
