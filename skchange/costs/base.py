@@ -14,9 +14,9 @@ class BaseCost(BaseIntervalScorer):
     Parameters
     ----------
     param : None, optional (default=None)
-        If None, the cost for an optimal parameter is evaluated. If not None, the cost
-        is evaluated for a fixed parameter. The parameter type is specific to each
-        concrete cost.
+        If ``None``, the cost for an optimal parameter is evaluated. If not ``None``,
+        the cost is evaluated for a fixed parameter. The parameter type is specific to
+        each concrete cost.
     """
 
     expected_interval_entries = 2
