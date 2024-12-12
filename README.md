@@ -71,12 +71,6 @@ detector.fit_predict(df)
 1  [250, 300)       2  [2, 1, 0]
 ```
 
-
-<!-- Optional dependencies:
-- Penalty tuning: `optuna` >= 3.1.1
-- Plotting: `plotly` >= 5.13.0. -->
-
-
 ## License
 
 `skchange` is a free and open-source software licensed under the [BSD 3-clause license](https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE).
