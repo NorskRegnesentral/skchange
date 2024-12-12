@@ -14,13 +14,13 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    change_detector : `BaseChangeDetector`
+    change_detector : BaseChangeDetector
         Change detector to use for detecting segments.
-    stat : `callable`, optional (default=`np.mean`)
+    stat : callable, optional (default=np.mean)
         Statistic to calculate per segment.
-    stat_lower : `float`, optional (default=-1.0)
+    stat_lower : float, optional (default=-1.0)
         Segments with a statistic lower than this value are considered anomalous.
-    stat_upper : `float`, optional (default=1.0)
+    stat_upper : float, optional (default=1.0)
         Segments with a statistic higher than this value are considered anomalous.
     """
 
@@ -53,10 +53,10 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
 
         Parameters
         ----------
-        X : `pd.DataFrame`
-            training data to fit the threshold to.
-        y : `pd.Series`, optional
-            Does nothing. Only here to make the `fit` method compatible with `sktime`
+        X : pd.DataFrame
+            Training data to fit the detector to.
+        y : pd.Series, optional
+            Does nothing. Only here to make the fit method compatible with `sktime`
             and `scikit-learn`.
 
         Returns
@@ -72,12 +72,15 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
 
         Parameters
         ----------
-        X : `pd.DataFrame` - data to annotate, time series
+        X : pd.DataFrame
+            Time series to detect anomalies in.
 
         Returns
         -------
-        y : `pd.Series` - annotations for sequence `X`
-            exact format depends on annotation type
+        y_sparse: pd.DataFrame
+            A `pd.DataFrame` with a range index and two columns:
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
         """
         # This is the required output format for the rest of the code to work.
         segments = self.change_detector_.transform(X)["labels"]
@@ -98,7 +101,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return "default" set.
             There are currently no reserved values for annotators.
 
         Returns
@@ -106,8 +109,8 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
         params : dict or list of dict, default = {}
             Parameters to create testing instances of the class
             Each dict are parameters to construct an "interesting" test instance, i.e.,
-            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
-            `create_test_instance` uses the first (or only) dictionary in `params`
+            MyClass(**params) or MyClass(**params[i]) creates a valid test instance.
+            create_test_instance uses the first (or only) dictionary in params
         """
         from skchange.change_detectors.moving_window import MovingWindow
 
