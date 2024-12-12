@@ -258,7 +258,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for annotators.
 
         Returns
