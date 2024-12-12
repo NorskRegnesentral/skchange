@@ -61,7 +61,12 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
+
+        State change
+        ------------
+        Creates fitted model that updates attributes ending in "_".
         """
         self.change_detector_: BaseChangeDetector = self.change_detector.clone()
         self.change_detector_.fit(X, y)

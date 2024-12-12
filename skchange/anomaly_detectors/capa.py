@@ -176,11 +176,12 @@ class CAPA(BaseSegmentAnomalyDetector):
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
 
         State change
         ------------
-        creates fitted model (attributes ending in ``"_"``)
+        Creates fitted model that updates attributes ending in "_".
         """
         X = check_data(
             X,
