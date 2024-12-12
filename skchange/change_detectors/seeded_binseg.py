@@ -103,8 +103,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
     theoretical guarantees as the original binary segmentation algorithm, but runs
     in log-linear time no matter the changepoint configuration.
 
-    Efficiently implemented using numba.
-
     Parameters
     ----------
     change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
@@ -112,25 +110,26 @@ class SeededBinarySegmentation(BaseChangeDetector):
         converted to a change score using the `ChangeScore` class.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
-        `threshold_scale * 2 * p * np.sqrt(np.log(n))`, where `n` is the sample size
-        and `p` is the number of variables. If None, the threshold is tuned on the
+        ``threshold_scale * 2 * p * np.sqrt(np.log(n))``, where ``n`` is the sample size
+        and ``p`` is the number of variables. If ``None``, the threshold is tuned on the
         data input to `fit`.
     level : float, default=0.01
-        If `threshold_scale` is None, the threshold is set to the
-        (1-`level`)-quantile of the changepoint scores of all the seeded intervals on
+        If `threshold_scale` is ``None``, the threshold is set to the
+        ``1-level`` quantile of the changepoint scores of all the seeded intervals on
         the training data. For this to be correct, the training data must contain no
         changepoints.
     min_segment_length : int, default=5
         Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
-        than or equal to `2 * min_segment_length`.
+        than or equal to ``2 * min_segment_length``.
     growth_factor : float, default=1.5
         The growth factor for the seeded intervals. Intervals grow in size according to
-        `interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))`,
-        starting at `interval_len=min_interval_length`. It also governs the amount
+        ``interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))``,
+        starting at ``interval_len=min_interval_length``. It also governs the amount
         of overlap between intervals of the same length, as the start of each interval
-        is shifted by a factor of `1 + 1 / growth_factor`. Must be a float in (1, 2].
+        is shifted by a factor of ``1 + 1 / growth_factor``. Must be a float in
+        ``(1, 2]``.
 
     References
     ----------
@@ -193,7 +192,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold.
 
-        The threshold is set to the (1-`level`)-quantile of the changepoint scores from
+        The threshold is set to the ``1-level`` quantile of the changepoint scores from
         all the seeded intervals on the training data `X`. For this to be correct, the
         training data must contain no changepoints.
 
@@ -247,12 +246,15 @@ class SeededBinarySegmentation(BaseChangeDetector):
         """Fit to training data.
 
         Sets the threshold of the detector.
-        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
-        of the change/anomaly scores on the training data. For this to be correct,
-        the training data must contain no changepoints. If `threshold_scale` is a
-        number, the threshold is set to `threshold_scale` times the default threshold
+        If `threshold_scale` is ``None``, the threshold is set to the ``1-level``
+        quantile of the change/anomaly scores on the training data. For this to be
+        correct, the training data must contain no changepoints. If `threshold_scale` is
+        a number, the threshold is set to `threshold_scale` times the default threshold
         for the detector. The default threshold depends at least on the data's shape,
         but could also depend on more parameters.
+
+        In the case of the MovingWindow algorithm, the default threshold depends on the
+        sample size, the number of variables, `bandwidth` and `level`.
 
         Parameters
         ----------
@@ -264,7 +266,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
+
+        State change
+        ------------
+        Creates fitted model that updates attributes ending in "_".
         """
         X = check_data(
             X,
@@ -275,16 +282,18 @@ class SeededBinarySegmentation(BaseChangeDetector):
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Time series to detect change points in.
 
         Returns
         -------
-        y : pd.Series - annotations for sequence `X`
-            exact format depends on annotation type
+        y_sparse : pd.DataFrame
+            A `pd.DataFrame` with a range index and one column:
+            * ``"ilocs"`` - integer locations of the change points.
         """
         X = check_data(
             X,
