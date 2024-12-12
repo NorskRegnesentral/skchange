@@ -64,8 +64,8 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         Returns
         -------
         pd.DataFrame with the input data index and one column:
-            * ``"label"`` - integer labels 1, ..., K for each segment anomaly.
-            0 is reserved for the normal instances.
+            * ``"label"`` - integer labels ``1, ..., K`` for each segment anomaly.
+            ``0`` is reserved for the normal instances.
         """
         if "icolumns" in y_sparse:
             return BaseSegmentAnomalyDetector._sparse_to_dense_icolumns(
@@ -83,25 +83,26 @@ class BaseSegmentAnomalyDetector(BaseDetector):
             The dense output from the `transform` method. It must either have the
             following column:
 
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly and
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly and
             label 0 for normal instances.
 
             Or it must have columns of the form:
 
-            * ``"labels_<*>"`` with integer labels 1, ..., K for each segment anomaly,
-            and 0 for normal instances.
+            * ``"labels_<*>"`` with integer labels ``1, ..., K`` for each segment
+            anomaly, and 0 for normal instances.
 
         Returns
         -------
         pd.DataFrame :
-            A `pd.DataFrame` with a range index and two columns:
+            A ``pd.DataFrame`` with a range index and two columns:
             * ``"ilocs"`` - left-closed `pd.Interval`s of iloc based segments.
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
 
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
+        ``output["ilocs"].array.left`` and ``output["ilocs"].array.right``,
+        respectively.
         """
         if "labels" in y_dense.columns:
             return BaseSegmentAnomalyDetector._dense_to_sparse_ilocs(y_dense)
@@ -127,22 +128,24 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         ----------
         segment_anomalies : list
             List of tuples containing start and end indices of segment anomalies,
-            and optionally a np.array of the identified variables/components/columns.
+            and optionally a ``np.ndarray`` of the identified
+            variables/components/columns.
         closed : str
-            Whether the (start, end) tuple correspond to intervals that are closed
+            Whether the ``(start, end)`` tuple correspond to intervals that are closed
             on the left, right, both, or neither.
 
         Returns
         -------
         pd.DataFrame :
-            A `pd.DataFrame` with a range index and two columns:
-            * ``"ilocs"`` - left-closed `pd.Interval`s of iloc based segments.
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
+            A ``pd.DataFrame`` with a range index and two columns:
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
 
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
+        ``output["ilocs"].array.left`` and ``output["ilocs"].array.right``,
+        respectively.
         """
         # Cannot extract this from segment_anomalies as it may be an empty list.
         if self.capability_variable_identification:
@@ -170,8 +173,8 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         Returns
         -------
         pd.DataFrame with the input data index and one column:
-            * ``"label"`` - integer labels 1, ..., K for each segment anomaly.
-            0 is reserved for the normal instances.
+            * ``"label"`` - integer labels ``1, ..., K`` for each segment anomaly.
+            ``0`` is reserved for the normal instances.
         """
         labels = pd.IntervalIndex(y_sparse["ilocs"]).get_indexer(index)
         # `get_indexer` return values 0 for the values inside the first interval, 1 to
@@ -191,20 +194,21 @@ class BaseSegmentAnomalyDetector(BaseDetector):
             The dense output from the `transform` method. Must have the following
             column:
 
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly and
-            label 0 for normal instances.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly and
+            label ``0`` for normal instances.
 
         Returns
         -------
         pd.DataFrame :
             A `pd.DataFrame` with a range index and two columns:
-            * ``"ilocs"`` - left-closed `pd.Interval`s of iloc based segments.
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
 
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
+        ``output["ilocs"].array.left`` and ``output["ilocs"].array.right``,
+        respectively.
         """
         # The sparse format only uses integer positions, so we reset the index.
         y_dense = y_dense["labels"].reset_index(drop=True)
@@ -242,13 +246,14 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         -------
         pd.DataFrame :
             A `pd.DataFrame` with a range index and two columns:
-            * ``"ilocs"`` - left-closed `pd.Interval`s of iloc based segments.
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
 
         Notes
         -----
         The start and end points of the intervals can be accessed by
-        `output["ilocs"].array.left` and `output["ilocs"].array.right`, respectively.
+        ``output["ilocs"].array.left`` and ``output["ilocs"].array.right``,
+        respectively.
         """
         anomaly_intervals = [(int(start), int(end)) for start, end in anomaly_intervals]
         return pd.DataFrame(
@@ -278,9 +283,9 @@ class BaseSegmentAnomalyDetector(BaseDetector):
 
         Returns
         -------
-        pd.DataFrame with the input data index and as many columns as in X :
-            * `"labels_<X.columns[i]>"` for each column index i in X.columns: Integer
-            labels starting from 0.
+        pd.DataFrame with the input data index and as many columns as in X:
+            * ``"labels_<X.columns[i]>"`` for each column index i in ``X.columns``:
+            Integer labels starting from ``0``.
         """
         anomaly_intervals = y_sparse["ilocs"].array
         anomaly_starts = anomaly_intervals.left
@@ -311,15 +316,15 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         y_dense : pd.DataFrame
             The dense output from the `transform` method. Must have columns of the form:
 
-            * `"labels_<*>"` with integer labels 1, ..., K for each segment anomaly,
-            and 0 for normal instances.
+            * `"labels_<*>"` with integer labels ``1, ..., K`` for each segment anomaly,
+            and ``0`` for normal instances.
 
         Returns
         -------
         pd.DataFrame :
-            A `pd.DataFrame` with a range index and three columns:
-            * ``"ilocs"`` - left-closed `pd.Interval`s of iloc based segments.
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
+            A ``pd.DataFrame`` with a range index and three columns:
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
             * ``"icolumns"`` - list of affected columns for each anomaly.
         """
         # The sparse format only uses integer positions, so we reset index and columns.
@@ -354,17 +359,17 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         ----------
         segment_anomalies : list
             List of tuples containing start and end indices of segment
-            anomalies and a np.array of the affected components/columns.
+            anomalies and a ``np.array`` of the affected components/columns.
         closed : str
-            Whether the (start, end) tuple correspond to intervals that are closed
+            Whether the ``(start, end)`` tuple correspond to intervals that are closed
             on the left, right, both, or neither.
 
         Returns
         -------
         pd.DataFrame :
-            A `pd.DataFrame` with a range index and three columns:
-            * ``"ilocs"`` - left-closed `pd.Interval`s of iloc based segments.
-            * ``"labels"`` - integer labels 1, ..., K for each segment anomaly.
+            A ``pd.DataFrame`` with a range index and three columns:
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
             * ``"icolumns"`` - list of affected columns for each anomaly.
         """
         ilocs = [(int(start), int(end)) for start, end, _ in segment_anomalies]
