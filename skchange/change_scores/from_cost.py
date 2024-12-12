@@ -81,10 +81,10 @@ class ChangeScore(BaseChangeScore):
         ----------
         cuts : np.ndarray
             A 2D array with three columns of integer locations.
-            The first column is the start, the second is the split, and the third is
-            the end of the interval to evaluate.
-            The difference between subsets X[start:split] and X[split:end] is evaluated
-            for each row in cuts.
+            The first column is the ``start``, the second is the ``split``, and the
+            third is the ``end`` of the interval to evaluate.
+            The difference between subsets ``X[start:split]`` and ``X[split:end]`` is
+            evaluated for each row in `cuts`.
 
         Returns
         -------

@@ -92,14 +92,14 @@ class BaseDetector(_BaseDetector):
         Returns
         -------
         y : pd.DataFrame with same index as X
-            Labels for sequence ``X``.
+            Labels for sequence `X`.
 
             * If ``task`` is ``"anomaly_detection"``, the values are integer labels.
-              A value of 0 indicates that ``X``, at the same time index, has no anomaly.
+              A value of 0 indicates that `X`, at the same time index, has no anomaly.
               Other values indicate an anomaly.
               Most detectors will return 0 or 1, but some may return more values,
               if they can detect different types of anomalies.
-              indicating whether ``X``, at the same
+              indicating whether `X`, at the same
               index, is an anomaly, 0 for no, 1 for yes.
             * If ``task`` is ``"changepoint_detection"``, the values are integer labels,
               indicating labels for segments between changepoints.
@@ -121,7 +121,7 @@ class BaseDetector(_BaseDetector):
     def fit_transform(self, X, y=None) -> pd.DataFrame:
         """Fit to data, then transform it.
 
-        Fits model to X and Y with given detection parameters
+        Fits model to `X` and `y` with given detection parameters
         and returns the detection labels made by the model.
 
         Parameters
@@ -134,14 +134,14 @@ class BaseDetector(_BaseDetector):
         Returns
         -------
         y : pd.DataFrame with same index as X
-            Labels for sequence ``X``.
+            Labels for sequence `X`.
 
             * If ``task`` is ``"anomaly_detection"``, the values are integer labels.
-              A value of 0 indicatesthat ``X``, at the same time index, has no anomaly.
+              A value of 0 indicatesthat `X`, at the same time index, has no anomaly.
               Other values indicate an anomaly.
               Most detectors will return 0 or 1, but some may return more values,
               if they can detect different types of anomalies.
-              indicating whether ``X``, at the same
+              indicating whether `X`, at the same
               index, is an anomaly, 0 for no, 1 for yes.
             * If ``task`` is ``"changepoint_detection"``, the values are integer labels,
               indicating labels for segments between changepoints.
@@ -163,7 +163,7 @@ class BaseDetector(_BaseDetector):
     def predict_segments(self, X) -> pd.DataFrame:
         """Predict segments on test/deployment data.
 
-        The main difference to ``predict`` is that this method always returns
+        The main difference to `predict` is that this method always returns
         a ``pd.DataFrame`` with segments of interest, even if the task is not
         segmentation.
 
@@ -179,7 +179,7 @@ class BaseDetector(_BaseDetector):
             ``pd.DataFrame`` with the following columns:
 
             * ``"ilocs"`` - always. Values are left-closed intervals with
-              left/right values being ``iloc`` references to indices of ``X``,
+              left/right values being ``iloc`` references to indices of `X`,
               signifying segments.
             * ``"labels"`` - if the task, by tags, is supervised or semi-supervised
               segmentation, or segment clustering.
@@ -216,10 +216,12 @@ class BaseDetector(_BaseDetector):
             Sorted in ascending order.
         start : optional, default=0
             Starting point of the first segment (inclusive).
-            Must be before the first change point, i.e., < y_sparse[0].
-        end : optional, default=y_sparse[-1] + 1
+            Must be before the first change point, i.e.,
+            ``start < y_sparse["ilocs"].min()``.
+        end : optional, default=y_sparse["ilocs].max() + 1
             End point of the last segment (exclusive).
-            Must be after the last change point, i.e., > y_sparse[-1].
+            Must be after the last change point, i.e.,
+            ``end > y_sparse["ilocs"].max()``.
 
         Returns
         -------

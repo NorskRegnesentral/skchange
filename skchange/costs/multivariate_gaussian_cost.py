@@ -34,7 +34,7 @@ def _gaussian_ll_at_mle_params(
     -------
     log_likelihood : float
         The log likelihood of the observations in the
-        interval [start, end) in the data matrix X,
+        interval ``[start, end)`` in the data matrix `X`,
         evaluated at the maximum likelihood parameter
         estimates for the mean and covariance matrix.
     """
@@ -46,7 +46,7 @@ def _gaussian_ll_at_mle_params(
 
     if np.isnan(log_det_cov):
         raise RuntimeError(
-            f"The covariance matrix of `X[{start}:{end}]` is not positive definite."
+            f"The covariance matrix of X[{start}:{end}] is not positive definite."
             + " Quick and dirty fix: Add a tiny amount of random noise to the data."
         )
 
@@ -113,7 +113,7 @@ def _gaussian_ll_at_fixed_params(
     -------
     log_likelihood : float
         The log likelihood of the observations in the
-        interval [start, end) in the data matrix X,
+        interval ``[start, end)`` in the data matrix `X`,
         evaluated at the fixed mean and covariance matrix
         parameters provided.
     """
@@ -178,7 +178,7 @@ class MultivariateGaussianCost(BaseCost):
     ----------
     param : 2-tuple of float or np.ndarray, or None (default=None)
         Fixed mean and covariance matrix for the cost calculation.
-        If None, the maximum likelihood estimates are used.
+        If ``None``, the maximum likelihood estimates are used.
     """
 
     evaluation_type = "multivariate"
@@ -212,7 +212,7 @@ class MultivariateGaussianCost(BaseCost):
     def min_size(self) -> Union[int, None]:
         """Minimum size of the interval to evaluate.
 
-        The size of each interval is defined as cuts[i, 1] - cuts[i, 0].
+        The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
         """
         if self.is_fitted:
             return self._X.shape[1] + 1
@@ -296,7 +296,7 @@ class MultivariateGaussianCost(BaseCost):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for interval evaluators.
 
         Returns

@@ -12,7 +12,7 @@ from skchange.utils.numba import njit
 
 @njit
 def _half_integer_digamma(twice_n: int) -> float:
-    """Calculate the digamma function for half integer values, i.e. `twice_n/2`.
+    """Calculate the digamma function for half integer values, i.e. ``twice_n/2``.
 
     The digamma function is the logarithmic derivative of the gamma function.
     This function is capable of calculating the
@@ -199,10 +199,10 @@ class MultivariateGaussianScore(BaseChangeScore):
         ----------
         cuts : np.ndarray
             A 2D array with three columns of integer locations.
-            The first column is the start, the second is the split, and the third is
-            the end of the interval to evaluate.
-            The difference between subsets X[start:split] and X[split:end] is evaluated
-            for each row in cuts.
+            The first column is the ``start``, the second is the ``split``, and the
+            third is the ``end`` of the interval to evaluate.
+            The difference between subsets ``X[start:split]`` and ``X[split:end]`` is
+            evaluated for each row in `cuts`.
 
         Returns
         -------

@@ -37,8 +37,8 @@ class BaseIntervalScorer(BaseEstimator):
     ----------
     _is_fitted : bool
         Indicates whether the interval scorer has been fitted.
-    _X : array-like
-        The input data used for fitting.
+    _X : np.ndarray
+        The data input to `fit` coerced to a 2D ``np.ndarray``.
     """
 
     _tags = {
@@ -83,7 +83,7 @@ class BaseIntervalScorer(BaseEstimator):
 
         Notes
         -----
-        Updates the fitted model and sets attributes ending in "_".
+        Updates the fitted model and sets attributes ending in ``"_"``.
         """
         X = check_series(X, allow_index_names=True)
         self._X = as_2d_array(X)
@@ -112,7 +112,7 @@ class BaseIntervalScorer(BaseEstimator):
 
         Notes
         -----
-        Updates fitted model that updates attributes ending in "_".
+        Updates fitted model that updates attributes ending in ``"_"``.
         """
         return self
 
@@ -166,17 +166,17 @@ class BaseIntervalScorer(BaseEstimator):
     def min_size(self) -> Union[int, None]:
         """Minimum valid size of an interval to evaluate.
 
-        The size of each interval is by default defined as np.diff(cuts[i, ]).
+        The size of each interval is by default defined as ``np.diff(cuts[i, ])``.
         Subclasses can override the min_size to mean something else, for example in
-        cases where intervals are combined before evaluation or the cuts specify
+        cases where intervals are combined before evaluation or `cuts` specify
         disjoint intervals.
 
         Returns
         -------
         int or None
-            The minimum valid size of an interval to evaluate. If None, it is unknown
-            what the minimum size is. E.g., the scorer may need to be fitted first to
-            determine the minimum size.
+            The minimum valid size of an interval to evaluate. If ``None``, it is
+            unknown what the minimum size is. E.g., the scorer may need to be fitted
+            first to determine the minimum size.
         """
         return 1
 
@@ -192,12 +192,12 @@ class BaseIntervalScorer(BaseEstimator):
         Returns
         -------
         cuts : np.ndarray
-            The unmodified input cuts array.
+            The unmodified input `cuts` array.
 
         Raises
         ------
         ValueError
-            If the cuts are not compatible.
+            If the `cuts` are not compatible.
         """
         return check_cuts_array(
             cuts,

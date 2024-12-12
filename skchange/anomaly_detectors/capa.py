@@ -72,13 +72,13 @@ class CAPA(BaseSegmentAnomalyDetector):
     max_segment_length : int, optional, default=1000
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional, default=False
-        If True, detected point anomalies are not returned by `predict`. I.e., only
-        segment anomalies are returned. If False, point anomalies are included in the
-        output as segment anomalies of length 1.
+        If ``True``, detected point anomalies are not returned by `predict`. I.e., only
+        segment anomalies are returned. If ``False``, point anomalies are included in
+        the output as segment anomalies of length 1.
 
     See Also
     --------
-    MVCAPA : Multivariate CAPA with subset inference.
+    `MVCAPA` : Multivariate CAPA with affected variable inference.
 
     References
     ----------
@@ -159,7 +159,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         """Fit to training data.
 
         Sets the penalty of the detector.
-        If `penalty_scale` is None, the penalty is set to the (1-`level`)-quantile
+        If `penalty_scale` is ``None``, the penalty is set to the ``1-level`` quantile
         of the change/anomaly scores on the training data. For this to be correct,
         the training data must contain no changepoints. If `penalty_scale` is a
         number, the penalty is set to `penalty_scale` times the default penalty
@@ -171,16 +171,17 @@ class CAPA(BaseSegmentAnomalyDetector):
         X : pd.DataFrame
             training data to fit the threshold to.
         y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+            Does nothing. Only here to make the fit method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
 
         State change
         ------------
-        creates fitted model (attributes ending in "_")
+        Creates fitted model that updates attributes ending in "_".
         """
         X = check_data(
             X,
@@ -196,17 +197,14 @@ class CAPA(BaseSegmentAnomalyDetector):
         Parameters
         ----------
         X : pd.DataFrame
-            Data to detect events in (time series).
+            Time series to detect anomalies in.
 
         Returns
         -------
-        pd.Series[pd.Interval]
-            Containing the segment anomaly intervals.
-
-        Notes
-        -----
-        The start and end points of the intervals can be accessed by
-        `output.array.left` and `output.array.right`, respectively.
+        y_sparse: pd.DataFrame
+            A `pd.DataFrame` with a range index and two columns:
+            * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
+            * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
         """
         X = check_data(
             X,
@@ -231,16 +229,18 @@ class CAPA(BaseSegmentAnomalyDetector):
 
         return self._format_sparse_output(anomalies)
 
-    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Compute the CAPA scores for the input data.
+    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.DataFrame:
+        """Return scores for predicted labels on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to compute scores for, time series
+        X : pd.DataFrame, pd.Series or np.ndarray
+            Data to score (time series).
 
         Returns
         -------
-        scores : pd.Series - scores for sequence X
+        scores : pd.DataFrame with same index as X
+            Scores for sequence `X`.
 
         Notes
         -----
@@ -258,7 +258,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for annotators.
 
         Returns

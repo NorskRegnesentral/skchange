@@ -56,8 +56,7 @@ class MovingWindow(BaseChangeDetector):
 
     A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
     detection. It runs a test statistic for a single changepoint at the midpoint in a
-    moving window of length `2 * bandwidth` over the data. Efficiently implemented
-    using numba.
+    moving window of length ``2 * bandwidth`` over the data.
 
     Parameters
     ----------
@@ -67,21 +66,21 @@ class MovingWindow(BaseChangeDetector):
     bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
-        test statistic. For `"mean"`, the minimum bandwidth is 1.
+        test statistic. For ``"mean"``, the minimum bandwidth is 1.
     threshold_scale : float, default=2.0
         Scaling factor for the threshold. The threshold is set to
-        `threshold_scale * default_threshold`, where the default threshold depends on
+        ``threshold_scale * default_threshold``, where the default threshold depends on
         the number of samples, the number of variables, `bandwidth` and `level`.
-        If None, the threshold is tuned on the input data to `fit`.
+        If ``None``, the threshold is tuned on the input data to `fit`.
     level : float, default=0.01
-        If `threshold_scale` is `None`, the threshold is set to the
-        (1-`level`)-quantile of the changepoint score on the training data. For this
+        If `threshold_scale` is ``None``, the threshold is set to the
+        ``1-level`` quantile of the changepoint score on the training data. For this
         to be correct, the training data must contain no changepoints. If
         `threshold_scale` is a number, `level` is used in the default threshold,
         _before_ scaling.
     min_detection_interval : int, default=1
         Minimum number of consecutive scores above the threshold to be considered a
-        changepoint. Must be between 1 and `bandwidth`/2.
+        changepoint. Must be between ``1`` and ``bandwidth/2``.
 
     References
     ----------
@@ -138,19 +137,19 @@ class MovingWindow(BaseChangeDetector):
     def _tune_threshold(self, X: pd.DataFrame) -> float:
         """Tune the threshold for the MovingWindow algorithm.
 
-        The threshold is set to the (1-`level`)-quantile of the score on the training
+        The threshold is set to the ``1-level`` quantile of the score on the training
         data `X`. For this to be correct, the training data must contain no
         changepoints.
-
-        TODO: Find the threshold given an input number `k` of "permitted" changepoints
-        in the training data. This can be achieved by filtering out the top `k` peaks
-        of the score.
 
         Parameters
         ----------
         X : pd.DataFrame
             Training data to tune the threshold on.
         """
+        # TODO: Find the threshold given an input number `k` of "permitted" changepoints
+        # in the training data. This can be achieved by filtering out the top `k` peaks
+        # of the score.
+
         scores = moving_window_transform(
             X.values,
             self._change_score,
@@ -210,12 +209,13 @@ class MovingWindow(BaseChangeDetector):
         """Fit to training data.
 
         Sets the threshold of the detector.
-        If `threshold_scale` is None, the threshold is set to the (1-`level`)-quantile
-        of the change/anomaly scores on the training data. For this to be correct,
-        the training data must contain no changepoints. If `threshold_scale` is a
-        number, the threshold is set to `threshold_scale` times the default threshold
+        If `threshold_scale` is ``None``, the threshold is set to the ``1-level``
+        quantile of the change/anomaly scores on the training data. For this to be
+        correct, the training data must contain no changepoints. If `threshold_scale` is
+        a number, the threshold is set to `threshold_scale` times the default threshold
         for the detector. The default threshold depends at least on the data's shape,
         but could also depend on more parameters.
+
         In the case of the MovingWindow algorithm, the default threshold depends on the
         sample size, the number of variables, `bandwidth` and `level`.
 
@@ -224,16 +224,17 @@ class MovingWindow(BaseChangeDetector):
         X : pd.DataFrame
             training data to fit the threshold to.
         y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with sktime
-            and scikit-learn.
+            Does nothing. Only here to make the fit method compatible with `sktime`
+            and `scikit-learn`.
 
         Returns
         -------
-        self : returns a reference to self
+        self :
+            Reference to self.
 
         State change
         ------------
-        Creates the `threshold_` attribute.
+        Creates fitted model that updates attributes ending in "_".
         """
         X = check_data(
             X,
@@ -244,17 +245,17 @@ class MovingWindow(BaseChangeDetector):
         return self
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Return scores for predicted annotations on test/deployment data.
+        """Return scores for predicted labels on test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame
-            Data to annotate, time series.
+        X : pd.DataFrame, pd.Series or np.ndarray
+            Data to score (time series).
 
         Returns
         -------
-        y : pd.Series
-            Annotations for sequence `X` exact format depends on annotation type.
+        scores : pd.DataFrame with same index as X
+            Scores for sequence `X`.
         """
         X = check_data(
             X,
@@ -269,16 +270,18 @@ class MovingWindow(BaseChangeDetector):
         return pd.Series(scores, index=X.index, name="score")
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
-        """Create annotations on test/deployment data.
+        """Detect events in test/deployment data.
 
         Parameters
         ----------
-        X : pd.DataFrame - data to annotate, time series
+        X : pd.DataFrame
+            Time series to detect change points in.
 
         Returns
         -------
-        y : pd.Series - annotations for sequence `X`
-            exact format depends on annotation type
+        y_sparse : pd.DataFrame
+            A `pd.DataFrame` with a range index and one column:
+            * ``"ilocs"`` - integer locations of the changepoints.
         """
         self.scores = self.transform_scores(X)
         changepoints = get_moving_window_changepoints(
@@ -294,7 +297,7 @@ class MovingWindow(BaseChangeDetector):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for annotators.
 
         Returns

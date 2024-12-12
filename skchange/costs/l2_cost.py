@@ -21,24 +21,22 @@ def l2_cost_optim(
 
     Parameters
     ----------
-    starts : `np.ndarray`
+    starts : np.ndarray
         Start indices of the segments.
-    ends : `np.ndarray`
+    ends : np.ndarray
         End indices of the segments.
-    sums : `np.ndarray`
+    sums : np.ndarray
         Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : `np.ndarray`
+    sums2 : np.ndarray
         Cumulative sum of the squared input data, with a row of 0-entries as the first
         row.
 
     Returns
     -------
     costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of
-        columns is 1 if the cost is inherently multivariate. The number of columns
-        is equal to the number of columns in the input data if the cost is
-        univariate. In this case, each column represents the univariate cost for
-        the corresponding input data column.
+        A 2D array of costs. One row for each interval. The number of columns
+        is equal to the number of columns in the input data, where each column
+        represents the univariate cost for the corresponding input data column.
     """
     partial_sums = sums[ends] - sums[starts]
     partial_sums2 = sums2[ends] - sums2[starts]
@@ -59,26 +57,24 @@ def l2_cost_fixed(
 
     Parameters
     ----------
-    starts : `np.ndarray`
+    starts : np.ndarray
         Start indices of the segments.
-    ends : `np.ndarray`
+    ends : np.ndarray
         End indices of the segments.
-    sums : `np.ndarray`
+    sums : np.ndarray
         Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : `np.ndarray`
+    sums2 : np.ndarray
         Cumulative sum of the squared input data, with a row of 0-entries as the first
         row.
-    mean : `np.ndarray`
+    mean : np.ndarray
         Fixed mean for the cost calculation.
 
     Returns
     -------
     costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of
-        columns is 1 if the cost is inherently multivariate. The number of columns
-        is equal to the number of columns in the input data if the cost is
-        univariate. In this case, each column represents the univariate cost for
-        the corresponding input data column.
+        A 2D array of costs. One row for each interval. The number of columns
+        is equal to the number of columns in the input data, where each column
+        represents the univariate cost for the corresponding input data column.
     """
     partial_sums = sums[ends] - sums[starts]
     partial_sums2 = sums2[ends] - sums2[starts]
@@ -93,7 +89,8 @@ class L2Cost(BaseCost):
     Parameters
     ----------
     param : float or array-like, optional (default=None)
-        Fixed mean for the cost calculation. If None, the optimal mean is calculated.
+        Fixed mean for the cost calculation. If ``None``, the optimal mean is
+        calculated.
     """
 
     def __init__(self, param: Union[MeanType, None] = None):
@@ -148,11 +145,9 @@ class L2Cost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 if the cost is inherently multivariate. The number of columns
-            is equal to the number of columns in the input data if the cost is
-            univariate. In this case, each column represents the univariate cost for
-            the corresponding input data column.
+            A 2D array of costs. One row for each interval. The number of columns
+            is equal to the number of columns in the input data, where each column
+            represents the univariate cost for the corresponding input data column.
         """
         return l2_cost_optim(starts, ends, self._sums, self._sums2)
 
@@ -169,11 +164,9 @@ class L2Cost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 if the cost is inherently multivariate. The number of columns
-            is equal to the number of columns in the input data if the cost is
-            univariate. In this case, each column represents the univariate cost for
-            the corresponding input data column.
+            A 2D array of costs. One row for each interval. The number of columns
+            is equal to the number of columns in the input data, where each column
+            represents the univariate cost for the corresponding input data column.
         """
         return l2_cost_fixed(starts, ends, self._sums, self._sums2, self._mean)
 

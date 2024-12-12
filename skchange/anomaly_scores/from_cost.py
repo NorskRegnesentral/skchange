@@ -49,7 +49,7 @@ class Saving(BaseSaving):
     ----------
     baseline_cost : BaseCost
         The baseline cost with a fixed parameter. The optimised cost is
-        constructed by copying the baseline cost and setting the parameter to None.
+        constructed by copying the baseline cost and setting the parameter to ``None``.
     """
 
     def __init__(self, baseline_cost: BaseCost):
@@ -106,8 +106,8 @@ class Saving(BaseSaving):
         ----------
         cuts : np.ndarray
             A 2D array with two columns of integer location-based intervals to evaluate.
-            The subsets X[cuts[i, 0]:cuts[i, 1]] for
-            i = 0, ..., len(cuts) are evaluated.
+            The subsets ``X[cuts[i, 0]:cuts[i, 1]]`` for
+            ``i = 0, ..., len(cuts)`` are evaluated.
 
         Returns
         -------
@@ -131,7 +131,7 @@ class Saving(BaseSaving):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for interval scorers.
 
         Returns
@@ -327,7 +327,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return ``"default"`` set.
             There are currently no reserved values for interval scorers.
 
         Returns
