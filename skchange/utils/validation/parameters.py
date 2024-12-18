@@ -67,7 +67,7 @@ def check_smaller_than(
     if not allow_none and value is None:
         raise ValueError(f"{name} cannot be None.")
     if value is not None and value > max_value:
-        raise ValueError(f"{name} must be no larger than {max_value} ({name}={value}).")
+        raise ValueError(f"{name} must be at most {max_value} ({name}={value}).")
     return value
 
 
