@@ -35,3 +35,6 @@ def test_scale(Penalty: BasePenalty):
     penalty = Penalty.create_test_instance()
     assert isinstance(penalty.scale, (int, float))
     assert penalty.scale > 0
+
+    with pytest.raises(ValueError):
+        penalty.set_params(scale=-1.0)
