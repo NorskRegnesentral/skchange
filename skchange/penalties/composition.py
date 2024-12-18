@@ -37,13 +37,14 @@ class MinimumPenalty(BasePenalty):
         else:
             self.penalty_type = "constant"
 
-        n_cols = [getattr(penalty, "p", 1) for penalty in self.penalties]
-        if np.unique(n_cols).size not in [1, 2]:
+        ps = [getattr(penalty, "p", 1) for penalty in self.penalties]
+        unique_ps = np.unique(ps)
+        if unique_ps.size > 2 or (unique_ps.size == 2 and 1 not in unique_ps):
             raise ValueError(
                 "All non-constant penalties must be configured for the same number of"
                 " variables `p`"
             )
-        self.p = max(n_cols)
+        self.p = max(ps)
 
         # Compute the pointwise minimum of the base penalty values here to avoid
         # recomputing it at each call to `values`.
