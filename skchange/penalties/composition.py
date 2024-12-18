@@ -29,13 +29,21 @@ class MinimumPenalty(BasePenalty):
         if len(penalties) < 2:
             raise ValueError("penalties must contain at least two penalties")
 
-        self._penalty_types = {penalty.penalty_type for penalty in self.penalties}
+        self._penalty_types = [penalty.penalty_type for penalty in self.penalties]
         if "nonlinear" in self._penalty_types:
             self.penalty_type = "nonlinear"
         elif "linear" in self._penalty_types:
             self.penalty_type = "linear"
         else:
             self.penalty_type = "constant"
+
+        n_cols = [getattr(penalty, "p", 1) for penalty in self.penalties]
+        if np.unique(n_cols).size not in [1, 2]:
+            raise ValueError(
+                "All non-constant penalties must be configured for the same number of"
+                " variables `p`"
+            )
+        self.p = max(n_cols)
 
         # Compute the pointwise minimum of the base penalty values here to avoid
         # recomputing it at each call to `values`.
