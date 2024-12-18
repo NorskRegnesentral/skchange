@@ -58,5 +58,5 @@ def test_minimum_penalty_nonlinear():
 def test_minimum_penalty_unequal_dims():
     penalty1 = LinearChiSquarePenalty(100, 5, 1)
     penalty2 = NonlinearChiSquarePenalty(100, 10, 1)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="same number of variables"):
         MinimumPenalty([penalty1, penalty2], scale=1.0)
