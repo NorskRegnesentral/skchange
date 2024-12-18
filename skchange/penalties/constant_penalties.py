@@ -33,6 +33,31 @@ class ConstantPenalty(BasePenalty):
         """
         return np.array([self.value])
 
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for penalties.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"value": 10.0, "scale": 1.0},
+            {"value": 1.0, "scale": 0.5},
+        ]
+        return params
+
 
 class BICPenalty(BasePenalty):
     """Bayesian Information Criterion (BIC) penalty.
@@ -74,6 +99,31 @@ class BICPenalty(BasePenalty):
         # +1 due to the additional change point parameter in the model.
         base_penalty = (self.n_params + 1) * np.log(self.n)
         return np.array([base_penalty])
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for penalties.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"n": 100, "n_params": 1, "scale": 1.0},
+            {"n": 1000, "n_params": 2, "scale": 0.5},
+        ]
+        return params
 
 
 class ChiSquarePenalty(BasePenalty):
@@ -124,3 +174,28 @@ class ChiSquarePenalty(BasePenalty):
         psi = np.log(self.n)
         base_penalty = self.n_params + 2 * np.sqrt(self.n_params * psi) + 2 * psi
         return np.array([base_penalty])
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for penalties.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"n": 100, "n_params": 1, "scale": 1.0},
+            {"n": 1000, "n_params": 2, "scale": 0.5},
+        ]
+        return params
