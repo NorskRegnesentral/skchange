@@ -16,6 +16,7 @@ PENALTIES = [
     ChiSquarePenalty,
     LinearChiSquarePenalty,
     NonlinearChiSquarePenalty,
+    MinimumPenalty,
 ]
 
 __all__ = [
