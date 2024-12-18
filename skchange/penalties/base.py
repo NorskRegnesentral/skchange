@@ -33,8 +33,8 @@ class BasePenalty(BaseObject):
         self.scale = scale
         super().__init__()
 
-        if self.scale <= 0:
-            raise ValueError("scale must be positive")
+        if self.scale < 0:
+            raise ValueError("scale must be non-negative")
 
     @property
     def base_values(self) -> np.ndarray:
