@@ -7,14 +7,13 @@ from skchange.penalties.base import BasePenalty
 from skchange.utils.validation.parameters import check_larger_than, check_smaller_than
 
 
-class IntermediateChiSquarePenalty(BasePenalty):
-    """Sparse Chi-Square penalty.
+class NonlinearChiSquarePenalty(BasePenalty):
+    """Nonlinear Chi-square penalty.
 
     The penalty is a piece of the default penalty for the `MVCAPA` algorithm. It is
-    described as "penalty regime 3" in the MVCAPA article [1]_. It is called
-    "intermediate" because it is suitable for detecting both sparse and dense anomalies
-    in the data. Sparse anomalies only affect a few variables, while dense anomalies
-    affect all variables.
+    described as "penalty regime 3" in the MVCAPA article [1]_, suitable for detecting
+    both sparse and dense anomalies in the data. Sparse anomalies only affect a few
+    variables, while dense anomalies affect many/all variables.
 
     Parameters
     ----------
@@ -34,7 +33,7 @@ class IntermediateChiSquarePenalty(BasePenalty):
        Statistics, 31(2), 574-585.
     """
 
-    penalty_type = "linear"
+    penalty_type = "nonlinear"
 
     def __init__(self, n: int, p: int, n_params: int = 1, scale: float = 1.0):
         self.n = n

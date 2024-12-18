@@ -6,13 +6,12 @@ from skchange.penalties.base import BasePenalty
 from skchange.utils.validation.parameters import check_larger_than
 
 
-class SparseChiSquarePenalty(BasePenalty):
-    """Sparse Chi-Square penalty.
+class LinearChiSquarePenalty(BasePenalty):
+    """Linear Chi-square penalty.
 
     The penalty is a piece of the default penalty for the `MVCAPA` algorithm. It is
-    described as "penalty regime 2" in the MVCAPA article [1]_. It is called "sparse"
-    because it is suitable for detecting sparse anomalies in the data, i.e., anomalies
-    that affect only a few variables.
+    described as "penalty regime 2" in the MVCAPA article [1]_, suitable for detecting
+    sparse anomalies in the data. Sparse anomalies only affect a few variables.
 
     Parameters
     ----------
