@@ -41,10 +41,10 @@ class NonlinearChiSquarePenalty(BasePenalty):
         self.n_params = n_params
         super().__init__(scale)
 
-        check_larger_than(self.n, 1, param_name="n")
-        check_larger_than(self.n_params, 1, param_name="n_params")
-        check_smaller_than(self.n_params, 2, param_name="n_params")
-        check_larger_than(self.p, 2, param_name="p")
+        check_larger_than(1, self.n, "n")
+        check_larger_than(1, self.n_params, "n_params")
+        check_smaller_than(2, self.n_params, "n_params")
+        check_larger_than(2, self.p, "p")
 
         self._base_penalty_values = self._make_penalty(n, p, n_params)
 

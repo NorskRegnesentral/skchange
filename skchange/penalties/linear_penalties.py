@@ -39,9 +39,9 @@ class LinearChiSquarePenalty(BasePenalty):
         self.n_params = n_params
         super().__init__(scale)
 
-        check_larger_than(self.n, 1, param_name="n")
-        check_larger_than(self.n_params, 1, param_name="n_params")
-        check_larger_than(self.p, 1, param_name="p")
+        check_larger_than(1, self.n, "n")
+        check_larger_than(1, self.n_params, "n_params")
+        check_larger_than(1, self.p, "p")
 
     @property
     def base_values(self) -> np.ndarray:

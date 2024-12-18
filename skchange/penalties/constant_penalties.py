@@ -11,11 +11,11 @@ class ConstantPenalty(BasePenalty):
 
     penalty_type = "constant"
 
-    def __init__(self, value: float, scale: float = 1.0):
-        self.value = value
+    def __init__(self, base_value: float, scale: float = 1.0):
+        self.base_value = base_value
         super().__init__(scale)
 
-        check_larger_than(self.value, 0.0, param_name="value")
+        check_larger_than(0.0, self.base_value, "base_value")
 
     @property
     def base_values(self) -> np.ndarray:
@@ -31,7 +31,7 @@ class ConstantPenalty(BasePenalty):
             * If ``"linear"`` or ``"nonlinear"``, the output is of shape ``(p,)``,
             where ``p`` is the number of variables/columns in the data being analysed.
         """
-        return np.array([self.value])
+        return np.array([self.base_value])
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -53,8 +53,8 @@ class ConstantPenalty(BasePenalty):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"value": 10.0, "scale": 1.0},
-            {"value": 1.0, "scale": 0.5},
+            {"base_value": 10.0, "scale": 1.0},
+            {"base_value": 1.0, "scale": 0.5},
         ]
         return params
 
@@ -84,8 +84,8 @@ class BICPenalty(BasePenalty):
         self.n_params = n_params
         super().__init__(scale)
 
-        check_larger_than(self.n, 1, param_name="n")
-        check_larger_than(self.n_params, 1, param_name="n_params")
+        check_larger_than(1, self.n, "n")
+        check_larger_than(1, self.n_params, "n_params")
 
     @property
     def base_values(self) -> np.ndarray:
@@ -159,8 +159,8 @@ class ChiSquarePenalty(BasePenalty):
         self.n_params = n_params
         super().__init__(scale)
 
-        check_larger_than(self.n, 1, param_name="n")
-        check_larger_than(self.n_params, 1, param_name="n_params")
+        check_larger_than(1, self.n, "n")
+        check_larger_than(1, self.n_params, "n_params")
 
     @property
     def base_values(self) -> np.ndarray:
