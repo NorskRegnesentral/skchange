@@ -298,11 +298,12 @@ fixed_point_mle_cov_matrix, num_fixed_point_iters = (
     )
 )
 
-# spd_manifold = pm.manifolds.positive_definite.SymmetricPositiveDefinite(n=p)
+spd_manifold = pm.manifolds.positive_definite.SymmetricPositiveDefinite(n=p)
 newton_mle_cov_matrix, num_newton_iters = mv_t_newton_mle_covariance_matrix(
     centered_samples,
     t_dof,
     retraction=spd_Bures_Wasserstein_exponential,
+    # retraction=spd_manifold.retraction,
     reverse_tol=1.0e-6,
     max_iter=50,
 )
@@ -334,7 +335,11 @@ def benchmark_fixed_point():
 
 def benchmark_newton():
     return mv_t_newton_mle_covariance_matrix(
-        centered_samples, t_dof, reverse_tol=1.0e-6, max_iter=50
+        centered_samples,
+        t_dof,
+        reverse_tol=1.0e-6,
+        max_iter=50,
+        # retraction=spd_manifold.retraction,
     )
 
 
