@@ -11,31 +11,6 @@ import scipy.stats as st
 from jax import jacfwd, jacrev
 from scipy.linalg import solve_continuous_lyapunov
 
-
-def spd_Bures_Wasserstein_exponential(p: np.ndarray, X: np.ndarray) -> np.ndarray:
-    """Compute the Bures-Wasserstein exponential map on the SPD manifold.
-
-    Parameters
-    ----------
-    p : np.ndarray
-        The base point on the SPD manifold. Must be symmetric positive definite.
-    X : np.ndarray
-        The tangent vector at the base point. Must be symmetric.
-
-    Returns
-    -------
-    np.ndarray
-        The exponential map of the tangent vector at the base point.
-    """
-    result_q = p.copy()
-    result_q += X
-
-    lyapunov_sol = solve_continuous_lyapunov(p, X)
-    result_q += lyapunov_sol @ p @ lyapunov_sol
-
-    return result_q
-
-
 np.random.seed(42)
 
 n_samples = 1000
@@ -158,7 +133,7 @@ def mle_cov_residual_einsum_jax(
     # Compute 'n' quadratic forms: (n, p) @ (p, p) @ (p, n) -> (n,)
     z_scores = jnp.einsum("ij,jk,ki->i", centered_samples, inv_cov, centered_samples.T)
     X: np.ndarray
-    X = jsp.linalg.solve(cov_2d, centered_samples.T, sym_pos=True)
+    X = jsp.linalg.solve(cov_2d, centered_samples.T, assume_a="pos")
     z_scores = jnp.sum(centered_samples * X.T, axis=1)
     scales = (p + dof) / (dof + z_scores)
 
@@ -424,7 +399,9 @@ la.norm(old_mle_residual), la.norm(new_mle_residual)
 
 # %% Perform root finding with Newton's method, until convergence (la.norm < 1e-3):
 # Initialize variables
-cov_current = cov.copy()
+
+# cov_current = cov.copy()
+cov_current = centered_samples.T @ centered_samples / n_samples
 tol = 1e-3
 max_iter = 100
 
