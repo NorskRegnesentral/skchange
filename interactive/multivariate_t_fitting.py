@@ -250,13 +250,34 @@ def estimate_mv_t_dof(centered_samples: np.ndarray) -> float:
     return t_dof
 
 
+# %%
+def ellipitical_kurtosis_from_samples(centered_samples: np.ndarray) -> float:
+    """Compute the kurtosis of a set of samples.
+
+    From:
+    Shrinking the eigenvalues of M-estimators of covariance matrix,
+    subsection IV-A.
+    by: Esa Ollila, Daniel P. Palomar, and Frédéric Pascal
+    """
+    kurtosis_per_dim = st.kurtosis(centered_samples, axis=0)
+    averaged_kurtosis = kurtosis_per_dim.mean()
+    return averaged_kurtosis / 3.0
+
+
+def kurtosis_t_dof_estimate(centered_samples: np.ndarray) -> float:
+    """Estimate the degrees of freedom of a multivariate t-distribution."""
+    ellipitical_kurtosis = ellipitical_kurtosis_from_samples(centered_samples)
+    t_dof = 2.0 / max(1.0e-3, ellipitical_kurtosis) + 4.0
+    return t_dof
+
+
 # %% Generate some data from a multivariate t-distribution:
 # np.random.seed(42)
-np.random.seed(14)
+np.random.seed(40)
 
 n_samples = 1000
 p = 3
-t_dof = 4.0
+t_dof = 12.0
 
 # Spd covariance matrix:
 random_nudge = np.random.randn(p).reshape(-1, 1)
@@ -275,9 +296,19 @@ centered_samples = mv_t_samples - sample_medians
 sample_covariance_matrix = centered_samples.T @ centered_samples / n_samples
 
 estimated_t_dof = estimate_mv_t_dof(centered_samples)
+kurtosis_t_dof = kurtosis_t_dof_estimate(centered_samples)
+avg_t_dof = (estimated_t_dof + kurtosis_t_dof) / 2.0
+geo_mean_t_dof = np.sqrt(estimated_t_dof * kurtosis_t_dof)
 
 print(f"True degrees of freedom: {t_dof}")
-print(f"Estimated degrees of freedom: {estimated_t_dof}")
+print(f"(visual) Estimated degrees of freedom: {estimated_t_dof}")
+print(f"Kurtosis-based estimate: {kurtosis_t_dof}")
+print(f"Average estimate: {avg_t_dof}")
+
+# Cheap and good compromise between the two estimates:
+# One estimate is biased up for low dof (kurtosis),
+# and the other is biased down at high dof (visual).
+print(f"Geometric mean estimate: {geo_mean_t_dof}")
 
 
 # %%
