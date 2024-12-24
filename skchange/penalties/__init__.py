@@ -7,6 +7,7 @@ from skchange.penalties.constant_penalties import (
     ChiSquarePenalty,
     ConstantPenalty,
 )
+from skchange.penalties.conversion import as_constant_penalty
 from skchange.penalties.linear_penalties import LinearChiSquarePenalty
 from skchange.penalties.nonlinear_penalties import NonlinearChiSquarePenalty
 
@@ -27,4 +28,5 @@ __all__ = [
     "LinearChiSquarePenalty",
     "MinimumPenalty",
     "NonlinearChiSquarePenalty",
+    "as_constant_penalty",
 ]
