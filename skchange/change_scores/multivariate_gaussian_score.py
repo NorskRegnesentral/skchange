@@ -266,7 +266,7 @@ class MultivariateGaussianScore(BaseChangeScore):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"apply_bartlett_correction": True},
             {"apply_bartlett_correction": False},
+            {"apply_bartlett_correction": True},
         ]
         return params
