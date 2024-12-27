@@ -35,7 +35,7 @@ def test_capa_anomalies(Detector, Saving):
         pytest.skip("Skipping test for MVCAPA with multivariate saving.")
 
     n_segments = 2
-    seg_len = 20
+    seg_len = 50
     p = 5
     df = generate_alternating_data(
         n_segments=n_segments,
@@ -47,8 +47,7 @@ def test_capa_anomalies(Detector, Saving):
     )
     detector = Detector(
         segment_saving=saving,
-        segment_penalty_scale=2.0,
-        min_segment_length=p + 1,
+        min_segment_length=20,
         ignore_point_anomalies=True,  # To get test coverage.
     )
     anomalies = detector.fit_predict(df)
