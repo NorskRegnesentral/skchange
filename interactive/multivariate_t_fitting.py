@@ -111,7 +111,7 @@ mle_1d_cov_residual = mle_1d_cov_residual_chol_solve_jax
 jac_mle_1d_cov_residual = jacfwd(mle_1d_cov_residual, argnums=0)
 
 
-def mv_t_newton_mle_covariance_matrix(
+def mv_t_newton_mle_covariance_matrix_old(
     centered_samples: np.ndarray,
     t_dof: float,
     retraction: Callable = spd_Bures_Wasserstein_exponential,
@@ -156,6 +156,91 @@ def mv_t_newton_mle_covariance_matrix(
         )
 
         # Solve for Newton  step:
+        newton_step = la.solve(flat_cov_jacobian, flat_residual)
+
+        # Retract the step back to the manifold:
+        tangent_matrix = newton_step.reshape(p, p)
+        tangent_matrix = 0.5 * (tangent_matrix + tangent_matrix.T)
+
+        new_cov = retraction(covariance_2d, -tangent_matrix)
+        covariance_2d = new_cov
+
+    return covariance_2d, i
+
+
+def mv_t_newton_mle_covariance_matrix(
+    centered_samples: np.ndarray,
+    t_dof: float,
+    retraction: Callable = spd_Bures_Wasserstein_exponential,
+    reverse_tol: float = 1.0e-3,
+    max_iter: int = 20,
+) -> np.ndarray:
+    """Compute the MLE covariance matrix for a multivariate t-distribution.
+
+    Parameters
+    ----------
+    centered_samples : np.ndarray
+        The centered samples from the multivariate t-distribution.
+    dof : float
+        The degrees of freedom of the multivariate t-distribution.
+
+    Returns
+    -------
+    np.ndarray
+        The MLE covariance matrix of the multivariate t-distribution.
+    """
+    n, p = centered_samples.shape
+
+    covariance_2d: np.ndarray
+    covariance_2d = centered_samples.T @ centered_samples / n
+
+    alpha_estimate = estimate_mle_cov_scale(centered_samples, t_dof)
+    contraction_estimate = alpha_estimate * p / np.trace(sample_covariance_matrix)
+    covariance_2d *= contraction_estimate
+
+    mle_covariance, iteration_count = mv_t_newton_iterations(
+        covariance_2d,
+        t_dof,
+        max_iter=max_iter,
+        retraction=retraction,
+        reverse_tol=reverse_tol,
+    )
+
+    return mle_covariance, iteration_count
+
+
+def mv_t_newton_iterations(
+    initial_cov_matrix: np.ndarray,
+    t_dof,
+    max_iter=20,
+    retraction=spd_Bures_Wasserstein_exponential,
+    reverse_tol=1.0e-3,
+):
+    """Perform a single iteration of the Newton method for the MLE covariance matrix."""
+    assert initial_cov_matrix.ndim == 2
+    p, p_2 = initial_cov_matrix.shape
+    assert p == p_2
+
+    # Ensure the initial covariance matrix is positive definite, assuming the initial
+    # covariance matrix estimate is guaranteed to be positive semi-definite.
+    initial_cov_matrix += 1.0e-3 * np.eye(p)
+
+    covariance_2d = initial_cov_matrix
+    for i in range(max_iter):
+        # Compute residual and its norm
+        flat_residual = mle_1d_cov_residual(
+            covariance_2d.reshape(-1), t_dof, centered_samples
+        )
+        residual_norm = la.norm(flat_residual)
+        if residual_norm < reverse_tol:
+            break
+
+        flat_cov_jacobian = jac_mle_1d_cov_residual(
+            covariance_2d.reshape(-1), t_dof, centered_samples
+        )
+
+        # Solve for Newton  step:
+        newton_step: np.ndarray
         newton_step = la.solve(flat_cov_jacobian, flat_residual)
 
         # Retract the step back to the manifold:
@@ -238,7 +323,11 @@ def mv_t_fixed_point_mle_covariance_matrix(
 
 # %% Estimate the degrees of freedom of the multivariate t-distribution:
 def estimate_mv_t_dof(centered_samples: np.ndarray) -> float:
-    """Estimate the degrees of freedom of a multivariate t-distribution."""
+    """Estimate the degrees of freedom of a multivariate t-distribution.
+
+    From: A Novel Parameter Estimation Algorithm for the Multivariate
+          t-Distribution and Its Application to Computer Vision.
+    """
     p = centered_samples.shape[1]
 
     log_norm_sq = np.log(np.sum(centered_samples * centered_samples, axis=1))
@@ -271,13 +360,77 @@ def kurtosis_t_dof_estimate(centered_samples: np.ndarray) -> float:
     return t_dof
 
 
+# %% Data driven estimation of the degrees of freedom of a multivariate t-distribution:
+def automatic_dda_estimate_mv_t_dof(
+    centered_samples: np.ndarray, rel_tol=5.0e-2, abs_tol=1.0e-1, max_iter=5
+) -> float:
+    """Algorithm 1: Automatic data-adaptive computation of the d.o.f. parameter nu.
+
+    From:
+    Shrinking the eigenvalues of M-estimators of covariance matrix.
+    """
+    # Initialize the degrees of freedom estimate:
+    t_dof = kurtosis_t_dof_estimate(centered_samples)
+
+    n = centered_samples.shape[0]
+    sample_covariance_estimate = centered_samples.T @ centered_samples / n
+
+    mle_cov_estimate, num_iters = mv_t_newton_mle_covariance_matrix(
+        centered_samples, t_dof
+    )
+    for i in range(max_iter):
+        nu_i = np.trace(sample_covariance_estimate) / np.trace(mle_cov_estimate)
+        old_t_dof = t_dof
+        t_dof = 2 * nu_i / max((nu_i - 1), 1.0e-5)
+        print("Iteration:", i, f"Old Degrees of freedom: {old_t_dof:.2f}")
+        print("Iteration:", i, f"New Degrees of freedom: {t_dof:.2f}")
+        mle_cov_estimate, num_iters = mv_t_newton_iterations(
+            mle_cov_estimate, t_dof, max_iter=5
+        )
+
+        absolute_dof_diff = np.abs(t_dof - old_t_dof)
+        rel_tol_criterion = absolute_dof_diff / old_t_dof < rel_tol
+        abs_tol_criterion = absolute_dof_diff < abs_tol
+        if rel_tol_criterion or abs_tol_criterion:
+            break
+
+    return t_dof
+
+
+# Compute a MLE mv-t covariance matrix when holding out
+# each of the samples in turn:
+def leave_one_out_mle_covariance_matrix(centered_samples: np.ndarray, t_dof: float):
+    """Compute the MLE covariance matrix of mv t-distribution, leaving out each sample.
+
+    From:
+    Improved estimation of the degree of freedom parameter of mv t-distribution.
+    """
+    n, p = centered_samples.shape
+
+    grand_mle_cov_matrix = mv_t_newton_mle_covariance_matrix(
+        centered_samples=centered_samples, t_dof=t_dof, max_iter=5
+    )
+
+    loo_cov_matrices = np.zeros((n, p, p))
+    for i in range(n):
+        loo_centered_samples = (
+            grand_mle_cov_matrix
+            - centered_samples[i, :, None] @ centered_samples[i, None, :]
+        )
+
+        loo_cov_matrix = loo_centered_samples.T @ loo_centered_samples / (n - 1)
+        loo_cov_matrices[i] = loo_cov_matrix
+
+    return
+
+
 # %% Generate some data from a multivariate t-distribution:
 # np.random.seed(42)
 np.random.seed(40)
 
 n_samples = 1000
-p = 3
-t_dof = 12.0
+p = 5
+t_dof = 5.0
 
 # Spd covariance matrix:
 random_nudge = np.random.randn(p).reshape(-1, 1)
@@ -300,6 +453,8 @@ kurtosis_t_dof = kurtosis_t_dof_estimate(centered_samples)
 avg_t_dof = (estimated_t_dof + kurtosis_t_dof) / 2.0
 geo_mean_t_dof = np.sqrt(estimated_t_dof * kurtosis_t_dof)
 
+automatic_dda_t_dof = automatic_dda_estimate_mv_t_dof(centered_samples)
+
 print(f"True degrees of freedom: {t_dof}")
 print(f"(visual) Estimated degrees of freedom: {estimated_t_dof}")
 print(f"Kurtosis-based estimate: {kurtosis_t_dof}")
@@ -309,6 +464,8 @@ print(f"Average estimate: {avg_t_dof}")
 # One estimate is biased up for low dof (kurtosis),
 # and the other is biased down at high dof (visual).
 print(f"Geometric mean estimate: {geo_mean_t_dof}")
+
+print(f"Automatic DDA estimate: {automatic_dda_t_dof}")
 
 
 # %%
