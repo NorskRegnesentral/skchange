@@ -45,3 +45,6 @@ def check_constant_penalty(
 
     if not allow_none and penalty is None:
         raise ValueError("penalty cannot be None.")
+
+    if isinstance(penalty, Number) and penalty < 0:
+        raise ValueError("penalty must be non-negative.")
