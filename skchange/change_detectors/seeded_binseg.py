@@ -110,16 +110,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
     change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
-    threshold_scale : float, default=2.0
-        Scaling factor for the threshold. The threshold is set to
-        ``threshold_scale * 2 * p * np.sqrt(np.log(n))``, where ``n`` is the sample size
-        and ``p`` is the number of variables. If ``None``, the threshold is tuned on the
-        data input to `fit`.
-    level : float, default=0.01
-        If `threshold_scale` is ``None``, the threshold is set to the
-        ``1-level`` quantile of the changepoint scores of all the seeded intervals on
-        the training data. For this to be correct, the training data must contain no
-        changepoints.
+    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+        The penalty to use for the changepoint detection. If a float is given, it is
+        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
+        penalty with ``n=X.shape[0]`` and
+        ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
+        data to `fit`.
     min_segment_length : int, default=5
         Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int, default=200
