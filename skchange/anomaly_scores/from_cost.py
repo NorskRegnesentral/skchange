@@ -217,6 +217,19 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         """Minimum valid size of the interval to evaluate."""
         return self.cost.min_size
 
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters to estimate over each interval.
+
+        The primary use of this method is to determine an appropriate default penalty
+        value in detectors.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return self.cost.get_param_size(p)
+
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
 
