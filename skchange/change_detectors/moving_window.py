@@ -11,10 +11,12 @@ import pandas as pd
 from skchange.change_detectors import BaseChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
+from skchange.penalties import BasePenalty, BICPenalty, as_constant_penalty
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
+from skchange.utils.validation.penalties import check_constant_penalty
 
 
 @njit
@@ -63,21 +65,16 @@ class MovingWindow(BaseChangeDetector):
     change_score : BaseChangeScore or BaseCost, optional, default=`CUSUM()`
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
+    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+        The penalty to use for the changepoint detection. If a float is given, it is
+        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
+        penalty with ``n=X.shape[0]`` and
+        ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
+        data to `fit`.
     bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
         test statistic. For ``"mean"``, the minimum bandwidth is 1.
-    threshold_scale : float, default=2.0
-        Scaling factor for the threshold. The threshold is set to
-        ``threshold_scale * default_threshold``, where the default threshold depends on
-        the number of samples, the number of variables, `bandwidth` and `level`.
-        If ``None``, the threshold is tuned on the input data to `fit`.
-    level : float, default=0.01
-        If `threshold_scale` is ``None``, the threshold is set to the
-        ``1-level`` quantile of the changepoint score on the training data. For this
-        to be correct, the training data must contain no changepoints. If
-        `threshold_scale` is a number, `level` is used in the default threshold,
-        _before_ scaling.
     min_detection_interval : int, default=1
         Minimum number of consecutive scores above the threshold to be considered a
         changepoint. Must be between ``1`` and ``bandwidth/2``.
@@ -110,100 +107,26 @@ class MovingWindow(BaseChangeDetector):
     def __init__(
         self,
         change_score: Optional[Union[BaseChangeScore, BaseCost]] = None,
+        penalty: Union[BasePenalty, float, None] = None,
         bandwidth: int = 30,
-        threshold_scale: Optional[float] = 2.0,
-        level: float = 0.01,
         min_detection_interval: int = 1,
     ):
         self.change_score = change_score
+        self.penalty = penalty
         self.bandwidth = bandwidth
-        self.threshold_scale = threshold_scale  # Just holds the input value.
-        self.level = level
         self.min_detection_interval = min_detection_interval
         super().__init__()
 
         _change_score = CUSUM() if change_score is None else change_score
         self._change_score = to_change_score(_change_score)
 
+        check_constant_penalty(self.penalty, caller=self, allow_none=True)
         check_larger_than(1, self.bandwidth, "bandwidth")
-        check_larger_than(0, threshold_scale, "threshold_scale", allow_none=True)
-        check_larger_than(0, self.level, "level")
         check_in_interval(
             pd.Interval(1, max(1, self.bandwidth / 2 - 1), closed="both"),
             self.min_detection_interval,
             "min_detection_interval",
         )
-
-    def _tune_threshold(self, X: pd.DataFrame) -> float:
-        """Tune the threshold for the MovingWindow algorithm.
-
-        The threshold is set to the ``1-level`` quantile of the score on the training
-        data `X`. For this to be correct, the training data must contain no
-        changepoints.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Training data to tune the threshold on.
-        """
-        # TODO: Find the threshold given an input number `k` of "permitted" changepoints
-        # in the training data. This can be achieved by filtering out the top `k` peaks
-        # of the score.
-
-        scores = moving_window_transform(
-            X.values,
-            self._change_score,
-            self.bandwidth,
-        )
-        tuned_threshold = np.quantile(scores, 1 - self.level)
-        return tuned_threshold
-
-    @staticmethod
-    def get_default_threshold(
-        n: int, p: int, bandwidth: int, level: float = 0.01
-    ) -> float:
-        """Get the default threshold for the MovingWindow algorithm.
-
-        It is the asymptotic critical value of the univariate 'mean' test statitic,
-        multiplied by `p` to account for the multivariate case.
-
-        Parameters
-        ----------
-        n : int
-            Sample size.
-        p : int
-            Number of variables.
-        bandwidth : int
-            Bandwidth.
-        level : float, optional (default=0.01)
-            Significance level for the test statistic.
-
-        Returns
-        -------
-        threshold : float
-            Threshold value.
-        """
-        u = n / bandwidth
-        a = np.sqrt(2 * np.log(u))
-        b = (
-            2 * np.log(u)
-            + 1 / 2 * np.log(np.log(u))
-            + np.log(3 / 2)
-            - 1 / 2 * np.log(np.pi)
-        )
-        c = -np.log(np.log(1 / np.sqrt(1 - level)))
-        # TODO: Check if it's correct to multiply by p.
-        return p * (b + c) / a
-
-    def _get_threshold(self, X: pd.DataFrame) -> float:
-        if self.threshold_scale is None:
-            return self._tune_threshold(X)
-        else:
-            n = X.shape[0]
-            p = X.shape[1]
-            return self.threshold_scale * self.get_default_threshold(
-                n, p, self.bandwidth, self.level
-            )
 
     def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -241,7 +164,16 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self.threshold_ = self._get_threshold(X)
+
+        n = X.shape[0]
+        p = X.shape[1]
+        n_params = self._change_score.get_param_size(p)
+        self.penalty_ = (
+            BICPenalty(n, n_params)
+            if self.penalty is None
+            else as_constant_penalty(self.penalty)
+        )
+
         return self
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -285,7 +217,7 @@ class MovingWindow(BaseChangeDetector):
         """
         self.scores = self.transform_scores(X)
         changepoints = get_moving_window_changepoints(
-            self.scores.values, self.threshold_, self.min_detection_interval
+            self.scores.values, self.penalty_.values[0], self.min_detection_interval
         )
         return self._format_sparse_output(changepoints)
 
@@ -308,10 +240,10 @@ class MovingWindow(BaseChangeDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs import L2Cost
+        from skchange.costs import GaussianCost, L2Cost
 
         params = [
-            {"change_score": L2Cost(), "bandwidth": 5, "threshold_scale": 5.0},
-            {"change_score": L2Cost(), "bandwidth": 5, "threshold_scale": None},
+            {"change_score": L2Cost(), "bandwidth": 5, "penalty": 20},
+            {"change_score": GaussianCost(), "bandwidth": 5, "penalty": 30},
         ]
         return params
