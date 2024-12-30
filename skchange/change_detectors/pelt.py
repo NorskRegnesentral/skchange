@@ -11,11 +11,10 @@ import pandas as pd
 
 from skchange.change_detectors import BaseChangeDetector
 from skchange.costs import BaseCost, L2Cost
-from skchange.penalties import BasePenalty, BICPenalty, as_constant_penalty
+from skchange.penalties import BasePenalty, BICPenalty, as_penalty
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
-from skchange.utils.validation.penalties import check_constant_penalty
 
 
 @njit
@@ -169,7 +168,9 @@ class PELT(BaseChangeDetector):
         super().__init__()
 
         self._cost = L2Cost() if cost is None else cost
-        check_constant_penalty(self.penalty, caller=self, allow_none=True)
+        self._penalty = as_penalty(
+            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        )
         check_larger_than(1, min_segment_length, "min_segment_length")
 
     def _fit(
@@ -209,16 +210,7 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-
-        n = X.shape[0]
-        p = X.shape[1]
-        n_params = self.cost.get_param_size(p)
-        self.penalty_ = (
-            BICPenalty(n, n_params)
-            if self.penalty is None
-            else as_constant_penalty(self.penalty)
-        )
-
+        self.penalty_ = self._penalty.fit(X, self._cost)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:

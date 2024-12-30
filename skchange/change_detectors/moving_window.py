@@ -11,12 +11,11 @@ import pandas as pd
 from skchange.change_detectors import BaseChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
-from skchange.penalties import BasePenalty, BICPenalty, as_constant_penalty
+from skchange.penalties import BasePenalty, BICPenalty, as_penalty
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import where
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
-from skchange.utils.validation.penalties import check_constant_penalty
 
 
 @njit
@@ -120,7 +119,10 @@ class MovingWindow(BaseChangeDetector):
         _change_score = CUSUM() if change_score is None else change_score
         self._change_score = to_change_score(_change_score)
 
-        check_constant_penalty(self.penalty, caller=self, allow_none=True)
+        self._penalty = as_penalty(
+            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        )
+
         check_larger_than(1, self.bandwidth, "bandwidth")
         check_in_interval(
             pd.Interval(1, max(1, self.bandwidth / 2 - 1), closed="both"),
@@ -164,16 +166,7 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-
-        n = X.shape[0]
-        p = X.shape[1]
-        n_params = self._change_score.get_param_size(p)
-        self.penalty_ = (
-            BICPenalty(n, n_params)
-            if self.penalty is None
-            else as_constant_penalty(self.penalty)
-        )
-
+        self.penalty_ = self._penalty.fit(X, self._change_score)
         return self
 
     def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
