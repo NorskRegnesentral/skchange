@@ -18,7 +18,7 @@ class ConstantPenalty(BasePenalty):
         check_larger_than(0.0, self.base_value, "base_value")
 
     @property
-    def base_values(self) -> np.ndarray:
+    def _base_values(self) -> np.ndarray:
         """Get the base penalty values.
 
         Returns
@@ -31,7 +31,7 @@ class ConstantPenalty(BasePenalty):
             * If ``"linear"`` or ``"nonlinear"``, the output is of shape ``(p,)``,
             where ``p`` is the number of variables/columns in the data being analysed.
         """
-        return np.array([self.base_value])
+        return self.base_value
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -69,26 +69,17 @@ class BICPenalty(BasePenalty):
 
     Parameters
     ----------
-    n : int
-        Sample size.
-    n_params : int
-        Number of parameters per segment in the model across all variables.
     scale : float, optional, default=1.0
         Scaling factor for the penalty.
     """
 
     penalty_type = "constant"
 
-    def __init__(self, n: int, n_params: int, scale: float = 1.0):
-        self.n = n
-        self.n_params = n_params
+    def __init__(self, scale: float = 1.0):
         super().__init__(scale)
 
-        check_larger_than(1, self.n, "n")
-        check_larger_than(1, self.n_params, "n_params")
-
     @property
-    def base_values(self) -> np.ndarray:
+    def _base_values(self) -> np.ndarray:
         """Get the base penalty values.
 
         Returns
@@ -97,8 +88,8 @@ class BICPenalty(BasePenalty):
             Shape ``(1,)`` array with the base (unscaled) penalty values.
         """
         # +1 due to the additional change point parameter in the model.
-        base_penalty = (self.n_params + 1) * np.log(self.n)
-        return np.array([base_penalty])
+        base_penalty = (self.n_params_total + 1) * np.log(self.n)
+        return base_penalty
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -120,8 +111,8 @@ class BICPenalty(BasePenalty):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"n": 100, "n_params": 1, "scale": 1.0},
-            {"n": 1000, "n_params": 2, "scale": 0.5},
+            {"scale": 1.0},
+            {"scale": 0.5},
         ]
         return params
 
@@ -138,10 +129,6 @@ class ChiSquarePenalty(BasePenalty):
 
     Parameters
     ----------
-    n : int
-        Sample size.
-    n_params : int
-        Number of parameters per segment in the model across all variables.
     scale : float, optional, default=1.0
         Scaling factor for the penalty.
 
@@ -154,16 +141,11 @@ class ChiSquarePenalty(BasePenalty):
 
     penalty_type = "constant"
 
-    def __init__(self, n: int, n_params: int, scale: float = 1.0):
-        self.n = n
-        self.n_params = n_params
+    def __init__(self, scale: float = 1.0):
         super().__init__(scale)
 
-        check_larger_than(1, self.n, "n")
-        check_larger_than(1, self.n_params, "n_params")
-
     @property
-    def base_values(self) -> np.ndarray:
+    def _base_values(self) -> np.ndarray:
         """Get the base penalty values.
 
         Returns
@@ -172,8 +154,10 @@ class ChiSquarePenalty(BasePenalty):
             Shape ``(1,)`` array with the base (unscaled) penalty values.
         """
         psi = np.log(self.n)
-        base_penalty = self.n_params + 2 * np.sqrt(self.n_params * psi) + 2 * psi
-        return np.array([base_penalty])
+        base_penalty = (
+            self.n_params_total + 2 * np.sqrt(self.n_params_total * psi) + 2 * psi
+        )
+        return base_penalty
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -195,7 +179,7 @@ class ChiSquarePenalty(BasePenalty):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"n": 100, "n_params": 1, "scale": 1.0},
-            {"n": 1000, "n_params": 2, "scale": 0.5},
+            {"scale": 1.0},
+            {"scale": 0.5},
         ]
         return params

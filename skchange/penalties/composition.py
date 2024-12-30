@@ -1,7 +1,11 @@
 """Composite penalties for change and anomaly detection."""
 
-import numpy as np
+from typing import Union
 
+import numpy as np
+import pandas as pd
+
+from skchange.base import BaseIntervalScorer
 from skchange.penalties.base import BasePenalty
 
 
@@ -26,8 +30,8 @@ class MinimumPenalty(BasePenalty):
         super().__init__(scale)
         self.penalties = penalties
 
-        if len(penalties) < 2:
-            raise ValueError("penalties must contain at least two penalties")
+        if len(penalties) < 1:
+            raise ValueError("penalties must contain at least one penalty")
 
         self._penalty_types = [penalty.penalty_type for penalty in self.penalties]
         if "nonlinear" in self._penalty_types:
@@ -37,23 +41,38 @@ class MinimumPenalty(BasePenalty):
         else:
             self.penalty_type = "constant"
 
-        ps = [getattr(penalty, "p", 1) for penalty in self.penalties]
-        unique_ps = np.unique(ps)
-        if unique_ps.size > 2 or (unique_ps.size == 2 and 1 not in unique_ps):
-            raise ValueError(
-                "All non-constant penalties must be configured for the same number of"
-                " variables `p`"
-            )
-        self.p = max(ps)
+    def _fit(
+        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+    ) -> "BasePenalty":
+        """Fit the penalty to data and a scorer.
 
-        # Compute the pointwise minimum of the base penalty values here to avoid
-        # recomputing it at each call to `values`.
-        self._min_penalties = self.penalties[0].base_values
-        for penalty in self.penalties[1:]:
-            self._min_penalties = np.minimum(self._min_penalties, penalty.base_values)
+        This method should be implemented if more fitting is needed than just obtaining
+        the number of samples and variables in the data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame, pd.Series or np.ndarray
+            The data to fit the penalty to.
+        scorer : BaseIntervalScorer
+            The interval scorer to fit the penalty to.
+
+        Returns
+        -------
+        self
+            Reference to self.
+        """
+        self.penalties[0].set_params(scale=1)
+        self.penalties[0].fit(X, scorer)
+        self._min_penalties = self.penalties[0].values
+        if len(self.penalties) > 1:
+            for penalty in self.penalties[1:]:
+                penalty.set_params(scale=1)
+                penalty.fit(X, scorer)
+                self._min_penalties = np.minimum(self._min_penalties, penalty.values)
+        return self
 
     @property
-    def base_values(self) -> np.ndarray:
+    def _base_values(self) -> np.ndarray:
         """Get the base penalty values.
 
         Returns
@@ -94,9 +113,9 @@ class MinimumPenalty(BasePenalty):
         )
 
         penalties = [
-            ChiSquarePenalty(100, 10, 1),
-            LinearChiSquarePenalty(100, 10, 1),
-            NonlinearChiSquarePenalty(100, 10, 1),
+            ChiSquarePenalty(),
+            LinearChiSquarePenalty(),
+            NonlinearChiSquarePenalty(),
         ]
 
         params = [

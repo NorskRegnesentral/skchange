@@ -1,10 +1,85 @@
 """Non-linear penalties for change and anomaly detection."""
 
+from typing import Union
+
 import numpy as np
+import pandas as pd
 from scipy.stats import chi2
 
+from skchange.base import BaseIntervalScorer
 from skchange.penalties.base import BasePenalty
-from skchange.utils.validation.parameters import check_larger_than, check_smaller_than
+
+
+def check_penalty_array(penalty_array: np.ndarray) -> None:
+    """Check the base penalty values.
+
+    Parameters
+    ----------
+    penalty_array : np.ndarray
+        Shape ``(p,)`` array with penalty values, where ``p`` is
+        the number of variables/columns in the data being analysed. Element ``i`` of
+        the array is the base penalty value for ``i+1`` variables being affected by
+        the change. The penalty array is non-decreasing.
+    """
+    if not isinstance(penalty_array, np.ndarray):
+        raise TypeError("penalty_array must be a numpy array")
+    if penalty_array.ndim != 1:
+        raise ValueError("penalty_array must be a 1D array")
+    if not np.all(penalty_array >= 0.0):
+        raise ValueError("penalty_array must be non-negative")
+    if not np.all(np.diff(penalty_array) >= 0):
+        raise ValueError("penalty_array must be non-decreasing")
+
+
+class NonlinearPenalty(BasePenalty):
+    """Non-linear penalty."""
+
+    penalty_type = "nonlinear"
+
+    def __init__(self, base_values: np.ndarray, scale: float = 1.0):
+        self.base_values = base_values
+        super().__init__(scale)
+
+        check_penalty_array(self.base_values)
+
+    @property
+    def _base_values(self) -> np.ndarray:
+        """Get the base penalty values.
+
+        Returns
+        -------
+        base_values : np.ndarray
+            Shape ``(p,)`` array with the base (unscaled) penalty values, where ``p`` is
+            the number of variables/columns in the data being analysed. Element ``i`` of
+            the array is the base penalty value for ``i+1`` variables being affected by
+            the change. The base penalty array is non-decreasing.
+        """
+        return self.base_values
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for penalties.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"base_values": np.array([1.0, 2.0, 3.0]), "scale": 1.0},
+            {"base_values": np.array([0.5, 1.0]), "scale": 0.5},
+        ]
+        return params
 
 
 class NonlinearChiSquarePenalty(BasePenalty):
@@ -35,18 +110,39 @@ class NonlinearChiSquarePenalty(BasePenalty):
 
     penalty_type = "nonlinear"
 
-    def __init__(self, n: int, p: int, n_params: int = 1, scale: float = 1.0):
-        self.n = n
-        self.p = p
-        self.n_params = n_params
+    def __init__(self, scale: float = 1.0):
         super().__init__(scale)
 
-        check_larger_than(1, self.n, "n")
-        check_larger_than(1, self.n_params, "n_params")
-        check_smaller_than(2, self.n_params, "n_params")
-        check_larger_than(2, self.p, "p")
+    def _fit(
+        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+    ) -> "BasePenalty":
+        """Fit the penalty to data and a scorer.
 
-        self._base_penalty_values = self._make_penalty(n, p, n_params)
+        This method should be implemented if more fitting is needed than just obtaining
+        the number of samples and variables in the data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame, pd.Series or np.ndarray
+            The data to fit the penalty to.
+        scorer : BaseIntervalScorer
+            The interval scorer to fit the penalty to.
+
+        Returns
+        -------
+        self
+            Reference to self.
+        """
+        if self.n_params_per_variable > 2:
+            raise ValueError(
+                "NonlinearChiSquarePenalty can only be used with scorers that have at"
+                " most 2 parameters per variable (scorer.get_param_size(1) <= 2)"
+            )
+
+        self._base_penalty_values = self._make_penalty(
+            self.n, self.p, self.n_params_per_variable
+        )
+        return self
 
     def _make_penalty(self, n: int, p: int, n_params: int) -> np.ndarray:
         def penalty_func(j: int) -> float:
@@ -69,7 +165,7 @@ class NonlinearChiSquarePenalty(BasePenalty):
         return penalties
 
     @property
-    def base_values(self) -> np.ndarray:
+    def _base_values(self) -> np.ndarray:
         """Get the base penalty values.
 
         Returns
@@ -102,7 +198,7 @@ class NonlinearChiSquarePenalty(BasePenalty):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"n": 100, "p": 10, "n_params": 1, "scale": 1.0},
-            {"n": 1000, "p": 3, "n_params": 2, "scale": 0.5},
+            {"scale": 1.0},
+            {"scale": 0.5},
         ]
         return params
