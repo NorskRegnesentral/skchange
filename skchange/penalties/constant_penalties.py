@@ -24,12 +24,7 @@ class ConstantPenalty(BasePenalty):
         Returns
         -------
         base_values : np.ndarray
-            1D array of base (unscaled) penalty values. The shape of the output depends
-            on the `penalty_type`:
-
-            * If ``"constant"``, the output is of shape ``(1,)``.
-            * If ``"linear"`` or ``"nonlinear"``, the output is of shape ``(p,)``,
-            where ``p`` is the number of variables/columns in the data being analysed.
+            Shape ``(1,)`` array with the base (unscaled) penalty values.
         """
         return self.base_value
 
