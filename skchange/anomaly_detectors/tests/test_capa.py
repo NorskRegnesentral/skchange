@@ -4,15 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors.capa import CAPA
-from skchange.anomaly_detectors.mvcapa import (
-    MVCAPA,
-    capa_penalty_factory,
-    combined_mvcapa_penalty,
-    dense_mvcapa_penalty,
-    intermediate_mvcapa_penalty,
-    sparse_mvcapa_penalty,
-)
+from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_scores import SAVINGS, Saving
 from skchange.costs import COSTS, BaseCost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
@@ -82,32 +74,3 @@ def test_mvcapa_errors():
     # Test max_segment_length must be greater than min_segment_length
     with pytest.raises(ValueError):
         MVCAPA(min_segment_length=5, max_segment_length=4)
-
-
-def test_capa_penalty_factory():
-    """Test capa_penalty_factory with different penalties."""
-    n, p, n_params_per_variable, scale = 100, 5, 1, 1.0
-
-    # Test dense penalty
-    penalty_func = capa_penalty_factory("dense")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == dense_mvcapa_penalty
-
-    # Test sparse penalty
-    penalty_func = capa_penalty_factory("sparse")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == sparse_mvcapa_penalty
-
-    # Test intermediate penalty
-    penalty_func = capa_penalty_factory("intermediate")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == intermediate_mvcapa_penalty
-
-    # Test combined penalty
-    penalty_func = capa_penalty_factory("combined")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == combined_mvcapa_penalty
-
-    # Test unknown penalty
-    with pytest.raises(ValueError):
-        capa_penalty_factory("unknown")
