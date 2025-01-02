@@ -12,11 +12,10 @@ from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.anomaly_scores import BaseLocalAnomalyScore, to_local_anomaly_score
 from skchange.change_detectors.seeded_binseg import make_seeded_intervals
 from skchange.costs import BaseCost, L2Cost
-from skchange.penalties import BasePenalty, BICPenalty, as_constant_penalty
+from skchange.penalties import BasePenalty, BICPenalty, as_penalty
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
-from skchange.utils.validation.penalties import check_constant_penalty
 
 
 @njit
@@ -190,7 +189,10 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         _anomaly_score = L2Cost() if anomaly_score is None else anomaly_score
         self._anomaly_score = to_local_anomaly_score(_anomaly_score)
 
-        check_constant_penalty(self.penalty, caller=self, allow_none=True)
+        self._penalty = as_penalty(
+            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        )
+
         check_larger_than(1.0, self.min_segment_length, "min_segment_length")
         check_larger_than(
             2 * self.min_segment_length, self.max_interval_length, "max_interval_length"
@@ -234,16 +236,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
-
-        n = X.shape[0]
-        p = X.shape[1]
-        n_params = self._anomaly_score.get_param_size(p)
-        self.penalty_ = (
-            BICPenalty(n, n_params)
-            if self.penalty is None
-            else as_constant_penalty(self.penalty)
-        )
-
+        self.penalty_ = self._penalty.fit(X, self._anomaly_score)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
