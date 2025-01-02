@@ -44,6 +44,40 @@ class NonlinearPenalty(BasePenalty):
 
         check_penalty_array(self.base_values)
 
+    def _fit(
+        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+    ) -> "BasePenalty":
+        """Fit the penalty to data and a scorer.
+
+        This method should be implemented if more fitting is needed than just obtaining
+        the number of samples and variables in the data.
+
+        Parameters
+        ----------
+        X : pd.DataFrame, pd.Series or np.ndarray
+            The data to fit the penalty to.
+        scorer : BaseIntervalScorer
+            The interval scorer to fit the penalty to.
+
+        Returns
+        -------
+        self
+            Reference to self.
+        """
+        p = X.shape[1]
+        if p == 1:
+            self.base_values_ = np.array([self.base_values[-1]])
+        elif self.base_values.size != p:
+            self.base_values_ = np.interp(
+                np.linspace(0, self.base_values.size - 1, p),
+                np.arange(self.base_values.size),
+                self.base_values,
+            )
+        else:
+            self.base_values_ = self.base_values
+
+        return self
+
     @property
     def _base_values(self) -> np.ndarray:
         """Get the base penalty values.
@@ -56,7 +90,7 @@ class NonlinearPenalty(BasePenalty):
             the array is the base penalty value for ``i+1`` variables being affected by
             the change. The base penalty array is non-decreasing.
         """
-        return self.base_values
+        return self.base_values_
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -78,7 +112,7 @@ class NonlinearPenalty(BasePenalty):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"base_values": np.array([1.0, 2.0, 3.0]), "scale": 1.0},
+            {"base_values": np.array([1.0, 2.0, 3.0, 5.0, 5.0]), "scale": 1.0},
             {"base_values": np.array([0.5, 1.0]), "scale": 0.5},
         ]
         return params
