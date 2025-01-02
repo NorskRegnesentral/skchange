@@ -66,7 +66,7 @@ def run_capa(
         starts = np.concatenate((starts, t_array - min_segment_length + 1))
         ends = np.repeat(t + 1, len(starts))
         intervals = np.column_stack((starts, ends))
-        segment_savings = segment_penalised_saving.evaluate(intervals)
+        segment_savings = segment_penalised_saving.evaluate(intervals).flatten()
         candidate_savings = opt_savings[starts] + segment_savings
         candidate_argmax = np.argmax(candidate_savings)
         opt_segment_saving = candidate_savings[candidate_argmax]
@@ -74,7 +74,7 @@ def run_capa(
 
         # Point anomalies
         point_interval = np.column_stack((t_array, t_array + 1))
-        point_savings = point_penalised_saving.evaluate(point_interval)
+        point_savings = point_penalised_saving.evaluate(point_interval).flatten()
         opt_point_saving = opt_savings[t] + point_savings[0]
 
         # Combine and store results
