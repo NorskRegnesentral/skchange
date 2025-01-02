@@ -25,6 +25,8 @@ def check_penalty_array(penalty_array: np.ndarray) -> None:
         raise TypeError("penalty_array must be a numpy array")
     if penalty_array.ndim != 1:
         raise ValueError("penalty_array must be a 1D array")
+    if penalty_array.size < 1:
+        raise ValueError("penalty_array must have at least one element")
     if not np.all(penalty_array >= 0.0):
         raise ValueError("penalty_array must be non-negative")
     if not np.all(np.diff(penalty_array) >= 0):
