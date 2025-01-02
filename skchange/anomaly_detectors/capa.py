@@ -9,38 +9,93 @@ import numpy as np
 import pandas as pd
 
 from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
-from skchange.anomaly_detectors.mvcapa import run_base_capa
 from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
+from skchange.compose import PenalisedScore
 from skchange.costs import BaseCost
-from skchange.penalties import BasePenalty, ChiSquarePenalty, as_constant_penalty
+from skchange.penalties import BasePenalty, ChiSquarePenalty, as_penalty
+from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
-from skchange.utils.validation.penalties import check_constant_penalty
+
+
+@njit
+def get_anomalies(
+    anomaly_starts: np.ndarray,
+) -> tuple[list[tuple[int, int]], list[tuple[int, int]]]:
+    segment_anomalies = []
+    point_anomalies = []
+    i = anomaly_starts.size - 1
+    while i >= 0:
+        start_i = anomaly_starts[i]
+        size = i - start_i + 1
+        if size > 1:
+            segment_anomalies.append((int(start_i), i + 1))
+            i = int(start_i)
+        elif size == 1:
+            point_anomalies.append((i, i + 1))
+        i -= 1
+    return segment_anomalies, point_anomalies
 
 
 def run_capa(
     X: np.ndarray,
     segment_saving: BaseSaving,
     point_saving: BaseSaving,
-    segment_alpha: float,
-    point_alpha: float,
+    segment_penalty: BasePenalty,
+    point_penalty: BasePenalty,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    segment_betas = np.zeros(1)
-    point_betas = np.zeros(1)
-    segment_saving.fit(X)
-    point_saving.fit(X)
-    return run_base_capa(
-        segment_saving,
-        point_saving,
-        segment_alpha,
-        segment_betas,
-        point_alpha,
-        point_betas,
-        min_segment_length,
-        max_segment_length,
-    )
+    segment_penalised_saving = PenalisedScore(segment_saving, segment_penalty)
+    point_penalised_saving = PenalisedScore(point_saving, point_penalty)
+    segment_penalised_saving.fit(X)
+    point_penalised_saving.fit(X)
+
+    n = segment_penalised_saving._X.shape[0]
+    opt_savings = np.zeros(n + 1)
+    # Store the optimal start and affected components of an anomaly for each t.
+    # Used to get the final set of anomalies after the loop.
+    opt_anomaly_starts = np.repeat(np.nan, n)
+    starts = np.array([], dtype=int)
+
+    ts = np.arange(min_segment_length - 1, n)
+    for t in ts:
+        # Segment anomalies
+        t_array = np.array([t])
+
+        starts = np.concatenate((starts, t_array - min_segment_length + 1))
+        ends = np.repeat(t + 1, len(starts))
+        intervals = np.column_stack((starts, ends))
+        segment_savings = segment_penalised_saving.evaluate(intervals)
+        candidate_savings = opt_savings[starts] + segment_savings
+        candidate_argmax = np.argmax(candidate_savings)
+        opt_segment_saving = candidate_savings[candidate_argmax]
+        opt_start = starts[0] + candidate_argmax
+
+        # Point anomalies
+        point_interval = np.column_stack((t_array, t_array + 1))
+        point_savings = point_penalised_saving.evaluate(point_interval)
+        opt_point_saving = opt_savings[t] + point_savings[0]
+
+        # Combine and store results
+        savings = np.array([opt_savings[t], opt_segment_saving, opt_point_saving])
+        argmax = np.argmax(savings)
+        opt_savings[t + 1] = savings[argmax]
+        if argmax == 1:
+            opt_anomaly_starts[t] = opt_start
+        elif argmax == 2:
+            opt_anomaly_starts[t] = t
+
+        # Pruning the admissible starts
+        penalty_sum = segment_penalised_saving.penalty.values[-1]
+        print(penalty_sum)
+        saving_too_low = candidate_savings + penalty_sum < opt_savings[t + 1]
+        too_long_segment = starts < t - max_segment_length + 2
+        prune = saving_too_low | too_long_segment
+        starts = starts[~prune]
+
+    segment_anomalies, point_anomalies = get_anomalies(opt_anomaly_starts)
+    return opt_savings[1:], segment_anomalies, point_anomalies
 
 
 class CAPA(BaseSegmentAnomalyDetector):
@@ -66,17 +121,13 @@ class CAPA(BaseSegmentAnomalyDetector):
         If a `BaseCost` is given, the saving function is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : Union[BasePenalty, float], optional, default=`ChiSquarePenalty`
-        The penalty to use for the changepoint detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
-        penalty with ``n=X.shape[0]`` and
-        ``n_params=segment_saving.get_param_size(X.shape[1])``,
-        where ``X`` is the input data to `fit`.
+        The penalty to use for segment anomaly detection. If a float is given, it is
+        interpreted as a constant penalty. If `None`, the default penalty is fit to the
+        input data to `fit`.
     point_penalty : Union[BasePenalty, float], optional, default=`ChiSquarePenalty`
-        The penalty to use for the changepoint detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
-        penalty with ``n=X.shape[0]`` and
-        ``n_params=point_saving.get_param_size(X.shape[1])``,
-        where ``X`` is the input data to `fit`.
+        The penalty to use for point anomaly detection. If a float is given, it is
+        interpreted as a constant penalty. If `None`, the default penalty is fit to the
+        input data to `fit`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
     max_segment_length : int, optional, default=1000
@@ -149,8 +200,17 @@ class CAPA(BaseSegmentAnomalyDetector):
             raise ValueError("Point saving must have a minimum size of 1.")
         self._point_saving = to_saving(_point_saving)
 
-        check_constant_penalty(self.segment_penalty, caller=self, allow_none=True)
-        check_constant_penalty(self.point_penalty, caller=self, allow_none=True)
+        self._segment_penalty = as_penalty(
+            self.segment_penalty,
+            default=ChiSquarePenalty(),
+            require_penalty_type="constant",
+        )
+        self._point_penalty = as_penalty(
+            self.point_penalty,
+            default=ChiSquarePenalty(),
+            require_penalty_type="constant",
+        )
+
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
@@ -187,21 +247,8 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-
-        n = X.shape[0]
-        p = X.shape[1]
-        segment_n_params = self._segment_saving.get_param_size(p)
-        self.segment_penalty_ = (
-            ChiSquarePenalty(n, segment_n_params)
-            if self.segment_penalty is None
-            else as_constant_penalty(self.segment_penalty)
-        )
-        point_n_params = self._point_saving.get_param_size(p)
-        self.point_penalty_ = (
-            ChiSquarePenalty(n, point_n_params)
-            if self.point_penalty is None
-            else as_constant_penalty(self.point_penalty)
-        )
+        self.segment_penalty_ = self._segment_penalty.fit(X, self._segment_saving)
+        self.point_penalty_ = self._point_penalty.fit(X, self._point_saving)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -228,8 +275,8 @@ class CAPA(BaseSegmentAnomalyDetector):
             X.values,
             self._segment_saving,
             self._point_saving,
-            self.segment_penalty_.values[0],
-            self.point_penalty_.values[0],
+            self.segment_penalty_,
+            self.point_penalty_,
             self.min_segment_length,
             self.max_segment_length,
         )
