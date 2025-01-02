@@ -180,7 +180,15 @@ class NonlinearChiSquarePenalty(BasePenalty):
         )
         return self
 
-    def _make_penalty(self, n: int, p: int, n_params: int) -> np.ndarray:
+    @staticmethod
+    def _make_penalty(n: int, p: int, n_params: int) -> np.ndarray:
+        if p == 1:
+            # This penalty is not defined for p = 1, so we return a penalty value equal
+            # to the constant ChiSquarePenalty.
+            psi = np.log(n)
+            penalties = np.array([n_params + 2 * np.sqrt(n_params * psi) + 2 * psi])
+            return penalties
+
         def penalty_func(j: int) -> float:
             psi = np.log(n)
             c_j = chi2.ppf(1 - j / p, n_params)
@@ -193,10 +201,9 @@ class NonlinearChiSquarePenalty(BasePenalty):
             )
             return penalty
 
-        penalties = np.zeros(self.p, dtype=float)
-        penalties[:-1] = np.vectorize(penalty_func)(np.arange(1, self.p))
-        # The penalty function is not defined for j = p, so we just duplicate the last
-        # value.
+        penalties = np.zeros(p, dtype=float)
+        penalties[:-1] = np.vectorize(penalty_func)(np.arange(1, p))
+        # The penalty function is not defined for j = p, so the last value is duplicated
         penalties[-1] = penalties[-2]
         return penalties
 
