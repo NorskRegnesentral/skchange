@@ -202,7 +202,7 @@ class PenalisedScore(BaseIntervalScorer):
             A 2D array of scores. One row for each row in cuts.
         """
         scores = self.scorer.evaluate(cuts)
-        return self.penalise_scores(scores, self.penalty.values)
+        return self.penalise_scores(scores, self.penalty.values).reshape(-1, 1)
 
     @property
     def min_size(self) -> int:
