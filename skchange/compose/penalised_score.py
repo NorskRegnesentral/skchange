@@ -35,6 +35,18 @@ def penalise_scores_constant(
 
 
 @njit
+def _check_nonconstant_penalties(
+    penalty_values: np.ndarray, scores: np.ndarray
+) -> None:
+    if penalty_values.size != scores.shape[1]:
+        raise ValueError("The penalty must have a value for each variable in the data.")
+    if penalty_values.size < 2:
+        raise ValueError(
+            "The penalty must have at least 2 values for the linear penalty."
+        )
+
+
+@njit
 def penalise_scores_linear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
@@ -52,12 +64,7 @@ def penalise_scores_linear(
     penalised_savings : np.ndarray
         The penalised savings
     """
-    if penalty_values.size != scores.shape[1]:
-        raise ValueError("The penalty must have a value for each variable in the data.")
-    if penalty_values.size < 2:
-        raise ValueError(
-            "The penalty must have at least 2 values for the linear penalty."
-        )
+    _check_nonconstant_penalties(penalty_values, scores)
 
     penalty_slope = penalty_values[1] - penalty_values[0]
     penalty_intercept = penalty_values[0] - penalty_slope
@@ -87,12 +94,7 @@ def penalise_scores_nonlinear(
     penalised_scores : np.ndarray
         The penalised scores
     """
-    if penalty_values.size != scores.shape[1]:
-        raise ValueError("The penalty must have a value for each variable in the data.")
-    if penalty_values.size < 2:
-        raise ValueError(
-            "The penalty must have at least 2 values for the nonlinear penalty."
-        )
+    _check_nonconstant_penalties(penalty_values, scores)
 
     penalised_scores = []
     for score in scores:
