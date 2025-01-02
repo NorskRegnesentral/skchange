@@ -99,7 +99,7 @@ class BasePenalty(BaseEstimator):
         return self.scale * base_values
 
     @property
-    def _base_values(self) -> np.ndarray | float:
+    def _base_values(self) -> Union[np.ndarray, float]:
         """Get the base penalty values.
 
         Returns
