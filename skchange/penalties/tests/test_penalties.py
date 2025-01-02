@@ -7,7 +7,7 @@ import pytest
 from skchange.change_scores import CUSUM
 from skchange.penalties import PENALTIES, BasePenalty
 
-df = pd.DataFrame(np.random.randn(100, 3), columns=["A", "B", "C"])
+df = pd.DataFrame(np.random.randn(100, 3))
 scorer = CUSUM()
 
 
@@ -37,8 +37,21 @@ def test_values(Penalty: BasePenalty):
     else:
         assert penalty.values.shape == (penalty.p,)
 
-    assert np.all(penalty.values >= 0.0)
+    # Penalties can have value = 0, but the test instances should have positive values.
+    assert np.all(penalty.values > 0.0)
+    assert np.all(np.diff(penalty.values) >= 0)
 
+
+@pytest.mark.parametrize("Penalty", PENALTIES)
+def test_values_p1(Penalty: BasePenalty):
+    penalty = Penalty.create_test_instance()
+    df_1 = pd.DataFrame(np.random.randn(100, 1))
+    penalty.fit(df_1, scorer)
+
+    assert isinstance(penalty.values, np.ndarray)
+    assert penalty.values.shape == (1,)
+    # Penalties can have value = 0, but the test instances should have positive values.
+    assert np.all(penalty.values > 0.0)
     assert np.all(np.diff(penalty.values) >= 0)
 
 
