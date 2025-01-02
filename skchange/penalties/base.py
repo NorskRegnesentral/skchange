@@ -4,13 +4,13 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from skbase.base import BaseObject
+from sktime.base import BaseEstimator
 
 from skchange.base.base_interval_scorer import BaseIntervalScorer
 from skchange.utils.validation.data import as_2d_array
 
 
-class BasePenalty(BaseObject):
+class BasePenalty(BaseEstimator):
     """Base class template for penalties.
 
     This is a common base class for penalties in skchange. It is used as an internal
@@ -92,7 +92,7 @@ class BasePenalty(BaseObject):
             Element ``i`` of the array is the penalty value for ``i+1`` variables
             being affected by the change. The penalty vector is non-decreasing.
         """
-        if not self._is_fitted:
+        if not self.is_fitted:
             raise ValueError("The penalty must be fitted before getting values.")
 
         base_values = np.atleast_1d(self._base_values)
