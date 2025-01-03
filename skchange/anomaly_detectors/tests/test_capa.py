@@ -53,6 +53,45 @@ def test_capa_anomalies(Detector, Saving):
     )
 
 
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+def test_capa_anomalies_segment_length(Detector):
+    detector = Detector.create_test_instance()
+    min_segment_length = 5
+    detector.set_params(
+        segment_penalty=0.0,
+        min_segment_length=min_segment_length,
+    )
+
+    n = 100
+    df = generate_alternating_data(n_segments=1, segment_length=n, random_state=13)
+    anomalies = detector.fit_predict(df)["ilocs"]
+
+    anomaly_lengths = anomalies.array.right - anomalies.array.left
+    assert np.all(anomaly_lengths == 5)
+
+
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+def test_capa_point_anomalies(Detector):
+    detector = Detector.create_test_instance()
+    n_segments = 2
+    seg_len = 50
+    p = 3
+    df = generate_alternating_data(
+        n_segments=n_segments,
+        mean=20,
+        segment_length=seg_len,
+        p=p,
+        random_state=134,
+    )
+    point_anomaly_iloc = 20
+    df.iloc[point_anomaly_iloc] += 50
+
+    anomalies = detector.fit_predict(df)
+    estimated_point_anomaly_iloc = anomalies["ilocs"].iloc[0]
+
+    assert point_anomaly_iloc == estimated_point_anomaly_iloc.left
+
+
 def test_mvcapa_errors():
     """Test MVCAPA error cases."""
     cov_mat = np.eye(2)
