@@ -8,7 +8,7 @@ from skchange.utils.numba import njit
 
 
 @njit
-def penalise_scores_constant(
+def _penalise_scores_constant(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
     """Penalise scores with a constant penalty.
@@ -25,29 +25,12 @@ def penalise_scores_constant(
     penalised_scores : np.ndarray
         The penalised scores.
     """
-    if penalty_values.size != 1:
-        raise ValueError(
-            "The penalty must have a single value for the constant penalty."
-        )
-
     penalised_scores = scores.sum(axis=1) - penalty_values
     return penalised_scores
 
 
 @njit
-def _check_nonconstant_penalties(
-    penalty_values: np.ndarray, scores: np.ndarray
-) -> None:
-    if penalty_values.size != scores.shape[1]:
-        raise ValueError("The penalty must have a value for each variable in the data.")
-    if penalty_values.size < 2:
-        raise ValueError(
-            "The penalty must have at least 2 values for the linear penalty."
-        )
-
-
-@njit
-def penalise_scores_linear(
+def _penalise_scores_linear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
     """Penalise scores with a linear penalty.
@@ -64,8 +47,6 @@ def penalise_scores_linear(
     penalised_savings : np.ndarray
         The penalised savings
     """
-    _check_nonconstant_penalties(penalty_values, scores)
-
     penalty_slope = penalty_values[1] - penalty_values[0]
     penalty_intercept = penalty_values[0] - penalty_slope
 
@@ -77,7 +58,7 @@ def penalise_scores_linear(
 
 
 @njit
-def penalise_scores_nonlinear(
+def _penalise_scores_nonlinear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
     """Penalise scores with a nonlinear penalty.
@@ -94,8 +75,6 @@ def penalise_scores_nonlinear(
     penalised_scores : np.ndarray
         The penalised scores
     """
-    _check_nonconstant_penalties(penalty_values, scores)
-
     penalised_scores = []
     for score in scores:
         sorted_scores = np.sort(score)[::-1]
@@ -174,16 +153,11 @@ class PenalisedScore(BaseIntervalScorer):
             self.penalty.fit(X, self.scorer)
 
         if self.penalty.penalty_type == "constant" or X.shape[1] == 1:
-            self.penalise_scores = penalise_scores_constant
+            self.penalise_scores = _penalise_scores_constant
         elif self.penalty.penalty_type == "linear":
-            self.penalise_scores = penalise_scores_linear
-        elif self.penalty.penalty_type == "nonlinear":
-            self.penalise_scores = penalise_scores_nonlinear
+            self.penalise_scores = _penalise_scores_linear
         else:
-            raise ValueError(
-                f"Unknown penalty type '{self.penalty.penalty_type}'."
-                " Must be 'constant', 'linear' or 'nonlinear'."
-            )
+            self.penalise_scores = _penalise_scores_nonlinear
 
         return self
 
