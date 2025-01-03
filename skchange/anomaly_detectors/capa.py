@@ -88,7 +88,7 @@ def run_capa(
 
         # Pruning the admissible starts
         penalty_sum = segment_penalised_saving.penalty.values[-1]
-        saving_too_low = candidate_savings + penalty_sum < opt_savings[t + 1]
+        saving_too_low = candidate_savings + penalty_sum <= opt_savings[t + 1]
         too_long_segment = starts < t - max_segment_length + 2
         prune = saving_too_low | too_long_segment
         starts = starts[~prune]
