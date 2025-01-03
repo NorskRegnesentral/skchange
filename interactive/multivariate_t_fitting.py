@@ -45,34 +45,43 @@ def spd_Bures_Wasserstein_exponential(p: np.ndarray, X: np.ndarray) -> np.ndarra
 def estimate_mle_cov_scale(centered_samples: np.ndarray, dof: float):
     """Estimate the scale parameter of the MLE covariance matrix."""
     p = centered_samples.shape[1]
-    z_bar = np.log(np.sum(centered_samples * centered_samples, axis=1)).mean()
+    squared_norms = np.sum(centered_samples * centered_samples, axis=1)
+    z_bar = np.log(squared_norms[squared_norms > 1.0e-12]).mean()
     log_alpha = z_bar - np.log(dof) + digamma(0.5 * dof) - digamma(p / 2.0)
     return np.exp(log_alpha)
 
 
 @jax.jit
 def mle_cov_residual_chol_solve_jax(
-    cov_2d: np.ndarray, dof: float, centered_samples: np.ndarray
+    cov_2d: np.ndarray,
+    dof: float,
+    centered_samples: np.ndarray,
+    num_zeroed_samples: int = 0,
 ) -> np.ndarray:
     """Compute the MLE covariance residual for a mv_t distribution."""
     n, p = centered_samples.shape
+    num_effective_samples = n - num_zeroed_samples
 
     inv_cov_2d = jsp.linalg.solve(cov_2d, jnp.eye(p), assume_a="pos")
     z_scores = jnp.einsum("ij,jk,ik->i", centered_samples, inv_cov_2d, centered_samples)
 
     scales = (p + dof) / (dof + z_scores)
     weighted_samples = centered_samples * scales[:, jnp.newaxis]
-    reconstructed_cov = weighted_samples.T @ centered_samples / n
+    reconstructed_cov = (weighted_samples.T @ centered_samples) / num_effective_samples
 
     return cov_2d - reconstructed_cov
 
 
 @jax.jit
 def mle_1d_cov_residual_chol_solve_jax(
-    cov_1d: np.ndarray, dof: float, centered_samples: np.ndarray
+    cov_1d: np.ndarray,
+    dof: float,
+    centered_samples: np.ndarray,
+    num_zeroed_samples: int = 0,
 ) -> np.ndarray:
     """Compute the MLE covariance residual for a mv_t distribution."""
-    n, p = centered_samples.shape
+    num_samples, p = centered_samples.shape
+    effective_num_samples = num_samples - num_zeroed_samples
     cov_2d = cov_1d.reshape(p, p)
 
     inv_cov_2d = jsp.linalg.solve(cov_2d, jnp.eye(p), assume_a="pos")
@@ -84,7 +93,7 @@ def mle_1d_cov_residual_chol_solve_jax(
 
     scales = (p + dof) / (dof + z_scores)
     weighted_samples = centered_samples * scales[:, jnp.newaxis]
-    reconstructed_cov = weighted_samples.T @ centered_samples / n
+    reconstructed_cov = (weighted_samples.T @ centered_samples) / effective_num_samples
 
     cov_diff = cov_2d - reconstructed_cov
     return cov_diff.reshape(-1)
@@ -94,7 +103,10 @@ def mle_1d_cov_residual_chol_solve_jax(
 def mle_1d_cov_residual_jax(
     cov_1d: np.ndarray, dof: float, centered_samples: np.ndarray
 ):
-    """Compute the MLE covariance residual for a mv_t distribution."""
+    """Compute the MLE covariance residual for a mv_t distribution.
+
+    Original version of the MLE covariance residual function.
+    """
     n, p = centered_samples.shape
     cov_2d = cov_1d.reshape(p, p)
     inv_cov = jnp.linalg.inv(cov_2d)
@@ -117,6 +129,7 @@ def mv_t_newton_mle_covariance_matrix_old(
     retraction: Callable = spd_Bures_Wasserstein_exponential,
     reverse_tol: float = 1.0e-3,
     max_iter: int = 20,
+    num_zeroed_samples: int = 0,
 ) -> np.ndarray:
     """Compute the MLE covariance matrix for a multivariate t-distribution.
 
@@ -133,9 +146,9 @@ def mv_t_newton_mle_covariance_matrix_old(
         The MLE covariance matrix of the multivariate t-distribution.
     """
     n, p = centered_samples.shape
-
+    num_effective_samples = n - num_zeroed_samples
     covariance_2d: np.ndarray
-    covariance_2d = centered_samples.T @ centered_samples / n
+    covariance_2d = (centered_samples.T @ centered_samples) / num_effective_samples
 
     alpha_estimate = estimate_mle_cov_scale(centered_samples, t_dof)
     contraction_estimate = alpha_estimate * p / np.trace(sample_covariance_matrix)
@@ -144,7 +157,10 @@ def mv_t_newton_mle_covariance_matrix_old(
     for i in range(max_iter):
         # Compute residual and its norm
         flat_residual = mle_1d_cov_residual(
-            covariance_2d.reshape(-1), t_dof, centered_samples
+            covariance_2d.reshape(-1),
+            t_dof,
+            centered_samples,
+            num_zeroed_samples=num_zeroed_samples,
         )
         residual_norm = la.norm(flat_residual)
         # print(f"Iteration {i}, residual norm: {residual_norm}")
@@ -152,10 +168,14 @@ def mv_t_newton_mle_covariance_matrix_old(
             break
 
         flat_cov_jacobian = jac_mle_1d_cov_residual(
-            covariance_2d.reshape(-1), t_dof, centered_samples
+            covariance_2d.reshape(-1),
+            t_dof,
+            centered_samples,
+            num_zeroed_samples=num_zeroed_samples,
         )
 
-        # Solve for Newton  step:
+        # Solve for Newton step:
+        newton_step: np.ndarray
         newton_step = la.solve(flat_cov_jacobian, flat_residual)
 
         # Retract the step back to the manifold:
@@ -174,6 +194,7 @@ def mv_t_newton_mle_covariance_matrix(
     retraction: Callable = spd_Bures_Wasserstein_exponential,
     reverse_tol: float = 1.0e-3,
     max_iter: int = 20,
+    num_zeroed_samples: int = 0,
 ) -> np.ndarray:
     """Compute the MLE covariance matrix for a multivariate t-distribution.
 
@@ -190,9 +211,10 @@ def mv_t_newton_mle_covariance_matrix(
         The MLE covariance matrix of the multivariate t-distribution.
     """
     n, p = centered_samples.shape
+    num_effective_samples = n - num_zeroed_samples
 
     covariance_2d: np.ndarray
-    covariance_2d = centered_samples.T @ centered_samples / n
+    covariance_2d = (centered_samples.T @ centered_samples) / num_effective_samples
 
     alpha_estimate = estimate_mle_cov_scale(centered_samples, t_dof)
     contraction_estimate = alpha_estimate * p / np.trace(sample_covariance_matrix)
@@ -200,6 +222,7 @@ def mv_t_newton_mle_covariance_matrix(
 
     mle_covariance, iteration_count = mv_t_newton_iterations(
         covariance_2d,
+        centered_samples,
         t_dof,
         max_iter=max_iter,
         retraction=retraction,
@@ -211,7 +234,9 @@ def mv_t_newton_mle_covariance_matrix(
 
 def mv_t_newton_iterations(
     initial_cov_matrix: np.ndarray,
+    centered_samples: np.ndarray,
     t_dof,
+    num_zeroed_samples=0,
     max_iter=20,
     retraction=spd_Bures_Wasserstein_exponential,
     reverse_tol=1.0e-3,
@@ -229,19 +254,30 @@ def mv_t_newton_iterations(
     for i in range(max_iter):
         # Compute residual and its norm
         flat_residual = mle_1d_cov_residual(
-            covariance_2d.reshape(-1), t_dof, centered_samples
+            covariance_2d.reshape(-1),
+            t_dof,
+            centered_samples,
+            num_zeroed_samples=num_zeroed_samples,
         )
         residual_norm = la.norm(flat_residual)
         if residual_norm < reverse_tol:
             break
 
         flat_cov_jacobian = jac_mle_1d_cov_residual(
-            covariance_2d.reshape(-1), t_dof, centered_samples
+            covariance_2d.reshape(-1),
+            t_dof,
+            centered_samples,
+            num_zeroed_samples=num_zeroed_samples,
         )
 
         # Solve for Newton  step:
         newton_step: np.ndarray
-        newton_step = la.solve(flat_cov_jacobian, flat_residual)
+        newton_step = sla.solve(
+            flat_cov_jacobian,
+            flat_residual,
+            overwrite_a=True,
+            overwrite_b=True,
+        )
 
         # Retract the step back to the manifold:
         tangent_matrix = newton_step.reshape(p, p)
@@ -256,18 +292,23 @@ def mv_t_newton_iterations(
 # %%
 @jax.jit
 def mle_cov_fixed_point_jax(
-    cov_2d: np.ndarray, dof: float, centered_samples: np.ndarray
+    cov_2d: np.ndarray,
+    dof: float,
+    centered_samples: np.ndarray,
+    num_zeroed_samples: int = 0,
 ):
     """Compute the MLE covariance residual for a mv_t distribution."""
-    """Compute the MLE covariance residual for a mv_t distribution."""
     n, p = centered_samples.shape
+
+    # Subtract the number of 'zeroed' samples:
+    effective_num_samples = n - num_zeroed_samples
 
     inv_cov_2d = jsp.linalg.solve(cov_2d, jnp.eye(p), assume_a="pos")
     z_scores = jnp.einsum("ij,jk,ik->i", centered_samples, inv_cov_2d, centered_samples)
 
     scales = (p + dof) / (dof + z_scores)
     weighted_samples = centered_samples * scales[:, jnp.newaxis]
-    reconstructed_cov = weighted_samples.T @ centered_samples / n
+    reconstructed_cov = (weighted_samples.T @ centered_samples) / effective_num_samples
 
     return reconstructed_cov
 
@@ -276,9 +317,10 @@ def mle_cov_fixed_point_jax(
 # using fixed point iteration:
 def mv_t_fixed_point_mle_covariance_matrix(
     centered_samples: np.ndarray,
-    dof: float,
+    t_dof: float,
     reverse_tol: float = 1.0e-3,
-    max_iter: int = 20,
+    max_iter: int = 50,
+    num_zeroed_samples: int = 0,
 ) -> np.ndarray:
     """Compute the MLE covariance matrix for a multivariate t-distribution.
 
@@ -295,24 +337,47 @@ def mv_t_fixed_point_mle_covariance_matrix(
         The MLE covariance matrix of the multivariate t-distribution.
     """
     n, p = centered_samples.shape
+    num_samples = n - num_zeroed_samples
 
     # Initialize the covariance matrix:
-    covariance_matrix = centered_samples.T @ centered_samples / n
+    covariance_matrix = (centered_samples.T @ centered_samples) / num_samples
     alpha_estimate = estimate_mle_cov_scale(centered_samples, t_dof)
-    contraction_estimate = alpha_estimate * p / np.trace(sample_covariance_matrix)
+    contraction_estimate = alpha_estimate * p / np.trace(covariance_matrix)
     covariance_matrix *= contraction_estimate
 
-    temp_cov_matrix = covariance_matrix.copy()
+    covariance_matrix, iteration = mv_t_fixed_point_iterations(
+        covariance_matrix,
+        centered_samples,
+        t_dof,
+        num_zeroed_samples=num_zeroed_samples,
+        max_iter=max_iter,
+        reverse_tol=reverse_tol,
+    )
+
+    return covariance_matrix, iteration
+
+
+def mv_t_fixed_point_iterations(
+    initial_cov_matrix: np.ndarray,
+    centered_samples: np.ndarray,
+    t_dof: float,
+    num_zeroed_samples: int = 0,
+    max_iter: int = 20,
+    reverse_tol: float = 1.0e-3,
+) -> np.ndarray:
+    """Perform iterations of the fixed point method for the MLE covariance matrix."""
+    covariance_matrix = initial_cov_matrix.copy()
+    temp_cov_matrix = initial_cov_matrix.copy()
 
     # Compute the MLE covariance matrix using fixed point iteration:
     for iteration in range(max_iter):
         temp_cov_matrix = mle_cov_fixed_point_jax(
-            covariance_matrix, dof, centered_samples
+            covariance_matrix,
+            t_dof,
+            centered_samples,
+            num_zeroed_samples=num_zeroed_samples,
         )
         residual = la.norm(temp_cov_matrix - covariance_matrix, ord="fro")
-        covariance_matrix = temp_cov_matrix.copy()
-        if residual < reverse_tol:
-            break
 
         covariance_matrix = temp_cov_matrix.copy()
         if residual < reverse_tol:
@@ -339,7 +404,6 @@ def estimate_mv_t_dof(centered_samples: np.ndarray) -> float:
     return t_dof
 
 
-# %%
 def ellipitical_kurtosis_from_samples(centered_samples: np.ndarray) -> float:
     """Compute the kurtosis of a set of samples.
 
@@ -385,7 +449,7 @@ def automatic_dda_estimate_mv_t_dof(
         print("Iteration:", i, f"Old Degrees of freedom: {old_t_dof:.2f}")
         print("Iteration:", i, f"New Degrees of freedom: {t_dof:.2f}")
         mle_cov_estimate, num_iters = mv_t_newton_iterations(
-            mle_cov_estimate, t_dof, max_iter=5
+            mle_cov_estimate, centered_samples, t_dof, max_iter=5
         )
 
         absolute_dof_diff = np.abs(t_dof - old_t_dof)
@@ -399,29 +463,120 @@ def automatic_dda_estimate_mv_t_dof(
 
 # Compute a MLE mv-t covariance matrix when holding out
 # each of the samples in turn:
-def leave_one_out_mle_covariance_matrix(centered_samples: np.ndarray, t_dof: float):
+def pop_t_dof_estimate_iteration(
+    centered_samples: np.ndarray,
+    t_dof: float,
+    dof_rel_tol=1.0e-2,
+    use_newton_mle_cov_estimates=True,
+):
     """Compute the MLE covariance matrix of mv t-distribution, leaving out each sample.
 
     From:
     Improved estimation of the degree of freedom parameter of mv t-distribution.
     """
-    n, p = centered_samples.shape
+    num_samples, sample_dimension = centered_samples.shape
 
-    grand_mle_cov_matrix = mv_t_newton_mle_covariance_matrix(
-        centered_samples=centered_samples, t_dof=t_dof, max_iter=5
+    sample_covariance_matrix = (centered_samples.T @ centered_samples) / num_samples
+    grand_mle_cov_matrix, num_grand_iters = mv_t_newton_mle_covariance_matrix(
+        centered_samples=centered_samples, t_dof=t_dof, max_iter=10
+    )
+    contraction_estimate = np.trace(grand_mle_cov_matrix) / np.trace(
+        sample_covariance_matrix
     )
 
-    loo_cov_matrices = np.zeros((n, p, p))
-    for i in range(n):
-        loo_centered_samples = (
-            grand_mle_cov_matrix
-            - centered_samples[i, :, None] @ centered_samples[i, None, :]
+    loo_cov_matrices = np.zeros((num_samples, sample_dimension, sample_dimension))
+    loo_sample = np.zeros((sample_dimension, 1))
+
+    mle_cov_estimates_rel_tol = dof_rel_tol**2
+
+    total_loo_score = 0.0
+    for i in range(num_samples):
+        # Extract the leave-one-out sample as a column vector:
+        loo_sample[:] = centered_samples[i, :].reshape(-1, 1)
+
+        # Initial estimate of the leave-one-out covariance matrix,
+        # subtracting the contribution of the leave-one-out sample:
+        loo_cov_estimate = grand_mle_cov_matrix - contraction_estimate * (
+            (centered_samples[i, :, None] @ centered_samples[i, None, :]) / num_samples
         )
 
-        loo_cov_matrix = loo_centered_samples.T @ loo_centered_samples / (n - 1)
-        loo_cov_matrices[i] = loo_cov_matrix
+        # Zero out the leave-one-out sample:
+        centered_samples[i, :] = 0.0
 
-    return
+        if use_newton_mle_cov_estimates:
+            loo_cov_matrices[i], inner_iters = mv_t_newton_iterations(
+                initial_cov_matrix=loo_cov_estimate,
+                centered_samples=centered_samples,
+                t_dof=t_dof,
+                max_iter=10,
+                num_zeroed_samples=1,
+                reverse_tol=mle_cov_estimates_rel_tol,
+            )
+        else:
+            loo_cov_matrices[i], inner_iters = mv_t_fixed_point_iterations(
+                initial_cov_matrix=loo_cov_estimate,
+                centered_samples=centered_samples,
+                t_dof=t_dof,
+                num_zeroed_samples=1,
+                reverse_tol=mle_cov_estimates_rel_tol,
+            )
+
+        loo_score = (
+            loo_sample.T @ sla.solve(loo_cov_matrices[i], loo_sample, assume_a="pos")
+        )[0, 0]
+        total_loo_score += loo_score
+
+        # loo_fp_cov_matrix = mle_cov_fixed_point_jax(
+        #     loo_cov_estimate, t_dof, centered_samples, num_zeroed_samples=1
+        # )
+        # loo_newton_cov_matrix, _ = mv_t_newton_iterations(
+        #     loo_cov_estimate, centered_samples, t_dof, max_iter=1, num_zeroed_samples=1
+        # )
+        # loo_newton_fp_matrix = mle_cov_fixed_point_jax(
+        #     loo_newton_cov_matrix, t_dof, centered_samples, num_zeroed_samples=1
+        # )
+        # exact_loo_cov_matrix_newton, num_exact_newton_iterations = (
+        #     mv_t_newton_iterations(
+        #         loo_newton_cov_matrix,
+        #         centered_samples,
+        #         t_dof,
+        #         num_zeroed_samples=1,
+        #         max_iter=10,
+        #         reverse_tol=1.0e-6,
+        #     )
+        # )
+
+        # exact_loo_cov_matrix_fp, num_exact_fp_iterations = (
+        #     mv_t_fixed_point_mle_covariance_matrix(
+        #         centered_samples, dof=t_dof, num_zeroed_samples=1, reverse_tol=1.0e-6
+        #     )
+        # )
+
+        # fp_residual = la.norm(
+        #     loo_fp_cov_matrix - exact_loo_cov_matrix_newton, ord="fro"
+        # )
+        # newton_residual = la.norm(
+        #     loo_newton_cov_matrix - exact_loo_cov_matrix_newton, ord="fro"
+        # )
+        # fixed_point_residuals[i] = fp_residual
+        # newton_residuals[i] = newton_residual
+
+        # print(f"Number of exact Newton iterations: {num_exact_newton_iterations}")
+        # print(f"Fixed point residual for sample {i}: {fp_residual:.2e}")
+        # print(f"Newton residual for sample {i}:      {newton_residual:.2e}")
+
+        # loo_cov_matrices[i] = loo_fp_cov_matrix
+
+        # Restore the leave-one-out sample:
+        centered_samples[i, :] = loo_sample[:].reshape(-1)
+
+    theta = (1 - sample_dimension / num_samples) * (
+        (total_loo_score / sample_dimension) / num_samples
+    )
+    new_t_dof = 2 * theta / (theta - 1)
+    print(f"New degrees of freedom estimate: {new_t_dof:.2f}")
+
+    return new_t_dof
 
 
 # %% Generate some data from a multivariate t-distribution:
@@ -448,6 +603,7 @@ centered_samples = mv_t_samples - sample_medians
 
 sample_covariance_matrix = centered_samples.T @ centered_samples / n_samples
 
+# %% Estimate the degrees of freedom of the multivariate t-distribution:
 estimated_t_dof = estimate_mv_t_dof(centered_samples)
 kurtosis_t_dof = kurtosis_t_dof_estimate(centered_samples)
 avg_t_dof = (estimated_t_dof + kurtosis_t_dof) / 2.0
@@ -466,6 +622,34 @@ print(f"Average estimate: {avg_t_dof}")
 print(f"Geometric mean estimate: {geo_mean_t_dof}")
 
 print(f"Automatic DDA estimate: {automatic_dda_t_dof}")
+
+# %% Check that we can recover the "loo" covariance matrix estimates:
+loo_index = 12
+loo_centered_samples = centered_samples.copy()
+loo_centered_samples = np.delete(loo_centered_samples, loo_index, axis=0)
+
+
+# %% Compute LOO covariance matrix estimates:
+# %%timeit
+use_newton_mle_cov_estimates = False
+t_dof_tolerance = 1.0e-2
+initial_t_dof_estimate = geo_mean_t_dof
+for i in range(10):
+    new_t_dof = pop_t_dof_estimate_iteration(
+        centered_samples,
+        initial_t_dof_estimate,
+        dof_rel_tol=t_dof_tolerance,
+        use_newton_mle_cov_estimates=use_newton_mle_cov_estimates,
+    )
+    if np.abs(new_t_dof - initial_t_dof_estimate) < 1.0e-2:
+        print(f"Converged to degrees of freedom: {new_t_dof:.4f}")
+        break
+
+    initial_t_dof_estimate = new_t_dof
+
+# pop_t_dof_estimate_iteration(
+#     centered_samples, geo_mean_t_dof, use_newton_mle_cov_estimates=True
+# )
 
 
 # %%
