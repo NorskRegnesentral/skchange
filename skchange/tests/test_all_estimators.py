@@ -11,10 +11,11 @@ from skchange.anomaly_detectors import ANOMALY_DETECTORS
 from skchange.anomaly_scores import ANOMALY_SCORES
 from skchange.change_detectors import CHANGE_DETECTORS
 from skchange.change_scores import CHANGE_SCORES
+from skchange.compose import PenalisedScore
 from skchange.costs import COSTS
 
 DETECTORS = ANOMALY_DETECTORS + CHANGE_DETECTORS
-INTERVAL_EVALUATORS = COSTS + CHANGE_SCORES + ANOMALY_SCORES
+INTERVAL_EVALUATORS = COSTS + CHANGE_SCORES + ANOMALY_SCORES + [PenalisedScore]
 ESTIMATORS = DETECTORS + INTERVAL_EVALUATORS
 
 

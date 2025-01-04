@@ -11,6 +11,7 @@ import pandas as pd
 from skchange.change_detectors import BaseChangeDetector
 from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
 from skchange.costs import BaseCost
+from skchange.penalties import BasePenalty, BICPenalty, as_penalty
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
@@ -108,16 +109,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
     change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
-    threshold_scale : float, default=2.0
-        Scaling factor for the threshold. The threshold is set to
-        ``threshold_scale * 2 * p * np.sqrt(np.log(n))``, where ``n`` is the sample size
-        and ``p`` is the number of variables. If ``None``, the threshold is tuned on the
-        data input to `fit`.
-    level : float, default=0.01
-        If `threshold_scale` is ``None``, the threshold is set to the
-        ``1-level`` quantile of the changepoint scores of all the seeded intervals on
-        the training data. For this to be correct, the training data must contain no
-        changepoints.
+    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+        The penalty to use for the changepoint detection. If a float is given, it is
+        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
+        penalty with ``n=X.shape[0]`` and
+        ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
+        data to `fit`.
     min_segment_length : int, default=5
         Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int, default=200
@@ -160,15 +157,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         change_score: Optional[Union[BaseChangeScore, BaseCost]] = None,
-        threshold_scale: Optional[float] = 2.0,
-        level: float = 1e-8,
+        penalty: Union[BasePenalty, float, None] = None,
         min_segment_length: int = 5,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
     ):
         self.change_score = change_score
-        self.threshold_scale = threshold_scale  # Just holds the input value.
-        self.level = level
+        self.penalty = penalty
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
@@ -177,8 +172,10 @@ class SeededBinarySegmentation(BaseChangeDetector):
         _change_score = CUSUM() if change_score is None else change_score
         self._change_score = to_change_score(_change_score)
 
-        check_larger_than(0.0, self.threshold_scale, "threshold_scale", allow_none=True)
-        check_in_interval(pd.Interval(0.0, 1.0, closed="neither"), self.level, "level")
+        self._penalty = as_penalty(
+            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        )
+
         check_larger_than(1.0, self.min_segment_length, "min_segment_length")
         check_larger_than(
             2 * self.min_segment_length, self.max_interval_length, "max_interval_length"
@@ -188,59 +185,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
             self.growth_factor,
             "growth_factor",
         )
-
-    def _tune_threshold(self, X: pd.DataFrame) -> float:
-        """Tune the threshold.
-
-        The threshold is set to the ``1-level`` quantile of the changepoint scores from
-        all the seeded intervals on the training data `X`. For this to be correct, the
-        training data must contain no changepoints.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Training data to tune the threshold on.
-
-        Returns
-        -------
-        threshold : float
-            The tuned threshold.
-        """
-        _, scores, _, _, _ = run_seeded_binseg(
-            X.values,
-            self._change_score,
-            np.inf,
-            self.min_segment_length,
-            self.max_interval_length,
-            self.growth_factor,
-        )
-        return np.quantile(scores, 1 - self.level)
-
-    @staticmethod
-    def get_default_threshold(n: int, p: int) -> float:
-        """Get the default threshold.
-
-        Parameters
-        ----------
-        n : int
-            Sample size.
-        p : int
-            Number of variables.
-
-        Returns
-        -------
-        threshold : float
-            The default threshold.
-        """
-        return 2 * p * np.sqrt(np.log(n))
-
-    def _get_threshold(self, X: pd.DataFrame) -> float:
-        if self.threshold_scale is None:
-            return self._tune_threshold(X)
-        else:
-            n = X.shape[0]
-            p = X.shape[1]
-            return self.threshold_scale * self.get_default_threshold(n, p)
 
     def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
         """Fit to training data.
@@ -278,7 +222,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
-        self.threshold_ = self._get_threshold(X)
+        self.penalty_ = self._penalty.fit(X, self._change_score)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -303,7 +247,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
             X.values,
             self._change_score,
-            self.threshold_,
+            self.penalty_.values[0],
             self.min_segment_length,
             self.max_interval_length,
             self.growth_factor,
@@ -339,13 +283,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
                 "change_score": L2Cost(),
                 "min_segment_length": 5,
                 "max_interval_length": 100,
-                "threshold_scale": 5.0,
+                "penalty": 30,
             },
             {
                 "change_score": L2Cost(),
                 "min_segment_length": 1,
                 "max_interval_length": 20,
-                "threshold_scale": 1.0,
+                "penalty": 10,
             },
         ]
         return params

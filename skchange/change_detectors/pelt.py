@@ -11,6 +11,7 @@ import pandas as pd
 
 from skchange.change_detectors import BaseChangeDetector
 from skchange.costs import BaseCost, L2Cost
+from skchange.penalties import BasePenalty, BICPenalty, as_penalty
 from skchange.utils.numba import njit
 from skchange.utils.validation.data import check_data
 from skchange.utils.validation.parameters import check_larger_than
@@ -30,7 +31,7 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
 def run_pelt(
     X: np.ndarray,
     cost: BaseCost,
-    penalty,
+    penalty: float,
     min_segment_length: int = 1,
     split_cost: float = 0.0,
 ) -> tuple[np.ndarray, list]:
@@ -125,11 +126,11 @@ class PELT(BaseChangeDetector):
     ----------
     cost : BaseCost, optional, default=`L2Cost`
         The cost function to use for the changepoint detection.
-    penalty_scale : float, optional, default=2.0
-        Scaling factor for the penalty. The penalty is set to
-        ``penalty_scale * 2 * p * np.log(n)``, where ``n`` is the sample size
-        and ``p`` is the number of variables. If ``None``, the penalty is tuned on the
-        data input to `fit` (not supported yet).
+    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+        The penalty to use for the changepoint detection. If a float is given, it is
+        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
+        penalty with ``n=X.shape[0]`` and ``n_params=cost.get_param_size(X.shape[1])``,
+        where ``X`` is the input data to `fit`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
 
@@ -158,61 +159,19 @@ class PELT(BaseChangeDetector):
     def __init__(
         self,
         cost: BaseCost = None,
-        penalty_scale: Optional[float] = 2.0,
+        penalty: Union[BasePenalty, float, None] = None,
         min_segment_length: int = 2,
     ):
         self.cost = cost
-        self.penalty_scale = penalty_scale
+        self.penalty = penalty
         self.min_segment_length = min_segment_length
         super().__init__()
 
         self._cost = L2Cost() if cost is None else cost
-
-        check_larger_than(0, penalty_scale, "penalty_scale", allow_none=True)
-        check_larger_than(1, min_segment_length, "min_segment_length")
-
-    def _tune_penalty(self, X: pd.DataFrame) -> float:
-        """Tune the penalty.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Training data to tune the penalty on.
-
-        Returns
-        -------
-        penalty : float
-            The tuned penalty.
-        """
-        raise ValueError(
-            "tuning of the penalty is not supported yet (`penalty_scale=None`)."
+        self._penalty = as_penalty(
+            self.penalty, default=BICPenalty(), require_penalty_type="constant"
         )
-
-    @staticmethod
-    def get_default_penalty(n: int, p: int) -> float:
-        """Get the default, BIC-penalty for PELT.
-
-        Parameters
-        ----------
-        n : int
-            Sample size.
-        p : int
-            Number of variables.
-
-        Returns
-        -------
-        penalty : float
-            The default penalty.
-        """
-        return 2 * p * np.log(n)
-
-    def _get_penalty(self, X: pd.DataFrame) -> float:
-        if self.penalty_scale is None:
-            return self._tune_penalty(X)
-        else:
-            n = X.shape[0]
-            p = X.shape[1]
-            return self.penalty_scale * self.get_default_penalty(n, p)
+        check_larger_than(1, min_segment_length, "min_segment_length")
 
     def _fit(
         self,
@@ -251,7 +210,7 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self.penalty_ = self._get_penalty(X)
+        self.penalty_ = self._penalty.fit(X, self._cost)
         return self
 
     def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
@@ -276,7 +235,7 @@ class PELT(BaseChangeDetector):
         opt_costs, changepoints = run_pelt(
             X.values,
             self._cost,
-            self.penalty_,
+            self.penalty_.values[0],
             self.min_segment_length,
         )
         # Store the scores for introspection without recomputing using transform_scores
@@ -327,6 +286,6 @@ class PELT(BaseChangeDetector):
 
         params = [
             {"cost": L2Cost(), "min_segment_length": 5},
-            {"cost": L2Cost(), "penalty_scale": 0.0, "min_segment_length": 1},
+            {"cost": L2Cost(), "penalty": 0.0, "min_segment_length": 1},
         ]
         return params

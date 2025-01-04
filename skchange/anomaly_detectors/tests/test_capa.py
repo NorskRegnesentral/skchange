@@ -4,15 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors.capa import CAPA
-from skchange.anomaly_detectors.mvcapa import (
-    MVCAPA,
-    capa_penalty_factory,
-    combined_mvcapa_penalty,
-    dense_mvcapa_penalty,
-    intermediate_mvcapa_penalty,
-    sparse_mvcapa_penalty,
-)
+from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_scores import SAVINGS, Saving
 from skchange.costs import COSTS, BaseCost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
@@ -35,7 +27,7 @@ def test_capa_anomalies(Detector, Saving):
         pytest.skip("Skipping test for MVCAPA with multivariate saving.")
 
     n_segments = 2
-    seg_len = 20
+    seg_len = 50
     p = 5
     df = generate_alternating_data(
         n_segments=n_segments,
@@ -47,8 +39,7 @@ def test_capa_anomalies(Detector, Saving):
     )
     detector = Detector(
         segment_saving=saving,
-        segment_penalty_scale=2.0,
-        min_segment_length=p + 1,
+        min_segment_length=20,
         ignore_point_anomalies=True,  # To get test coverage.
     )
     anomalies = detector.fit_predict(df)
@@ -60,6 +51,45 @@ def test_capa_anomalies(Detector, Saving):
         and anomalies.array.left[0] == seg_len
         and anomalies.array.right[0] == 2 * seg_len
     )
+
+
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+def test_capa_anomalies_segment_length(Detector):
+    detector = Detector.create_test_instance()
+    min_segment_length = 5
+    detector.set_params(
+        segment_penalty=0.0,
+        min_segment_length=min_segment_length,
+    )
+
+    n = 100
+    df = generate_alternating_data(n_segments=1, segment_length=n, random_state=13)
+    anomalies = detector.fit_predict(df)["ilocs"]
+
+    anomaly_lengths = anomalies.array.right - anomalies.array.left
+    assert np.all(anomaly_lengths == 5)
+
+
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+def test_capa_point_anomalies(Detector):
+    detector = Detector.create_test_instance()
+    n_segments = 2
+    seg_len = 50
+    p = 3
+    df = generate_alternating_data(
+        n_segments=n_segments,
+        mean=20,
+        segment_length=seg_len,
+        p=p,
+        random_state=134,
+    )
+    point_anomaly_iloc = 20
+    df.iloc[point_anomaly_iloc] += 50
+
+    anomalies = detector.fit_predict(df)
+    estimated_point_anomaly_iloc = anomalies["ilocs"].iloc[0]
+
+    assert point_anomaly_iloc == estimated_point_anomaly_iloc.left
 
 
 def test_mvcapa_errors():
@@ -85,30 +115,18 @@ def test_mvcapa_errors():
         MVCAPA(min_segment_length=5, max_segment_length=4)
 
 
-def test_capa_penalty_factory():
-    """Test capa_penalty_factory with different penalties."""
-    n, p, n_params_per_variable, scale = 100, 5, 1, 1.0
+def test_capa_errors():
+    """Test CAPA error cases."""
+    cost = MultivariateGaussianCost([0.0, np.eye(2)])
 
-    # Test dense penalty
-    penalty_func = capa_penalty_factory("dense")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == dense_mvcapa_penalty
-
-    # Test sparse penalty
-    penalty_func = capa_penalty_factory("sparse")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == sparse_mvcapa_penalty
-
-    # Test intermediate penalty
-    penalty_func = capa_penalty_factory("intermediate")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == intermediate_mvcapa_penalty
-
-    # Test combined penalty
-    penalty_func = capa_penalty_factory("combined")
-    alpha, betas = penalty_func(n, p, n_params_per_variable, scale)
-    assert penalty_func == combined_mvcapa_penalty
-
-    # Test unknown penalty
+    # Test point saving must have a minimum size of 1
     with pytest.raises(ValueError):
-        capa_penalty_factory("unknown")
+        CAPA(point_saving=cost)
+
+    # Test min_segment_length must be greater than 2
+    with pytest.raises(ValueError):
+        CAPA(min_segment_length=1)
+
+    # Test max_segment_length must be greater than min_segment_length
+    with pytest.raises(ValueError):
+        CAPA(min_segment_length=5, max_segment_length=4)
