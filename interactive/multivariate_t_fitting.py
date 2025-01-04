@@ -217,7 +217,7 @@ def mv_t_newton_mle_covariance_matrix(
     covariance_2d = (centered_samples.T @ centered_samples) / num_effective_samples
 
     alpha_estimate = estimate_mle_cov_scale(centered_samples, t_dof)
-    contraction_estimate = alpha_estimate * p / np.trace(sample_covariance_matrix)
+    contraction_estimate = alpha_estimate * (p / np.trace(covariance_2d))
     covariance_2d *= contraction_estimate
 
     mle_covariance, iteration_count = mv_t_newton_iterations(
@@ -488,7 +488,7 @@ def pop_t_dof_estimate_iteration(
     loo_sample = np.zeros((sample_dimension, 1))
 
     mle_cov_estimates_rel_tol = dof_rel_tol**2
-
+    all_inner_iters = np.zeros(num_samples)
     total_loo_score = 0.0
     for i in range(num_samples):
         # Extract the leave-one-out sample as a column vector:
@@ -520,6 +520,8 @@ def pop_t_dof_estimate_iteration(
                 num_zeroed_samples=1,
                 reverse_tol=mle_cov_estimates_rel_tol,
             )
+
+        all_inner_iters[i] = inner_iters
 
         loo_score = (
             loo_sample.T @ sla.solve(loo_cov_matrices[i], loo_sample, assume_a="pos")
@@ -576,6 +578,10 @@ def pop_t_dof_estimate_iteration(
     new_t_dof = 2 * theta / (theta - 1)
     print(f"New degrees of freedom estimate: {new_t_dof:.2f}")
 
+    avg_inner_iters = all_inner_iters.mean()
+    std_inner_iters = all_inner_iters.std()
+    print(f"Average inner iterations: {avg_inner_iters:.2f} +- {std_inner_iters:.2f}")
+
     return new_t_dof
 
 
@@ -631,7 +637,7 @@ loo_centered_samples = np.delete(loo_centered_samples, loo_index, axis=0)
 
 # %% Compute LOO covariance matrix estimates:
 # %%timeit
-use_newton_mle_cov_estimates = False
+use_newton_mle_cov_estimates = True
 t_dof_tolerance = 1.0e-2
 initial_t_dof_estimate = geo_mean_t_dof
 for i in range(10):
