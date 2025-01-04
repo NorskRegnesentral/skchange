@@ -113,3 +113,20 @@ def test_mvcapa_errors():
     # Test max_segment_length must be greater than min_segment_length
     with pytest.raises(ValueError):
         MVCAPA(min_segment_length=5, max_segment_length=4)
+
+
+def test_capa_errors():
+    """Test CAPA error cases."""
+    cost = MultivariateGaussianCost([0.0, np.eye(2)])
+
+    # Test point saving must have a minimum size of 1
+    with pytest.raises(ValueError):
+        CAPA(point_saving=cost)
+
+    # Test min_segment_length must be greater than 2
+    with pytest.raises(ValueError):
+        CAPA(min_segment_length=1)
+
+    # Test max_segment_length must be greater than min_segment_length
+    with pytest.raises(ValueError):
+        CAPA(min_segment_length=5, max_segment_length=4)
