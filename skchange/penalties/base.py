@@ -42,8 +42,6 @@ class BasePenalty(BaseEstimator):
         if self.scale < 0:
             raise ValueError("scale must be non-negative")
 
-        self._is_fitted = False
-
     def fit(
         self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
     ) -> "BasePenalty":
