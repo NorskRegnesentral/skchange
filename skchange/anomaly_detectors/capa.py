@@ -195,7 +195,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         self._segment_saving = to_saving(_segment_saving)
 
         _point_saving = L2Saving() if point_saving is None else point_saving
-        if _point_saving.min_size is not None and _point_saving.min_size > 1:
+        if _point_saving.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
         self._point_saving = to_saving(_point_saving)
 
