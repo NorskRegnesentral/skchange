@@ -80,7 +80,11 @@ def numba_trigamma(x: float) -> float:
 
 @njit
 def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float):
-    """Estimate the scale parameter of the MLE covariance matrix."""
+    """Estimate the scale parameter of the MLE covariance matrix.
+
+    From: A Novel Parameter Estimation Algorithm for the Multivariate
+          t-Distribution and Its Application to Computer Vision.
+    """
     p = centered_samples.shape[1]
     squared_norms = np.sum(centered_samples * centered_samples, axis=1)
     z_bar = np.log(squared_norms[squared_norms > 1.0e-12]).mean()
@@ -130,8 +134,8 @@ def scale_matrix_fixed_point_iteration(
         (centered_samples @ inverse_scale_matrix) * centered_samples, axis=1
     )
 
-    sample_weight = (p + t_dof) / (t_dof + mahalanobis_squared_distances)
-    weighted_samples = centered_samples * sample_weight[:, np.newaxis]
+    sample_weights = (p + t_dof) / (t_dof + mahalanobis_squared_distances)
+    weighted_samples = centered_samples * sample_weights[:, np.newaxis]
 
     reconstructed_scale_matrix = (
         weighted_samples.T @ centered_samples
@@ -149,11 +153,8 @@ def solve_mle_scale_matrix(
     max_iter: int = 50,
     reverse_tol: float = 1.0e-3,
 ) -> np.ndarray:
-    """Perform fixed point iterations for the MLE scale matrix."""
+    """Perform fixed point iterations to compute the MLE scale matrix."""
     scale_matrix = initial_scale_matrix.copy()
-    temp_cov_matrix = initial_scale_matrix.copy()
-
-    # Compute the MLE covariance matrix using fixed point iteration:
     for iteration in range(max_iter):
         temp_cov_matrix = scale_matrix_fixed_point_iteration(
             scale_matrix=scale_matrix,
@@ -165,7 +166,7 @@ def solve_mle_scale_matrix(
         # Note: 'ord = None' computes the Frobenius norm.
         residual = np.linalg.norm(temp_cov_matrix - scale_matrix, ord=None)
 
-        scale_matrix = temp_cov_matrix.copy()
+        scale_matrix[:, :] = temp_cov_matrix[:, :]
         if residual < reverse_tol:
             break
 
@@ -211,7 +212,7 @@ def maximum_likelihood_scale_matrix(
         max_iter=max_iter,
         reverse_tol=reverse_tol,
     )
-    print(f"Inner scale matrix MLE iterations: {inner_iterations}")
+    # print(f"Inner scale matrix MLE iterations: {inner_iterations}")
 
     return mle_scale_matrix
 

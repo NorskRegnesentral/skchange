@@ -150,7 +150,7 @@ def maximum_likelihood_scale_matrix_nojit(
     np.ndarray
         The MLE covariance matrix of the multivariate t-distribution.
     """
-    # Initialize the covariance matrix:
+    # Initialize the scale matrix:
     mle_scale_matrix = initial_scale_matrix_estimate_nojit(
         centered_samples,
         t_dof,
@@ -240,6 +240,7 @@ def _multivariate_t_log_likelihood_like_scipy(
         The log likelihood of the multivariate t-distribution.
     """
     num_samples, sample_dim = centered_samples.shape
+
     # Compute the log likelihood of the segment using numba, but similar to scipy:
     scale_spectrum, scale_eigvecs = np.linalg.eigh(scale_matrix)
     log_det_scale_matrix = np.sum(np.log(scale_spectrum))
