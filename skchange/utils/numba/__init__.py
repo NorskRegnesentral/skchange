@@ -1,3 +1,4 @@
 """Numba utility functions."""
 
-from .soft_import import jit, njit, prange
+from .soft_import import jit, njit, numba_available, prange
+

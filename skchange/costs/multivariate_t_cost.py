@@ -6,29 +6,76 @@ __all__ = ["MultivariateTCost"]
 from typing import Union
 
 import numpy as np
-import scipy.linalg as sla
 import scipy.stats as st
-from scipy.special import digamma, polygamma
+from scipy.special import polygamma
 
 from skchange.costs.base import BaseCost
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import jit, njit, prange
-from skchange.utils.numba.stats import log_det_covariance
 
 
-@jit(nopython=False)
-def estimate_mle_cov_scale(centered_samples: np.ndarray, dof: float):
+@njit
+def numba_digamma(x: float) -> float:
+    """Approximate the digamma function.
+
+    Use the asymptotic expansion for the digamma function on the real domain,
+    by first moving the argument above 5.0 before
+    applying the first three terms of its asymptotic expansion.
+
+    Source: https://en.wikipedia.org/wiki/Digamma_function#Asymptotic_expansion
+    """
+    result = 0.0
+    while x <= 5.0:
+        result -= 1.0 / x
+        x += 1.0
+    inv_x = 1.0 / x
+    inv_x2 = inv_x * inv_x
+    result += np.log(x) - 0.5 * inv_x - inv_x2 * (1.0 / 12.0 - inv_x2 / 120.0)
+    return result
+
+
+@njit
+def numba_trigamma(x: float) -> float:
+    """
+    Approximate the trigamma function on the real positive domain.
+
+    Uses the asymptotic expansion for the trigamma function on the real domain,
+    by first moving the argument above 5.0 before
+    applying the first four terms of its asymptotic expansion.
+
+    Source: https://en.wikipedia.org/wiki/Trigamma_function
+    """
+    result = 0.0
+    while x <= 5.0:
+        result += 1.0 / (x * x)
+        x += 1.0
+    inv_x = 1.0 / x
+    inv_x2 = inv_x * inv_x
+    result += (
+        (1.0 / x)
+        + 0.5 * inv_x2
+        + (1.0 / 6.0) * inv_x2 * inv_x
+        + (1.0 / 30.0) * inv_x2 * inv_x2 * inv_x
+    )
+    return result
+
+
+@njit
+def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float):
     """Estimate the scale parameter of the MLE covariance matrix."""
     p = centered_samples.shape[1]
     squared_norms = np.sum(centered_samples * centered_samples, axis=1)
     z_bar = np.log(squared_norms[squared_norms > 1.0e-12]).mean()
-    log_alpha = z_bar - np.log(dof) + digamma(0.5 * dof) - digamma(p / 2.0)
-    return np.exp(log_alpha)
+    log_alpha = z_bar - np.log(dof) + numba_digamma(0.5 * dof) - numba_digamma(p / 2.0)
+    return p * np.exp(log_alpha)
 
 
-@jit(nopython=False)
+@njit
 def initial_scale_matrix_estimate(
-    centered_samples: np.ndarray, t_dof: float, num_zeroed_samples: int = 0
+    centered_samples: np.ndarray,
+    t_dof: float,
+    num_zeroed_samples: int = 0,
+    apply_trace_correction: bool = True,
 ):
     """Estimate the scale matrix given centered samples and degrees of freedom."""
     n, p = centered_samples.shape
@@ -38,14 +85,16 @@ def initial_scale_matrix_estimate(
         centered_samples.T @ centered_samples
     ) / num_effective_samples
 
-    alpha_estimate = estimate_mle_cov_scale(centered_samples, t_dof)
-    contraction_estimate = alpha_estimate * (p / np.trace(sample_covariance_matrix))
-    scale_matrix_estimate = contraction_estimate * sample_covariance_matrix
+    if apply_trace_correction:
+        scale_trace_estimate = estimate_scale_matrix_trace(centered_samples, t_dof)
+        sample_covariance_matrix *= scale_trace_estimate / np.trace(
+            sample_covariance_matrix
+        )
 
-    return scale_matrix_estimate
+    return sample_covariance_matrix
 
 
-@jit(nopython=False)
+@njit
 def scale_matrix_fixed_point_iteration(
     scale_matrix: np.ndarray,
     t_dof: float,
@@ -58,10 +107,10 @@ def scale_matrix_fixed_point_iteration(
     # Subtract the number of 'zeroed' samples:
     effective_num_samples = n - num_zeroed_samples
 
-    inv_cov_2d = sla.solve(
-        scale_matrix, np.eye(p), assume_a="pos", overwrite_a=False, overwrite_b=True
+    inverse_scale_matrix = np.linalg.solve(scale_matrix, np.eye(p))
+    z_scores = np.sum(
+        np.dot(centered_samples, inverse_scale_matrix) * centered_samples, axis=1
     )
-    z_scores = np.einsum("ij,jk,ik->i", centered_samples, inv_cov_2d, centered_samples)
 
     sample_weight = (p + t_dof) / (t_dof + z_scores)
     weighted_samples = centered_samples * sample_weight[:, np.newaxis]
@@ -74,32 +123,6 @@ def scale_matrix_fixed_point_iteration(
 
 
 @njit
-def scale_matrix_fixed_point_iteration_njit(
-    scale_matrix: np.ndarray,
-    t_dof: float,
-    centered_samples: np.ndarray,
-    num_zeroed_samples: int = 0,
-):
-    """Compute the MLE covariance residual for a mv_t distribution."""
-    n, p = centered_samples.shape
-
-    # Subtract the number of 'zeroed' samples:
-    effective_num_samples = n - num_zeroed_samples
-
-    inv_cov_2d = np.linalg.solve(scale_matrix, np.eye(p))
-    z_scores = np.einsum("ij,jk,ik->i", centered_samples, inv_cov_2d, centered_samples)
-
-    sample_weight = (p + t_dof) / (t_dof + z_scores)
-    weighted_samples = centered_samples * sample_weight[:, np.newaxis]
-
-    reconstructed_scale_matrix = (
-        weighted_samples.T @ centered_samples
-    ) / effective_num_samples
-
-    return reconstructed_scale_matrix
-
-
-@jit(nopython=False)
 def solve_mle_scale_matrix(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
@@ -132,45 +155,15 @@ def solve_mle_scale_matrix(
 
 
 @njit
-def solve_mle_scale_matrix_njit(
-    initial_scale_matrix: np.ndarray,
-    centered_samples: np.ndarray,
-    t_dof: float,
-    num_zeroed_samples: int = 0,
-    max_iter: int = 50,
-    reverse_tol: float = 1.0e-3,
-) -> np.ndarray:
-    """Perform fixed point iterations for the MLE scale matrix."""
-    scale_matrix = initial_scale_matrix.copy()
-    temp_cov_matrix = initial_scale_matrix.copy()
-
-    # Compute the MLE covariance matrix using fixed point iteration:
-    for iteration in range(max_iter):
-        temp_cov_matrix = scale_matrix_fixed_point_iteration_njit(
-            scale_matrix=scale_matrix,
-            t_dof=t_dof,
-            centered_samples=centered_samples,
-            num_zeroed_samples=num_zeroed_samples,
-        )
-
-        # Note: 'ord = None' computes the Frobenius norm.
-        residual = np.linalg.norm(temp_cov_matrix - scale_matrix, ord=None)
-
-        scale_matrix = temp_cov_matrix.copy()
-        if residual < reverse_tol:
-            break
-
-    return scale_matrix, iteration
-
-
 def maximum_likelihood_scale_matrix(
     centered_samples: np.ndarray,
     t_dof: float,
     reverse_tol: float = 1.0e-3,
     max_iter: int = 50,
     num_zeroed_samples: int = 0,
+    initial_trace_correction: bool = True,
 ) -> np.ndarray:
-    """Compute the MLE covariance matrix for a multivariate t-distribution.
+    """Compute the MLE scale matrix for a multivariate t-distribution.
 
     Parameters
     ----------
@@ -184,9 +177,12 @@ def maximum_likelihood_scale_matrix(
     np.ndarray
         The MLE covariance matrix of the multivariate t-distribution.
     """
-    # Initialize the covariance matrix:
+    # Initialize the scale matrix maximum likelihood estimate:
     mle_scale_matrix = initial_scale_matrix_estimate(
-        centered_samples, t_dof, num_zeroed_samples=num_zeroed_samples
+        centered_samples,
+        t_dof,
+        num_zeroed_samples=num_zeroed_samples,
+        apply_trace_correction=initial_trace_correction,
     )
 
     mle_scale_matrix, inner_iterations = solve_mle_scale_matrix(
@@ -367,6 +363,7 @@ def multivariate_t_cost_fixed_params(
     return costs
 
 
+@njit
 def estimate_mv_t_dof(centered_samples: np.ndarray, zero_norm_tol=1.0e-6) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
 
@@ -381,7 +378,7 @@ def estimate_mv_t_dof(centered_samples: np.ndarray, zero_norm_tol=1.0e-6) -> flo
     log_norm_sq = np.log(squared_norms[squared_norms > zero_norm_tol**2])
     log_norm_sq_var = log_norm_sq.var(ddof=0)
 
-    b = log_norm_sq_var - polygamma(1, sample_dim / 2.0)
+    b = log_norm_sq_var - numba_trigamma(sample_dim / 2.0)
     t_dof_estimate = (1 + np.sqrt(1 + 4 * b)) / b
 
     return t_dof_estimate
