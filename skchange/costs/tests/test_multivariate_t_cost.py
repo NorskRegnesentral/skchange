@@ -287,7 +287,7 @@ def test_mv_t_log_likelihood(seed=4125, num_samples=100, p=8, t_dof=5.0):
     )
 
     ll_simple = _multivariate_t_log_likelihood(
-        scale_matrix=mle_scale_matrix, centered_samples=X_centered, t_dof=t_dof
+        scale_matrix=mle_scale_matrix, centered_samples=X_centered, dof=t_dof
     )
     ll_differences = np.diff(np.array([ll_scipy, ll_manual_scipy, ll_simple, ll_scipy]))
 
