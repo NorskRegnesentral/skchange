@@ -9,6 +9,11 @@ import numpy as np
 import scipy.stats as st
 
 from skchange.costs.base import BaseCost
+from skchange.costs.multivariate_gaussian_cost import (
+    gaussian_cost_fixed_params,
+    gaussian_cost_mle_params,
+)
+from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import njit, prange
 
 
@@ -119,11 +124,11 @@ def initial_scale_matrix_estimate(
 @njit
 def scale_matrix_fixed_point_iteration(
     scale_matrix: np.ndarray,
-    t_dof: float,
+    dof: float,
     centered_samples: np.ndarray,
     num_zeroed_samples: int = 0,
 ):
-    """Compute the MLE covariance residual for a mv_t distribution."""
+    """Compute a multivariate T MLE scale matrix fixed point iteration."""
     n, p = centered_samples.shape
 
     # Subtract the number of 'zeroed' samples:
@@ -134,7 +139,7 @@ def scale_matrix_fixed_point_iteration(
         (centered_samples @ inverse_scale_matrix) * centered_samples, axis=1
     )
 
-    sample_weights = (p + t_dof) / (t_dof + mahalanobis_squared_distances)
+    sample_weights = (p + dof) / (dof + mahalanobis_squared_distances)
     weighted_samples = centered_samples * sample_weights[:, np.newaxis]
 
     reconstructed_scale_matrix = (
@@ -145,20 +150,20 @@ def scale_matrix_fixed_point_iteration(
 
 
 @njit
-def solve_mle_scale_matrix(
+def solve_for_mle_scale_matrix(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
-    t_dof: float,
+    dof: float,
     num_zeroed_samples: int = 0,
     max_iter: int = 50,
-    reverse_tol: float = 1.0e-3,
+    abs_tol: float = 1.0e-3,
 ) -> np.ndarray:
     """Perform fixed point iterations to compute the MLE scale matrix."""
     scale_matrix = initial_scale_matrix.copy()
     for iteration in range(max_iter):
         temp_cov_matrix = scale_matrix_fixed_point_iteration(
             scale_matrix=scale_matrix,
-            t_dof=t_dof,
+            dof=dof,
             centered_samples=centered_samples,
             num_zeroed_samples=num_zeroed_samples,
         )
@@ -167,17 +172,17 @@ def solve_mle_scale_matrix(
         residual = np.linalg.norm(temp_cov_matrix - scale_matrix, ord=None)
 
         scale_matrix[:, :] = temp_cov_matrix[:, :]
-        if residual < reverse_tol:
+        if residual < abs_tol:
             break
 
-    return scale_matrix, iteration
+    return scale_matrix, iteration + 1
 
 
 @njit
-def maximum_likelihood_scale_matrix(
+def maximum_likelihood_mv_t_scale_matrix(
     centered_samples: np.ndarray,
-    t_dof: float,
-    reverse_tol: float = 1.0e-3,
+    dof: float,
+    abs_tol: float = 1.0e-3,
     max_iter: int = 50,
     num_zeroed_samples: int = 0,
     initial_trace_correction: bool = True,
@@ -199,18 +204,18 @@ def maximum_likelihood_scale_matrix(
     # Initialize the scale matrix maximum likelihood estimate:
     mle_scale_matrix = initial_scale_matrix_estimate(
         centered_samples,
-        t_dof,
+        dof,
         num_zeroed_samples=num_zeroed_samples,
         apply_trace_correction=initial_trace_correction,
     )
 
-    mle_scale_matrix, inner_iterations = solve_mle_scale_matrix(
+    mle_scale_matrix, inner_iterations = solve_for_mle_scale_matrix(
         initial_scale_matrix=mle_scale_matrix,
         centered_samples=centered_samples,
-        t_dof=t_dof,
+        dof=dof,
         num_zeroed_samples=num_zeroed_samples,
         max_iter=max_iter,
-        reverse_tol=reverse_tol,
+        abs_tol=abs_tol,
     )
     # print(f"Inner scale matrix MLE iterations: {inner_iterations}")
 
@@ -322,7 +327,7 @@ def _mv_t_ll_at_mle_params(
     sample_medians = np.median(X_segment, axis=0)
     X_centered = X_segment - sample_medians
 
-    mle_scale_matrix = maximum_likelihood_scale_matrix(X_centered, dof)
+    mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(X_centered, dof)
 
     total_log_likelihood = _multivariate_t_log_likelihood(
         scale_matrix=mle_scale_matrix, centered_samples=X_centered, dof=dof
@@ -333,7 +338,7 @@ def _mv_t_ll_at_mle_params(
 
 @njit
 def multivariate_t_cost_mle_params(
-    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, mv_t_dof: float
+    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, dof: float
 ) -> np.ndarray:
     """Calculate the multivariate T twice negative log likelihood cost.
 
@@ -347,7 +352,7 @@ def multivariate_t_cost_mle_params(
         The end indices of the segments.
     X : np.ndarray
         The data matrix.
-    mv_t_dof : float
+    dof : float
         The degrees of freedom for the cost calculation.
 
     Returns
@@ -359,9 +364,7 @@ def multivariate_t_cost_mle_params(
     costs = np.zeros((num_starts, 1))
 
     for i in prange(num_starts):
-        segment_log_likelihood = _mv_t_ll_at_mle_params(
-            X, starts[i], ends[i], dof=mv_t_dof
-        )
+        segment_log_likelihood = _mv_t_ll_at_mle_params(X, starts[i], ends[i], dof=dof)
         costs[i, 0] = -2.0 * segment_log_likelihood
 
     return costs
@@ -469,7 +472,9 @@ def multivariate_t_cost_fixed_params(
 
 
 @njit
-def estimate_mv_t_dof(centered_samples: np.ndarray, zero_norm_tol=1.0e-6) -> float:
+def isotropic_t_dof_estimate(
+    centered_samples: np.ndarray, zero_norm_tol=1.0e-6
+) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
 
     From: A Novel Parameter Estimation Algorithm for the Multivariate
@@ -479,14 +484,12 @@ def estimate_mv_t_dof(centered_samples: np.ndarray, zero_norm_tol=1.0e-6) -> flo
 
     squared_norms = np.sum(centered_samples * centered_samples, axis=1)
 
-    log_norm_sq: np.ndarray
-    log_norm_sq = np.log(squared_norms[squared_norms > zero_norm_tol**2])
-    log_norm_sq_var = log_norm_sq.var(ddof=0)
+    log_norm_sq_var = np.log(squared_norms[squared_norms > zero_norm_tol**2]).var()
 
     b = log_norm_sq_var - numba_trigamma(sample_dim / 2.0)
-    t_dof_estimate = (1 + np.sqrt(1 + 4 * b)) / b
+    dof_estimate = (1 + np.sqrt(1 + 4 * b)) / b
 
-    return t_dof_estimate
+    return dof_estimate
 
 
 def ellipitical_kurtosis(centered_samples: np.ndarray) -> float:
@@ -508,9 +511,369 @@ def ellipitical_kurtosis(centered_samples: np.ndarray) -> float:
 def kurtosis_t_dof_estimate(centered_samples: np.ndarray) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution."""
     sample_ellipitical_kurtosis = ellipitical_kurtosis(centered_samples)
-    t_dof_estimate = 2.0 / max(1.0e-3, sample_ellipitical_kurtosis) + 4.0
-    return t_dof_estimate
+    dof_estimate = 2.0 / max(1.0e-3, sample_ellipitical_kurtosis) + 4.0
+    return dof_estimate
+
+
+@njit
+def iterative_mv_t_dof_estimate(
+    centered_samples: np.ndarray,
+    initial_dof: float,
+    infinite_dof_threshold: float = 5.0e1,
+    max_iter=10,
+    rel_tol=5.0e-2,
+    abs_tol=1.0e-1,
+    inner_max_iter=50,
+    inner_atol=1.0e-5,
+) -> float:
+    """Algorithm 1: Automatic data-adaptive computation of the d.o.f. parameter nu.
+
+    From:
+    Shrinking the eigenvalues of M-estimators of covariance matrix.
+    """
+    n = centered_samples.shape[0]
+    if initial_dof > infinite_dof_threshold:
+        return np.inf
+
+    inf_dof_nu_threshold = infinite_dof_threshold / (infinite_dof_threshold - 2.0)
+
+    sample_covariance = (centered_samples.T @ centered_samples) / n
+
+    mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(
+        centered_samples,
+        initial_dof,
+        max_iter=inner_max_iter,
+        abs_tol=inner_atol,
+    )
+
+    dof = initial_dof
+    for _ in range(max_iter):
+        nu_i = np.trace(sample_covariance) / np.trace(mle_scale_matrix)
+        if nu_i < inf_dof_nu_threshold:
+            # The estimated degrees of freedom are high enough to approximate the
+            # multivariate T distribution with a Gaussian.
+            dof = np.inf
+            break
+
+        old_dof = dof
+        dof = 2 * nu_i / max((nu_i - 1), 1.0e-3)
+
+        mle_scale_matrix, inner_mle_iterations = solve_for_mle_scale_matrix(
+            initial_scale_matrix=mle_scale_matrix,
+            centered_samples=centered_samples,
+            dof=dof,
+            max_iter=inner_max_iter,
+            abs_tol=inner_atol,
+        )
+
+        absolute_dof_diff = np.abs(dof - old_dof)
+        rel_tol_satisfied = absolute_dof_diff / old_dof < rel_tol
+        abs_tol_satisfied = absolute_dof_diff < abs_tol
+        if rel_tol_satisfied or abs_tol_satisfied:
+            break
+
+    return dof
+
+
+@njit
+def loo_iterative_mv_t_dof_estimate(
+    centered_samples: np.ndarray,
+    initial_dof: float,
+    infinite_dof_threshold: float = 1.0e2,
+    max_iter=5,
+    rel_tol=5.0e-2,
+    abs_tol=1.0e-1,
+    inner_max_iter=50,
+    inner_abs_tol=1.0e-5,
+) -> float:
+    """Estimate the degrees of freedom of a multivariate T distribution.
+
+    Using an improved estimator, based on the algorithm in:
+    'Improved estimation of the degree of freedom parameter of mv t-distribution''.
+    However, the algorithm computes one MLE scale matrix estimate per samples,
+    holding out one sample at a time, which increases computation cost.
+    """
+    if initial_dof > infinite_dof_threshold:
+        return np.inf
+
+    num_samples, sample_dimension = centered_samples.shape
+    inf_dof_theta_threshold = infinite_dof_threshold / (infinite_dof_threshold - 2.0)
+
+    sample_covariance = (centered_samples.T @ centered_samples) / num_samples
+    grand_mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(
+        centered_samples,
+        dof=initial_dof,
+        max_iter=inner_max_iter,
+        abs_tol=inner_abs_tol,
+    )
+    contraction_estimate = np.trace(grand_mle_scale_matrix) / np.trace(
+        sample_covariance
+    )
+
+    loo_sample = np.zeros((sample_dimension, 1))
+    loo_sample_outer_product = np.zeros((sample_dimension, sample_dimension))
+
+    current_dof = initial_dof
+
+    # For parallelization, need to copy the centered_samples per thread:
+    for _ in range(max_iter):
+        total_loo_mahalanobis_squared_distance = 0.0
+        for sample in range(num_samples):
+            # Extract the leave-one-out sample as a column vector:
+            loo_sample[:] = centered_samples[sample, :].reshape(-1, 1)
+            loo_sample_outer_product[:, :] = loo_sample @ loo_sample.T
+
+            # Initial estimate of the leave-one-out covariance matrix,
+            # subtracting the contracted contribution of the leave-one-out sample:
+            loo_scale_estimate = grand_mle_scale_matrix - contraction_estimate * (
+                loo_sample_outer_product / num_samples
+            )
+
+            # Zero out the leave-one-out sample:
+            centered_samples[sample, :] = 0.0
+
+            loo_mle_scale_matrix, inner_iters = solve_for_mle_scale_matrix(
+                initial_scale_matrix=loo_scale_estimate,
+                centered_samples=centered_samples,
+                dof=current_dof,
+                num_zeroed_samples=1,
+                abs_tol=inner_abs_tol,
+            )
+
+            # Restore the leave-one-out sample:
+            centered_samples[sample, :] = loo_sample[:].reshape(-1)
+
+            loo_mahalanobis_squared_distance = (
+                loo_sample.T @ np.linalg.solve(loo_mle_scale_matrix, loo_sample)
+            )[0, 0]
+            total_loo_mahalanobis_squared_distance += loo_mahalanobis_squared_distance
+
+        theta_k = (1 - sample_dimension / num_samples) * (
+            (total_loo_mahalanobis_squared_distance / num_samples) / sample_dimension
+        )
+        if theta_k < inf_dof_theta_threshold:
+            # The estimated degrees of freedom are high enough to approximate the
+            # multivariate T distribution with a Gaussian distribution.
+            current_dof = np.inf
+            break
+
+        new_t_dof = 2 * theta_k / (theta_k - 1)
+        abs_difference = np.abs(new_t_dof - current_dof)
+        abs_tol_satisfied = abs_difference < abs_tol
+        rel_tol_satisfied = (abs_difference / current_dof) < rel_tol
+
+        current_dof = new_t_dof
+        if abs_tol_satisfied or rel_tol_satisfied:
+            break
+
+    return current_dof
 
 
 class MultivariateTCost(BaseCost):
-    pass
+    r"""Multivariate T likelihood cost.
+
+    Parameters
+    ----------
+    param : 2-tuple of float or np.ndarray, or None (default=None)
+        Fixed mean and scale matrix for the cost calculation.
+        If ``None``, the maximum likelihood estimates are used.
+    dof : float, optional (default=None)
+        Fixed degrees of freedom for the cost calculation.
+        If None, the degrees of freedom are estimated from the data.
+    infinite_dof_threshold : float, optional (default=1.0e2)
+        The threshold at which the degrees of freedom are considered infinite.
+        If the degrees of freedom are above this threshold,
+        the multivariate t-distribution is approximated with
+        a multivariate Gaussian distribution.
+    refine_dof_threshold : int, optional (default=500)
+        The number of samples below which the degrees of freedom
+        estimate is refined using a leave-one-out iterative method.
+    """
+
+    evaluation_type = "multivariate"
+
+    def __init__(
+        self,
+        param: Union[tuple[MeanType, CovType], None] = None,
+        dof=None,
+        infinite_dof_threshold=1.0e2,
+        refine_dof_threshold=500,
+    ):
+        super().__init__(param)
+        self.dof = dof
+        self.infinite_dof_threshold = infinite_dof_threshold
+        self.refine_dof_threshold = refine_dof_threshold
+
+    def _check_fixed_param(
+        self, param: tuple[MeanType, CovType], X: np.ndarray
+    ) -> np.ndarray:
+        """Check if the fixed mean parameter is valid.
+
+        Parameters
+        ----------
+        param : 2-tuple of float or np.ndarray
+            Fixed mean and covariance matrix for the cost calculation.
+        X : np.ndarray
+            Input data.
+
+        Returns
+        -------
+        mean : np.ndarray
+            Fixed mean for the cost calculation.
+        """
+        mean, cov = param
+        mean = check_mean(mean, X)
+        cov = check_cov(cov, X)
+        return mean, cov
+
+    @property
+    def min_size(self) -> Union[int, None]:
+        """Minimum size of the interval to evaluate.
+
+        The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
+        """
+        if self.is_fitted:
+            return self._X.shape[1] + 1
+        else:
+            return None
+
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters in the cost function.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return 1 + p + p * (p + 1) // 2
+
+    def _fit(self, X: np.ndarray, y=None):
+        """Fit the cost.
+
+        This method precomputes quantities that speed up the cost evaluation.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
+        y: None
+            Ignored. Included for API consistency by convention.
+        """
+        self._param = self._check_param(self.param, X)
+
+        if self.param is not None:
+            self._mean, scale_matrix = self._param
+            self._inv_scale_matrix = np.linalg.inv(scale_matrix)
+            _, self._log_det_scale_matrix = np.linalg.slogdet(scale_matrix)
+
+        if self.dof is None:
+            centered_samples = X - np.median(X, axis=0)
+
+            isotropic_dof = isotropic_t_dof_estimate(centered_samples)
+            kurtosis_dof = kurtosis_t_dof_estimate(centered_samples)
+
+            initial_dof_estimate = np.sqrt(isotropic_dof * kurtosis_dof)
+            self.dof = iterative_mv_t_dof_estimate(
+                centered_samples=centered_samples,
+                initial_dof=initial_dof_estimate,
+                infinite_dof_threshold=self.infinite_dof_threshold,
+            )
+
+            num_samples = X.shape[0]
+            if num_samples <= self.refine_dof_threshold:
+                self.dof = loo_iterative_mv_t_dof_estimate(
+                    centered_samples=centered_samples,
+                    initial_dof=self.dof,
+                    infinite_dof_threshold=self.infinite_dof_threshold,
+                )
+
+        if not np.isposinf(self.dof) and (self.dof <= 0.0 or not np.isfinite(self.dof)):
+            raise ValueError(
+                "Degrees of freedom 'dof' must be a positive,"
+                " finite number, or 'np.inf'."
+            )
+
+        return self
+
+    def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        """Evaluate the cost for the MLE parameters.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            A 2D array of costs. One row for each interval. The number of columns
+            is 1 since the MultivariateTCost is inherently multivariate.
+        """
+        if np.isposinf(self.dof):
+            gaussian_cost_mle_params(starts, ends, self._X)
+        else:
+            return multivariate_t_cost_mle_params(starts, ends, self._X, dof=self.dof)
+
+    def _evaluate_fixed_param(self, starts, ends):
+        """Evaluate the cost for the fixed parameters.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            A 2D array of costs. One row for each interval. The number of columns
+            is 1 since the MultivariateGaussianCost is inherently multivariate.
+        """
+        if np.isposinf(self.dof):
+            return gaussian_cost_fixed_params(
+                starts,
+                ends,
+                self._X,
+                self._mean,
+                self._log_det_scale_matrix,
+                self._inv_scale_matrix,
+            )
+        else:
+            return multivariate_t_cost_fixed_params(
+                starts,
+                ends,
+                self._X,
+                mean=self._mean,
+                inverse_scale_matrix=self._inv_scale_matrix,
+                log_det_scale_matrix=self._log_det_scale_matrix,
+                dof=self.dof,
+            )
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return ``"default"`` set.
+            There are currently no reserved values for interval evaluators.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"param": None},
+            {"param": (0.0, 1.0)},
+            {"param": (np.zeros(1), np.eye(1))},
+        ]
+        return params

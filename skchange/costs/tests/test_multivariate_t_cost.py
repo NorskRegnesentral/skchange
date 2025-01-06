@@ -6,10 +6,13 @@ import scipy.linalg as sla
 import scipy.stats as st
 from scipy.special import digamma, gammaln, polygamma
 
-from skchange.costs import MultivariateTCost
 from skchange.costs.multivariate_t_cost import (
     _multivariate_t_log_likelihood,
-    maximum_likelihood_scale_matrix,
+    isotropic_t_dof_estimate,
+    iterative_mv_t_dof_estimate,
+    kurtosis_t_dof_estimate,
+    loo_iterative_mv_t_dof_estimate,
+    maximum_likelihood_mv_t_scale_matrix,
 )
 from skchange.utils.numba import numba_available
 
@@ -275,7 +278,7 @@ def test_mv_t_log_likelihood(seed=4125, num_samples=100, p=8, t_dof=5.0):
 
     sample_medians = np.median(mv_t_samples, axis=0)
     X_centered = mv_t_samples - sample_medians
-    mle_scale_matrix = maximum_likelihood_scale_matrix(X_centered, t_dof)
+    mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(X_centered, t_dof)
 
     ll_scipy = (
         st.multivariate_t(loc=sample_medians, shape=mle_scale_matrix, df=t_dof)
@@ -379,7 +382,7 @@ def test_scale_matrix_numba_benchmark(
 
         if seed == 0:
             # Ensure compilation time is not measured:
-            maximum_likelihood_scale_matrix(
+            maximum_likelihood_mv_t_scale_matrix(
                 centered_samples,
                 t_dof,
                 initial_trace_correction=initial_trace_correction,
@@ -387,7 +390,7 @@ def test_scale_matrix_numba_benchmark(
 
         # Time numba version
         start = perf_counter()
-        numba_mle_scale_matrix = maximum_likelihood_scale_matrix(
+        numba_mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(
             centered_samples, t_dof, initial_trace_correction=initial_trace_correction
         )
         end = perf_counter()
@@ -417,3 +420,154 @@ def test_scale_matrix_numba_benchmark(
         print(f"Numba speedup: {numba_speedup:.3f}")
 
     assert numba_speedup > 1, "Numba version should be faster"
+
+
+def test_isotropic_and_kurtosis_t_dof_estimates():
+    seed = 4125
+    n_samples = 1000
+    p = 5
+    t_dof = 5.0
+
+    np.random.seed(seed)
+
+    # Spd covariance matrix:
+    random_nudge = np.random.randn(p).reshape(-1, 1)
+    cov = np.eye(p) + 0.5 * random_nudge @ random_nudge.T
+
+    mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
+
+    mv_t_dist = st.multivariate_t(loc=mean, shape=cov, df=t_dof)
+    mv_t_samples = mv_t_dist.rvs(n_samples)
+
+    sample_medians = np.median(mv_t_samples, axis=0)
+    centered_samples = mv_t_samples - sample_medians
+
+    # Test isotropic estimate:
+    isotropic_dof = isotropic_t_dof_estimate(centered_samples)
+    assert isotropic_dof > 0, "Isotropic dof estimate should be positive."
+    assert np.abs(isotropic_dof - t_dof) < 1.0, "Isotropic dof estimate is off."
+
+    # Test kurtosis estimate:
+    kurtosis_dof = kurtosis_t_dof_estimate(centered_samples)
+    assert kurtosis_dof > 0, "Kurtosis dof estimate should be positive."
+    assert np.abs(kurtosis_dof - t_dof) < 1.0, "Kurtosis dof estimate is off."
+
+
+def test_iterative_t_dof_estimate():
+    seed = 4125
+    n_samples = 150
+    p = 5
+    t_dof = 5.0
+
+    np.random.seed(seed)
+
+    # Spd covariance matrix:
+    random_nudge = np.random.randn(p).reshape(-1, 1)
+    cov = np.eye(p) + 0.5 * random_nudge @ random_nudge.T
+
+    mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
+
+    mv_t_dist = st.multivariate_t(loc=mean, shape=cov, df=t_dof)
+    mv_t_samples = mv_t_dist.rvs(n_samples)
+
+    sample_medians = np.median(mv_t_samples, axis=0)
+    centered_samples = mv_t_samples - sample_medians
+
+    # Test data-driven estimate:
+    initial_t_dof_estimate = 10.0
+    iterative_dof_estimate = iterative_mv_t_dof_estimate(
+        centered_samples, initial_dof=initial_t_dof_estimate
+    )
+    assert iterative_dof_estimate > 0, "Data-driven dof estimate should be positive."
+    assert (
+        np.abs(iterative_dof_estimate - t_dof) < 1.0
+    ), "Data-driven dof estimate is off."
+
+
+def test_loo_iterative_t_dof_estimate():
+    seed = 4125
+    n_samples = 150
+    p = 5
+    t_dof = 5.0
+
+    np.random.seed(seed)
+
+    # Spd covariance matrix:
+    random_nudge = np.random.randn(p).reshape(-1, 1)
+    cov = np.eye(p) + 0.5 * random_nudge @ random_nudge.T
+
+    mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
+
+    mv_t_dist = st.multivariate_t(loc=mean, shape=cov, df=t_dof)
+    mv_t_samples = mv_t_dist.rvs(n_samples)
+
+    sample_medians = np.median(mv_t_samples, axis=0)
+    centered_samples = mv_t_samples - sample_medians
+
+    # Test data-driven estimate:
+    initial_t_dof_estimate = 10.0
+    loo_iterative_dof = loo_iterative_mv_t_dof_estimate(
+        centered_samples, initial_dof=initial_t_dof_estimate
+    )
+    assert loo_iterative_dof > 0, "LOO data-driven dof estimate should be positive."
+    assert (
+        np.abs(loo_iterative_dof - t_dof) < 0.15
+    ), "LOO data-driven dof estimate is off."
+
+
+def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
+    seed = 4125
+    n_samples = 150
+    p = 5
+
+    np.random.seed(seed)
+
+    mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
+    cov = np.eye(p)
+
+    mv_normal_samples = st.multivariate_normal(mean=mean, cov=cov).rvs(n_samples)
+
+    sample_medians = np.median(mv_normal_samples, axis=0)
+    centered_samples = mv_normal_samples - sample_medians
+
+    # Test data-driven estimate:
+    initial_t_dof_estimate = 4.0
+    iterative_dof_estimate = iterative_mv_t_dof_estimate(
+        centered_samples,
+        initial_dof=initial_t_dof_estimate,
+        infinite_dof_threshold=50.0,
+        max_iter=100,
+    )
+
+    assert np.isposinf(
+        iterative_dof_estimate
+    ), "Dof estimate should be infinite on Gaussian data."
+
+
+def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
+    seed = 4125
+    n_samples = 500
+    p = 5
+
+    np.random.seed(seed)
+
+    mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
+    cov = np.eye(p)
+
+    mv_normal_samples = st.multivariate_normal(mean=mean, cov=cov).rvs(n_samples)
+
+    sample_medians = np.median(mv_normal_samples, axis=0)
+    centered_samples = mv_normal_samples - sample_medians
+
+    # Test data-driven estimate:
+    initial_t_dof_estimate = 4.0
+    loo_iterative_dof = loo_iterative_mv_t_dof_estimate(
+        centered_samples,
+        initial_dof=initial_t_dof_estimate,
+        infinite_dof_threshold=50.0,
+        max_iter=100,
+    )
+
+    assert np.isposinf(
+        loo_iterative_dof
+    ), "Dof estimate should be infinite on Gaussian data."
