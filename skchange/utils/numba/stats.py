@@ -39,6 +39,28 @@ def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
 
 
 @njit
+def col_median(x: np.ndarray) -> np.ndarray:
+    """Calculate the median of each column in a 2D array.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        2D array.
+
+    Returns
+    -------
+    np.ndarray : Medians.
+
+    """
+    p = x.shape[1]
+    medians = np.zeros(p)
+    for j in range(p):
+        medians[j] = np.median(x[:, j])
+
+    return medians
+
+
+@njit
 def log_det_covariance(X: np.ndarray) -> float:
     """Compute log determinant of the covariance matrix of a data matrix.
 
@@ -63,3 +85,89 @@ def log_det_covariance(X: np.ndarray) -> float:
         return np.nan
     else:
         return log_abs_det
+
+
+@njit
+def log_gamma(x: float) -> float:
+    """Compute the log of the gamma function.
+
+    Uses the Stirling's approximation for the gamma function.
+    Source: https://en.wikipedia.org/wiki/Gamma_function#Log-gamma_function
+    """
+    x_cubed = x * x * x
+    log_gamma = (
+        (x - 0.5) * np.log(x)
+        - x
+        + 0.5 * np.log(2.0 * np.pi)
+        + 1.0 / (12.0 * x)
+        - 1.0 / (360.0 * x_cubed)
+        + 1.0 / (1260.0 * x_cubed * x * x)
+    )
+
+    return log_gamma
+
+
+@njit
+def digamma(x: float) -> float:
+    """Approximate the digamma function.
+
+    Use the asymptotic expansion for the digamma function on the real domain,
+    by first moving the argument above 5.0 before
+    applying the first three terms of its asymptotic expansion.
+
+    Source: https://en.wikipedia.org/wiki/Digamma_function#Asymptotic_expansion
+    """
+    result = 0.0
+    while x <= 5.0:
+        result -= 1.0 / x
+        x += 1.0
+    inv_x = 1.0 / x
+    inv_x2 = inv_x * inv_x
+    result += np.log(x) - 0.5 * inv_x - inv_x2 * (1.0 / 12.0 - inv_x2 / 120.0)
+    return result
+
+
+@njit
+def trigamma(x: float) -> float:
+    """
+    Approximate the trigamma function on the real positive domain.
+
+    Uses the asymptotic expansion for the trigamma function on the real domain,
+    by first moving the argument above 5.0 before
+    applying the first four terms of its asymptotic expansion.
+
+    Source: https://en.wikipedia.org/wiki/Trigamma_function
+    """
+    result = 0.0
+    while x <= 5.0:
+        result += 1.0 / (x * x)
+        x += 1.0
+    inv_x = 1.0 / x
+    inv_x2 = inv_x * inv_x
+    result += (
+        (1.0 / x)
+        + 0.5 * inv_x2
+        + (1.0 / 6.0) * inv_x2 * inv_x
+        + (1.0 / 30.0) * inv_x2 * inv_x2 * inv_x
+    )
+    return result
+
+
+@njit
+def kurtosis(centered_samples: np.ndarray, fisher=True) -> float:
+    """Compute the kurtosis of a set of samples."""
+    sample_dim = centered_samples.shape[1]
+    per_dim_squared_variance = np.zeros(sample_dim)
+    for i in range(sample_dim):
+        per_dim_squared_variance[i] = np.var(centered_samples[:, i]) ** 2
+
+    per_dim_fourth_moment = np.zeros(sample_dim)
+    for i in range(sample_dim):
+        zero_mean_samples = centered_samples[:, i] - np.mean(centered_samples[:, i])
+        per_dim_fourth_moment[i] = np.mean(zero_mean_samples**4)
+
+    per_dim_kurtosis = per_dim_fourth_moment / per_dim_squared_variance
+    if fisher:
+        per_dim_kurtosis -= 3.0
+
+    return per_dim_kurtosis

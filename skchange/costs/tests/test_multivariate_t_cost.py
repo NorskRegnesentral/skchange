@@ -6,6 +6,8 @@ import scipy.linalg as sla
 import scipy.stats as st
 from scipy.special import digamma, gammaln, polygamma
 
+from skchange.change_detectors import PELT, MovingWindow
+from skchange.costs import MultivariateTCost
 from skchange.costs.multivariate_t_cost import (
     _multivariate_t_log_likelihood,
     isotropic_t_dof_estimate,
@@ -453,6 +455,42 @@ def test_isotropic_and_kurtosis_t_dof_estimates():
     assert np.abs(kurtosis_dof - t_dof) < 1.0, "Kurtosis dof estimate is off."
 
 
+def test_iso_and_kurt_dof_estimates_on_gaussian_data():
+    seed = 0
+    np.random.seed(seed)
+    n_samples = 500
+    p = 2
+    t_dof = 5.0
+
+    mv_t_samples = st.multivariate_t.rvs(
+        df=t_dof, loc=np.zeros(p), shape=np.eye(p), size=n_samples
+    )
+
+    mv_normal_samples = st.multivariate_normal.rvs(
+        mean=np.zeros(p), cov=np.eye(p), size=n_samples
+    )
+
+    mv_t_kurt_dof_est = kurtosis_t_dof_estimate(mv_t_samples)
+    assert np.isfinite(mv_t_kurt_dof_est) and (
+        mv_t_kurt_dof_est > 0.0
+    ), "Kurtosis dof estimate should be finite on multivariate t samples."
+
+    mv_t_isotropic_dof_est = isotropic_t_dof_estimate(mv_t_samples)
+    assert np.isfinite(mv_t_isotropic_dof_est) and (
+        mv_t_isotropic_dof_est > 0.0
+    ), "Isotropic dof estimate should be finite on multivariate t samples."
+
+    normal_kurt_dof_est = kurtosis_t_dof_estimate(mv_normal_samples)
+    assert np.isposinf(
+        normal_kurt_dof_est
+    ), "Kurtosis dof estimate should be infinite on Gaussian data."
+
+    normal_isotropic_dof_est = isotropic_t_dof_estimate(mv_normal_samples)
+    assert np.isposinf(
+        normal_isotropic_dof_est
+    ), "Isotropic dof estimate should be infinite on Gaussian data."
+
+
 def test_iterative_t_dof_estimate():
     seed = 4125
     n_samples = 150
@@ -559,7 +597,6 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
     sample_medians = np.median(mv_normal_samples, axis=0)
     centered_samples = mv_normal_samples - sample_medians
 
-    # Test data-driven estimate:
     initial_t_dof_estimate = 4.0
     loo_iterative_dof = loo_iterative_mv_t_dof_estimate(
         centered_samples,
@@ -571,3 +608,77 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
     assert np.isposinf(
         loo_iterative_dof
     ), "Dof estimate should be infinite on Gaussian data."
+
+
+def test_MultiVariateTCost_with_PELT(
+    seed=5212, n_samples=200, p=5, t_dof=5.0, cost_dof=None
+):
+    np.random.seed(seed)
+
+    mean_1 = np.arange(p) * (-1 * np.ones(p)).cumprod()
+    scale_1 = np.eye(p)
+
+    mv_t_1_samples = st.multivariate_t(loc=mean_1, shape=scale_1, df=t_dof).rvs(
+        n_samples
+    )
+
+    mean_2 = mean_1 + 1.0
+    scale_2 = np.eye(p)
+    scale_2[0, 0] = 10.0
+    mv_t_2_samples = st.multivariate_t(loc=mean_2, shape=scale_2, df=t_dof).rvs(
+        n_samples
+    )
+
+    X = np.vstack([mv_t_1_samples, mv_t_2_samples])
+
+    t_cost = MultivariateTCost(dof=cost_dof)
+    change_detector = PELT(cost=t_cost, min_segment_length=2 * p + 1, penalty_scale=1.0)
+
+    segmentation = change_detector.fit_transform(X)
+    change_points = change_detector.dense_to_sparse(segmentation)
+
+    print(f"Change points: {change_points}")
+    print(f"Estimated dof: {t_cost.dof_}")
+
+    assert len(change_points) == 1, "Only one change point should be detected."
+    assert (
+        change_points.loc[0, "ilocs"] == n_samples
+    ), "Change point should be at the end of the first segment."
+    assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."
+
+
+def test_MultiVariateTCost_with_moving_window(
+    seed=5212, n_samples=200, p=5, t_dof=5.0, cost_dof=None
+):
+    np.random.seed(seed)
+
+    mean_1 = np.arange(p) * (-1 * np.ones(p)).cumprod()
+    scale_1 = np.eye(p)
+
+    mv_t_1_samples = st.multivariate_t(loc=mean_1, shape=scale_1, df=t_dof).rvs(
+        n_samples
+    )
+
+    mean_2 = mean_1 + 1.0
+    scale_2 = np.eye(p)
+    scale_2[0, 0] = 10.0
+    mv_t_2_samples = st.multivariate_t(loc=mean_2, shape=scale_2, df=t_dof).rvs(
+        n_samples
+    )
+
+    X = np.vstack([mv_t_1_samples, mv_t_2_samples])
+
+    t_cost = MultivariateTCost(dof=cost_dof)
+    change_detector = MovingWindow(change_score=t_cost, bandwidth=int(0.8 * n_samples))
+
+    segmentation = change_detector.fit_transform(X)
+    change_points = change_detector.dense_to_sparse(segmentation)
+
+    print(f"Change points: {change_points}")
+    print(f"Estimated dof: {t_cost.dof_}")
+
+    assert len(change_points) == 1, "Only one change point should be detected."
+    assert (
+        change_points.loc[0, "ilocs"] == n_samples
+    ), "Change point should be at the end of the first segment."
+    assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."

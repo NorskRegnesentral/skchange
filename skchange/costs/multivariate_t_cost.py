@@ -6,7 +6,6 @@ __all__ = ["MultivariateTCost"]
 from typing import Union
 
 import numpy as np
-import scipy.stats as st
 
 from skchange.costs.base import BaseCost
 from skchange.costs.multivariate_gaussian_cost import (
@@ -15,72 +14,13 @@ from skchange.costs.multivariate_gaussian_cost import (
 )
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import njit, prange
-
-
-@njit
-def numba_log_gamma(x: float) -> float:
-    """Compute the log of the gamma function.
-
-    Uses the Stirling's approximation for the gamma function.
-    Source: https://en.wikipedia.org/wiki/Gamma_function#Log-gamma_function
-    """
-    x_cubed = x * x * x
-    log_gamma = (
-        (x - 0.5) * np.log(x)
-        - x
-        + 0.5 * np.log(2.0 * np.pi)
-        + 1.0 / (12.0 * x)
-        - 1.0 / (360.0 * x_cubed)
-        + 1.0 / (1260.0 * x_cubed * x * x)
-    )
-
-    return log_gamma
-
-
-@njit
-def numba_digamma(x: float) -> float:
-    """Approximate the digamma function.
-
-    Use the asymptotic expansion for the digamma function on the real domain,
-    by first moving the argument above 5.0 before
-    applying the first three terms of its asymptotic expansion.
-
-    Source: https://en.wikipedia.org/wiki/Digamma_function#Asymptotic_expansion
-    """
-    result = 0.0
-    while x <= 5.0:
-        result -= 1.0 / x
-        x += 1.0
-    inv_x = 1.0 / x
-    inv_x2 = inv_x * inv_x
-    result += np.log(x) - 0.5 * inv_x - inv_x2 * (1.0 / 12.0 - inv_x2 / 120.0)
-    return result
-
-
-@njit
-def numba_trigamma(x: float) -> float:
-    """
-    Approximate the trigamma function on the real positive domain.
-
-    Uses the asymptotic expansion for the trigamma function on the real domain,
-    by first moving the argument above 5.0 before
-    applying the first four terms of its asymptotic expansion.
-
-    Source: https://en.wikipedia.org/wiki/Trigamma_function
-    """
-    result = 0.0
-    while x <= 5.0:
-        result += 1.0 / (x * x)
-        x += 1.0
-    inv_x = 1.0 / x
-    inv_x2 = inv_x * inv_x
-    result += (
-        (1.0 / x)
-        + 0.5 * inv_x2
-        + (1.0 / 6.0) * inv_x2 * inv_x
-        + (1.0 / 30.0) * inv_x2 * inv_x2 * inv_x
-    )
-    return result
+from skchange.utils.numba.stats import (
+    col_median,
+    digamma,
+    kurtosis,
+    log_gamma,
+    trigamma,
+)
 
 
 @njit
@@ -93,7 +33,7 @@ def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float):
     p = centered_samples.shape[1]
     squared_norms = np.sum(centered_samples * centered_samples, axis=1)
     z_bar = np.log(squared_norms[squared_norms > 1.0e-12]).mean()
-    log_alpha = z_bar - np.log(dof) + numba_digamma(0.5 * dof) - numba_digamma(p / 2.0)
+    log_alpha = z_bar - np.log(dof) + digamma(0.5 * dof) - digamma(p / 2.0)
     return p * np.exp(log_alpha)
 
 
@@ -280,8 +220,8 @@ def _multivariate_t_log_likelihood(
 
     # Normalization constants:
     exponent = 0.5 * (dof + sample_dim)
-    A = numba_log_gamma(exponent)
-    B = numba_log_gamma(0.5 * dof)
+    A = log_gamma(exponent)
+    B = log_gamma(0.5 * dof)
     C = 0.5 * sample_dim * np.log(dof * np.pi)
     D = 0.5 * log_det_scale_matrix
 
@@ -324,7 +264,7 @@ def _mv_t_ll_at_mle_params(
     X_segment = X[start:end]
 
     # Estimate the mean of each dimension through the sample medians:
-    sample_medians = np.median(X_segment, axis=0)
+    sample_medians = col_median(X_segment)
     X_centered = X_segment - sample_medians
 
     mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(X_centered, dof)
@@ -370,6 +310,7 @@ def multivariate_t_cost_mle_params(
     return costs
 
 
+@njit
 def _mv_t_ll_at_fixed_params(
     X: np.ndarray,
     start: int,
@@ -420,6 +361,7 @@ def _mv_t_ll_at_fixed_params(
     return total_log_likelihood
 
 
+@njit
 def multivariate_t_cost_fixed_params(
     starts: np.ndarray,
     ends: np.ndarray,
@@ -473,7 +415,7 @@ def multivariate_t_cost_fixed_params(
 
 @njit
 def isotropic_t_dof_estimate(
-    centered_samples: np.ndarray, zero_norm_tol=1.0e-6
+    centered_samples: np.ndarray, zero_norm_tol=1.0e-6, infinite_dof_threshold=1.0e2
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
 
@@ -486,32 +428,33 @@ def isotropic_t_dof_estimate(
 
     log_norm_sq_var = np.log(squared_norms[squared_norms > zero_norm_tol**2]).var()
 
-    b = log_norm_sq_var - numba_trigamma(sample_dim / 2.0)
+    b = log_norm_sq_var - trigamma(sample_dim / 2.0)
+    inf_dof_b_threshold = (2 * infinite_dof_threshold + 4) / (infinite_dof_threshold**2)
+    if b < inf_dof_b_threshold:
+        # The dof estimate formula would exceed the infinite dof threshold,
+        # (or break down due to a negative value), so we return infinity.
+        return np.inf
+
     dof_estimate = (1 + np.sqrt(1 + 4 * b)) / b
 
     return dof_estimate
 
 
-def ellipitical_kurtosis(centered_samples: np.ndarray) -> float:
-    """Compute the kurtosis of a set of samples.
-
-    From:
-    Shrinking the eigenvalues of M-estimators of covariance matrix,
-    subsection IV-A.
-    by: Esa Ollila, Daniel P. Palomar, and Frédéric Pascal
-    """
-    kurtosis_per_sample_dim: np.ndarray
-    kurtosis_per_sample_dim = st.kurtosis(
-        centered_samples, fisher=True, bias=False, axis=0
-    )
-    averaged_kurtosis = kurtosis_per_sample_dim.mean()
-    return averaged_kurtosis / 3.0
-
-
-def kurtosis_t_dof_estimate(centered_samples: np.ndarray) -> float:
+@njit
+def kurtosis_t_dof_estimate(
+    centered_samples: np.ndarray, infinite_dof_threshold: float = 1.0e2
+) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution."""
-    sample_ellipitical_kurtosis = ellipitical_kurtosis(centered_samples)
-    dof_estimate = 2.0 / max(1.0e-3, sample_ellipitical_kurtosis) + 4.0
+    sample_ellipitical_kurtosis = kurtosis(centered_samples).mean() / 3.0
+
+    inf_dof_kurtosis_threshold = 2.0 / (infinite_dof_threshold - 4.0)
+    if sample_ellipitical_kurtosis < inf_dof_kurtosis_threshold:
+        # The elliptical kurtosis estimate is below the threshold
+        # which would lead to a degrees of freedom estimate above the
+        # infinite degrees of freedom threshold. We return infinity.
+        return np.inf
+
+    dof_estimate = (2.0 / sample_ellipitical_kurtosis) + 4.0
     return dof_estimate
 
 
@@ -669,6 +612,49 @@ def loo_iterative_mv_t_dof_estimate(
     return current_dof
 
 
+@njit
+def estimate_mv_t_dof(
+    X: np.ndarray, infinite_dof_threshold: float, refine_dof_threshold: int
+):
+    centered_samples = X - col_median(X)
+
+    isotropic_dof = isotropic_t_dof_estimate(
+        centered_samples, infinite_dof_threshold=infinite_dof_threshold
+    )
+    kurtosis_dof = kurtosis_t_dof_estimate(
+        centered_samples, infinite_dof_threshold=infinite_dof_threshold
+    )
+
+    if np.isfinite(isotropic_dof) and np.isfinite(kurtosis_dof):
+        # Initialize the iterative dof estimation method with the
+        # geometric mean of the isotropic and kurtosis estimates:
+        initial_dof_estimate = np.sqrt(isotropic_dof * kurtosis_dof)
+    elif np.isfinite(isotropic_dof):
+        initial_dof_estimate = isotropic_dof
+    elif np.isfinite(kurtosis_dof):
+        initial_dof_estimate = kurtosis_dof
+    else:
+        # Both initial estimates are infinite, start the
+        # iterative method with a reasonably high initial dof:
+        initial_dof_estimate = infinite_dof_threshold / 2.0
+
+    dof_estimate = iterative_mv_t_dof_estimate(
+        centered_samples=centered_samples,
+        initial_dof=initial_dof_estimate,
+        infinite_dof_threshold=infinite_dof_threshold,
+    )
+
+    num_samples = X.shape[0]
+    if num_samples <= refine_dof_threshold:
+        dof_estimate = loo_iterative_mv_t_dof_estimate(
+            centered_samples=centered_samples,
+            initial_dof=dof_estimate,
+            infinite_dof_threshold=infinite_dof_threshold,
+        )
+
+    return dof_estimate
+
+
 class MultivariateTCost(BaseCost):
     r"""Multivariate T likelihood cost.
 
@@ -750,7 +736,12 @@ class MultivariateTCost(BaseCost):
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
 
-        This method precomputes quantities that speed up the cost evaluation.
+        This method checks fixed distribution parameters, if provided, and
+        precomputes quantities that are used in the cost evaluation.
+
+        Additionally, the degrees of freedom for the multivariate T data generating
+        distribution it estimated, if the degrees of freedom parameters was not set
+        during the construction of the MultivariateTCost object.
 
         Parameters
         ----------
@@ -767,27 +758,17 @@ class MultivariateTCost(BaseCost):
             _, self._log_det_scale_matrix = np.linalg.slogdet(scale_matrix)
 
         if self.dof is None:
-            centered_samples = X - np.median(X, axis=0)
-
-            isotropic_dof = isotropic_t_dof_estimate(centered_samples)
-            kurtosis_dof = kurtosis_t_dof_estimate(centered_samples)
-
-            initial_dof_estimate = np.sqrt(isotropic_dof * kurtosis_dof)
-            self.dof = iterative_mv_t_dof_estimate(
-                centered_samples=centered_samples,
-                initial_dof=initial_dof_estimate,
+            self.dof_ = estimate_mv_t_dof(
+                X,
                 infinite_dof_threshold=self.infinite_dof_threshold,
+                refine_dof_threshold=self.refine_dof_threshold,
             )
+        else:
+            self.dof_ = self.dof
 
-            num_samples = X.shape[0]
-            if num_samples <= self.refine_dof_threshold:
-                self.dof = loo_iterative_mv_t_dof_estimate(
-                    centered_samples=centered_samples,
-                    initial_dof=self.dof,
-                    infinite_dof_threshold=self.infinite_dof_threshold,
-                )
-
-        if not np.isposinf(self.dof) and (self.dof <= 0.0 or not np.isfinite(self.dof)):
+        if not np.isposinf(self.dof_) and (
+            self.dof_ <= 0.0 or not np.isfinite(self.dof_)
+        ):
             raise ValueError(
                 "Degrees of freedom 'dof' must be a positive,"
                 " finite number, or 'np.inf'."
@@ -811,10 +792,12 @@ class MultivariateTCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of columns
             is 1 since the MultivariateTCost is inherently multivariate.
         """
-        if np.isposinf(self.dof):
-            gaussian_cost_mle_params(starts, ends, self._X)
+        if np.isposinf(self.dof_):
+            return gaussian_cost_mle_params(starts, ends, X=self._X)
         else:
-            return multivariate_t_cost_mle_params(starts, ends, self._X, dof=self.dof)
+            return multivariate_t_cost_mle_params(
+                starts, ends, X=self._X, dof=self.dof_
+            )
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameters.
