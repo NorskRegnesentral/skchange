@@ -13,7 +13,7 @@ from skchange.costs.multivariate_gaussian_cost import (
     gaussian_cost_mle_params,
 )
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
-from skchange.utils.numba import njit, prange
+from skchange.utils.numba import njit, prange, numba_available
 from skchange.utils.numba.stats import (
     col_median,
     digamma,
@@ -680,7 +680,8 @@ class MultivariateTCost(BaseCost):
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
         a multivariate Gaussian distribution.
-    refine_dof_threshold : int, optional (default=500)
+    refine_dof_threshold : int, optional
+        (default=1000 with Numba installed, 200 without)
         The number of samples below which the degrees of freedom
         estimate is refined using a leave-one-out iterative method.
     """
@@ -692,12 +693,15 @@ class MultivariateTCost(BaseCost):
         param: Union[tuple[MeanType, CovType], None] = None,
         dof=None,
         infinite_dof_threshold=1.0e2,
-        refine_dof_threshold=500,
+        refine_dof_threshold=1_000,
     ):
         super().__init__(param)
         self.dof = dof
         self.infinite_dof_threshold = infinite_dof_threshold
-        self.refine_dof_threshold = refine_dof_threshold
+        if numba_available:
+            self.refine_dof_threshold = refine_dof_threshold
+        else:
+            self.refine_dof_threshold = 200
 
     def _check_fixed_param(
         self, param: tuple[MeanType, CovType], X: np.ndarray
