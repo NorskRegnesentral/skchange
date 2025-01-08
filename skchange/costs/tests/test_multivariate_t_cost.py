@@ -355,6 +355,45 @@ def test_scale_matrix_mle(seed=4125):
     ), "MLE log-likelihood is not maximal."
 
 
+def test_loo_scale_matrix_mle(seed=4125):
+    """Test leave-one-out scale matrix MLE."""
+    np.random.seed(seed)
+    n_samples = 50
+    p = 3
+    t_dof = 5.0
+    mle_scale_abs_tol = 1.0e-6
+
+    # Test the leave-one-out MLE scale matrix on a subset of the samples:
+    num_test_indices = 10
+
+    random_nudge = np.random.randn(p).reshape(-1, 1)
+    true_scale_matrix = np.eye(p) + 0.5 * random_nudge @ random_nudge.T
+
+    true_mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
+
+    mv_t_samples = st.multivariate_t(
+        loc=true_mean, shape=true_scale_matrix, df=t_dof
+    ).rvs(n_samples)
+
+    sample_medians = np.median(mv_t_samples, axis=0)
+    centered_samples = mv_t_samples - sample_medians
+
+    loo_indices = np.random.choice(n_samples, num_test_indices, replace=False)
+    for loo_index in loo_indices:
+        loo_centered_samples = np.delete(centered_samples, loo_index, axis=0)
+        direct_loo_mle_scale = maximum_likelihood_mv_t_scale_matrix(
+            loo_centered_samples, t_dof, abs_tol=mle_scale_abs_tol
+        )
+
+        index_loo_mle_scale = maximum_likelihood_mv_t_scale_matrix(
+            centered_samples, t_dof, loo_index=loo_index, abs_tol=mle_scale_abs_tol
+        )
+
+        np.testing.assert_allclose(
+            direct_loo_mle_scale, index_loo_mle_scale, atol=1e-16
+        )
+
+
 def test_scale_matrix_numba_benchmark(
     n_trials=10,
     n_samples=1_000,
@@ -398,17 +437,17 @@ def test_scale_matrix_numba_benchmark(
         end = perf_counter()
         times_njit.append(end - start)
 
-        # Time normal version
+        # Time nojit version
         start = perf_counter()
-        normal_mle_scale_matrix = maximum_likelihood_scale_matrix_nojit(
+        nojit_mle_scale_matrix = maximum_likelihood_scale_matrix_nojit(
             centered_samples, t_dof, initial_trace_correction=initial_trace_correction
         )
         end = perf_counter()
         times_normal.append(end - start)
 
-        # Assert numba version is correct:
+        # Assert numba version is close to normal version:
         np.testing.assert_allclose(
-            numba_mle_scale_matrix, normal_mle_scale_matrix, atol=1e-10
+            numba_mle_scale_matrix, nojit_mle_scale_matrix, atol=1e-10
         )
 
     # Assert numba version is faster on average:
@@ -524,7 +563,7 @@ def test_iterative_t_dof_estimate():
 
 def test_loo_iterative_t_dof_estimate():
     seed = 4125
-    n_samples = 150
+    n_samples = 200
     p = 5
     t_dof = 5.0
 

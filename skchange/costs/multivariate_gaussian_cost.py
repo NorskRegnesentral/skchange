@@ -129,7 +129,7 @@ def _gaussian_ll_at_fixed_params(
     return twice_log_likelihood / 2.0
 
 
-@njit
+@njit(parallel=True)
 def gaussian_cost_fixed_params(
     starts: np.ndarray,
     ends: np.ndarray,

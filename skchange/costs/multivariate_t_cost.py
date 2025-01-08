@@ -24,7 +24,7 @@ from skchange.utils.numba.stats import (
 
 
 @njit
-def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float):
+def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float, loo_index=-1):
     """Estimate the scale parameter of the MLE covariance matrix.
 
     From: A Novel Parameter Estimation Algorithm for the Multivariate
@@ -32,6 +32,11 @@ def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float):
     """
     p = centered_samples.shape[1]
     squared_norms = np.sum(centered_samples * centered_samples, axis=1)
+
+    if loo_index >= 0:
+        # Zero out the leave-one-out sample squared norm.
+        squared_norms[loo_index] = 0.0
+
     z_bar = np.log(squared_norms[squared_norms > 1.0e-12]).mean()
     log_alpha = z_bar - np.log(dof) + digamma(0.5 * dof) - digamma(p / 2.0)
     return p * np.exp(log_alpha)
@@ -41,19 +46,27 @@ def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float):
 def initial_scale_matrix_estimate(
     centered_samples: np.ndarray,
     t_dof: float,
-    num_zeroed_samples: int = 0,
+    loo_index: int = -1,
     apply_trace_correction: bool = True,
 ):
     """Estimate the scale matrix given centered samples and degrees of freedom."""
-    n, p = centered_samples.shape
-    num_effective_samples = n - num_zeroed_samples
+    num_samples = centered_samples.shape[0]
 
-    sample_covariance_matrix = (
-        centered_samples.T @ centered_samples
-    ) / num_effective_samples
+    sample_covariance_matrix = centered_samples.T @ centered_samples
+    if loo_index >= 0:
+        # Subtract the leave-one-out sample contribution:
+        loo_sample = centered_samples[loo_index, :].reshape(-1, 1)
+        sample_covariance_matrix -= loo_sample @ loo_sample.T
+
+        # Scale by the number of samples minus the leave-one-out sample:
+        sample_covariance_matrix /= num_samples - 1
+    else:
+        sample_covariance_matrix /= num_samples
 
     if apply_trace_correction:
-        scale_trace_estimate = estimate_scale_matrix_trace(centered_samples, t_dof)
+        scale_trace_estimate = estimate_scale_matrix_trace(
+            centered_samples, t_dof, loo_index=loo_index
+        )
         sample_covariance_matrix *= scale_trace_estimate / np.trace(
             sample_covariance_matrix
         )
@@ -66,25 +79,31 @@ def scale_matrix_fixed_point_iteration(
     scale_matrix: np.ndarray,
     dof: float,
     centered_samples: np.ndarray,
-    num_zeroed_samples: int = 0,
+    loo_index: int = -1,
 ):
     """Compute a multivariate T MLE scale matrix fixed point iteration."""
-    n, p = centered_samples.shape
+    num_samples, sample_dim = centered_samples.shape
 
-    # Subtract the number of 'zeroed' samples:
-    effective_num_samples = n - num_zeroed_samples
-
-    inverse_scale_matrix = np.linalg.solve(scale_matrix, np.eye(p))
+    inverse_scale_matrix = np.linalg.solve(scale_matrix, np.eye(sample_dim))
     mahalanobis_squared_distances = np.sum(
         (centered_samples @ inverse_scale_matrix) * centered_samples, axis=1
     )
 
-    sample_weights = (p + dof) / (dof + mahalanobis_squared_distances)
+    sample_weights = (sample_dim + dof) / (dof + mahalanobis_squared_distances)
     weighted_samples = centered_samples * sample_weights[:, np.newaxis]
 
-    reconstructed_scale_matrix = (
-        weighted_samples.T @ centered_samples
-    ) / effective_num_samples
+    reconstructed_scale_matrix = weighted_samples.T @ centered_samples
+    if loo_index >= 0:
+        # Subtract the leave-one-out sample contribution:
+        loo_sample = centered_samples[loo_index, :].reshape(-1, 1)
+        reconstructed_scale_matrix -= (
+            sample_weights[loo_index] * loo_sample @ loo_sample.T
+        )
+
+        # Scale by the number of samples minus the leave-one-out sample:
+        reconstructed_scale_matrix /= num_samples - 1
+    else:
+        reconstructed_scale_matrix /= num_samples
 
     return reconstructed_scale_matrix
 
@@ -94,7 +113,7 @@ def solve_for_mle_scale_matrix(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
     dof: float,
-    num_zeroed_samples: int = 0,
+    loo_index: int = -1,
     max_iter: int = 50,
     abs_tol: float = 1.0e-3,
 ) -> np.ndarray:
@@ -105,7 +124,7 @@ def solve_for_mle_scale_matrix(
             scale_matrix=scale_matrix,
             dof=dof,
             centered_samples=centered_samples,
-            num_zeroed_samples=num_zeroed_samples,
+            loo_index=loo_index,
         )
 
         # Note: 'ord = None' computes the Frobenius norm.
@@ -124,7 +143,7 @@ def maximum_likelihood_mv_t_scale_matrix(
     dof: float,
     abs_tol: float = 1.0e-3,
     max_iter: int = 50,
-    num_zeroed_samples: int = 0,
+    loo_index: int = -1,
     initial_trace_correction: bool = True,
 ) -> np.ndarray:
     """Compute the MLE scale matrix for a multivariate t-distribution.
@@ -145,7 +164,7 @@ def maximum_likelihood_mv_t_scale_matrix(
     mle_scale_matrix = initial_scale_matrix_estimate(
         centered_samples,
         dof,
-        num_zeroed_samples=num_zeroed_samples,
+        loo_index=loo_index,
         apply_trace_correction=initial_trace_correction,
     )
 
@@ -153,7 +172,7 @@ def maximum_likelihood_mv_t_scale_matrix(
         initial_scale_matrix=mle_scale_matrix,
         centered_samples=centered_samples,
         dof=dof,
-        num_zeroed_samples=num_zeroed_samples,
+        loo_index=loo_index,
         max_iter=max_iter,
         abs_tol=abs_tol,
     )
@@ -276,7 +295,7 @@ def _mv_t_ll_at_mle_params(
     return total_log_likelihood
 
 
-@njit
+@njit(parallel=True)
 def multivariate_t_cost_mle_params(
     starts: np.ndarray, ends: np.ndarray, X: np.ndarray, dof: float
 ) -> np.ndarray:
@@ -361,7 +380,7 @@ def _mv_t_ll_at_fixed_params(
     return total_log_likelihood
 
 
-@njit
+@njit(parallel=True)
 def multivariate_t_cost_fixed_params(
     starts: np.ndarray,
     ends: np.ndarray,
@@ -518,7 +537,7 @@ def iterative_mv_t_dof_estimate(
     return dof
 
 
-@njit
+@njit(parallel=True)
 def loo_iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
@@ -553,18 +572,14 @@ def loo_iterative_mv_t_dof_estimate(
         sample_covariance
     )
 
-    loo_sample = np.zeros((sample_dimension, 1))
-    loo_sample_outer_product = np.zeros((sample_dimension, sample_dimension))
-
     current_dof = initial_dof
 
-    # For parallelization, need to copy the centered_samples per thread:
     for _ in range(max_iter):
         total_loo_mahalanobis_squared_distance = 0.0
-        for sample in range(num_samples):
+        for sample in prange(num_samples):
             # Extract the leave-one-out sample as a column vector:
-            loo_sample[:] = centered_samples[sample, :].reshape(-1, 1)
-            loo_sample_outer_product[:, :] = loo_sample @ loo_sample.T
+            loo_sample = centered_samples[sample, :].reshape(-1, 1)
+            loo_sample_outer_product = loo_sample @ loo_sample.T
 
             # Initial estimate of the leave-one-out covariance matrix,
             # subtracting the contracted contribution of the leave-one-out sample:
@@ -572,19 +587,13 @@ def loo_iterative_mv_t_dof_estimate(
                 loo_sample_outer_product / num_samples
             )
 
-            # Zero out the leave-one-out sample:
-            centered_samples[sample, :] = 0.0
-
             loo_mle_scale_matrix, inner_iters = solve_for_mle_scale_matrix(
                 initial_scale_matrix=loo_scale_estimate,
                 centered_samples=centered_samples,
                 dof=current_dof,
-                num_zeroed_samples=1,
+                loo_index=sample,
                 abs_tol=inner_abs_tol,
             )
-
-            # Restore the leave-one-out sample:
-            centered_samples[sample, :] = loo_sample[:].reshape(-1)
 
             loo_mahalanobis_squared_distance = (
                 loo_sample.T @ np.linalg.solve(loo_mle_scale_matrix, loo_sample)
