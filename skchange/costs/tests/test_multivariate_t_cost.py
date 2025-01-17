@@ -108,7 +108,7 @@ def solve_mle_scale_matrix_nojit(
     t_dof: float,
     num_zeroed_samples: int = 0,
     max_iter: int = 50,
-    reverse_tol: float = 1.0e-3,
+    abs_tol: float = 1.0e-3,
 ) -> np.ndarray:
     """Perform fixed point iterations for the MLE scale matrix."""
     scale_matrix = initial_scale_matrix.copy()
@@ -127,7 +127,7 @@ def solve_mle_scale_matrix_nojit(
         residual = np.linalg.norm(temp_cov_matrix - scale_matrix, ord=None)
 
         scale_matrix = temp_cov_matrix.copy()
-        if residual < reverse_tol:
+        if residual < abs_tol:
             break
 
     return scale_matrix, iteration
@@ -136,7 +136,7 @@ def solve_mle_scale_matrix_nojit(
 def maximum_likelihood_scale_matrix_nojit(
     centered_samples: np.ndarray,
     t_dof: float,
-    reverse_tol: float = 1.0e-3,
+    abs_tol: float = 1.0e-3,
     max_iter: int = 50,
     num_zeroed_samples: int = 0,
     initial_trace_correction: bool = True,
@@ -169,7 +169,7 @@ def maximum_likelihood_scale_matrix_nojit(
         t_dof=t_dof,
         num_zeroed_samples=num_zeroed_samples,
         max_iter=max_iter,
-        reverse_tol=reverse_tol,
+        abs_tol=abs_tol,
     )
 
     return mle_scale_matrix
@@ -292,10 +292,10 @@ def test_mv_t_log_likelihood(seed=4125, num_samples=100, p=8, t_dof=5.0):
         scale_matrix=mle_scale_matrix, centered_samples=X_centered, t_dof=t_dof
     )
 
-    ll_simple = _multivariate_t_log_likelihood(
+    ll_numba = _multivariate_t_log_likelihood(
         scale_matrix=mle_scale_matrix, centered_samples=X_centered, dof=t_dof
     )
-    ll_differences = np.diff(np.array([ll_scipy, ll_manual_scipy, ll_simple, ll_scipy]))
+    ll_differences = np.diff(np.array([ll_scipy, ll_manual_scipy, ll_numba, ll_scipy]))
 
     np.testing.assert_allclose(ll_differences, 0, atol=1e-4)
 
@@ -322,7 +322,7 @@ def test_scale_matrix_mle(seed=4125):
 
     # Estimate the scale matrix:
     mle_scale_matrix = maximum_likelihood_scale_matrix_nojit(
-        centered_samples, t_dof, reverse_tol=1.0e-6
+        centered_samples, t_dof, abs_tol=1.0e-6
     )
 
     # Compute approximate gradients:
@@ -350,9 +350,9 @@ def test_scale_matrix_mle(seed=4125):
         centered_samples, loc=np.zeros(p), shape=mle_scale_matrix, df=t_dof
     ).sum()
 
-    assert (
-        mle_scale_matrix_ll > true_scale_matrix_ll
-    ), "MLE log-likelihood is not maximal."
+    assert mle_scale_matrix_ll > true_scale_matrix_ll, (
+        "MLE log-likelihood is not maximal."
+    )
 
 
 def test_loo_scale_matrix_mle(seed=4125):
@@ -426,13 +426,17 @@ def test_scale_matrix_numba_benchmark(
             maximum_likelihood_mv_t_scale_matrix(
                 centered_samples,
                 t_dof,
-                initial_trace_correction=initial_trace_correction,
+                abs_tol=1.0e-9,
+                rel_tol=0.0,
             )
 
         # Time numba version
         start = perf_counter()
         numba_mle_scale_matrix = maximum_likelihood_mv_t_scale_matrix(
-            centered_samples, t_dof, initial_trace_correction=initial_trace_correction
+            centered_samples,
+            t_dof,
+            abs_tol=1.0e-9,
+            rel_tol=0.0,
         )
         end = perf_counter()
         times_njit.append(end - start)
@@ -440,14 +444,17 @@ def test_scale_matrix_numba_benchmark(
         # Time nojit version
         start = perf_counter()
         nojit_mle_scale_matrix = maximum_likelihood_scale_matrix_nojit(
-            centered_samples, t_dof, initial_trace_correction=initial_trace_correction
+            centered_samples,
+            t_dof,
+            initial_trace_correction=initial_trace_correction,
+            abs_tol=1.0e-9,
         )
         end = perf_counter()
         times_normal.append(end - start)
 
         # Assert numba version is close to normal version:
         np.testing.assert_allclose(
-            numba_mle_scale_matrix, nojit_mle_scale_matrix, atol=1e-10
+            numba_mle_scale_matrix, nojit_mle_scale_matrix, atol=1e-9
         )
 
     # Assert numba version is faster on average:
@@ -510,24 +517,24 @@ def test_iso_and_kurt_dof_estimates_on_gaussian_data():
     )
 
     mv_t_kurt_dof_est = kurtosis_t_dof_estimate(mv_t_samples)
-    assert np.isfinite(mv_t_kurt_dof_est) and (
-        mv_t_kurt_dof_est > 0.0
-    ), "Kurtosis dof estimate should be finite on multivariate t samples."
+    assert np.isfinite(mv_t_kurt_dof_est) and (mv_t_kurt_dof_est > 0.0), (
+        "Kurtosis dof estimate should be finite on multivariate t samples."
+    )
 
     mv_t_isotropic_dof_est = isotropic_t_dof_estimate(mv_t_samples)
-    assert np.isfinite(mv_t_isotropic_dof_est) and (
-        mv_t_isotropic_dof_est > 0.0
-    ), "Isotropic dof estimate should be finite on multivariate t samples."
+    assert np.isfinite(mv_t_isotropic_dof_est) and (mv_t_isotropic_dof_est > 0.0), (
+        "Isotropic dof estimate should be finite on multivariate t samples."
+    )
 
     normal_kurt_dof_est = kurtosis_t_dof_estimate(mv_normal_samples)
-    assert np.isposinf(
-        normal_kurt_dof_est
-    ), "Kurtosis dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(normal_kurt_dof_est), (
+        "Kurtosis dof estimate should be infinite on Gaussian data."
+    )
 
     normal_isotropic_dof_est = isotropic_t_dof_estimate(mv_normal_samples)
-    assert np.isposinf(
-        normal_isotropic_dof_est
-    ), "Isotropic dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(normal_isotropic_dof_est), (
+        "Isotropic dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_iterative_t_dof_estimate():
@@ -556,9 +563,9 @@ def test_iterative_t_dof_estimate():
         centered_samples, initial_dof=initial_t_dof_estimate
     )
     assert iterative_dof_estimate > 0, "Data-driven dof estimate should be positive."
-    assert (
-        np.abs(iterative_dof_estimate - t_dof) < 1.0
-    ), "Data-driven dof estimate is off."
+    assert np.abs(iterative_dof_estimate - t_dof) < 1.0, (
+        "Data-driven dof estimate is off."
+    )
 
 
 def test_loo_iterative_t_dof_estimate():
@@ -587,9 +594,9 @@ def test_loo_iterative_t_dof_estimate():
         centered_samples, initial_dof=initial_t_dof_estimate
     )
     assert loo_iterative_dof > 0, "LOO data-driven dof estimate should be positive."
-    assert (
-        np.abs(loo_iterative_dof - t_dof) < 0.15
-    ), "LOO data-driven dof estimate is off."
+    assert np.abs(loo_iterative_dof - t_dof) < 0.15, (
+        "LOO data-driven dof estimate is off."
+    )
 
 
 def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
@@ -616,9 +623,9 @@ def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
         max_iter=100,
     )
 
-    assert np.isposinf(
-        iterative_dof_estimate
-    ), "Dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(iterative_dof_estimate), (
+        "Dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
@@ -644,13 +651,19 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
         max_iter=100,
     )
 
-    assert np.isposinf(
-        loo_iterative_dof
-    ), "Dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(loo_iterative_dof), (
+        "Dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_MultiVariateTCost_with_PELT(
-    seed=5212, n_samples=200, p=5, t_dof=5.0, cost_dof=None
+    seed=5212,
+    n_samples=200,
+    p=5,
+    t_dof=5.0,
+    cost_dof=None,
+    mle_scale_abs_tol=1.0e-3,
+    mle_scale_rel_tol=1.0e-2,
 ):
     np.random.seed(seed)
 
@@ -670,20 +683,26 @@ def test_MultiVariateTCost_with_PELT(
 
     X = np.vstack([mv_t_1_samples, mv_t_2_samples])
 
-    t_cost = MultivariateTCost(dof=cost_dof)
-    change_detector = PELT(cost=t_cost, min_segment_length=2 * p + 1, penalty_scale=1.0)
+    mv_t_cost = MultivariateTCost(
+        dof=cost_dof,
+        mle_scale_abs_tol=mle_scale_abs_tol,
+        mle_scale_rel_tol=mle_scale_rel_tol,
+    )
+    change_detector = PELT(
+        cost=mv_t_cost, min_segment_length=2 * p + 1, penalty_scale=1.0
+    )
 
     segmentation = change_detector.fit_transform(X)
     change_points = change_detector.dense_to_sparse(segmentation)
 
     print(f"Change points: {change_points}")
-    print(f"Estimated dof: {t_cost.dof_}")
+    print(f"Estimated dof: {mv_t_cost.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
-    assert (
-        change_points.loc[0, "ilocs"] == n_samples
-    ), "Change point should be at the end of the first segment."
-    assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."
+    assert change_points.loc[0, "ilocs"] == n_samples, (
+        "Change point should be at the end of the first segment."
+    )
+    assert np.isfinite(mv_t_cost.dof_), "Fitted dof should be finite."
 
 
 def test_MultiVariateTCost_with_moving_window(
@@ -717,7 +736,7 @@ def test_MultiVariateTCost_with_moving_window(
     print(f"Estimated dof: {t_cost.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
-    assert (
-        change_points.loc[0, "ilocs"] == n_samples
-    ), "Change point should be at the end of the first segment."
+    assert change_points.loc[0, "ilocs"] == n_samples, (
+        "Change point should be at the end of the first segment."
+    )
     assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."
