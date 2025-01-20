@@ -10,7 +10,7 @@ jobs:
       - name: python environment step
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.13"
       - name: install pre-commit
         run: python3 -m pip install pre-commit
       - id: changed-files
