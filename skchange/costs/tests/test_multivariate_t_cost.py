@@ -10,9 +10,9 @@ from skchange.change_detectors import PELT, MovingWindow
 from skchange.costs import MultivariateTCost
 from skchange.costs.multivariate_t_cost import (
     _multivariate_t_log_likelihood,
-    isotropic_t_dof_estimate,
+    isotropic_mv_t_dof_estimate,
     iterative_mv_t_dof_estimate,
-    kurtosis_t_dof_estimate,
+    kurtosis_mv_t_dof_estimate,
     loo_iterative_mv_t_dof_estimate,
     maximum_likelihood_mv_t_scale_matrix,
 )
@@ -52,7 +52,7 @@ def estimate_scale_matrix_trace_nojit(centered_samples: np.ndarray, dof: float):
 
 def initial_scale_matrix_estimate_nojit(
     centered_samples: np.ndarray,
-    t_dof: float,
+    dof: float,
     num_zeroed_samples: int = 0,
     apply_trace_correction: bool = True,
 ):
@@ -65,9 +65,7 @@ def initial_scale_matrix_estimate_nojit(
     ) / num_effective_samples
 
     if apply_trace_correction:
-        scale_trace_estimate = estimate_scale_matrix_trace_nojit(
-            centered_samples, t_dof
-        )
+        scale_trace_estimate = estimate_scale_matrix_trace_nojit(centered_samples, dof)
         sample_covariance_matrix *= scale_trace_estimate / np.trace(
             sample_covariance_matrix
         )
@@ -77,7 +75,7 @@ def initial_scale_matrix_estimate_nojit(
 
 def scale_matrix_fixed_point_iteration(
     scale_matrix: np.ndarray,
-    t_dof: float,
+    dof: float,
     centered_samples: np.ndarray,
     num_zeroed_samples: int = 0,
 ):
@@ -92,7 +90,7 @@ def scale_matrix_fixed_point_iteration(
     )
     z_scores = np.einsum("ij,jk,ik->i", centered_samples, inv_cov_2d, centered_samples)
 
-    sample_weight = (p + t_dof) / (t_dof + z_scores)
+    sample_weight = (p + dof) / (dof + z_scores)
     weighted_samples = centered_samples * sample_weight[:, np.newaxis]
 
     reconstructed_scale_matrix = (
@@ -105,7 +103,7 @@ def scale_matrix_fixed_point_iteration(
 def solve_mle_scale_matrix_nojit(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
-    t_dof: float,
+    dof: float,
     num_zeroed_samples: int = 0,
     max_iter: int = 50,
     abs_tol: float = 1.0e-3,
@@ -118,7 +116,7 @@ def solve_mle_scale_matrix_nojit(
     for iteration in range(max_iter):
         temp_cov_matrix = scale_matrix_fixed_point_iteration(
             scale_matrix=scale_matrix,
-            t_dof=t_dof,
+            dof=dof,
             centered_samples=centered_samples,
             num_zeroed_samples=num_zeroed_samples,
         )
@@ -135,7 +133,7 @@ def solve_mle_scale_matrix_nojit(
 
 def maximum_likelihood_scale_matrix_nojit(
     centered_samples: np.ndarray,
-    t_dof: float,
+    dof: float,
     abs_tol: float = 1.0e-3,
     max_iter: int = 50,
     num_zeroed_samples: int = 0,
@@ -158,7 +156,7 @@ def maximum_likelihood_scale_matrix_nojit(
     # Initialize the scale matrix:
     mle_scale_matrix = initial_scale_matrix_estimate_nojit(
         centered_samples,
-        t_dof,
+        dof,
         num_zeroed_samples=num_zeroed_samples,
         apply_trace_correction=initial_trace_correction,
     )
@@ -166,7 +164,7 @@ def maximum_likelihood_scale_matrix_nojit(
     mle_scale_matrix, inner_iterations = solve_mle_scale_matrix_nojit(
         initial_scale_matrix=mle_scale_matrix,
         centered_samples=centered_samples,
-        t_dof=t_dof,
+        dof=dof,
         num_zeroed_samples=num_zeroed_samples,
         max_iter=max_iter,
         abs_tol=abs_tol,
@@ -178,7 +176,7 @@ def maximum_likelihood_scale_matrix_nojit(
 def approximate_mv_t_scale_matrix_gradient(
     scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
-    t_dof: float,
+    dof: float,
     epsilon: float = 1e-4,
 ):
     """
@@ -210,10 +208,10 @@ def approximate_mv_t_scale_matrix_gradient(
             scale_matrix_minus[i, j] -= epsilon
 
             ll_plus = st.multivariate_t.logpdf(
-                centered_samples, loc=np.zeros(p), shape=scale_matrix_plus, df=t_dof
+                centered_samples, loc=np.zeros(p), shape=scale_matrix_plus, df=dof
             ).sum()
             ll_minus = st.multivariate_t.logpdf(
-                centered_samples, loc=np.zeros(p), shape=scale_matrix_minus, df=t_dof
+                centered_samples, loc=np.zeros(p), shape=scale_matrix_minus, df=dof
             ).sum()
 
             grad[i, j] = (ll_plus - ll_minus) / (2 * epsilon)
@@ -222,7 +220,7 @@ def approximate_mv_t_scale_matrix_gradient(
 
 
 def _multivariate_t_log_likelihood_like_scipy(
-    scale_matrix, centered_samples: np.ndarray, t_dof: float
+    scale_matrix, centered_samples: np.ndarray, dof: float
 ) -> float:
     """Calculate the log likelihood of a multivariate t-distribution.
 
@@ -236,7 +234,7 @@ def _multivariate_t_log_likelihood_like_scipy(
         The scale matrix of the multivariate t-distribution.
     centered_samples : np.ndarray
         The centered samples from the multivariate t-distribution.
-    t_dof : float
+    dof : float
         The degrees of freedom of the multivariate t-distribution.
 
     Returns
@@ -256,14 +254,14 @@ def _multivariate_t_log_likelihood_like_scipy(
     )
 
     # Normalization constants:
-    exponent = 0.5 * (t_dof + sample_dim)
+    exponent = 0.5 * (dof + sample_dim)
     A = gammaln(exponent)
-    B = gammaln(0.5 * t_dof)
-    C = 0.5 * sample_dim * np.log(t_dof * np.pi)
+    B = gammaln(0.5 * dof)
+    C = 0.5 * sample_dim * np.log(dof * np.pi)
     D = 0.5 * log_det_scale_matrix
     normalization_contribution = num_samples * (A - B - C - D)
 
-    sample_contributions = -exponent * np.log1p(mahalonobis_distances / t_dof)
+    sample_contributions = -exponent * np.log1p(mahalonobis_distances / dof)
 
     total_log_likelihood = normalization_contribution + sample_contributions.sum()
 
@@ -289,7 +287,7 @@ def test_mv_t_log_likelihood(seed=4125, num_samples=100, p=8, t_dof=5.0):
     )
 
     ll_manual_scipy = _multivariate_t_log_likelihood_like_scipy(
-        scale_matrix=mle_scale_matrix, centered_samples=X_centered, t_dof=t_dof
+        scale_matrix=mle_scale_matrix, centered_samples=X_centered, dof=t_dof
     )
 
     ll_numba = _multivariate_t_log_likelihood(
@@ -491,12 +489,12 @@ def test_isotropic_and_kurtosis_t_dof_estimates():
     centered_samples = mv_t_samples - sample_medians
 
     # Test isotropic estimate:
-    isotropic_dof = isotropic_t_dof_estimate(centered_samples)
+    isotropic_dof = isotropic_mv_t_dof_estimate(centered_samples)
     assert isotropic_dof > 0, "Isotropic dof estimate should be positive."
     assert np.abs(isotropic_dof - t_dof) < 1.0, "Isotropic dof estimate is off."
 
     # Test kurtosis estimate:
-    kurtosis_dof = kurtosis_t_dof_estimate(centered_samples)
+    kurtosis_dof = kurtosis_mv_t_dof_estimate(centered_samples)
     assert kurtosis_dof > 0, "Kurtosis dof estimate should be positive."
     assert np.abs(kurtosis_dof - t_dof) < 1.0, "Kurtosis dof estimate is off."
 
@@ -516,22 +514,22 @@ def test_iso_and_kurt_dof_estimates_on_gaussian_data():
         mean=np.zeros(p), cov=np.eye(p), size=n_samples
     )
 
-    mv_t_kurt_dof_est = kurtosis_t_dof_estimate(mv_t_samples)
+    mv_t_kurt_dof_est = kurtosis_mv_t_dof_estimate(mv_t_samples)
     assert np.isfinite(mv_t_kurt_dof_est) and (mv_t_kurt_dof_est > 0.0), (
         "Kurtosis dof estimate should be finite on multivariate t samples."
     )
 
-    mv_t_isotropic_dof_est = isotropic_t_dof_estimate(mv_t_samples)
+    mv_t_isotropic_dof_est = isotropic_mv_t_dof_estimate(mv_t_samples)
     assert np.isfinite(mv_t_isotropic_dof_est) and (mv_t_isotropic_dof_est > 0.0), (
         "Isotropic dof estimate should be finite on multivariate t samples."
     )
 
-    normal_kurt_dof_est = kurtosis_t_dof_estimate(mv_normal_samples)
+    normal_kurt_dof_est = kurtosis_mv_t_dof_estimate(mv_normal_samples)
     assert np.isposinf(normal_kurt_dof_est), (
         "Kurtosis dof estimate should be infinite on Gaussian data."
     )
 
-    normal_isotropic_dof_est = isotropic_t_dof_estimate(mv_normal_samples)
+    normal_isotropic_dof_est = isotropic_mv_t_dof_estimate(mv_normal_samples)
     assert np.isposinf(normal_isotropic_dof_est), (
         "Isotropic dof estimate should be infinite on Gaussian data."
     )
@@ -684,7 +682,7 @@ def test_MultiVariateTCost_with_PELT(
     X = np.vstack([mv_t_1_samples, mv_t_2_samples])
 
     mv_t_cost = MultivariateTCost(
-        dof=cost_dof,
+        fixed_dof=cost_dof,
         mle_scale_abs_tol=mle_scale_abs_tol,
         mle_scale_rel_tol=mle_scale_rel_tol,
     )
@@ -726,7 +724,7 @@ def test_MultiVariateTCost_with_moving_window(
 
     X = np.vstack([mv_t_1_samples, mv_t_2_samples])
 
-    t_cost = MultivariateTCost(dof=cost_dof)
+    t_cost = MultivariateTCost(fixed_dof=cost_dof)
     change_detector = MovingWindow(change_score=t_cost, bandwidth=int(0.8 * n_samples))
 
     segmentation = change_detector.fit_transform(X)

@@ -24,17 +24,28 @@ from skchange.utils.numba.stats import (
 
 
 @njit
-def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float, loo_index=-1):
+def _estimate_scale_matrix_trace(
+    centered_sample_squared_norms: np.ndarray,
+    non_zero_norm_mask: np.ndarray,
+    sample_dimension: int,
+    dof: float,
+    loo_index=-1,
+):
     """Estimate the trace of the MLE multivariate T covariance matrix.
 
     Using an isotropic estimate of the multivariate T distribution,
     the authors of [1]_ developed an estimate of the trace of the
-    maximum likelihood estimate scale matrix, given centered samples.
+    maximum likelihood estimate scale matrix, using the squared
+    norm of centered samples.
 
     Parameters
     ----------
-    centered_samples : np.ndarray
-        The centered samples from the multivariate t-distribution.
+    centered_sample_squared_norms : np.ndarray
+        The squared norms of centered samples from a multivariate t-distribution.
+    non_zero_norm_mask : np.ndarray
+        A boolean mask indicating which squared norms are non-zero.
+    sample_dimension : int
+        The dimension of the samples.
     dof : float
         The degrees of freedom of the multivariate t-distribution.
     loo_index : int, optional (default=-1)
@@ -47,50 +58,89 @@ def estimate_scale_matrix_trace(centered_samples: np.ndarray, dof: float, loo_in
     Parameter Estimation Algorithm for the Multivariate T-Distribution and Its \
     Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607. \
     Berlin, Heidelberg: Springer
-    """
-    p = centered_samples.shape[1]
-    squared_norms = np.sum(centered_samples * centered_samples, axis=1)
 
+    Returns
+    -------
+    float
+        The estimated trace of the MLE covariance matrix.
+    """
     if loo_index >= 0:
         # Zero out the leave-one-out sample squared norm.
-        squared_norms[loo_index] = 0.0
+        centered_sample_squared_norms[loo_index] = 0.0
+        non_zero_norm_mask[loo_index] = False
 
-    z_bar = np.log(squared_norms[squared_norms > 1.0e-12]).mean()
-    log_alpha = z_bar - np.log(dof) + digamma(0.5 * dof) - digamma(p / 2.0)
-    return p * np.exp(log_alpha)
+    z_bar = np.log(centered_sample_squared_norms[non_zero_norm_mask]).mean()
+    log_alpha = (
+        z_bar - np.log(dof) + digamma(0.5 * dof) - digamma(sample_dimension / 2.0)
+    )
+    return sample_dimension * np.exp(log_alpha)
 
 
 @njit
-def initial_scale_matrix_estimate(
+def _initial_scale_matrix_estimate(
     centered_samples: np.ndarray,
-    t_dof: float,
+    dof: float,
     loo_index: int = -1,
 ):
-    """Estimate the scale matrix given centered samples and degrees of freedom."""
+    """Estimate the scale matrix given centered samples and degrees of freedom.
+
+    The direction of the scale matrix is estimated from standardized,
+    centered samples, and the trace of the scale matrix is estimated
+    using the squared norms of the centered samples, as described in [1]_.
+
+    Parameters
+    ----------
+    centered_samples : np.ndarray
+        Centered samples from the multivariate t-distribution.
+    dof : float
+        The degrees of freedom of the multivariate t-distribution.
+    loo_index : int, optional (default=-1)
+        The index of the leave-one-out sample. If -1, the full covariance matrix
+        is estimated.
+
+    References
+    ----------
+    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel \
+    Parameter Estimation Algorithm for the Multivariate T-Distribution and Its \
+    Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607. \
+    Berlin, Heidelberg: Springer
+
+    Returns
+    -------
+    np.ndarray
+        The initial estimate of the scale matrix
+    """
     num_samples, sample_dimension = centered_samples.shape
-    log_two_sample_dim = np.log2(sample_dimension)
 
+    # Estimate direction of the scale matrix from standardized, centered samples:
     centered_sample_squared_norms = np.sum(centered_samples * centered_samples, axis=1)
-    beta_half = log_two_sample_dim / (np.square(t_dof) + log_two_sample_dim)
-    root_centered_sample_weights = np.power(
-        centered_sample_squared_norms, -beta_half / 2.0
-    )
+    non_zero_norm_mask = centered_sample_squared_norms > 1.0e-6
 
-    weighted_samples = centered_samples * root_centered_sample_weights[:, np.newaxis]
-    mle_scale_estimate = weighted_samples.T @ weighted_samples
+    centered_sample_weights = np.ones(num_samples)
+    centered_sample_weights[non_zero_norm_mask] *= (
+        1.0 / centered_sample_squared_norms[non_zero_norm_mask]
+    )
+    weighted_samples = centered_samples * centered_sample_weights[:, np.newaxis]
+    mle_scale_estimate = weighted_samples.T @ centered_samples
 
     if loo_index >= 0:
-        # Subtract the leave-one-out sample contribution:
-        weighted_loo_sample = weighted_samples[loo_index, :].reshape(-1, 1)
-        mle_scale_estimate -= weighted_loo_sample @ weighted_loo_sample.T
+        # Subtract contribution from the leave-one-out sample:
+        loo_sample = centered_samples[loo_index, :].reshape(-1, 1)
+        mle_scale_estimate -= (
+            centered_sample_weights[loo_index] * loo_sample @ loo_sample.T
+        )
 
         # Scale by the number of samples minus the leave-one-out sample:
         mle_scale_estimate /= num_samples - 1
     else:
         mle_scale_estimate /= num_samples
 
-    scale_trace_estimate = estimate_scale_matrix_trace(
-        centered_samples, t_dof, loo_index=loo_index
+    scale_trace_estimate = _estimate_scale_matrix_trace(
+        centered_sample_squared_norms=centered_sample_squared_norms,
+        non_zero_norm_mask=non_zero_norm_mask,
+        sample_dimension=sample_dimension,
+        dof=dof,
+        loo_index=loo_index,
     )
     mle_scale_estimate *= scale_trace_estimate / np.trace(mle_scale_estimate)
 
@@ -98,7 +148,7 @@ def initial_scale_matrix_estimate(
 
 
 @njit
-def scale_matrix_fixed_point_iteration(
+def _scale_matrix_fixed_point_iteration(
     scale_matrix: np.ndarray,
     dof: float,
     centered_samples: np.ndarray,
@@ -132,7 +182,7 @@ def scale_matrix_fixed_point_iteration(
 
 
 @njit
-def solve_for_mle_scale_matrix(
+def _solve_for_mle_scale_matrix(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
     dof: float,
@@ -144,7 +194,7 @@ def solve_for_mle_scale_matrix(
     """Perform fixed point iterations to compute the MLE scale matrix."""
     scale_matrix = initial_scale_matrix.copy()
     for iteration in range(max_iter):
-        temp_cov_matrix = scale_matrix_fixed_point_iteration(
+        temp_cov_matrix = _scale_matrix_fixed_point_iteration(
             scale_matrix=scale_matrix,
             dof=dof,
             centered_samples=centered_samples,
@@ -197,13 +247,13 @@ def maximum_likelihood_mv_t_scale_matrix(
         The MLE covariance matrix of the multivariate t-distribution.
     """
     # Initialize the scale matrix maximum likelihood estimate:
-    initial_mle_scale_matrix = initial_scale_matrix_estimate(
+    initial_mle_scale_matrix = _initial_scale_matrix_estimate(
         centered_samples,
         dof,
         loo_index=loo_index,
     )
 
-    mle_scale_matrix = solve_for_mle_scale_matrix(
+    mle_scale_matrix = _solve_for_mle_scale_matrix(
         initial_scale_matrix=initial_mle_scale_matrix,
         centered_samples=centered_samples,
         dof=dof,
@@ -218,11 +268,9 @@ def maximum_likelihood_mv_t_scale_matrix(
 
 @njit
 def _multivariate_t_log_likelihood(
+    scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
     dof: float,
-    scale_matrix: Union[np.ndarray, None] = None,
-    inverse_scale_matrix: Union[np.ndarray, None] = None,
-    log_det_scale_matrix: Union[float, None] = None,
 ) -> float:
     """Calculate the log likelihood of a multivariate t-distribution.
 
@@ -245,27 +293,54 @@ def _multivariate_t_log_likelihood(
     float
         The log likelihood of the multivariate t-distribution.
     """
-    if scale_matrix is None and (
-        inverse_scale_matrix is None or log_det_scale_matrix is None
-    ):
-        raise ValueError(
-            "Either the scale matrix by itself, or the inverse scale matrix "
-            "and log determinant of the scale matrix must be provided."
-        )
-    elif (log_det_scale_matrix is None) ^ (inverse_scale_matrix is None):
-        raise ValueError(
-            "Both the log determinant of the scale matrix and the inverse "
-            "scale matrix must be provided to compute the log likelihood."
-        )
+    sample_dim = centered_samples.shape[1]
 
+    sign_det, log_det_scale_matrix = np.linalg.slogdet(scale_matrix)
+    if sign_det <= 0:
+        return np.nan
+    inverse_scale_matrix = np.linalg.solve(scale_matrix, np.eye(sample_dim))
+
+    total_log_likelihood = _fixed_param_multivariate_t_log_likelihood(
+        centered_samples=centered_samples,
+        dof=dof,
+        inverse_scale_matrix=inverse_scale_matrix,
+        log_det_scale_matrix=log_det_scale_matrix,
+    )
+
+    return total_log_likelihood
+
+
+@njit
+def _fixed_param_multivariate_t_log_likelihood(
+    centered_samples: np.ndarray,
+    dof: float,
+    inverse_scale_matrix: np.ndarray,
+    log_det_scale_matrix: float,
+) -> float:
+    """Calculate the log likelihood of a multivariate t-distribution.
+
+    Directly from the definition of the multivariate t-distribution.
+    Implementation inspired by the scipy implementation of
+    the multivariate t-distribution, but simplified.
+    Source: https://en.wikipedia.org/wiki/Multivariate_t-distribution
+
+    Parameters
+    ----------
+    centered_samples : np.ndarray
+        The centered samples from the multivariate t-distribution.
+    dof : float
+        The degrees of freedom of the multivariate t-distribution.
+    inverse_scale_matrix : np.ndarray
+        The inverse of the scale matrix of the multivariate t-distribution.
+    log_det_scale_matrix : float
+        The log determinant of the scale matrix of the multivariate t-distribution.
+
+    Returns
+    -------
+    float
+        The log likelihood of the multivariate t-distribution.
+    """
     num_samples, sample_dim = centered_samples.shape
-
-    if log_det_scale_matrix is None and inverse_scale_matrix is None:
-        sign_det, log_det_scale_matrix = np.linalg.slogdet(scale_matrix)
-        if sign_det <= 0:
-            return np.nan
-
-        inverse_scale_matrix = np.linalg.solve(scale_matrix, np.eye(sample_dim))
 
     mahalanobis_squared_distances = np.sum(
         (centered_samples @ inverse_scale_matrix) * centered_samples, axis=1
@@ -423,7 +498,7 @@ def _mv_t_ll_at_fixed_params(
     X_centered = X[start:end] - mean
 
     # Compute the log likelihood of the segment:
-    total_log_likelihood = _multivariate_t_log_likelihood(
+    total_log_likelihood = _fixed_param_multivariate_t_log_likelihood(
         inverse_scale_matrix=inverse_scale_matrix,
         log_det_scale_matrix=log_det_scale_matrix,
         centered_samples=X_centered,
@@ -455,11 +530,11 @@ def multivariate_t_cost_fixed_params(
         The end indices of the segments.
     X : np.ndarray
         The data matrix.
-    mv_t_mean : np.ndarray
+    mean : np.ndarray
         The fixed mean for the cost calculation.
-    mv_t_scale_matrix : np.ndarray
-        The fixed scale matrix for the cost calculation.
-    mv_t_dof : float
+    inverse_scale_matrix : np.ndarray
+        The fixed inverse scale matrix for the cost calculation.
+    dof : float
         The fixed degrees of freedom for the cost calculation.
 
     Returns
@@ -486,7 +561,7 @@ def multivariate_t_cost_fixed_params(
 
 
 @njit
-def isotropic_t_dof_estimate(
+def isotropic_mv_t_dof_estimate(
     centered_samples: np.ndarray, zero_norm_tol=1.0e-6, infinite_dof_threshold=1.0e2
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
@@ -513,7 +588,7 @@ def isotropic_t_dof_estimate(
 
 
 @njit
-def kurtosis_t_dof_estimate(
+def kurtosis_mv_t_dof_estimate(
     centered_samples: np.ndarray, infinite_dof_threshold: float = 1.0e2
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution."""
@@ -606,7 +681,7 @@ def iterative_mv_t_dof_estimate(
         old_dof = dof
         dof = 2 * nu_i / max((nu_i - 1), 1.0e-3)
 
-        mle_scale_matrix = solve_for_mle_scale_matrix(
+        mle_scale_matrix = _solve_for_mle_scale_matrix(
             initial_scale_matrix=mle_scale_matrix,
             centered_samples=centered_samples,
             dof=dof,
@@ -642,6 +717,38 @@ def loo_iterative_mv_t_dof_estimate(
     'Improved estimation of the degree of freedom parameter of mv t-distribution''.
     However, the algorithm computes one MLE scale matrix estimate per samples,
     holding out one sample at a time, which increases computation cost.
+
+    Parameters
+    ----------
+    centered_samples : np.ndarray
+        The centered samples from the multivariate t-distribution.
+    initial_dof : float
+        The initial degrees of freedom estimate.
+    infinite_dof_threshold : float, optional (default=1.0e2)
+        The threshold at which the degrees of freedom are considered infinite.
+        If the degrees of freedom are above this threshold,
+        the multivariate t-distribution is approximated with
+        a multivariate Gaussian distribution.
+    max_iter : int, optional (default=5)
+        The maximum number of iterations to perform.
+    rel_tol : float, optional (default=5.0e-2)
+        The relative tolerance for convergence.
+    abs_tol : float, optional (default=1.0e-1)
+        The absolute tolerance for convergence.
+    inner_max_iter : int, optional (default=50)
+        The maximum number of iterations to perform for
+        the MLE scale matrix estimate inner loop.
+    inner_abs_tol : float, optional (default=1.0e-5)
+        The absolute tolerance for convergence in the
+        MLE scale matrix inner loop.
+    inner_rel_tol : float, optional (default=1.0e-3)
+        The relative tolerance for convergence in the
+        MLE scale matrix inner loop.
+
+    Returns
+    -------
+    dof : float
+        The estimated degrees of freedom of the multivariate T distribution.
     """
     if initial_dof > infinite_dof_threshold:
         return np.inf
@@ -676,7 +783,7 @@ def loo_iterative_mv_t_dof_estimate(
                 loo_sample_outer_product / num_samples
             )
 
-            loo_mle_scale_matrix = solve_for_mle_scale_matrix(
+            loo_mle_scale_matrix = _solve_for_mle_scale_matrix(
                 initial_scale_matrix=loo_scale_estimate,
                 centered_samples=centered_samples,
                 dof=current_dof,
@@ -699,12 +806,12 @@ def loo_iterative_mv_t_dof_estimate(
             current_dof = np.inf
             break
 
-        new_t_dof = 2 * theta_k / (theta_k - 1)
-        abs_difference = np.abs(new_t_dof - current_dof)
+        new_dof = 2 * theta_k / (theta_k - 1)
+        abs_difference = np.abs(new_dof - current_dof)
         abs_tol_satisfied = abs_difference < abs_tol
         rel_tol_satisfied = (abs_difference / current_dof) < rel_tol
 
-        current_dof = new_t_dof
+        current_dof = new_dof
         if abs_tol_satisfied or rel_tol_satisfied:
             break
 
@@ -721,10 +828,10 @@ def estimate_mv_t_dof(
 ):
     centered_samples = X - col_median(X)
 
-    isotropic_dof = isotropic_t_dof_estimate(
+    isotropic_dof = isotropic_mv_t_dof_estimate(
         centered_samples, infinite_dof_threshold=infinite_dof_threshold
     )
-    kurtosis_dof = kurtosis_t_dof_estimate(
+    kurtosis_dof = kurtosis_mv_t_dof_estimate(
         centered_samples, infinite_dof_threshold=infinite_dof_threshold
     )
 
@@ -773,16 +880,19 @@ class MultivariateTCost(BaseCost):
     dof : float, optional (default=None)
         Fixed degrees of freedom for the cost calculation.
         If None, the degrees of freedom are estimated from the data.
-    infinite_dof_threshold : float, optional (default=1.0e2)
+    infinite_dof_threshold : float, optional (default=50.0)
         The threshold at which the degrees of freedom are considered infinite.
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
         a multivariate Gaussian distribution.
     refine_dof_threshold : int, optional
-        (default=1000 with Numba installed, 200 without)
+        (default=1000 with Numba installed, 100 without)
         The number of samples below which the degrees of freedom
         estimate is refined using a leave-one-out iterative method.
-    mle_scale_tolerance : float, optional (default=1.0e-3)
+    mle_scale_abs_tol : float, optional (default=1.0e-2)
+        The absolute tolerance for convergence in the MLE scale matrix estimation.
+    mle_scale_rel_tol : float, optional (default=1.0e-2)
+        The relative tolerance for convergence in the MLE scale matrix estimation.
     """
 
     evaluation_type = "multivariate"
@@ -790,21 +900,24 @@ class MultivariateTCost(BaseCost):
     def __init__(
         self,
         param: Union[tuple[MeanType, CovType], None] = None,
-        dof=None,
-        infinite_dof_threshold=1.0e2,
-        refine_dof_threshold=1_000,
+        fixed_dof=None,
+        refine_dof_threshold=None,
+        infinite_dof_threshold=5.0e1,
         mle_scale_abs_tol=1.0e-2,
         mle_scale_rel_tol=1.0e-2,
     ):
         super().__init__(param)
-        self.dof = dof
+
+        # Internal representation of the degrees of freedom:
+        self.dof_ = None
+        # Provided fixed degrees of freedom:
+        self.fixed_dof = fixed_dof
         self.infinite_dof_threshold = infinite_dof_threshold
+        self.refine_dof_threshold = refine_dof_threshold
+
+        # Tolerance parameters for the MLE scale matrix estimation:
         self.mle_scale_abs_tol = mle_scale_abs_tol
         self.mle_scale_rel_tol = mle_scale_rel_tol
-        if numba_available:
-            self.refine_dof_threshold = refine_dof_threshold
-        else:
-            self.refine_dof_threshold = 200
 
     def _check_fixed_param(
         self, param: tuple[MeanType, CovType], X: np.ndarray
@@ -871,9 +984,17 @@ class MultivariateTCost(BaseCost):
         if self.param is not None:
             self._mean, scale_matrix = self._param
             self._inv_scale_matrix = np.linalg.inv(scale_matrix)
-            _, self._log_det_scale_matrix = np.linalg.slogdet(scale_matrix)
+            scale_det_sign, self._log_det_scale_matrix = np.linalg.slogdet(scale_matrix)
+            if scale_det_sign <= 0:
+                raise ValueError("The scale matrix must be positive definite.")
 
-        if self.dof is None:
+        if self.fixed_dof is None:
+            if self.refine_dof_threshold is None:
+                if numba_available:
+                    self.refine_dof_threshold = int(1.0e3)
+                else:
+                    self.refine_dof_threshold = 100
+
             self.dof_ = estimate_mv_t_dof(
                 X,
                 infinite_dof_threshold=self.infinite_dof_threshold,
@@ -882,7 +1003,7 @@ class MultivariateTCost(BaseCost):
                 mle_scale_rel_tol=self.mle_scale_rel_tol,
             )
         else:
-            self.dof_ = self.dof
+            self.dof_ = self.fixed_dof
 
         if not np.isposinf(self.dof_) and (
             self.dof_ <= 0.0 or not np.isfinite(self.dof_)
@@ -938,14 +1059,14 @@ class MultivariateTCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of columns
             is 1 since the MultivariateGaussianCost is inherently multivariate.
         """
-        if np.isposinf(self.dof):
+        if np.isposinf(self.dof_):
             return gaussian_cost_fixed_params(
                 starts,
                 ends,
                 self._X,
-                self._mean,
-                self._log_det_scale_matrix,
-                self._inv_scale_matrix,
+                mean=self._mean,
+                inv_cov=self._inv_scale_matrix,
+                log_det_cov=self._log_det_scale_matrix,
             )
         else:
             return multivariate_t_cost_fixed_params(
@@ -955,7 +1076,7 @@ class MultivariateTCost(BaseCost):
                 mean=self._mean,
                 inverse_scale_matrix=self._inv_scale_matrix,
                 log_det_scale_matrix=self._log_det_scale_matrix,
-                dof=self.dof,
+                dof=self.dof_,
             )
 
     @classmethod
