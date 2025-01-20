@@ -92,8 +92,24 @@ def log_gamma(x: float) -> float:
     """Compute the log of the gamma function.
 
     Uses the Stirling's approximation for the gamma function.
+    The accuracy of the approximation is not good for small x.
+    Expect to never evaluate the log_gamma function for x <= 1.0,
+    when used to calculate the log-likelihood of a multivariate t-distribution.
     Source: https://en.wikipedia.org/wiki/Gamma_function#Log-gamma_function
+
+    Parameters
+    ----------
+    x : float
+        Positive real argument for the gamma function.
+
+    Returns
+    -------
+    log_gamma : float
+        The log of the gamma function evaluated at x.
     """
+    if x <= 1.0e-2:
+        return np.nan
+
     x_cubed = x * x * x
     log_gamma = (
         (x - 0.5) * np.log(x)
@@ -114,9 +130,26 @@ def digamma(x: float) -> float:
     Use the asymptotic expansion for the digamma function on the real domain,
     by first moving the argument above 5.0 before
     applying the first three terms of its asymptotic expansion.
+    The accuracy of the approximation is not good for small x,
+    but we do not expect to evaluate the digamma function at
+    values x <= 0.5 in the context of evaluating the log-likelihood
+    of a multivariate t-distribution.
 
     Source: https://en.wikipedia.org/wiki/Digamma_function#Asymptotic_expansion
+
+    Parameters
+    ----------
+    x : float
+        Positive real argument for the digamma function.
+
+    Returns
+    -------
+    digamma : float
+        The digamma function evaluated at x.
     """
+    if x <= 1.0e-2:
+        return np.nan
+
     result = 0.0
     while x <= 5.0:
         result -= 1.0 / x
@@ -135,9 +168,26 @@ def trigamma(x: float) -> float:
     Uses the asymptotic expansion for the trigamma function on the real domain,
     by first moving the argument above 5.0 before
     applying the first four terms of its asymptotic expansion.
+    The accuracy of the approximation is not good for small x,
+    but we do not expect to evaluate the trigamma function at
+    values x <= 0.5 in the context of evaluating the log-likelihood
+    of a multivariate t-distribution.
 
     Source: https://en.wikipedia.org/wiki/Trigamma_function
+
+    Parameters
+    ----------
+    x : float
+        Positive real argument for the trigamma function.
+
+    Returns
+    -------
+    trigamma : float
+        The trigamma function evaluated at x.
     """
+    if x <= 1.0e-2:
+        return np.nan
+
     result = 0.0
     while x <= 5.0:
         result += 1.0 / (x * x)
@@ -155,7 +205,22 @@ def trigamma(x: float) -> float:
 
 @njit
 def kurtosis(centered_samples: np.ndarray, fisher=True) -> float:
-    """Compute the kurtosis of a set of samples."""
+    """Compute the kurtosis of a set of samples.
+
+    Parameters
+    ----------
+    centered_samples : np.ndarray
+        Centered samples, shape (n_samples, n_features).
+    fisher : bool (default=True)
+        Whether to apply the Fisher correction or not,
+        subtracting 3.0, resulting in a Kurtosis of
+        zero for the normal distribution.
+
+    Returns
+    -------
+    per_dim_kurtosis : np.ndarray
+        Kurtosis values for each feature.
+    """
     sample_dim = centered_samples.shape[1]
     per_dim_squared_variance = np.zeros(sample_dim)
     for i in range(sample_dim):
