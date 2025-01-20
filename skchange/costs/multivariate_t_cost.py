@@ -561,7 +561,7 @@ def multivariate_t_cost_fixed_params(
 
 
 @njit
-def isotropic_mv_t_dof_estimate(
+def _isotropic_mv_t_dof_estimate(
     centered_samples: np.ndarray, zero_norm_tol=1.0e-6, infinite_dof_threshold=1.0e2
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
@@ -588,7 +588,7 @@ def isotropic_mv_t_dof_estimate(
 
 
 @njit
-def kurtosis_mv_t_dof_estimate(
+def _kurtosis_mv_t_dof_estimate(
     centered_samples: np.ndarray, infinite_dof_threshold: float = 1.0e2
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution."""
@@ -606,7 +606,7 @@ def kurtosis_mv_t_dof_estimate(
 
 
 @njit
-def iterative_mv_t_dof_estimate(
+def _iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
     infinite_dof_threshold: float = 5.0e1,
@@ -700,7 +700,7 @@ def iterative_mv_t_dof_estimate(
 
 
 @njit(parallel=True)
-def loo_iterative_mv_t_dof_estimate(
+def _loo_iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
     infinite_dof_threshold: float = 1.0e2,
@@ -819,7 +819,7 @@ def loo_iterative_mv_t_dof_estimate(
 
 
 @njit
-def estimate_mv_t_dof(
+def _estimate_mv_t_dof(
     X: np.ndarray,
     infinite_dof_threshold: float,
     refine_dof_threshold: int,
@@ -828,10 +828,10 @@ def estimate_mv_t_dof(
 ):
     centered_samples = X - col_median(X)
 
-    isotropic_dof = isotropic_mv_t_dof_estimate(
+    isotropic_dof = _isotropic_mv_t_dof_estimate(
         centered_samples, infinite_dof_threshold=infinite_dof_threshold
     )
-    kurtosis_dof = kurtosis_mv_t_dof_estimate(
+    kurtosis_dof = _kurtosis_mv_t_dof_estimate(
         centered_samples, infinite_dof_threshold=infinite_dof_threshold
     )
 
@@ -848,7 +848,7 @@ def estimate_mv_t_dof(
         # iterative method with a reasonably high initial dof:
         initial_dof_estimate = infinite_dof_threshold / 2.0
 
-    dof_estimate = iterative_mv_t_dof_estimate(
+    dof_estimate = _iterative_mv_t_dof_estimate(
         centered_samples=centered_samples,
         initial_dof=initial_dof_estimate,
         infinite_dof_threshold=infinite_dof_threshold,
@@ -858,7 +858,7 @@ def estimate_mv_t_dof(
 
     num_samples = X.shape[0]
     if num_samples <= refine_dof_threshold:
-        dof_estimate = loo_iterative_mv_t_dof_estimate(
+        dof_estimate = _loo_iterative_mv_t_dof_estimate(
             centered_samples=centered_samples,
             initial_dof=dof_estimate,
             infinite_dof_threshold=infinite_dof_threshold,
@@ -995,7 +995,7 @@ class MultivariateTCost(BaseCost):
                 else:
                     self.refine_dof_threshold = 100
 
-            self.dof_ = estimate_mv_t_dof(
+            self.dof_ = _estimate_mv_t_dof(
                 X,
                 infinite_dof_threshold=self.infinite_dof_threshold,
                 refine_dof_threshold=self.refine_dof_threshold,

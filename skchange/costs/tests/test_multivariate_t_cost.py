@@ -4,41 +4,20 @@ import numpy as np
 import pytest
 import scipy.linalg as sla
 import scipy.stats as st
-from scipy.special import digamma, gammaln, polygamma
+from scipy.special import digamma, gammaln
 
 from skchange.change_detectors import PELT, MovingWindow
 from skchange.costs import MultivariateTCost
 from skchange.costs.multivariate_t_cost import (
+    _isotropic_mv_t_dof_estimate,
+    _iterative_mv_t_dof_estimate,
+    _kurtosis_mv_t_dof_estimate,
+    _loo_iterative_mv_t_dof_estimate,
     _multivariate_t_log_likelihood,
-    isotropic_mv_t_dof_estimate,
-    iterative_mv_t_dof_estimate,
-    kurtosis_mv_t_dof_estimate,
-    loo_iterative_mv_t_dof_estimate,
     maximum_likelihood_mv_t_scale_matrix,
 )
+from skchange.penalties import BICPenalty
 from skchange.utils.numba import numba_available
-
-
-def estimate_mv_t_dof_nojit(
-    centered_samples: np.ndarray, zero_norm_tol=1.0e-6
-) -> float:
-    """Estimate the degrees of freedom of a multivariate t-distribution.
-
-    From: A Novel Parameter Estimation Algorithm for the Multivariate
-          t-Distribution and Its Application to Computer Vision.
-    """
-    sample_dim = centered_samples.shape[1]
-
-    squared_norms = np.sum(centered_samples * centered_samples, axis=1)
-
-    log_norm_sq: np.ndarray
-    log_norm_sq = np.log(squared_norms[squared_norms > zero_norm_tol**2])
-    log_norm_sq_var = log_norm_sq.var(ddof=0)
-
-    b = log_norm_sq_var - polygamma(1, sample_dim / 2.0)
-    t_dof_estimate = (1 + np.sqrt(1 + 4 * b)) / b
-
-    return t_dof_estimate
 
 
 def estimate_scale_matrix_trace_nojit(centered_samples: np.ndarray, dof: float):
@@ -489,12 +468,12 @@ def test_isotropic_and_kurtosis_t_dof_estimates():
     centered_samples = mv_t_samples - sample_medians
 
     # Test isotropic estimate:
-    isotropic_dof = isotropic_mv_t_dof_estimate(centered_samples)
+    isotropic_dof = _isotropic_mv_t_dof_estimate(centered_samples)
     assert isotropic_dof > 0, "Isotropic dof estimate should be positive."
     assert np.abs(isotropic_dof - t_dof) < 1.0, "Isotropic dof estimate is off."
 
     # Test kurtosis estimate:
-    kurtosis_dof = kurtosis_mv_t_dof_estimate(centered_samples)
+    kurtosis_dof = _kurtosis_mv_t_dof_estimate(centered_samples)
     assert kurtosis_dof > 0, "Kurtosis dof estimate should be positive."
     assert np.abs(kurtosis_dof - t_dof) < 1.0, "Kurtosis dof estimate is off."
 
@@ -514,22 +493,22 @@ def test_iso_and_kurt_dof_estimates_on_gaussian_data():
         mean=np.zeros(p), cov=np.eye(p), size=n_samples
     )
 
-    mv_t_kurt_dof_est = kurtosis_mv_t_dof_estimate(mv_t_samples)
+    mv_t_kurt_dof_est = _kurtosis_mv_t_dof_estimate(mv_t_samples)
     assert np.isfinite(mv_t_kurt_dof_est) and (mv_t_kurt_dof_est > 0.0), (
         "Kurtosis dof estimate should be finite on multivariate t samples."
     )
 
-    mv_t_isotropic_dof_est = isotropic_mv_t_dof_estimate(mv_t_samples)
+    mv_t_isotropic_dof_est = _isotropic_mv_t_dof_estimate(mv_t_samples)
     assert np.isfinite(mv_t_isotropic_dof_est) and (mv_t_isotropic_dof_est > 0.0), (
         "Isotropic dof estimate should be finite on multivariate t samples."
     )
 
-    normal_kurt_dof_est = kurtosis_mv_t_dof_estimate(mv_normal_samples)
+    normal_kurt_dof_est = _kurtosis_mv_t_dof_estimate(mv_normal_samples)
     assert np.isposinf(normal_kurt_dof_est), (
         "Kurtosis dof estimate should be infinite on Gaussian data."
     )
 
-    normal_isotropic_dof_est = isotropic_mv_t_dof_estimate(mv_normal_samples)
+    normal_isotropic_dof_est = _isotropic_mv_t_dof_estimate(mv_normal_samples)
     assert np.isposinf(normal_isotropic_dof_est), (
         "Isotropic dof estimate should be infinite on Gaussian data."
     )
@@ -557,7 +536,7 @@ def test_iterative_t_dof_estimate():
 
     # Test data-driven estimate:
     initial_t_dof_estimate = 10.0
-    iterative_dof_estimate = iterative_mv_t_dof_estimate(
+    iterative_dof_estimate = _iterative_mv_t_dof_estimate(
         centered_samples, initial_dof=initial_t_dof_estimate
     )
     assert iterative_dof_estimate > 0, "Data-driven dof estimate should be positive."
@@ -588,7 +567,7 @@ def test_loo_iterative_t_dof_estimate():
 
     # Test data-driven estimate:
     initial_t_dof_estimate = 10.0
-    loo_iterative_dof = loo_iterative_mv_t_dof_estimate(
+    loo_iterative_dof = _loo_iterative_mv_t_dof_estimate(
         centered_samples, initial_dof=initial_t_dof_estimate
     )
     assert loo_iterative_dof > 0, "LOO data-driven dof estimate should be positive."
@@ -614,7 +593,7 @@ def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
 
     # Test data-driven estimate:
     initial_t_dof_estimate = 4.0
-    iterative_dof_estimate = iterative_mv_t_dof_estimate(
+    iterative_dof_estimate = _iterative_mv_t_dof_estimate(
         centered_samples,
         initial_dof=initial_t_dof_estimate,
         infinite_dof_threshold=50.0,
@@ -642,7 +621,7 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
     centered_samples = mv_normal_samples - sample_medians
 
     initial_t_dof_estimate = 4.0
-    loo_iterative_dof = loo_iterative_mv_t_dof_estimate(
+    loo_iterative_dof = _loo_iterative_mv_t_dof_estimate(
         centered_samples,
         initial_dof=initial_t_dof_estimate,
         infinite_dof_threshold=50.0,
@@ -687,7 +666,7 @@ def test_MultiVariateTCost_with_PELT(
         mle_scale_rel_tol=mle_scale_rel_tol,
     )
     change_detector = PELT(
-        cost=mv_t_cost, min_segment_length=2 * p + 1, penalty_scale=1.0
+        cost=mv_t_cost, min_segment_length=2 * p + 1, penalty=BICPenalty()
     )
 
     segmentation = change_detector.fit_transform(X)
