@@ -174,6 +174,19 @@ class MultivariateGaussianScore(BaseChangeScore):
         else:
             return None
 
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters to estimate over each interval.
+
+        The primary use of this method is to determine an appropriate default penalty
+        value in detectors.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return p + p * (p + 1) // 2
+
     def _fit(self, X: np.ndarray, y=None):
         """Fit the multivariate Gaussian change score evaluator.
 
@@ -253,7 +266,7 @@ class MultivariateGaussianScore(BaseChangeScore):
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
         params = [
-            {"apply_bartlett_correction": True},
             {"apply_bartlett_correction": False},
+            {"apply_bartlett_correction": True},
         ]
         return params

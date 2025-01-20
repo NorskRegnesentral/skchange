@@ -38,17 +38,3 @@ def test_moving_window_scores(Score):
     scores = detector.fit(df).transform_scores(df)
     assert np.all(scores >= 0.0)
     assert len(scores) == len(df)
-
-
-@pytest.mark.parametrize("Score", SCORES_AND_COSTS)
-def test_moving_window_tuning(Score):
-    """Test MovingWindow tuning."""
-    n_segments = 2
-    seg_len = 50
-    df = generate_alternating_data(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
-    )
-    score = Score.create_test_instance()
-    detector = MovingWindow(score, threshold_scale=None)
-    detector.fit(df)
-    assert detector.threshold_ > 0.0

@@ -180,6 +180,22 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return 1
 
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters to estimate over each interval.
+
+        The primary use of this method is to determine an appropriate default penalty
+        value in detectors. For example, a scorer for a change in mean has one
+        parameter to estimate per variable in the data, a scorer for a change in the
+        mean and variance has two parameters to estimate per variable, and so on.
+        Subclasses should override this method accordingly.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return p
+
     def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
         """Check cuts for compatibility.
 
