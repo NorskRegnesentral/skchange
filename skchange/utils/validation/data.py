@@ -1,13 +1,11 @@
 """Validation functions for input data series."""
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
 
 
-def to_data_frame(X: Union[pd.DataFrame, pd.Series, ArrayLike]):
+def to_data_frame(X: pd.DataFrame | pd.Series | ArrayLike) -> pd.DataFrame:
     """Convert input data to a pd.DataFrame."""
     if isinstance(X, np.ndarray):
         X = pd.DataFrame(X)
@@ -17,7 +15,7 @@ def to_data_frame(X: Union[pd.DataFrame, pd.Series, ArrayLike]):
 
 
 def check_data(
-    X: Union[pd.DataFrame, pd.Series, np.ndarray],
+    X: pd.DataFrame | pd.Series | np.ndarray,
     min_length: int,
     min_length_name: str = "min_length",
     allow_missing_values: bool = False,

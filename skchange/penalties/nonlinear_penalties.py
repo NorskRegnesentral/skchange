@@ -1,7 +1,5 @@
 """Non-linear penalties for change and anomaly detection."""
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 from scipy.stats import chi2
@@ -45,7 +43,7 @@ class NonlinearPenalty(BasePenalty):
         check_penalty_array(self.base_values)
 
     def _fit(
-        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+        self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer
     ) -> "BasePenalty":
         """Fit the penalty to data and a scorer.
 
@@ -150,7 +148,7 @@ class NonlinearChiSquarePenalty(BasePenalty):
         super().__init__(scale)
 
     def _fit(
-        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+        self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer
     ) -> "BasePenalty":
         """Fit the penalty to data and a scorer.
 

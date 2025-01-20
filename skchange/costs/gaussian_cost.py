@@ -2,8 +2,6 @@
 
 __author__ = ["Tveten"]
 
-from typing import Union
-
 import numpy as np
 
 from skchange.costs.base import BaseCost
@@ -127,7 +125,7 @@ class GaussianCost(BaseCost):
         If ``None``, the maximum likelihood estimates are used.
     """
 
-    def __init__(self, param: Union[tuple[MeanType, VarType], None] = None):
+    def __init__(self, param: tuple[MeanType, VarType] | None = None):
         super().__init__(param)
 
     def _check_fixed_param(

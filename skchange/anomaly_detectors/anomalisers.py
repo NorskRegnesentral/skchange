@@ -1,6 +1,6 @@
 """Anomaly detectors composed of change detectors and some conversion logic."""
 
-from typing import Callable, Optional, Union
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
             +f" than or equal to stat_upper ({self.stat_upper})."
             raise ValueError(message)
 
-    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
 
         Parameters
@@ -72,7 +72,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
         self.change_detector_.fit(X, y)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
         Parameters

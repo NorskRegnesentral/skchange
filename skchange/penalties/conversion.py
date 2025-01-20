@@ -1,7 +1,6 @@
 """Utilities for converting objects to penalties."""
 
 import numbers
-from typing import Union
 
 import numpy as np
 
@@ -12,7 +11,7 @@ from skchange.penalties.nonlinear_penalties import NonlinearPenalty
 
 
 def as_penalty(
-    x: Union[BasePenalty, np.ndarray, tuple[float, float], float, None],
+    x: BasePenalty | np.ndarray | tuple[float, float] | float | None,
     default: BasePenalty = None,
     require_penalty_type: str = None,
 ):

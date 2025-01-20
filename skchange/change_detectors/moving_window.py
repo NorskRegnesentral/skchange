@@ -3,8 +3,6 @@
 __author__ = ["Tveten"]
 __all__ = ["MovingWindow"]
 
-from typing import Optional, Union
-
 import numpy as np
 import pandas as pd
 
@@ -64,7 +62,7 @@ class MovingWindow(BaseChangeDetector):
     change_score : BaseChangeScore or BaseCost, optional, default=`CUSUM()`
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
-    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+    penalty : BasePenalty or float, optional, default=`BICPenalty`
         The penalty to use for the changepoint detection. If a float is given, it is
         interpreted as a constant penalty. If `None`, the penalty is set to a BIC
         penalty with ``n=X.shape[0]`` and
@@ -105,8 +103,8 @@ class MovingWindow(BaseChangeDetector):
 
     def __init__(
         self,
-        change_score: Optional[Union[BaseChangeScore, BaseCost]] = None,
-        penalty: Union[BasePenalty, float, None] = None,
+        change_score: BaseChangeScore | BaseCost | None = None,
+        penalty: BasePenalty | float | None = None,
         bandwidth: int = 30,
         min_detection_interval: int = 1,
     ):
@@ -130,7 +128,7 @@ class MovingWindow(BaseChangeDetector):
             "min_detection_interval",
         )
 
-    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -169,7 +167,7 @@ class MovingWindow(BaseChangeDetector):
         self.penalty_ = self._penalty.fit(X, self._change_score)
         return self
 
-    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
 
         Parameters
@@ -194,7 +192,7 @@ class MovingWindow(BaseChangeDetector):
         )
         return pd.Series(scores, index=X.index, name="score")
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
         Parameters
@@ -215,7 +213,7 @@ class MovingWindow(BaseChangeDetector):
         return self._format_sparse_output(changepoints)
 
     @classmethod
-    def get_test_params(cls, parameter_set="default"):
+    def get_test_params(cls, parameter_set: str = "default"):
         """Return testing parameter settings for the estimator.
 
         Parameters
