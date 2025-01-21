@@ -17,7 +17,8 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
     change_detector : BaseChangeDetector
         Change detector to use for detecting segments.
     stat : callable, optional (default=np.mean)
-        Statistic to calculate per segment.
+        Statistic to calculate per segment. A function that takes in a 1D array and
+        returns a float.
     stat_lower : float, optional (default=-1.0)
         Segments with a statistic lower than this value are considered anomalous.
     stat_upper : float, optional (default=1.0)
@@ -33,7 +34,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
     def __init__(
         self,
         change_detector: BaseChangeDetector,
-        stat: Callable = np.mean,
+        stat: Callable[[np.ndarray], float] = np.mean,
         stat_lower: float = -1.0,
         stat_upper: float = 1.0,
     ):
