@@ -1,14 +1,12 @@
 """Cost-based change scores."""
 
-from typing import Union
-
 import numpy as np
 
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.base import BaseCost
 
 
-def to_change_score(scorer: Union[BaseCost, BaseChangeScore]) -> BaseChangeScore:
+def to_change_score(scorer: BaseCost | BaseChangeScore) -> BaseChangeScore:
     """Convert compatible scorers to a change score.
 
     Parameters

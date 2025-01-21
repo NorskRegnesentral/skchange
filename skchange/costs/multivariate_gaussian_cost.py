@@ -3,8 +3,6 @@
 __author__ = ["johannvk", "Tveten"]
 __all__ = ["MultivariateGaussianCost"]
 
-from typing import Union
-
 import numpy as np
 
 from skchange.costs.base import BaseCost
@@ -183,7 +181,7 @@ class MultivariateGaussianCost(BaseCost):
 
     evaluation_type = "multivariate"
 
-    def __init__(self, param: Union[tuple[MeanType, CovType], None] = None):
+    def __init__(self, param: tuple[MeanType, CovType] | None = None):
         super().__init__(param)
 
     def _check_fixed_param(
@@ -209,7 +207,7 @@ class MultivariateGaussianCost(BaseCost):
         return mean, cov
 
     @property
-    def min_size(self) -> Union[int, None]:
+    def min_size(self) -> int | None:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.

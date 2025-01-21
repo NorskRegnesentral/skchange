@@ -1,6 +1,6 @@
 """Anomaly detectors composed of change detectors and some conversion logic."""
 
-from typing import Callable, Optional, Union
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,8 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
     change_detector : BaseChangeDetector
         Change detector to use for detecting segments.
     stat : callable, optional (default=np.mean)
-        Statistic to calculate per segment.
+        Statistic to calculate per segment. A function that takes in a 1D array and
+        returns a float.
     stat_lower : float, optional (default=-1.0)
         Segments with a statistic lower than this value are considered anomalous.
     stat_upper : float, optional (default=1.0)
@@ -33,7 +34,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
     def __init__(
         self,
         change_detector: BaseChangeDetector,
-        stat: Callable = np.mean,
+        stat: Callable[[np.ndarray], float] = np.mean,
         stat_lower: float = -1.0,
         stat_upper: float = 1.0,
     ):
@@ -48,7 +49,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
             +f" than or equal to stat_upper ({self.stat_upper})."
             raise ValueError(message)
 
-    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
 
         Parameters
@@ -72,7 +73,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
         self.change_detector_.fit(X, y)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
         Parameters

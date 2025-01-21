@@ -1,7 +1,5 @@
 """Saving-type anomaly scores."""
 
-from typing import Union
-
 import numpy as np
 
 from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
@@ -10,7 +8,7 @@ from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
 
 
-def to_saving(scorer: Union[BaseCost, BaseSaving]) -> BaseSaving:
+def to_saving(scorer: BaseCost | BaseSaving) -> BaseSaving:
     """Convert compatible scorers to a saving.
 
     Parameters
@@ -152,7 +150,7 @@ class Saving(BaseSaving):
 
 
 def to_local_anomaly_score(
-    scorer: Union[BaseCost, BaseLocalAnomalyScore],
+    scorer: BaseCost | BaseLocalAnomalyScore,
 ) -> BaseLocalAnomalyScore:
     """Convert compatible scorers to a saving.
 

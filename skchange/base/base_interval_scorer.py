@@ -14,8 +14,6 @@ Needs to be implemented for a concrete detector:
 __author__ = ["Tveten", "johannvk", "fkiraly"]
 __all__ = ["BaseIntervalScorer"]
 
-from typing import Union
-
 import numpy as np
 from numpy.typing import ArrayLike
 from sktime.base import BaseEstimator
@@ -163,7 +161,7 @@ class BaseIntervalScorer(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     @property
-    def min_size(self) -> Union[int, None]:
+    def min_size(self) -> int | None:
         """Minimum valid size of an interval to evaluate.
 
         The size of each interval is by default defined as ``np.diff(cuts[i, ])``.

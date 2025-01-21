@@ -3,8 +3,6 @@
 __author__ = ["Tveten"]
 __all__ = ["MVCAPA"]
 
-from typing import Optional, Union
-
 import numpy as np
 import pandas as pd
 
@@ -133,10 +131,10 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        segment_saving: Optional[Union[BaseSaving, BaseCost]] = None,
-        point_saving: Optional[Union[BaseSaving, BaseCost]] = None,
-        segment_penalty: Union[BasePenalty, np.ndarray, float, None] = None,
-        point_penalty: Union[BasePenalty, np.ndarray, float, None] = None,
+        segment_saving: BaseSaving | BaseCost | None = None,
+        point_saving: BaseSaving | BaseCost | None = None,
+        segment_penalty: BasePenalty | np.ndarray | float | None = None,
+        point_penalty: BasePenalty | np.ndarray | float | None = None,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
@@ -175,7 +173,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
-    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
 
         Sets the penalty of the detector.
@@ -212,7 +210,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         self.point_penalty_ = self._point_penalty.fit(X, self._point_saving)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
         Parameters
@@ -250,7 +248,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
         return self._format_sparse_output(anomalies)
 
-    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
 
         Parameters

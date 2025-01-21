@@ -1,7 +1,5 @@
 """Base class for penalties and penalty functions."""
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 from sktime.base import BaseEstimator
@@ -43,7 +41,7 @@ class BasePenalty(BaseEstimator):
             raise ValueError("scale must be non-negative")
 
     def fit(
-        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+        self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer
     ) -> "BasePenalty":
         """Fit the penalty to data and a scorer.
 
@@ -97,7 +95,7 @@ class BasePenalty(BaseEstimator):
         return self.scale * base_values
 
     @property
-    def _base_values(self) -> Union[np.ndarray, float]:
+    def _base_values(self) -> np.ndarray | float:
         """Get the base penalty values.
 
         Returns
@@ -115,7 +113,7 @@ class BasePenalty(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     def _fit(
-        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+        self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer
     ) -> "BasePenalty":
         """Fit the penalty to data and a scorer.
 

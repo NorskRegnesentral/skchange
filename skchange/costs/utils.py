@@ -1,14 +1,13 @@
 """Utility functions for cost calculations."""
 
 import numbers
-from typing import Union
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-MeanType = Union[ArrayLike, numbers.Number]
-VarType = Union[ArrayLike, numbers.Number]
-CovType = Union[ArrayLike, numbers.Number]
+MeanType = ArrayLike | numbers.Number
+VarType = ArrayLike | numbers.Number
+CovType = ArrayLike | numbers.Number
 
 
 def check_mean(mean: MeanType, X: np.ndarray) -> np.ndarray:
