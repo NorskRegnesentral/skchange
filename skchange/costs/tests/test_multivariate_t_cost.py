@@ -773,6 +773,9 @@ def test_setting_fixed_dof():
     cost = MultivariateTCost(fixed_dof=5.0)
     assert cost.fixed_dof == 5.0, "Fixed dof should be set to 5.0."
 
+    cost.fit(np.random.randn(100, 5))
+    assert cost.dof_ == 5.0, "Fitted dof should be finite."
+
 
 def test_nan_dof_raises_value_error():
     """Test that constructing MvTCost with nan dof raises ValueError."""
