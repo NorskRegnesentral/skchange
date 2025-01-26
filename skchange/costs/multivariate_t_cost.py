@@ -204,10 +204,10 @@ def _solve_for_mle_scale_matrix(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
     dof: float,
+    max_iter: int,
+    abs_tol: float,
+    rel_tol: float,
     loo_index: int = -1,
-    max_iter: int = 50,
-    abs_tol: float = 1.0e-2,
-    rel_tol: float = 1.0e-2,
 ) -> np.ndarray:
     """Perform fixed point iterations to compute the MLE scale matrix.
 
@@ -219,15 +219,15 @@ def _solve_for_mle_scale_matrix(
         The centered samples from the multivariate t-distribution.
     dof : float
         The degrees of freedom of the multivariate t-distribution.
+    max_iter : int
+        The maximum number of iterations to perform.
+    abs_tol : float
+        The absolute tolerance for convergence.
+    rel_tol : float
+        The relative tolerance for convergence.
     loo_index : int, optional (default=-1)
         The index of the leave-one-out sample. If -1, the full covariance matrix
         is estimated.
-    max_iter : int, optional (default=50)
-        The maximum number of iterations to perform.
-    abs_tol : float, optional (default=1.0e-3)
-        The absolute tolerance for convergence.
-    rel_tol : float, optional (default=1.0e-2)
-        The relative tolerance for convergence.
 
     Returns
     -------
@@ -235,7 +235,7 @@ def _solve_for_mle_scale_matrix(
         The MLE scale matrix of the multivariate t-distribution.
     """
     scale_matrix = initial_scale_matrix.copy()
-    for iteration in range(max_iter):
+    for iteration in range(1, max_iter + 1):
         temp_cov_matrix = _scale_matrix_fixed_point_iteration(
             scale_matrix=scale_matrix,
             dof=dof,
@@ -255,10 +255,10 @@ def _solve_for_mle_scale_matrix(
         if absolute_residual_norm < abs_tol or relative_residual_norm < rel_tol:
             break
 
-    if iteration + 1 == max_iter:
-        raise ValueError(
+    if iteration == max_iter:
+        raise RuntimeError(
             "MultivariateTCost: Maximum number of iterations reached, (",
-            max_iter + 1,
+            max_iter,
             ") in MLE scale matrix estimation. Relax the tolerance "
             "(mle_scale_abs_tol, mle_scale_rel_tol), "
             "or increase the maximum number of iterations (max_iter).",
@@ -271,9 +271,9 @@ def _solve_for_mle_scale_matrix(
 def maximum_likelihood_mv_t_scale_matrix(
     centered_samples: np.ndarray,
     dof: float,
-    abs_tol: float = 1.0e-2,
-    rel_tol: float = 1.0e-2,
-    max_iter: int = 100,
+    abs_tol: float,
+    rel_tol: float,
+    max_iter: int,
     loo_index: int = -1,
 ) -> np.ndarray:
     """Compute the MLE scale matrix for a multivariate t-distribution.
@@ -284,11 +284,11 @@ def maximum_likelihood_mv_t_scale_matrix(
         The centered samples from the multivariate t-distribution.
     dof : float
         The degrees of freedom of the multivariate t-distribution.
-    abs_tol : float, optional (default=1.0e-2)
+    abs_tol : float
         The absolute tolerance for convergence.
-    rel_tol : float, optional (default=1.0e-2)
+    rel_tol : float
         The relative tolerance for convergence.
-    max_iter : int, optional (default=100)
+    max_iter : int
         The maximum number of iterations to perform.
     loo_index : int, optional (default=-1)
         The index of the leave-one-out sample. If -1, the full covariance matrix
@@ -327,9 +327,9 @@ def _multivariate_t_log_likelihood(
 ) -> float:
     """Calculate the log likelihood of a multivariate t-distribution.
 
-    Directly from the definition of the multivariate t-distribution.
-    Implementation inspired by the scipy implementation of
-    the multivariate t-distribution, but simplified.
+    Implemented from the definition of the multivariate t-distribution.
+    Inspired by the scipy implementation of the multivariate t-distribution,
+    but simplified.
     Source: https://en.wikipedia.org/wiki/Multivariate_t-distribution
 
     Parameters
@@ -632,7 +632,7 @@ def multivariate_t_cost_fixed_params(
 
 @njit
 def _isotropic_mv_t_dof_estimate(
-    centered_samples: np.ndarray, zero_norm_tol=1.0e-6, infinite_dof_threshold=1.0e2
+    centered_samples: np.ndarray, infinite_dof_threshold, zero_norm_tol=1.0e-6
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
 
@@ -643,13 +643,13 @@ def _isotropic_mv_t_dof_estimate(
     ----------
     centered_samples : np.ndarray
         The centered samples from the multivariate t-distribution.
-    zero_norm_tol : float, optional (default=1.0e-6)
-        The tolerance for considering a squared norm as zero.
-    infinite_dof_threshold : float, optional (default=1.0e2)
+    infinite_dof_threshold : float
         The threshold at which the degrees of freedom are considered infinite.
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
         a multivariate Gaussian distribution.
+    zero_norm_tol : float, optional (default=1.0e-6)
+        The tolerance for considering a squared norm as zero.
 
     Returns
     -------
@@ -659,7 +659,6 @@ def _isotropic_mv_t_dof_estimate(
     sample_dim = centered_samples.shape[1]
 
     squared_norms = np.sum(centered_samples * centered_samples, axis=1)
-
     log_norm_sq_var = np.log(squared_norms[squared_norms > zero_norm_tol**2]).var()
 
     b = log_norm_sq_var - trigamma(sample_dim / 2.0)
@@ -676,7 +675,7 @@ def _isotropic_mv_t_dof_estimate(
 
 @njit
 def _kurtosis_mv_t_dof_estimate(
-    centered_samples: np.ndarray, infinite_dof_threshold: float = 1.0e2
+    centered_samples: np.ndarray, infinite_dof_threshold: float
 ) -> float:
     """Estimate the degrees of freedom of a multivariate t-distribution.
 
@@ -684,7 +683,7 @@ def _kurtosis_mv_t_dof_estimate(
     ----------
     centered_samples : np.ndarray
         The centered samples from the multivariate t-distribution.
-    infinite_dof_threshold : float, optional (default=1.0e2)
+    infinite_dof_threshold : float
         The threshold at which the degrees of freedom are considered infinite.
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
@@ -712,13 +711,13 @@ def _kurtosis_mv_t_dof_estimate(
 def _iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
-    infinite_dof_threshold: float = 5.0e1,
-    max_iter=10,
-    rel_tol=5.0e-2,
-    abs_tol=1.0e-1,
-    mle_scale_abs_tol=1.0e-5,
-    mle_scale_rel_tol=1.0e-3,
-    mle_scale_max_iter=100,
+    infinite_dof_threshold: float,
+    mle_scale_abs_tol: float,
+    mle_scale_rel_tol: float,
+    mle_scale_max_iter: int,
+    dof_abs_tol=1.0e-1,
+    dof_rel_tol=5.0e-2,
+    dof_max_iter=10,
 ) -> float:
     """Estimate dof. for a multivariate T distribution, iteratively.
 
@@ -734,23 +733,23 @@ def _iterative_mv_t_dof_estimate(
         The centered samples from the multivariate t-distribution.
     initial_dof : float
         The initial degrees of freedom estimate.
-    infinite_dof_threshold : float, optional (default=5.0e1)
+    infinite_dof_threshold : float
         The threshold at which the degrees of freedom are considered infinite.
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
         a multivariate Gaussian distribution.
-    max_iter : int, optional (default=10)
-        The maximum number of iterations to perform.
-    rel_tol : float, optional (default=5.0e-2)
-        The relative tolerance for convergence.
-    abs_tol : float, optional (default=1.0e-1)
-        The absolute tolerance for convergence.
-    mle_scale_abs_tol : float, optional (default=1.0e-5)
+    mle_scale_abs_tol : float
         The absolute tolerance for convergence in the MLE scale matrix estimation.
-    mle_scale_rel_tol : float, optional (default=1.0e-3)
+    mle_scale_rel_tol : float
         The relative tolerance for convergence in the MLE scale matrix estimation.
-    mle_scale_max_iter : int, optional (default=100)
+    mle_scale_max_iter : int
         The maximum number of iterations to perform for the MLE scale matrix estimation.
+    dof_abs_tol : float, optional (default=1.0e-1)
+        The absolute tolerance for convergence.
+    dof_rel_tol : float, optional (default=5.0e-2)
+        The relative tolerance for convergence.
+    dof_max_iter : int, optional (default=10)
+        The maximum number of iterations to perform.
 
     Returns
     -------
@@ -778,7 +777,7 @@ def _iterative_mv_t_dof_estimate(
     )
 
     dof = initial_dof
-    for _ in range(max_iter):
+    for _ in range(dof_max_iter):
         nu_i = np.trace(sample_covariance) / np.trace(mle_scale_matrix)
         if nu_i < inf_dof_nu_threshold:
             # The estimated degrees of freedom are high enough to approximate the
@@ -793,14 +792,14 @@ def _iterative_mv_t_dof_estimate(
             initial_scale_matrix=mle_scale_matrix,
             centered_samples=centered_samples,
             dof=dof,
-            max_iter=mle_scale_max_iter,
             abs_tol=mle_scale_abs_tol,
             rel_tol=mle_scale_rel_tol,
+            max_iter=mle_scale_max_iter,
         )
 
         absolute_dof_diff = np.abs(dof - old_dof)
-        rel_tol_satisfied = absolute_dof_diff / old_dof < rel_tol
-        abs_tol_satisfied = absolute_dof_diff < abs_tol
+        rel_tol_satisfied = absolute_dof_diff / old_dof < dof_rel_tol
+        abs_tol_satisfied = absolute_dof_diff < dof_abs_tol
         if rel_tol_satisfied or abs_tol_satisfied:
             break
 
@@ -811,13 +810,13 @@ def _iterative_mv_t_dof_estimate(
 def _loo_iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
-    infinite_dof_threshold: float = 1.0e2,
-    max_iter=5,
-    rel_tol=5.0e-2,
-    abs_tol=1.0e-1,
-    mle_scale_abs_tol=1.0e-5,
-    mle_scale_rel_tol=1.0e-3,
-    mle_scale_max_iter=100,
+    infinite_dof_threshold: float,
+    mle_scale_abs_tol: float,
+    mle_scale_rel_tol: float,
+    mle_scale_max_iter: int,
+    dof_abs_tol=1.0e-1,
+    dof_rel_tol=5.0e-2,
+    dof_max_iter=5,
 ) -> float:
     """Leave-one-out iterative dof. estimate for a multivariate T distribution.
 
@@ -832,23 +831,23 @@ def _loo_iterative_mv_t_dof_estimate(
         The centered samples from the multivariate t-distribution.
     initial_dof : float
         The initial degrees of freedom estimate.
-    infinite_dof_threshold : float, optional (default=1.0e2)
+    infinite_dof_threshold : float
         The threshold at which the degrees of freedom are considered infinite.
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
         a multivariate Gaussian distribution.
-    max_iter : int, optional (default=5)
-        The maximum number of iterations to perform.
-    rel_tol : float, optional (default=5.0e-2)
-        The relative tolerance for convergence.
-    abs_tol : float, optional (default=1.0e-1)
-        The absolute tolerance for convergence.
-    mle_scale_abs_tol : float, optional (default=1.0e-5)
+    mle_scale_abs_tol : float
         The absolute tolerance for convergence in the MLE scale matrix estimation.
-    mle_scale_rel_tol : float, optional (default=1.0e-3)
+    mle_scale_rel_tol : float
         The relative tolerance for convergence in the MLE scale matrix estimation.
-    mle_scale_max_iter : int, optional (default=100)
+    mle_scale_max_iter : int
         The maximum number of iterations to perform for the MLE scale matrix estimation.
+    dof_abs_tol : float, optional (default=1.0e-1)
+        The absolute tolerance for convergence.
+    dof_rel_tol : float, optional (default=5.0e-2)
+        The relative tolerance for convergence.
+    dof_max_iter : int, optional (default=5)
+        The maximum number of iterations to perform.
 
     Returns
     -------
@@ -875,7 +874,7 @@ def _loo_iterative_mv_t_dof_estimate(
 
     current_dof = initial_dof
 
-    for _ in range(max_iter):
+    for _ in range(dof_max_iter):
         total_loo_mahalanobis_squared_distance = 0.0
         for sample in prange(num_samples):
             # Extract the leave-one-out sample as a column vector:
@@ -895,6 +894,7 @@ def _loo_iterative_mv_t_dof_estimate(
                 loo_index=sample,
                 abs_tol=mle_scale_abs_tol,
                 rel_tol=mle_scale_rel_tol,
+                max_iter=mle_scale_max_iter,
             )
 
             loo_mahalanobis_squared_distance = (
@@ -912,9 +912,9 @@ def _loo_iterative_mv_t_dof_estimate(
             break
 
         new_dof = 2 * theta_k / (theta_k - 1)
-        abs_difference = np.abs(new_dof - current_dof)
-        abs_tol_satisfied = abs_difference < abs_tol
-        rel_tol_satisfied = (abs_difference / current_dof) < rel_tol
+        abs_dof_difference = np.abs(new_dof - current_dof)
+        abs_tol_satisfied = abs_dof_difference < dof_abs_tol
+        rel_tol_satisfied = (abs_dof_difference / current_dof) < dof_rel_tol
 
         current_dof = new_dof
         if abs_tol_satisfied or rel_tol_satisfied:
@@ -1028,6 +1028,9 @@ class MultivariateTCost(BaseCost):
         The absolute tolerance for convergence in the MLE scale matrix estimation.
     mle_scale_rel_tol : float, optional (default=1.0e-2)
         The relative tolerance for convergence in the MLE scale matrix estimation.
+    mle_scale_max_iter : int, optional (default=100)
+        The maximum number of iterations to perform for the MLE scale matrix estimation.
+        Will raise a RuntimeError if the maximum number of iterations is reached.
     """
 
     evaluation_type = "multivariate"
