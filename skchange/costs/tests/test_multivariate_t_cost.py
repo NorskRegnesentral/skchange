@@ -417,6 +417,7 @@ def test_scale_matrix_numba_benchmark(
                 t_dof,
                 abs_tol=1.0e-9,
                 rel_tol=0.0,
+                max_iter=100,
             )
 
         # Time numba version
@@ -426,6 +427,7 @@ def test_scale_matrix_numba_benchmark(
             t_dof,
             abs_tol=1.0e-9,
             rel_tol=0.0,
+            max_iter=100,
         )
         end = perf_counter()
         times_njit.append(end - start)
@@ -820,7 +822,7 @@ def test_iterative_mv_t_dof_estimate_returns_inf_for_high_initial_dof():
 
 def test_multivariate_t_log_likelihood_returns_nan_for_non_pos_def_scale_matrix():
     """Test that log likelihood returns np.nan for non-pos. def. scale matrix."""
-    non_positive_definite_matrix = np.array([[1, 2], [2, 1]])
+    non_positive_definite_matrix = np.array([[1, 2], [2, 1]], dtype=np.float64)
     centered_samples = np.random.randn(100, 2)
     dof = 5.0
 

@@ -1060,10 +1060,14 @@ class MultivariateTCost(BaseCost):
     ) -> np.ndarray:
         """Check if the fixed mean parameter is valid.
 
+        The covariance matrix is checked for positive definiteness,
+        and forced to a floating point representation for numba compatibility.
+
         Parameters
         ----------
         param : 2-tuple of float or np.ndarray
             Fixed mean and covariance matrix for the cost calculation.
+            Both are converted to float values or float arrays.
         X : np.ndarray
             Input data.
 
@@ -1074,7 +1078,11 @@ class MultivariateTCost(BaseCost):
         """
         mean, cov = param
         mean = check_mean(mean, X)
-        cov = check_cov(cov, X)
+
+        # Require floating point representation of
+        # the covariance matrix for numba compatibility:
+        cov = check_cov(cov, X, force_float=True)
+
         return mean, cov
 
     @property
