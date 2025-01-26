@@ -14,6 +14,7 @@ from skchange.costs.multivariate_t_cost import (
     _kurtosis_mv_t_dof_estimate,
     _loo_iterative_mv_t_dof_estimate,
     _multivariate_t_log_likelihood,
+    _solve_for_mle_scale_matrix,
     maximum_likelihood_mv_t_scale_matrix,
 )
 from skchange.penalties import BICPenalty
@@ -327,9 +328,9 @@ def test_scale_matrix_mle(seed=4125):
         centered_samples, loc=np.zeros(p), shape=mle_scale_matrix, df=t_dof
     ).sum()
 
-    assert (
-        mle_scale_matrix_ll > true_scale_matrix_ll
-    ), "MLE log-likelihood is not maximal."
+    assert mle_scale_matrix_ll > true_scale_matrix_ll, (
+        "MLE log-likelihood is not maximal."
+    )
 
 
 def test_loo_scale_matrix_mle(seed=4125):
@@ -494,24 +495,24 @@ def test_iso_and_kurt_dof_estimates_on_gaussian_data():
     )
 
     mv_t_kurt_dof_est = _kurtosis_mv_t_dof_estimate(mv_t_samples)
-    assert np.isfinite(mv_t_kurt_dof_est) and (
-        mv_t_kurt_dof_est > 0.0
-    ), "Kurtosis dof estimate should be finite on multivariate t samples."
+    assert np.isfinite(mv_t_kurt_dof_est) and (mv_t_kurt_dof_est > 0.0), (
+        "Kurtosis dof estimate should be finite on multivariate t samples."
+    )
 
     mv_t_isotropic_dof_est = _isotropic_mv_t_dof_estimate(mv_t_samples)
-    assert np.isfinite(mv_t_isotropic_dof_est) and (
-        mv_t_isotropic_dof_est > 0.0
-    ), "Isotropic dof estimate should be finite on multivariate t samples."
+    assert np.isfinite(mv_t_isotropic_dof_est) and (mv_t_isotropic_dof_est > 0.0), (
+        "Isotropic dof estimate should be finite on multivariate t samples."
+    )
 
     normal_kurt_dof_est = _kurtosis_mv_t_dof_estimate(mv_normal_samples)
-    assert np.isposinf(
-        normal_kurt_dof_est
-    ), "Kurtosis dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(normal_kurt_dof_est), (
+        "Kurtosis dof estimate should be infinite on Gaussian data."
+    )
 
     normal_isotropic_dof_est = _isotropic_mv_t_dof_estimate(mv_normal_samples)
-    assert np.isposinf(
-        normal_isotropic_dof_est
-    ), "Isotropic dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(normal_isotropic_dof_est), (
+        "Isotropic dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_iterative_t_dof_estimate():
@@ -540,9 +541,9 @@ def test_iterative_t_dof_estimate():
         centered_samples, initial_dof=initial_t_dof_estimate
     )
     assert iterative_dof_estimate > 0, "Data-driven dof estimate should be positive."
-    assert (
-        np.abs(iterative_dof_estimate - t_dof) < 1.0
-    ), "Data-driven dof estimate is off."
+    assert np.abs(iterative_dof_estimate - t_dof) < 1.0, (
+        "Data-driven dof estimate is off."
+    )
 
 
 def test_loo_iterative_t_dof_estimate():
@@ -571,9 +572,9 @@ def test_loo_iterative_t_dof_estimate():
         centered_samples, initial_dof=initial_t_dof_estimate
     )
     assert loo_iterative_dof > 0, "LOO data-driven dof estimate should be positive."
-    assert (
-        np.abs(loo_iterative_dof - t_dof) < 0.15
-    ), "LOO data-driven dof estimate is off."
+    assert np.abs(loo_iterative_dof - t_dof) < 0.15, (
+        "LOO data-driven dof estimate is off."
+    )
 
 
 def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
@@ -600,9 +601,9 @@ def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
         max_iter=100,
     )
 
-    assert np.isposinf(
-        iterative_dof_estimate
-    ), "Dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(iterative_dof_estimate), (
+        "Dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
@@ -628,9 +629,9 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
         max_iter=100,
     )
 
-    assert np.isposinf(
-        loo_iterative_dof
-    ), "Dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(loo_iterative_dof), (
+        "Dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_MultiVariateTCost_with_PELT(
@@ -676,9 +677,9 @@ def test_MultiVariateTCost_with_PELT(
     print(f"Estimated dof: {mv_t_cost.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
-    assert (
-        change_points.loc[0, "ilocs"] == n_samples
-    ), "Change point should be at the end of the first segment."
+    assert change_points.loc[0, "ilocs"] == n_samples, (
+        "Change point should be at the end of the first segment."
+    )
     assert np.isfinite(mv_t_cost.dof_), "Fitted dof should be finite."
 
 
@@ -713,7 +714,97 @@ def test_MultiVariateTCost_with_moving_window(
     print(f"Estimated dof: {t_cost.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
-    assert (
-        change_points.loc[0, "ilocs"] == n_samples
-    ), "Change point should be at the end of the first segment."
+    assert change_points.loc[0, "ilocs"] == n_samples, (
+        "Change point should be at the end of the first segment."
+    )
     assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."
+
+
+def test_min_size_not_fitted():
+    """Test that min_size returns None when MultivariateTCost is not fitted."""
+    cost = MultivariateTCost()
+    assert cost.min_size is None, "min_size should be None when the cost is not fitted."
+
+
+def test_setting_fixed_dof():
+    """Test that min_size returns None when MultivariateTCost is not fitted."""
+    cost = MultivariateTCost(fixed_dof=5.0)
+    assert cost.fixed_dof == 5.0, "Fixed dof should be set to 5.0."
+
+
+def test_nan_dof_raises_value_error():
+    """Test that fit raises ValueError for infinite degrees of freedom."""
+    cost = MultivariateTCost(fixed_dof=np.nan)
+    X = np.random.randn(100, 2)
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Degrees of freedom 'dof' must be a positive, finite number, or 'np.inf'."
+        ),
+    ):
+        cost.fit(X)
+
+
+def test_fit_raises_value_error_for_non_positive_definite_scale_matrix():
+    """Test that fit raises ValueError for non-positive definite scale matrix."""
+    non_positive_definite_matrix = np.array([[1, 2], [2, 1]])
+    cost = MultivariateTCost(param=(np.zeros(2), non_positive_definite_matrix))
+    X = np.random.randn(100, 2)
+
+    with pytest.raises(
+        ValueError, match="covariance matrix must be positive definite."
+    ):
+        cost.fit(X)
+
+
+def test_iterative_mv_t_dof_estimate_returns_inf_for_high_initial_dof():
+    """Test that _iterative_mv_t_dof_estimate returns np.inf for high initial dof."""
+    centered_samples = np.random.randn(100, 5)
+    initial_dof = 100.0
+    infinite_dof_threshold = 50.0
+
+    dof_estimate = _iterative_mv_t_dof_estimate(
+        centered_samples=centered_samples,
+        initial_dof=initial_dof,
+        infinite_dof_threshold=infinite_dof_threshold,
+    )
+
+    assert np.isposinf(dof_estimate), (
+        "Dof estimate should be infinite for high initial dof."
+    )
+
+
+def test_multivariate_t_log_likelihood_returns_nan_for_non_positive_definite_scale_matrix():
+    """Test that _multivariate_t_log_likelihood returns np.nan for non-positive definite scale matrix."""
+    non_positive_definite_matrix = np.array([[1, 2], [2, 1]])
+    centered_samples = np.random.randn(100, 2)
+    dof = 5.0
+
+    log_likelihood = _multivariate_t_log_likelihood(
+        scale_matrix=non_positive_definite_matrix,
+        centered_samples=centered_samples,
+        dof=dof,
+    )
+
+    assert np.isnan(log_likelihood), (
+        "Log likelihood should be np.nan for non-positive definite scale matrix."
+    )
+
+
+def test_solve_for_mle_scale_matrix_throws_value_error_if_max_iter_reached():
+    """Test that _solve_for_mle_scale_matrix throws ValueError if max_iter is reached."""
+    centered_samples = np.random.randn(100, 5)
+    initial_scale_matrix = np.eye(5)
+    dof = 5.0
+    max_iter = 1  # Set max_iter to a low value to force the error
+
+    with pytest.raises(ValueError, match="Maximum number of iterations reached"):
+        _solve_for_mle_scale_matrix(
+            initial_scale_matrix=initial_scale_matrix,
+            centered_samples=centered_samples,
+            dof=dof,
+            max_iter=max_iter,
+            abs_tol=1.0e-3,
+            rel_tol=1.0e-3,
+        )
