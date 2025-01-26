@@ -1005,7 +1005,49 @@ def _estimate_mv_t_dof(
 
 
 class MultivariateTCost(BaseCost):
-    r"""Multivariate T likelihood cost.
+    r"""Multivariate T twice negative log likelihood cost.
+
+    The multivariate T-distribution is a generalization of the multivariate
+    Gaussian distribution, allowing for heavier tails. The degrees of freedom
+    parameter controls the tail heaviness, with higher values leading to
+    distributions that are closer to the multivariate Gaussian distribution.
+    With Numba installed the runtime of this cost is is between 5 and 10 times
+    slower than the Gaussian likelihood cost, but more robust to outliers.
+
+    The cost is calculated as the twice negative log likelihood of the
+    multivariate T-distribution, given the data, mean, scale matrix, and
+    degrees of freedom. The degrees of freedom can be fixed or estimated
+    from the data. When estimating the degrees of freedom, we use several
+    methods. Initially we compute the geometric mean of an isotropic dof.
+    estimate from [1]_ and a kurtosis-based estimate from [2]_. This initial
+    estimate is then fed into an iterative dof. estimate from [2]_. If the
+    number of samples is below a given threshold (`refine_dof_threshold`),
+    we refine the dof. estimate using a leave-one-out iterative method from [3]_.
+
+    If the degrees of freedom are above a given threshold (`infinite_dof_threshold`),
+    the multivariate T-distribution is approximated with a multivariate Gaussian
+    distribution. The threshold is set to 50 by default, but can be adjusted
+    with the `infinite_dof_threshold` parameter.
+
+    As there is no analytical formula for the maximum likelihood estimate (MLE) of the
+    scale matrix of the multivariate T-distribution, we use fixed point iterations
+    to compute the MLE scale matrix within each segment. The tolerance parameters
+    `mle_scale_abs_tol` and `mle_scale_rel_tol` for the MLE scale matrix estimation can
+    be adjusted to control the convergence of the fixed point iterations, and when
+    either of the tolerances are achieved, the fixed point iterations stop.
+
+    The absolute tolerance (`mle_scale_abs_tol`) is achieved when the absolute change
+    in the norm of the scale matrix changed less than `mle_scale_abs_tol` after an
+    iteration, and the relative tolerance (`mle_scale_rel_tol`) is achieved when the
+    relative change in the norm of the scale matrix is less than `mle_scale_rel_tol`
+    after an iteration, relative to the pre-iteration norm.
+
+    The maximum number of iterations (`mle_scale_max_iter`) is used to safeguard against
+    non-convergence, and will raise a RuntimeError if the maximum number of iterations
+    is reached. Reaching the maximum number of iterations is a sign that the tolerance
+    parameters are too strict, and the fixed point iterations are not converging.
+    In this case, the tolerance parameters can be relaxed, or the maximum number of
+    iterations can be increased.
 
     Parameters
     ----------
@@ -1031,6 +1073,19 @@ class MultivariateTCost(BaseCost):
     mle_scale_max_iter : int, optional (default=100)
         The maximum number of iterations to perform for the MLE scale matrix estimation.
         Will raise a RuntimeError if the maximum number of iterations is reached.
+
+    References
+    ----------
+    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel \
+    Parameter Estimation Algorithm for the Multivariate T-Distribution and Its \
+    Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607. \
+    Berlin, Heidelberg: Springer
+    .. [2] Ollila, Esa, & Palomar, Daniel P. & Pascal, Frédéric. (2020). Shrinking the \
+    Eigenvalues of M-Estimators of Covariance Matrix. IEEE Transactions on Signal \
+    Processing, 256-269.
+    .. [3] Pascal, Frédéric & Ollila, Esa & Palomar, Daniel P. (2021) Improved \
+    Estimation of the Degree of Freedom Parameter of Multivariate T-Distribution. \
+    In 2021 29th European Signal Processing Conference (EUSIPCO), 860-864.
     """
 
     evaluation_type = "multivariate"
