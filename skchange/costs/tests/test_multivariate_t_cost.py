@@ -775,17 +775,12 @@ def test_setting_fixed_dof():
 
 
 def test_nan_dof_raises_value_error():
-    """Test that fit raises ValueError for infinite degrees of freedom."""
-    cost = MultivariateTCost(fixed_dof=np.nan)
-    X = np.random.randn(100, 2)
-
+    """Test that constructing MvTCost with nan dof raises ValueError."""
     with pytest.raises(
         ValueError,
-        match=(
-            "Degrees of freedom 'dof' must be a positive, finite number, or 'np.inf'."
-        ),
+        match="fixed_dof must be in",
     ):
-        cost.fit(X)
+        MultivariateTCost(fixed_dof=np.nan)
 
 
 def test_fit_raises_value_error_for_non_positive_definite_scale_matrix():

@@ -4,6 +4,7 @@ __author__ = ["johannvk"]
 __all__ = ["MultivariateTCost"]
 
 import numpy as np
+import pandas as pd
 
 from skchange.costs.base import BaseCost
 from skchange.costs.multivariate_gaussian_cost import (
@@ -19,6 +20,7 @@ from skchange.utils.numba.stats import (
     log_gamma,
     trigamma,
 )
+from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
 
 @njit
@@ -1055,6 +1057,37 @@ class MultivariateTCost(BaseCost):
         self.mle_scale_rel_tol = mle_scale_rel_tol
         self.mle_scale_max_iter = mle_scale_max_iter
 
+        check_in_interval(
+            interval=pd.Interval(0, np.inf),
+            value=self.fixed_dof,
+            name="fixed_dof",
+            allow_none=True,
+        )
+        check_larger_than(
+            min_value=0.0,
+            value=self.infinite_dof_threshold,
+            name="infinite_dof_threshold",
+        )
+        check_larger_than(
+            min_value=0,
+            value=self.refine_dof_threshold,
+            name="refine_dof_threshold",
+            allow_none=True,
+        )
+        check_in_interval(
+            interval=pd.Interval(0, np.inf, closed="left"),
+            value=self.mle_scale_abs_tol,
+            name="mle_scale_abs_tol",
+        )
+        check_in_interval(
+            interval=pd.Interval(0, np.inf, closed="left"),
+            value=self.mle_scale_rel_tol,
+            name="mle_scale_rel_tol",
+        )
+        check_larger_than(
+            min_value=0, value=self.mle_scale_max_iter, name="mle_scale_max_iter"
+        )
+
     def _check_fixed_param(
         self, param: tuple[MeanType, CovType], X: np.ndarray
     ) -> np.ndarray:
@@ -1147,14 +1180,6 @@ class MultivariateTCost(BaseCost):
             )
         else:
             self.dof_ = self.fixed_dof
-
-        if not np.isposinf(self.dof_) and (
-            self.dof_ <= 0.0 or not np.isfinite(self.dof_)
-        ):
-            raise ValueError(
-                "Degrees of freedom 'dof' must be a positive,"
-                " finite number, or 'np.inf'."
-            )
 
         return self
 
