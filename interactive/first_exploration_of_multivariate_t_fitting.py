@@ -8,8 +8,7 @@ import numpy.linalg as la
 import pymanopt as pm
 import scipy.linalg as sla
 import scipy.stats as st
-from jax import jacfwd, jacrev
-from scipy.linalg import solve_continuous_lyapunov
+from jax import jacfwd
 
 np.random.seed(42)
 
@@ -35,6 +34,7 @@ centered_samples = mv_t_samples - sample_medians
 def mv_t_samples_log_likelihood(
     samples: np.ndarray, mean: np.ndarray, cov: np.ndarray, dof: float
 ):
+    """Compute the log-likelihood of a set of samples under a mv t-distribution."""
     mv_t_dist = st.multivariate_t(loc=mean, shape=cov, df=dof)
     return mv_t_dist.logpdf(samples).sum()
 
@@ -354,6 +354,7 @@ def mle_1d_cov_residual_chol_solve_jax(
 
 @jax.jit
 def cov_1d_only_arg_cholesky_solve(cov_1d: np.ndarray):
+    """Compute the MLE covariance residual for a mv_t distribution."""
     return mle_1d_cov_residual_chol_solve_jax(cov_1d, t_dof, centered_samples)
 
 
@@ -374,6 +375,7 @@ flat_cov_diff = mle_1d_cov_equation_jax(
 
 
 def cov_1d_only_arg(cov_1d: np.ndarray):
+    """Compute the MLE covariance residual for a mv_t distribution."""
     return mle_1d_cov_equation_jax(cov_1d, t_dof, centered_samples)
 
 
@@ -438,12 +440,14 @@ cov
 # %%
 cov_current
 
-# %% Write a class to encapsulate the MLE covariance estimation problem, which takes in a retraction method:
+# %% Write a class to encapsulate the MLE covariance estimation problem:
 
-from typing import Callable, Tuple
+from typing import Callable
 
 
 class MultivariateStudentTCovarianceEstimator:
+    """Estimate the covariance matrix of a multivariate t-distribution using MLE."""
+
     def __init__(
         self,
         dof: float,
@@ -459,6 +463,7 @@ class MultivariateStudentTCovarianceEstimator:
         self.cov_current = np.cov(self.centered_samples, rowvar=False)
 
     def fit(self, tol: float = 1e-3, max_iter: int = 100) -> np.ndarray:
+        """Fit the covariance matrix using the MLE method."""
         cov_current = self.cov_current
         for i in range(max_iter):
             residual = self.mle_cov_equation(cov_current)

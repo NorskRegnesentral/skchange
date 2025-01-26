@@ -532,7 +532,8 @@ def pop_t_dof_estimate_iteration(
         #     loo_cov_estimate, t_dof, centered_samples, num_zeroed_samples=1
         # )
         # loo_newton_cov_matrix, _ = mv_t_newton_iterations(
-        #     loo_cov_estimate, centered_samples, t_dof, max_iter=1, num_zeroed_samples=1
+        #     loo_cov_estimate, centered_samples, t_dof, max_iter=1,
+        #     num_zeroed_samples=1
         # )
         # loo_newton_fp_matrix = mle_cov_fixed_point_jax(
         #     loo_newton_cov_matrix, t_dof, centered_samples, num_zeroed_samples=1
@@ -662,6 +663,7 @@ for i in range(10):
 def mv_t_samples_log_likelihood(
     samples: np.ndarray, mean: np.ndarray, cov: np.ndarray, dof: float
 ):
+    """Compute the log-likelihood of i.i.d. samples from a t-distribution."""
     mv_t_dist = st.multivariate_t(loc=mean, shape=cov, df=dof)
     return mv_t_dist.logpdf(samples).sum()
 
@@ -706,12 +708,14 @@ newton_mle_ll = mv_t_samples_log_likelihood(
 
 # Set up benchmarking for the fixed point iteration and Newton's method:
 def benchmark_fixed_point():
+    """Benchmark the Fixed point method."""
     return mv_t_fixed_point_mle_covariance_matrix(
         centered_samples, t_dof, reverse_tol=1.0e-6, max_iter=50
     )
 
 
 def benchmark_newton():
+    """Benchmark the Newton method for the MLE covariance matrix."""
     return mv_t_newton_mle_covariance_matrix(
         centered_samples,
         t_dof,

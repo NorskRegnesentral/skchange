@@ -54,12 +54,12 @@ def test_numba_digamma_on_small_values_gives_nan():
     less_than_threshold = random_vals <= 1.0e-2
 
     assert less_than_threshold.sum() > 0, "No small values found for digamma test."
-    assert np.isnan(numba_digamma_vals[less_than_threshold]).all(), (
-        "Numba digamma should be NaN on small values (<= 1.0e-2)."
-    )
-    assert np.isfinite(numba_digamma_vals[~less_than_threshold]).all(), (
-        "Numba digamma should be finite on values > 1.0e-2."
-    )
+    assert np.isnan(
+        numba_digamma_vals[less_than_threshold]
+    ).all(), "Numba digamma should be NaN on small values (<= 1.0e-2)."
+    assert np.isfinite(
+        numba_digamma_vals[~less_than_threshold]
+    ).all(), "Numba digamma should be finite on values > 1.0e-2."
 
 
 def test_numba_trigamma():
@@ -78,12 +78,12 @@ def test_numba_trigamma_on_small_values_gives_nan():
     less_than_threshold = random_vals <= 1.0e-2
 
     assert less_than_threshold.sum() > 0, "No small values found for trigamma test."
-    assert np.isnan(numba_trigamma_vals[less_than_threshold]).all(), (
-        "Numba trigamma should be NaN on small values (<= 1.0e-2)."
-    )
-    assert np.isfinite(numba_trigamma_vals[~less_than_threshold]).all(), (
-        "Numba trigamma should be finite on values > 1.0e-2."
-    )
+    assert np.isnan(
+        numba_trigamma_vals[less_than_threshold]
+    ).all(), "Numba trigamma should be NaN on small values (<= 1.0e-2)."
+    assert np.isfinite(
+        numba_trigamma_vals[~less_than_threshold]
+    ).all(), "Numba trigamma should be finite on values > 1.0e-2."
 
 
 def test_numba_log_gamma():
@@ -103,9 +103,9 @@ def test_numba_log_gamma_on_small_values_gives_nan():
     less_than_threshold = random_vals <= 1.0e-2
 
     assert less_than_threshold.sum() > 0, "No small values found for log_gamma test."
-    assert np.isnan(numba_log_gamma_vals[less_than_threshold]).all(), (
-        "Numba log_gamma should be NaN on small values (<= 1.0e-2)."
-    )
-    assert np.isfinite(numba_log_gamma_vals[~less_than_threshold]).all(), (
-        "Numba log_gamma should be finite on values > 1.0e-2."
-    )
+    assert np.isnan(
+        numba_log_gamma_vals[less_than_threshold]
+    ).all(), "Numba log_gamma should be NaN on small values (<= 1.0e-2)."
+    assert np.isfinite(
+        numba_log_gamma_vals[~less_than_threshold]
+    ).all(), "Numba log_gamma should be finite on values > 1.0e-2."

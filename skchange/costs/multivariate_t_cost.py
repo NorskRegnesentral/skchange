@@ -3,8 +3,6 @@
 __author__ = ["johannvk"]
 __all__ = ["MultivariateTCost"]
 
-from typing import Union
-
 import numpy as np
 
 from skchange.costs.base import BaseCost
@@ -1037,7 +1035,7 @@ class MultivariateTCost(BaseCost):
 
     def __init__(
         self,
-        param: Union[tuple[MeanType, CovType], None] = None,
+        param: tuple[MeanType, CovType] | None = None,
         fixed_dof=None,
         refine_dof_threshold=None,
         infinite_dof_threshold=5.0e1,
@@ -1080,7 +1078,7 @@ class MultivariateTCost(BaseCost):
         return mean, cov
 
     @property
-    def min_size(self) -> Union[int, None]:
+    def min_size(self) -> int | None:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
