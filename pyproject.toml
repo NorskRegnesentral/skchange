@@ -48,13 +48,14 @@ Homepage = "https://skchange.readthedocs.io"
 [project.optional-dependencies]
 # numba - numba as an optional dependency, install via "pip install skchange[numba]"
 numba = [
-  "numba>=0.56"
+    "numba>=0.61,<0.62",
 ]
 
 # all_extras - all soft dependencies, install via "pip install skchange[all_extras]"
 all_extras = [
-  "numba>=0.56",
+    "numba>=0.61,<0.62",
 ]
+
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"
 dev = [

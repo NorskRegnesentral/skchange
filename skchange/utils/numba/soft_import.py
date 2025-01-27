@@ -47,6 +47,10 @@ from sktime.utils.dependencies import _check_soft_dependencies
 
 numba_available = _check_soft_dependencies("numba", severity="none")
 
+if numba_available:
+    # The TBB threading layer is not easily available, degrade its priority:
+    from numba import config
+    config.THREADING_LAYER_PRIORITY = ["omp", "tbb", "workqueue"]
 
 def read_boolean_env_var(name, default_value):
     """Read a boolean environment variable."""

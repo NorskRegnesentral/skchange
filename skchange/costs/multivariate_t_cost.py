@@ -257,9 +257,8 @@ def _solve_for_mle_scale_matrix(
 
     if iteration == max_iter:
         raise RuntimeError(
-            "MultivariateTCost: Maximum number of iterations reached, (",
-            max_iter,
-            ") in MLE scale matrix estimation. Relax the tolerance "
+            f"MultivariateTCost: Maximum number of iterations reached, ({max_iter}) "
+            "in MLE scale matrix estimation. Relax the tolerance "
             "(mle_scale_abs_tol, mle_scale_rel_tol), "
             "or increase the maximum number of iterations (max_iter).",
         )
