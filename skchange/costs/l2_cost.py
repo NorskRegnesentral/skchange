@@ -1,7 +1,5 @@
 """L2 cost."""
 
-from typing import Union
-
 import numpy as np
 
 from skchange.costs.base import BaseCost
@@ -93,7 +91,7 @@ class L2Cost(BaseCost):
         calculated.
     """
 
-    def __init__(self, param: Union[MeanType, None] = None):
+    def __init__(self, param: MeanType | None = None):
         super().__init__(param)
 
     def _check_fixed_param(self, param: MeanType, X: np.ndarray) -> np.ndarray:

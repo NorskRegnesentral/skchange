@@ -3,8 +3,6 @@
 __author__ = ["Tveten"]
 __all__ = ["CircularBinarySegmentation"]
 
-from typing import Optional, Union
-
 import numpy as np
 import pandas as pd
 
@@ -120,7 +118,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
     anomaly_score : BaseLocalAnomalyScore or BaseCost, optional, default=L2Cost()
         The local anomaly score to use for anomaly detection. If a cost is given, it is
         converted to a local anomaly score using the `LocalAnomalyScore` class.
-    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+    penalty : BasePenalty or float, optional, default=`BICPenalty`
         The penalty to use for the changepoint detection. If a float is given, it is
         interpreted as a constant penalty. If `None`, the penalty is set to a BIC
         penalty with ``n=X.shape[0]`` and
@@ -173,8 +171,8 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        anomaly_score: Optional[Union[BaseCost, BaseLocalAnomalyScore]] = None,
-        penalty: Union[BasePenalty, float, None] = None,
+        anomaly_score: BaseCost | BaseLocalAnomalyScore | None = None,
+        penalty: BasePenalty | float | None = None,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
         growth_factor: float = 1.5,
@@ -203,7 +201,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             "growth_factor",
         )
 
-    def _fit(self, X: pd.DataFrame, y: Optional[pd.DataFrame] = None):
+    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
 
         Sets the threshold of the detector.
@@ -239,7 +237,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         self.penalty_ = self._penalty.fit(X, self._anomaly_score)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
         Parameters
@@ -279,7 +277,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         return self._format_sparse_output(anomalies)
 
     @classmethod
-    def get_test_params(cls, parameter_set="default"):
+    def get_test_params(cls, parameter_set: str = "default"):
         """Return testing parameter settings for the estimator.
 
         Parameters

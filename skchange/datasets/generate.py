@@ -3,7 +3,6 @@
 __author__ = ["Tveten"]
 
 from numbers import Number
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -12,9 +11,9 @@ from scipy.stats import multivariate_normal
 
 def generate_changing_data(
     n: int = 100,
-    changepoints: Union[int, list[int]] = 50,
-    means: Union[float, list[float], list[np.ndarray]] = 0.0,
-    variances: Union[float, list[float], list[np.ndarray]] = 1.0,
+    changepoints: int | list[int] = 50,
+    means: float | list[float] | list[np.ndarray] = 0.0,
+    variances: float | list[float] | list[np.ndarray] = 1.0,
     random_state: int = None,
 ):
     """
@@ -80,9 +79,9 @@ def generate_changing_data(
 
 def generate_anomalous_data(
     n: int = 100,
-    anomalies: Union[tuple[int, int], list[tuple[int, int]]] = (70, 80),
-    means: Union[float, list[float], list[np.ndarray]] = 3.0,
-    variances: Union[float, list[float], list[np.ndarray]] = 1.0,
+    anomalies: tuple[int, int] | list[tuple[int, int]] = (70, 80),
+    means: float | list[float] | list[np.ndarray] = 3.0,
+    variances: float | list[float] | list[np.ndarray] = 1.0,
     random_state: int = None,
 ) -> pd.DataFrame:
     """

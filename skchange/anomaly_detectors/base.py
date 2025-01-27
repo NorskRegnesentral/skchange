@@ -15,8 +15,6 @@ Optional to implement:
     _update(self, X, y=None)
 """
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 
@@ -115,9 +113,7 @@ class BaseSegmentAnomalyDetector(BaseDetector):
 
     def _format_sparse_output(
         self,
-        segment_anomalies: Union[
-            list[tuple[int, int]], list[tuple[int, int, np.ndarray]]
-        ],
+        segment_anomalies: list[tuple[int, int]] | list[tuple[int, int, np.ndarray]],
         closed: str = "left",
     ) -> pd.DataFrame:
         """Format the sparse output of segment anomaly detectors.

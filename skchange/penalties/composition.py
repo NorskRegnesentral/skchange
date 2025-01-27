@@ -1,7 +1,5 @@
 """Composite penalties for change and anomaly detection."""
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 
@@ -42,7 +40,7 @@ class MinimumPenalty(BasePenalty):
             self.penalty_type = "constant"
 
     def _fit(
-        self, X: Union[pd.DataFrame, pd.Series, np.ndarray], scorer: BaseIntervalScorer
+        self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer
     ) -> "BasePenalty":
         """Fit the penalty to data and a scorer.
 

@@ -3,9 +3,6 @@
 __author__ = ["Tveten", "johannvk"]
 __all__ = ["PELT"]
 
-
-from typing import Optional, Union
-
 import numpy as np
 import pandas as pd
 
@@ -126,7 +123,7 @@ class PELT(BaseChangeDetector):
     ----------
     cost : BaseCost, optional, default=`L2Cost`
         The cost function to use for the changepoint detection.
-    penalty : Union[BasePenalty, float], optional, default=`BICPenalty`
+    penalty : BasePenalty or float, optional, default=`BICPenalty`
         The penalty to use for the changepoint detection. If a float is given, it is
         interpreted as a constant penalty. If `None`, the penalty is set to a BIC
         penalty with ``n=X.shape[0]`` and ``n_params=cost.get_param_size(X.shape[1])``,
@@ -159,7 +156,7 @@ class PELT(BaseChangeDetector):
     def __init__(
         self,
         cost: BaseCost = None,
-        penalty: Union[BasePenalty, float, None] = None,
+        penalty: BasePenalty | float | None = None,
         min_segment_length: int = 2,
     ):
         self.cost = cost
@@ -175,8 +172,8 @@ class PELT(BaseChangeDetector):
 
     def _fit(
         self,
-        X: Union[pd.Series, pd.DataFrame],
-        y: Optional[Union[pd.Series, pd.DataFrame]] = None,
+        X: pd.Series | pd.DataFrame,
+        y: pd.Series | pd.DataFrame | None = None,
     ):
         """Fit to training data.
 
@@ -213,7 +210,7 @@ class PELT(BaseChangeDetector):
         self.penalty_ = self._penalty.fit(X, self._cost)
         return self
 
-    def _predict(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
         Parameters
@@ -242,7 +239,7 @@ class PELT(BaseChangeDetector):
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
         return self._format_sparse_output(changepoints)
 
-    def _transform_scores(self, X: Union[pd.DataFrame, pd.Series]) -> pd.Series:
+    def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
 
         Parameters

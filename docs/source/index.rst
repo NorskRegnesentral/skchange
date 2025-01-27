@@ -20,7 +20,7 @@ The library can be installed via pip:
 
     pip install skchange
 
-Requires python versions >= 3.9, < 3.14.
+Requires python versions >= 3.10, < 3.14.
 
 For better computational performance, it is recommended to install skchange with `numba <https://numba.readthedocs.io>`_:
 
