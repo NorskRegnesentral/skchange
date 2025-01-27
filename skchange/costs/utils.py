@@ -55,7 +55,7 @@ def check_var(var: VarType, X: np.ndarray) -> np.ndarray:
     return var
 
 
-def check_cov(cov: CovType, X: np.ndarray) -> np.ndarray:
+def check_cov(cov: CovType, X: np.ndarray, force_float: bool = False) -> np.ndarray:
     """Check if the fixed covariance matrix parameter is valid.
 
     Parameters
@@ -64,6 +64,9 @@ def check_cov(cov: CovType, X: np.ndarray) -> np.ndarray:
         Fixed covariance matrix for the cost calculation.
     X : np.ndarray
         2d input data.
+    force_float : bool, default=False
+        If True, force the covariance matrix to be of
+        floating point data type.
 
     Returns
     -------
@@ -82,4 +85,8 @@ def check_cov(cov: CovType, X: np.ndarray) -> np.ndarray:
         )
     if not np.all(np.linalg.eigvals(cov) > 0):
         raise ValueError("covariance matrix must be positive definite.")
+
+    if force_float:
+        cov = cov.astype(float)
+
     return cov

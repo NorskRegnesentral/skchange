@@ -45,21 +45,13 @@ from os import environ
 
 from sktime.utils.dependencies import _check_soft_dependencies
 
+numba_available = _check_soft_dependencies("numba", severity="none")
 
-def define_prange(_):
-    """Dispatch prange based on environment variables."""
-    if _check_soft_dependencies("numba", severity="none"):
-        from numba import prange as numba_prange
+if numba_available:
+    # The TBB threading layer is not easily available, degrade its priority:
+    from numba import config
 
-        return numba_prange
-    else:
-        return range
-
-
-@define_prange
-def prange(*args, **kwargs):
-    """Dispatch prange based on numba dependency."""
-    ...  # pragma: no cover
+    config.THREADING_LAYER_PRIORITY = ["omp", "tbb", "workqueue"]
 
 
 def read_boolean_env_var(name, default_value):
@@ -81,11 +73,27 @@ def read_boolean_env_var(name, default_value):
         )
 
 
+def define_prange(_):
+    """Dispatch prange based on environment variables."""
+    if numba_available:
+        from numba import prange as numba_prange
+
+        return numba_prange
+    else:
+        return range
+
+
+@define_prange
+def prange(*args, **kwargs):
+    """Dispatch prange based on numba dependency."""
+    ...  # pragma: no cover
+
+
 def configure_jit(jit_default_kwargs):
     """Decorate jit with default kwargs from environment variables."""
 
     def decorator(_):
-        if _check_soft_dependencies("numba", severity="none"):
+        if numba_available:
             from numba import jit as numba_jit
 
             @wraps(numba_jit)
@@ -125,7 +133,7 @@ def configure_njit(njit_default_kwargs):
     """Configure njit with default kwargs from environment variables."""
 
     def decorator(_):
-        if _check_soft_dependencies("numba", severity="none"):
+        if numba_available:
             from numba import njit as numba_njit
 
             @wraps(numba_njit)
