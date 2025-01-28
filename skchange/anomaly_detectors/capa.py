@@ -36,12 +36,14 @@ def get_anomalies(
 
 
 def run_capa(
-    X: np.ndarray,
     segment_penalised_saving: PenalisedScore,
     point_penalised_saving: PenalisedScore,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
+    assert segment_penalised_saving.is_fitted, "Segment saving must be fitted."
+    assert point_penalised_saving.is_fitted, "Point saving must be fitted."
+
     n = segment_penalised_saving._X.shape[0]
     opt_savings = np.zeros(n + 1)
     # Store the optimal start and affected components of an anomaly for each t.
@@ -273,8 +275,11 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length_name="min_segment_length",
         )
 
+        # Fit the penalised savings to the new data:
+        self.segment_penalised_saving_.fit(X)
+        self.point_penalised_saving_.fit(X)
+
         opt_savings, segment_anomalies, point_anomalies = run_capa(
-            X=X.values,
             segment_penalised_saving=self.segment_penalised_saving_,
             point_penalised_saving=self.point_penalised_saving_,
             min_segment_length=self.min_segment_length,

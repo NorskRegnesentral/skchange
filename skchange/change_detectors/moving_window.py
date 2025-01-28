@@ -32,20 +32,19 @@ def get_moving_window_changepoints(
 
 
 def moving_window_transform(
-    X: np.ndarray,
+    num_samples: int,
     change_score: BaseChangeScore,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
     assert change_score.is_fitted, "Change score must be fitted before transforming."
 
-    n = len(X)
-    splits = np.arange(bandwidth, n - bandwidth + 1)
+    splits = np.arange(bandwidth, num_samples - bandwidth + 1)
     starts = splits - bandwidth + 1
     ends = splits + bandwidth
     change_scores = change_score.evaluate(np.column_stack((starts, splits, ends)))
     agg_change_scores = np.sum(change_scores, axis=1)
 
-    scores = np.zeros(n)
+    scores = np.zeros(num_samples)
     scores[splits] = agg_change_scores
     return scores
 
@@ -186,10 +185,11 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
+        self.change_score_.fit(X)
         scores = moving_window_transform(
-            X.values,
-            self.change_score_,
-            self.bandwidth,
+            num_samples=X.values.shape[0],
+            change_score=self.change_score_,
+            bandwidth=self.bandwidth,
         )
         return pd.Series(scores, index=X.index, name="score")
 
