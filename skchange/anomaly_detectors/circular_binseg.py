@@ -70,7 +70,7 @@ def run_circular_binseg(
         max_interval_length,
         growth_factor,
     )
-    score.fit(X)
+    assert score.is_fitted, "Anomaly score must be fitted before transforming."
 
     anomaly_scores = np.zeros(starts.size)
     anomaly_starts = np.zeros(starts.size, dtype=np.int64)
@@ -235,6 +235,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             min_length_name="min_interval_length",
         )
         self.penalty_ = self._penalty.fit(X, self._anomaly_score)
+        self.anomaly_score_ = self._anomaly_score.fit(X)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:

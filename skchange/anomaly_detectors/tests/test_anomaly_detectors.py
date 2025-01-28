@@ -19,6 +19,8 @@ def test_segment_anomaly_detector_predict(Estimator: BaseSegmentAnomalyDetector)
     """Test segment anomaly detector's predict method (sparse output)."""
     detector = Estimator.create_test_instance()
     detector.fit(anomaly_free_data)
+    # Test seems to pass when fitting on anomaly_data:
+    # detector.fit(anomaly_data)
     anomalies = detector.predict(anomaly_data)["ilocs"]
 
     assert len(anomalies) == len(true_anomalies)

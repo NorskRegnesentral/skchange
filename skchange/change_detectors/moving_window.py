@@ -36,7 +36,7 @@ def moving_window_transform(
     change_score: BaseChangeScore,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
-    change_score.fit(X)
+    assert change_score.is_fitted, "Change score must be fitted before transforming."
 
     n = len(X)
     splits = np.arange(bandwidth, n - bandwidth + 1)
@@ -165,6 +165,7 @@ class MovingWindow(BaseChangeDetector):
             min_length_name="2*bandwidth",
         )
         self.penalty_ = self._penalty.fit(X, self._change_score)
+        self.change_score_ = self._change_score.fit(X)
         return self
 
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
@@ -187,7 +188,7 @@ class MovingWindow(BaseChangeDetector):
         )
         scores = moving_window_transform(
             X.values,
-            self._change_score,
+            self.change_score_,
             self.bandwidth,
         )
         return pd.Series(scores, index=X.index, name="score")

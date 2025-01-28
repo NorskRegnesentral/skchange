@@ -63,7 +63,8 @@ def run_pelt(
         The optimal costs and the changepoints.
     """
     num_obs = len(X)
-    cost.fit(X)
+    assert cost.is_fitted, "Cost function must be fitted before running PELT."
+
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to -penalty.
@@ -208,6 +209,7 @@ class PELT(BaseChangeDetector):
             min_length_name="2*min_segment_length",
         )
         self.penalty_ = self._penalty.fit(X, self._cost)
+        self.cost_ = self._cost.fit(X)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
@@ -231,7 +233,7 @@ class PELT(BaseChangeDetector):
         )
         opt_costs, changepoints = run_pelt(
             X.values,
-            self._cost,
+            self.cost_,
             self.penalty_.values[0],
             self.min_segment_length,
         )

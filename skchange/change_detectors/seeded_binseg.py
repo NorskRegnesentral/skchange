@@ -71,7 +71,7 @@ def run_seeded_binseg(
         max_interval_length,
         growth_factor,
     )
-    change_score.fit(X)
+    assert change_score.is_fitted, "Change score must be fitted before running."
 
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size, dtype=np.int64)
@@ -221,6 +221,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
             min_length_name="min_interval_length",
         )
         self.penalty_ = self._penalty.fit(X, self._change_score)
+        self.change_score_ = self._change_score.fit(X)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
@@ -244,7 +245,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
             X.values,
-            self._change_score,
+            self.change_score_,
             self.penalty_.values[0],
             self.min_segment_length,
             self.max_interval_length,
