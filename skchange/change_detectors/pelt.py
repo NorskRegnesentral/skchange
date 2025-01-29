@@ -26,7 +26,7 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
 
 
 def run_pelt(
-    X: np.ndarray,
+    num_samples: int,
     cost: BaseCost,
     penalty: float,
     min_segment_length: int = 1,
@@ -41,10 +41,10 @@ def run_pelt(
 
     Parameters
     ----------
-    X : np.ndarray
-        The data to find changepoints in.
+    num_samples : int
+        The number of samples in the data cost is fitted to.
     cost: BaseCost
-        The cost to use.
+        The cost to use. Fitted to the data before running the algorithm.
     penalty : float
         The penalty incurred for adding a changepoint.
     min_segment_length : int, optional
@@ -62,13 +62,12 @@ def run_pelt(
     tuple[np.ndarray, list]
         The optimal costs and the changepoints.
     """
-    num_obs = len(X)
     assert cost.is_fitted, "Cost function must be fitted before running PELT."
 
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to -penalty.
-    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(num_obs)))
+    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(num_samples)))
 
     # Cannot compute the cost for the first 'min_segment_shift' elements:
     opt_cost[1:min_segment_length] = -penalty
@@ -85,12 +84,14 @@ def run_pelt(
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(0, num_obs)
+    prev_cpts = np.repeat(0, num_samples)
 
     # Evolving set of admissible segment starts.
     cost_eval_starts = np.array(([0]), dtype=np.int64)
 
-    observation_indices = np.arange(2 * min_segment_length - 1, num_obs).reshape(-1, 1)
+    observation_indices = np.arange(2 * min_segment_length - 1, num_samples).reshape(
+        -1, 1
+    )
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
 
@@ -231,11 +232,12 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
+        self.cost_.fit(X)
         opt_costs, changepoints = run_pelt(
-            X.values,
-            self.cost_,
-            self.penalty_.values[0],
-            self.min_segment_length,
+            num_samples=len(X),
+            cost=self.cost_,
+            penalty=self.penalty_.values[0],
+            min_segment_length=self.min_segment_length,
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")

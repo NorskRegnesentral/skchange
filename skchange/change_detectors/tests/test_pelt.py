@@ -55,26 +55,25 @@ def pelt_partition_cost(
 
 
 def run_pelt_old(
-    X: np.ndarray, cost: BaseCost, penalty, min_segment_length
+    num_samples: int, cost: BaseCost, penalty, min_segment_length
 ) -> tuple[np.ndarray, list]:
     # With 'min_segment_length' > 1, this function can return
     # segment lengths < 'min_segment_length'.
     assert cost.is_fitted, "Cost function must be fitted before running PELT."
-    n = len(X)
 
     starts = np.array((), dtype=np.int64)  # Evolving set of admissible segment starts.
     init_starts = np.zeros(min_segment_length - 1, dtype=np.int64)
     init_ends = np.arange(min_segment_length - 1)
-    opt_cost = np.zeros(n + 1) - penalty
+    opt_cost = np.zeros(num_samples + 1) - penalty
     opt_cost[1:min_segment_length] = np.sum(
         cost.evaluate(np.column_stack((init_starts, init_ends + 1))), axis=1
     )
 
     # Store the previous changepoint for each t.
     # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(-1, n)
+    prev_cpts = np.repeat(-1, num_samples)
 
-    ts = np.arange(min_segment_length - 1, n).reshape(-1, 1)
+    ts = np.arange(min_segment_length - 1, num_samples).reshape(-1, 1)
     for t in ts:
         starts = np.concatenate((starts, t - min_segment_length + 1))
         ends = np.repeat(t, len(starts))
@@ -94,7 +93,7 @@ def run_pelt_old(
 
 
 def run_optimal_partitioning(
-    X: np.ndarray,
+    num_obs: int,
     cost: BaseCost,
     penalty,
     min_segment_length: int = 1,
@@ -102,7 +101,6 @@ def run_optimal_partitioning(
     # The simpler and more direct 'optimal partitioning' algorithm,
     # as compared to the PELT algorithm.
     assert cost.is_fitted, "Cost function must be fitted before running Opt. Part."
-    num_obs = len(X)
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to -penalty, and the rest to NaN.
@@ -170,14 +168,14 @@ def test_old_pelt_vs_optimal_partitioning(
 ):
     testing_cost.fit(changepoint_data)
     pelt_costs, pelt_changepoints = run_pelt_old(
-        changepoint_data,
+        len(changepoint_data),
         cost=testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
 
     opt_part_costs, opt_part_changepoints = run_optimal_partitioning(
-        changepoint_data,
+        len(changepoint_data),
         cost=testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -195,16 +193,16 @@ def test_xfail_old_pelt_vs_optimal_partitioning_scores(
     The old PELT implementation does not match the optimal partitioning
     when the segment length is greater than 1.
     """
-    X = changepoint_data
-    testing_cost.fit(X)
+    num_samples = len(changepoint_data)
+    testing_cost.fit(num_samples)
     pelt_costs, _ = run_pelt_old(
-        X,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     opt_part_costs, _ = run_optimal_partitioning(
-        X,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -216,15 +214,15 @@ def test_old_pelt_vs_optimal_partitioning_change_points(
     testing_cost: BaseCost, testing_penalty, min_segment_length=2
 ):
     testing_cost.fit(changepoint_data)
-    X = changepoint_data
+    num_samples = len(changepoint_data)
     _, pelt_changepoints = run_pelt_old(
-        X,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     _, opt_part_changepoints = run_optimal_partitioning(
-        X,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -235,7 +233,7 @@ def test_old_pelt_vs_optimal_partitioning_change_points(
 def test_run_old_pelt(testing_cost: BaseCost, testing_penalty, min_segment_length=1):
     testing_cost.fit(changepoint_data)
     pelt_costs, changepoints = run_pelt_old(
-        changepoint_data,
+        len(changepoint_data),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -251,7 +249,7 @@ def test_run_optimal_partitioning(
 ):
     testing_cost.fit(changepoint_data)
     opt_costs, changepoints = run_optimal_partitioning(
-        changepoint_data,
+        len(changepoint_data),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -266,7 +264,7 @@ def test_run_optimal_partitioning(
 def test_run_pelt(testing_cost: BaseCost, testing_penalty, min_segment_length=1):
     testing_cost.fit(changepoint_data)
     opt_costs, changepoints = run_pelt(
-        changepoint_data,
+        len(changepoint_data),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -281,20 +279,21 @@ def test_compare_all_pelt_functions(
     testing_cost: BaseCost, testing_penalty, min_segment_length=1
 ):
     testing_cost.fit(changepoint_data)
+    num_samples = len(changepoint_data)
     old_pelt_costs, old_pelt_changepoints = run_pelt_old(
-        changepoint_data,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     opt_part_costs, opt_part_changepoints = run_optimal_partitioning(
-        changepoint_data,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     pelt_costs, pelt_changepoints = run_pelt(
-        changepoint_data,
+        num_samples,
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -320,14 +319,14 @@ def test_pelt_on_tricky_data(
     testing_cost.fit(alternating_sequence)
     # Original "run_pelt" found 7 changepoints.
     pelt_costs, pelt_changepoints = run_pelt(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
     opt_part_costs, opt_part_changepoints = run_optimal_partitioning(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -364,14 +363,14 @@ def test_pelt_min_segment_lengths(
     # Original "run_pelt" found 7 changepoints.
     testing_cost.fit(alternating_sequence)
     _, pelt_changepoints = run_pelt(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
     _, opt_part_changepoints = run_optimal_partitioning(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -391,14 +390,14 @@ def test_xfail_pelt_min_segment_lengths(
     # Original "run_pelt" found 7 changepoints.
     testing_cost.fit(alternating_sequence)
     _, pelt_changepoints = run_pelt(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     pelt_changepoints = pelt_changepoints - 1  # new definition in run_pelt
     _, opt_part_changepoints = run_optimal_partitioning(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -424,13 +423,13 @@ def test_xfail_pelt_on_tricky_data(
     # Original "run_pelt" found 7 changepoints.
     testing_cost.fit(alternating_sequence)
     pelt_costs, _ = run_pelt(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
     )
     opt_part_costs, _ = run_optimal_partitioning(
-        alternating_sequence,
+        len(alternating_sequence),
         testing_cost,
         penalty=testing_penalty,
         min_segment_length=min_segment_length,
@@ -450,7 +449,7 @@ def test_pelt_dense_changepoints_parametrized(
     penalty = 0.0
     testing_cost.fit(increasing_data)
     _, changepoints = run_pelt(
-        increasing_data,
+        len(increasing_data),
         testing_cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
