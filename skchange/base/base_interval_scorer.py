@@ -15,10 +15,12 @@ __author__ = ["Tveten", "johannvk", "fkiraly"]
 __all__ = ["BaseIntervalScorer"]
 
 import numpy as np
+import pandas as pd
 from numpy.typing import ArrayLike
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
 
+from skchange.exceptions import NotAdaptedError
 from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
 
@@ -60,6 +62,7 @@ class BaseIntervalScorer(BaseEstimator):
 
     def __init__(self):
         self._is_fitted = False
+        self._is_adapted = False
         self._X = None
 
         super().__init__()
@@ -114,7 +117,106 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return self
 
-    def evaluate(self, cuts: ArrayLike) -> np.ndarray:
+    def adapt(self, X: pd.Series | pd.DataFrame | np.ndarray) -> "BaseIntervalScorer":
+        """Adapt the interval scorer to new data.
+
+        This method can precompute quantities that speed up the cost evaluation.
+
+        Parameters
+        ----------
+        X : pd.Series, pd.DataFrame, or np.ndarray
+            Data to evaluate.
+
+        Returns
+        -------
+        self :
+            Reference to self.
+
+        Notes
+        -----
+        Updates the fitted model and sets attributes ending in "_".
+        """
+        X = check_series(X, allow_index_names=True)
+        self._X = as_2d_array(X)
+        self._adapt(self._X)
+        self._is_adapted = True
+        return self
+
+    def _adapt(self, X: np.ndarray) -> "BaseIntervalScorer":
+        """Adapt the interval scorer to new data.
+
+        The core logic of adapting an interval scorer to new data is implemented here.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt to. Must be a 2D array.
+
+        Returns
+        -------
+        self :
+            Reference to self.
+
+        Notes
+        -----
+        Updates the fitted model and sets attributes ending in "_".
+        """
+        raise NotImplementedError("abstract method")
+
+    @property
+    def is_adapted(self):
+        """Whether ``adapt`` has been called.
+
+        Inspects object's ``_is_adapted` attribute that should initialize to ``False``
+        during object construction, and be set to True in calls to an object's
+        `adapt` method.
+
+        Returns
+        -------
+        bool
+            Whether the estimator has been adapted by a call to `adapt`.
+        """
+        if hasattr(self, "_is_adapted"):
+            return self._is_adapted
+        else:
+            return False
+
+    def check_is_adapted(self, method_name=None):
+        """Check if the estimator has been fitted.
+
+        Check if ``_is_fitted`` attribute is present and ``True``.
+        The ``is_fitted``
+        attribute should be set to ``True`` in calls to an object's ``fit`` method.
+
+        If not, raises a ``NotFittedError``.
+
+        Parameters
+        ----------
+        method_name : str, optional
+            Name of the method that called this function. If provided, the error
+            message will include this information.
+
+        Raises
+        ------
+        NotFittedError
+            If the estimator has not been fitted yet.
+        """
+        if not self.is_adapted:
+            if method_name is None:
+                msg = (
+                    f"This instance of {self.__class__.__name__} has not been adapted "
+                    f"yet. Please call `adapt` first or provide data explicitly."
+                )
+            else:
+                msg = (
+                    f"This instance of {self.__class__.__name__} has not been adapted "
+                    f"yet. Please call `adapt` before calling `{method_name}`."
+                )
+            raise NotAdaptedError(msg)
+
+    def evaluate(
+        self, cuts: ArrayLike, X: pd.Series | pd.DataFrame | np.ndarray | None = None
+    ) -> np.ndarray:
         """Evaluate the score according to a set of cuts.
 
         Parameters
@@ -128,13 +230,29 @@ class BaseIntervalScorer(BaseEstimator):
             interval. Each cut must be sorted in increasing order. Subclasses specify
             the further expected structure of the cuts array and how it is used
             internally to evaluate the score.
+        X : pd.Series, pd.DataFrame, or np.ndarray, optional
+            Data to evaluate the cost on. If not provided, the cost must have been
+            adapted to data before calling this method, through a call to `adapt`.
 
         Returns
         -------
         scores : np.ndarray
             A 2D array of scores. One row for each row in cuts.
+
+        Raises
+        ------
+        NotAdaptedError
+            If the interval scorer has not been adapted to data before calling this
+            method.
         """
         self.check_is_fitted()
+        if X is None:
+            self.check_is_adapted()
+        else:
+            X = check_series(X, allow_index_names=True)
+            X = as_2d_array(X)
+            self.adapt(X)
+
         cuts = as_2d_array(cuts, vector_as_column=False)
         cuts = self._check_cuts(cuts)
 

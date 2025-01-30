@@ -232,7 +232,7 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self.cost_.fit(X)
+        self.cost_.adapt(X)
         opt_costs, changepoints = run_pelt(
             num_samples=len(X),
             cost=self.cost_,

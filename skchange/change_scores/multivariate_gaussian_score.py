@@ -205,6 +205,18 @@ class MultivariateGaussianScore(BaseChangeScore):
         self._cost.fit(X)
         return self
 
+    def _adapt(self, X: np.ndarray):
+        """Adapt the multivariate Gaussian change score evaluator to new data.
+
+        Pass new data to the Mv. Gaussian cost function to adapt to the new data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt to. Must be a 2D array.
+        """
+        self._cost.adapt(X)
+
     def _evaluate(self, cuts: np.ndarray):
         """Evaluate the change score for a split within an interval.
 

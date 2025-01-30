@@ -243,6 +243,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
+        self.change_score_.adapt(X)
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
             X.values,
             self.change_score_,

@@ -16,6 +16,7 @@ def test_scores(ChangeScore: BaseChangeScore):
     df = generate_alternating_data(n_segments=1, segment_length=n, p=2, random_state=5)
     change_score = to_change_score(ChangeScore.create_test_instance())
     change_score.fit(df)
+    change_score.adapt(df)
     splits = np.arange(10, n - 10, dtype=int).reshape(-1, 1)
     cuts = np.column_stack(
         (np.zeros(splits.shape, dtype=int), splits, np.full(splits.shape, n, dtype=int))

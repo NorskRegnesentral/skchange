@@ -55,8 +55,8 @@ def test_cost_evaluation_optim_gt_fixed(CostClass):
     optim_cost.fit(X)
     fixed_cost.fit(X)
     intervals = np.array([[0, 5], [5, 10], [10, 15], [15, 20]])
-    optim_costs = optim_cost.evaluate(intervals)
-    fixed_costs = fixed_cost.evaluate(intervals)
+    optim_costs = optim_cost.evaluate(intervals, X)
+    fixed_costs = fixed_cost.evaluate(intervals, X)
     assert np.all(optim_costs <= fixed_costs)
 
 
@@ -69,5 +69,5 @@ def test_cost_evaluation_positive(CostClass):
     starts = np.arange(n - 10)
     ends = np.repeat(n - 1, len(starts))
     intervals = np.column_stack((starts, ends))
-    costs = cost.evaluate(intervals)
+    costs = cost.evaluate(intervals, df)
     assert np.all(costs >= 0.0)

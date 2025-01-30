@@ -161,6 +161,16 @@ class PenalisedScore(BaseIntervalScorer):
 
         return self
 
+    def _adapt(self, X):
+        """Adapt the penalised interval scorer to new data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the penalised interval scorer to.
+        """
+        self.scorer.adapt(X)
+
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the penalised scores according to a set of cuts.
 

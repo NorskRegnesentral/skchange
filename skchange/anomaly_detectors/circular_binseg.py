@@ -258,7 +258,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
-        self._anomaly_score.fit(X)
+        self._anomaly_score.adapt(X)
         anomalies, scores, maximizers, starts, ends = run_circular_binseg(
             num_samples=X.values.shape[0],
             score=self._anomaly_score,

@@ -248,6 +248,22 @@ class MultivariateGaussianCost(BaseCost):
 
         return self
 
+    def _adapt(self, X: np.ndarray):
+        """Adapt the cost to new data.
+
+        Check that potential fixed parameters `self._param` are
+        valid with respect to the shape of the input data.
+        Then store the input data for later use in the cost evaluation.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the cost to.
+        """
+        # Check that the fixed parameters valid w.r.t. the shape of the input data:
+        self._check_param(self._param, X)
+        self._X = X
+
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the cost for the optimal parameters.
 

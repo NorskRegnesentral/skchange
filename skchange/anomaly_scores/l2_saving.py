@@ -62,6 +62,8 @@ class L2Saving(BaseSaving):
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving evaluator.
 
+        No internal state, so no fitting is needed.
+
         Parameters
         ----------
         X : np.ndarray
@@ -74,8 +76,17 @@ class L2Saving(BaseSaving):
         self :
             Reference to self.
         """
-        self._sums = col_cumsum(X, init_zero=True)
         return self
+
+    def _adapt(self, X):
+        """Adapt the saving evaluator to new data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the saving evaluator to.
+        """
+        self._sums = col_cumsum(X, init_zero=True)
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the saving on a set of intervals.

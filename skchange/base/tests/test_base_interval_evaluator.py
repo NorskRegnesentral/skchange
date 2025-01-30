@@ -5,6 +5,9 @@ from skchange.base.base_interval_scorer import BaseIntervalScorer
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
+    def _adapt(self, X):
+        self._X = X
+
     def _evaluate(self, cuts):
         return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
 
@@ -22,6 +25,7 @@ def test_evaluate():
     X = np.array([1, 2, 3, 4, 5])
     evaluator.fit(X)
     cuts = np.array([[0, 2], [2, 5]])
+    evaluator.adapt(X)
     values = evaluator.evaluate(cuts)
     expected_values = np.array([3, 12])
     assert np.array_equal(values, expected_values)

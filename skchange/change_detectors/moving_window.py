@@ -167,6 +167,9 @@ class MovingWindow(BaseChangeDetector):
         self.change_score_ = self._change_score.fit(X)
         return self
 
+    def _adapt(self, X: np.ndarray):
+        self.change_score_.adapt(X)
+
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
 
@@ -185,7 +188,7 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self.change_score_.fit(X)
+        self.change_score_.adapt(X)
         scores = moving_window_transform(
             num_samples=X.values.shape[0],
             change_score=self.change_score_,

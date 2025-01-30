@@ -275,9 +275,9 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length_name="min_segment_length",
         )
 
-        # Fit the penalised savings to the new data:
-        self.segment_penalised_saving_.fit(X)
-        self.point_penalised_saving_.fit(X)
+        # Adapt the penalised savings to the new data:
+        self.segment_penalised_saving_.adapt(X)
+        self.point_penalised_saving_.adapt(X)
 
         opt_savings, segment_anomalies, point_anomalies = run_capa(
             segment_penalised_saving=self.segment_penalised_saving_,

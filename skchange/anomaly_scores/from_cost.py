@@ -28,8 +28,7 @@ def to_saving(scorer: BaseCost | BaseSaving) -> BaseSaving:
         saving = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseSaving or BaseCost. "
-            f"Got {type(scorer)}."
+            f"scorer must be an instance of BaseSaving or BaseCost. Got {type(scorer)}."
         )
     return saving
 
@@ -96,6 +95,17 @@ class Saving(BaseSaving):
         self.baseline_cost.fit(X)
         self.optimised_cost.fit(X)
         return self
+
+    def _adapt(self, X: np.ndarray):
+        """Adapt the saving scorer to new data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the saving scorer to.
+        """
+        self.baseline_cost.adapt(X)
+        self.optimised_cost.adapt(X)
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the saving on a set of intervals.
@@ -246,6 +256,16 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         self._interval_cost.fit(X)
         return self
 
+    def _adapt(self, X: np.ndarray):
+        """Adapt the local anomaly score to new data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the local anomaly score to.
+        """
+        self.cost.adapt(X)
+
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the local anomaly score on sets of inner and outer intervals.
 
@@ -281,7 +301,9 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             before_data = X[before_inner_interval[0] : before_inner_interval[1]]
             after_data = X[after_inner_interval[0] : after_inner_interval[1]]
             surrounding_data = np.concatenate((before_data, after_data))
+            # TODO: Might just call 'adapt'?. To keep old behavior, we fit and adapt.
             self._any_subset_cost.fit(surrounding_data)
+            self._any_subset_cost.adapt(surrounding_data)
             surrounding_costs[i] = self._any_subset_cost.evaluate(
                 np.array([0, surrounding_data.shape[0]])
             )

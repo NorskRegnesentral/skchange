@@ -26,7 +26,7 @@ def test_GaussianCovScore():
     X = np.concatenate([X_1, X_2, X_1], axis=0)
     cuts = np.array([[0, 50, 100], [0, 100, 200], [100, 200, 300], [0, 150, 300]])
 
-    scores = MultivariateGaussianScore().fit(X).evaluate(cuts)
+    scores = MultivariateGaussianScore().fit(X).evaluate(cuts, X)
 
     assert scores.shape == (cuts.shape[0], 1)
     assert np.all(scores >= 0)
@@ -41,10 +41,14 @@ def test_scores_differ_with_Bartlett_correction():
     cuts = np.array([[0, 25, 50], [0, 50, 100], [50, 100, 150], [0, 100, 200]])
 
     raw_scores = (
-        MultivariateGaussianScore(apply_bartlett_correction=False).fit(X).evaluate(cuts)
+        MultivariateGaussianScore(apply_bartlett_correction=False)
+        .fit(X)
+        .evaluate(cuts, X)
     )
     corrected_scores = (
-        MultivariateGaussianScore(apply_bartlett_correction=True).fit(X).evaluate(cuts)
+        MultivariateGaussianScore(apply_bartlett_correction=True)
+        .fit(X)
+        .evaluate(cuts, X)
     )
 
     assert np.all(raw_scores > corrected_scores)

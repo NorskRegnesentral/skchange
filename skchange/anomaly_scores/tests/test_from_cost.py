@@ -55,7 +55,7 @@ def test_saving_evaluate(cost_class):
     X = np.random.randn(100, 1)
     saving.fit(X)
     intervals = np.array([[0, 10], [10, 20], [20, 30]])
-    savings = saving.evaluate(intervals)
+    savings = saving.evaluate(intervals, X)
     assert savings.shape == (3, 1)
 
 
@@ -98,7 +98,7 @@ def test_local_anomaly_score_evaluate(cost_class):
     X = np.random.randn(100, 1)
     local_anomaly_score.fit(X)
     cuts = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
-    scores = local_anomaly_score.evaluate(cuts)
+    scores = local_anomaly_score.evaluate(cuts, X)
     assert scores.shape == (3, 1)
 
 

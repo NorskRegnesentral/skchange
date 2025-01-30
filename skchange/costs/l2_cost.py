@@ -114,7 +114,7 @@ class L2Cost(BaseCost):
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
 
-        This method precomputes quantities that speed up the cost evaluation.
+        Check and assign the fixed mean parameter, if provided.
 
         Parameters
         ----------
@@ -125,10 +125,23 @@ class L2Cost(BaseCost):
         """
         self._mean = self._check_param(self.param, X)
 
+        return self
+
+    def _adapt(self, X: np.ndarray) -> "L2Cost":
+        """Adapt the cost to new data.
+
+        Check that a potential fixed mean parameter is valid with respect
+        to the input data.
+        Then precompute quantities that speed up the cost evaluation.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the cost to.
+        """
+        self._check_param(self._mean, X)
         self._sums = col_cumsum(X, init_zero=True)
         self._sums2 = col_cumsum(X**2, init_zero=True)
-
-        return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the cost for the optimal parameter.

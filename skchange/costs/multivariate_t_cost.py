@@ -1237,6 +1237,21 @@ class MultivariateTCost(BaseCost):
 
         return self
 
+    def _adapt(self, X):
+        """Adapt the cost to new data.
+
+        Check that potential fixed parameters are valid and update the internal
+        data matrix to be used when evaluating the cost.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
+
+        """
+        self._check_param(self.param, X)
+        self._X = X
+
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the cost for the MLE parameters.
 

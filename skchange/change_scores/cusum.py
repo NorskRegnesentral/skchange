@@ -75,6 +75,8 @@ class CUSUM(BaseChangeScore):
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score evaluator.
 
+        No internal state, so no fitting is needed.
+
         Parameters
         ----------
         X : np.ndarray
@@ -87,8 +89,19 @@ class CUSUM(BaseChangeScore):
         self :
             Reference to self.
         """
-        self._sums = col_cumsum(X, init_zero=True)
         return self
+
+    def _adapt(self, X):
+        """Adapt the change score evaluator to new data.
+
+        Compute the cumulative column sums of the input data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the change score evaluator to.
+        """
+        self._sums = col_cumsum(X, init_zero=True)
 
     def _evaluate(self, cuts: np.ndarray):
         """Evaluate the change score for a split within an interval.

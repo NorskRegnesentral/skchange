@@ -167,6 +167,8 @@ def test_old_pelt_vs_optimal_partitioning(
     testing_cost: BaseCost, testing_penalty, min_segment_length
 ):
     testing_cost.fit(changepoint_data)
+    testing_cost.adapt(changepoint_data)
+
     pelt_costs, pelt_changepoints = run_pelt_old(
         len(changepoint_data),
         cost=testing_cost,
@@ -195,6 +197,8 @@ def test_xfail_old_pelt_vs_optimal_partitioning_scores(
     """
     num_samples = len(changepoint_data)
     testing_cost.fit(num_samples)
+    testing_cost.fit(num_samples)
+
     pelt_costs, _ = run_pelt_old(
         num_samples,
         testing_cost,
@@ -214,6 +218,8 @@ def test_old_pelt_vs_optimal_partitioning_change_points(
     testing_cost: BaseCost, testing_penalty, min_segment_length=2
 ):
     testing_cost.fit(changepoint_data)
+    testing_cost.adapt(changepoint_data)
+
     num_samples = len(changepoint_data)
     _, pelt_changepoints = run_pelt_old(
         num_samples,
@@ -232,6 +238,8 @@ def test_old_pelt_vs_optimal_partitioning_change_points(
 
 def test_run_old_pelt(testing_cost: BaseCost, testing_penalty, min_segment_length=1):
     testing_cost.fit(changepoint_data)
+    testing_cost.adapt(changepoint_data)
+
     pelt_costs, changepoints = run_pelt_old(
         len(changepoint_data),
         testing_cost,
@@ -248,6 +256,8 @@ def test_run_optimal_partitioning(
     testing_cost: BaseCost, testing_penalty, min_segment_length=1
 ):
     testing_cost.fit(changepoint_data)
+    testing_cost.adapt(changepoint_data)
+
     opt_costs, changepoints = run_optimal_partitioning(
         len(changepoint_data),
         testing_cost,
@@ -263,6 +273,8 @@ def test_run_optimal_partitioning(
 
 def test_run_pelt(testing_cost: BaseCost, testing_penalty, min_segment_length=1):
     testing_cost.fit(changepoint_data)
+    testing_cost.adapt(changepoint_data)
+
     opt_costs, changepoints = run_pelt(
         len(changepoint_data),
         testing_cost,
@@ -279,6 +291,8 @@ def test_compare_all_pelt_functions(
     testing_cost: BaseCost, testing_penalty, min_segment_length=1
 ):
     testing_cost.fit(changepoint_data)
+    testing_cost.adapt(changepoint_data)
+
     num_samples = len(changepoint_data)
     old_pelt_costs, old_pelt_changepoints = run_pelt_old(
         num_samples,
@@ -317,6 +331,8 @@ def test_pelt_on_tricky_data(
     less than 20.
     """
     testing_cost.fit(alternating_sequence)
+    testing_cost.adapt(alternating_sequence)
+
     # Original "run_pelt" found 7 changepoints.
     pelt_costs, pelt_changepoints = run_pelt(
         len(alternating_sequence),
@@ -362,6 +378,8 @@ def test_pelt_min_segment_lengths(
     """
     # Original "run_pelt" found 7 changepoints.
     testing_cost.fit(alternating_sequence)
+    testing_cost.adapt(alternating_sequence)
+
     _, pelt_changepoints = run_pelt(
         len(alternating_sequence),
         testing_cost,
@@ -389,6 +407,8 @@ def test_xfail_pelt_min_segment_lengths(
     """
     # Original "run_pelt" found 7 changepoints.
     testing_cost.fit(alternating_sequence)
+    testing_cost.adapt(alternating_sequence)
+
     _, pelt_changepoints = run_pelt(
         len(alternating_sequence),
         testing_cost,
@@ -422,6 +442,7 @@ def test_xfail_pelt_on_tricky_data(
     """
     # Original "run_pelt" found 7 changepoints.
     testing_cost.fit(alternating_sequence)
+    testing_cost.adapt(alternating_sequence)
     pelt_costs, _ = run_pelt(
         len(alternating_sequence),
         testing_cost,
@@ -448,6 +469,7 @@ def test_pelt_dense_changepoints_parametrized(
     increasing_data = np.linspace(0, 1 * seg_len, seg_len).reshape(-1, 1)
     penalty = 0.0
     testing_cost.fit(increasing_data)
+    testing_cost.adapt(increasing_data)
     _, changepoints = run_pelt(
         len(increasing_data),
         testing_cost,

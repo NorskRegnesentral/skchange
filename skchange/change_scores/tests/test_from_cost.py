@@ -11,6 +11,7 @@ def test_change_score_with_costs(cost_class):
     change_score = ChangeScore(cost=cost_instance)
     X = np.random.randn(100, 1)
     change_score.fit(X)
+    change_score.adapt(X)
     cuts = np.array([[0, 50, 100]])
     scores = change_score._evaluate(cuts)
     assert scores.shape == (1, 1)

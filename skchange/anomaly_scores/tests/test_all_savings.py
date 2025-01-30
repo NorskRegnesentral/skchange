@@ -19,6 +19,6 @@ def test_savings_positive(Saving):
     starts = np.arange(n - 10)
     ends = np.repeat(n - 1, len(starts))
     intervals = np.column_stack((starts, ends))
-    saving_values = saving.evaluate(intervals)
+    saving_values = saving.evaluate(intervals, df)
 
     assert np.all(saving_values >= 0.0)

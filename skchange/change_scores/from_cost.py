@@ -85,6 +85,9 @@ class ChangeScore(BaseChangeScore):
         self.cost.fit(X)
         return self
 
+    def _adapt(self, X: np.ndarray):
+        self.cost.adapt(X)
+
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the change score for a split within an interval.
 

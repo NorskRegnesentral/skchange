@@ -58,7 +58,7 @@ def test_mean_cov_cost(n: int, p: int, seed: int):
 
     cost = MultivariateGaussianCost.create_test_instance()
     cost.fit(X)
-    cost_value = cost.evaluate(np.array([[0, n]]))[0, 0]
+    cost_value = cost.evaluate(np.array([[0, n]]), X)[0, 0]
 
     # Analytical cost using SciPy:
     mu_X = np.mean(X, axis=0)
@@ -100,6 +100,7 @@ def test_mean_cov_cost_raises_on_non_positive_definite():
     n = X.shape[0]
     cost = MultivariateGaussianCost.create_test_instance()
     cost.fit(X)
+    cost.adapt(X)
 
     with pytest.raises(RuntimeError):
         cost.evaluate(np.array([0, n]))

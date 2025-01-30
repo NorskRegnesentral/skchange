@@ -241,8 +241,8 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         )
 
         # Fit the penalised savings to the supplied data.
-        self.segment_penalised_saving_.fit(X)
-        self.point_penalised_saving_.fit(X)
+        self.segment_penalised_saving_.adapt(X)
+        self.point_penalised_saving_.adapt(X)
 
         opt_savings, segment_anomalies, point_anomalies = run_mvcapa(
             segment_penalised_saving=self.segment_penalised_saving_,

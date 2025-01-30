@@ -182,9 +182,23 @@ class GaussianCost(BaseCost):
         """
         self._param = self._check_param(self.param, X)
 
+        return self
+
+    def _adapt(self, X: np.ndarray):
+        """Adapt the cost to new data.
+
+        Check that potential fixed parameters are valid with respect
+        to the input data. Then precompute quantities that speed
+        up the cost evaluation.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to adapt the cost to.
+        """
+        self._param = self._check_param(self._param, X)
         self._sums = col_cumsum(X, init_zero=True)
         self._sums2 = col_cumsum(X**2, init_zero=True)
-        return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the cost for the optimal parameter.
