@@ -12,6 +12,7 @@ Change scores
     BaseChangeScore
     ChangeScore
     CUSUM
+    MultivariateGaussianScore
 
 Utility functions
 -----------------

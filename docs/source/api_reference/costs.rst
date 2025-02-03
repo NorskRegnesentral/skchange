@@ -7,12 +7,13 @@ Costs
 
 .. autosummary::
     :toctree: auto_generated/
-    :template: functions.rst
+    :template: class.rst
 
     BaseCost
     L2Cost
     GaussianCost
-    GaussianCovCost
+    MultivariateGaussianCost
+    MultivariateTCost
 
 Utility functions
 -----------------
