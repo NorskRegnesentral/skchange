@@ -61,7 +61,8 @@ def run_mvcapa(
         segment_penalised_saving, segment_anomalies
     )
     point_anomalies = find_affected_components(
-        point_penalised_saving, point_anomalies,
+        point_penalised_saving,
+        point_anomalies,
     )
     return opt_savings, segment_anomalies, point_anomalies
 
