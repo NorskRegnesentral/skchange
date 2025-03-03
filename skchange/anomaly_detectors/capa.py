@@ -36,27 +36,23 @@ def get_anomalies(
 
 
 def run_capa(
-    X: np.ndarray,
-    segment_saving: BaseSaving,
-    point_saving: BaseSaving,
-    segment_penalty: BasePenalty,
-    point_penalty: BasePenalty,
+    segment_penalised_saving: PenalisedScore,
+    point_penalised_saving: PenalisedScore,
+    num_observations: int,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
-    segment_penalised_saving = PenalisedScore(segment_saving, segment_penalty)
-    point_penalised_saving = PenalisedScore(point_saving, point_penalty)
-    segment_penalised_saving.fit(X)
-    point_penalised_saving.fit(X)
+    segment_penalised_saving.check_is_fitted()
+    point_penalised_saving.check_is_fitted()
 
-    n = segment_penalised_saving._X.shape[0]
-    opt_savings = np.zeros(n + 1)
+    # num_observations = segment_penalised_saving._X.shape[0]
+    opt_savings = np.zeros(num_observations + 1)
     # Store the optimal start and affected components of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
-    opt_anomaly_starts = np.repeat(np.nan, n)
+    opt_anomaly_starts = np.repeat(np.nan, num_observations)
     starts = np.array([], dtype=int)
 
-    ts = np.arange(min_segment_length - 1, n)
+    ts = np.arange(min_segment_length - 1, num_observations)
     for t in ts:
         # Segment anomalies
         t_array = np.array([t])
@@ -246,6 +242,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         )
         self.segment_penalty_ = self._segment_penalty.fit(X, self._segment_saving)
         self.point_penalty_ = self._point_penalty.fit(X, self._point_saving)
+
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
@@ -268,14 +265,22 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
+        num_observations = X.shape[0]
+
+        segment_penalised_saving = PenalisedScore(
+            self._segment_saving, self.segment_penalty_
+        )
+        segment_penalised_saving.fit(X)
+
+        point_penalised_saving = PenalisedScore(self._point_saving, self.point_penalty_)
+        point_penalised_saving.fit(X)
+
         opt_savings, segment_anomalies, point_anomalies = run_capa(
-            X.values,
-            self._segment_saving,
-            self._point_saving,
-            self.segment_penalty_,
-            self.point_penalty_,
-            self.min_segment_length,
-            self.max_segment_length,
+            segment_penalised_saving=segment_penalised_saving,
+            point_penalised_saving=point_penalised_saving,
+            num_observations=num_observations,
+            min_segment_length=self.min_segment_length,
+            max_segment_length=self.max_segment_length,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 

@@ -9,6 +9,7 @@ import pandas as pd
 from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
 from skchange.anomaly_detectors.capa import run_capa
 from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
+from skchange.compose import PenalisedScore
 from skchange.costs import BaseCost
 from skchange.penalties import (
     BasePenalty,
@@ -23,45 +24,44 @@ from skchange.utils.validation.parameters import check_larger_than
 
 
 def find_affected_components(
-    saving: BaseSaving, anomalies: list[tuple[int, int]], penalty: BasePenalty
+    penalised_scorer: PenalisedScore,
+    anomalies: list[tuple[int, int]],
 ) -> list[tuple[int, int, np.ndarray]]:
-    saving.check_is_fitted()
+    penalised_scorer.scorer.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving_values = saving.evaluate(np.array([start, end]))[0]
+        saving_values = penalised_scorer.scorer.evaluate(np.array([start, end]))[0]
         saving_order = np.argsort(-saving_values)  # Decreasing order.
-        penalised_saving = np.cumsum(saving_values[saving_order]) - penalty.values
-        argmax = np.argmax(penalised_saving)
+        penalised_savings = (
+            np.cumsum(saving_values[saving_order]) - penalised_scorer.penalty.values
+        )
+        argmax = np.argmax(penalised_savings)
         new_anomalies.append((start, end, saving_order[: argmax + 1]))
     return new_anomalies
 
 
 def run_mvcapa(
-    X: np.ndarray,
-    segment_saving: BaseSaving,
-    point_saving: BaseSaving,
-    segment_penalty: BasePenalty,
-    point_penalty: BasePenalty,
+    segment_penalised_saving: PenalisedScore,
+    point_penalised_saving: PenalisedScore,
+    num_observations: int,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[
     np.ndarray, list[tuple[int, int, np.ndarray]], list[tuple[int, int, np.ndarray]]
 ]:
     opt_savings, segment_anomalies, point_anomalies = run_capa(
-        X,
-        segment_saving,
-        point_saving,
-        segment_penalty,
-        point_penalty,
-        min_segment_length,
-        max_segment_length,
+        segment_penalised_saving=segment_penalised_saving,
+        point_penalised_saving=point_penalised_saving,
+        num_observations=num_observations,
+        min_segment_length=min_segment_length,
+        max_segment_length=max_segment_length,
     )
 
     segment_anomalies = find_affected_components(
-        segment_saving, segment_anomalies, segment_penalty
+        segment_penalised_saving, segment_anomalies
     )
     point_anomalies = find_affected_components(
-        point_saving, point_anomalies, point_penalty
+        point_penalised_saving, point_anomalies,
     )
     return opt_savings, segment_anomalies, point_anomalies
 
@@ -230,14 +230,21 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
+        num_observations = X.shape[0]
+
+        segment_penalised_saving = PenalisedScore(
+            scorer=self._segment_saving, penalty=self.segment_penalty_
+        ).fit(X)
+        point_penalised_saving = PenalisedScore(
+            scorer=self._point_saving, penalty=self.point_penalty_
+        ).fit(X)
+
         opt_savings, segment_anomalies, point_anomalies = run_mvcapa(
-            X.values,
-            self._segment_saving,
-            self._point_saving,
-            self.segment_penalty_,
-            self.point_penalty_,
-            self.min_segment_length,
-            self.max_segment_length,
+            segment_penalised_saving=segment_penalised_saving,
+            point_penalised_saving=point_penalised_saving,
+            num_observations=num_observations,
+            min_segment_length=self.min_segment_length,
+            max_segment_length=self.max_segment_length,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 

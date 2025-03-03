@@ -58,20 +58,21 @@ def greedy_changepoint_selection(
 
 
 def run_seeded_binseg(
-    X: np.ndarray,
     change_score: BaseChangeScore,
+    num_observations: int,
     threshold: float,
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    change_score.check_is_fitted()
+
     starts, ends = make_seeded_intervals(
-        X.shape[0],
+        num_observations,
         2 * min_segment_length,
         max_interval_length,
         growth_factor,
     )
-    change_score.fit(X)
 
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size, dtype=np.int64)
@@ -242,13 +243,15 @@ class SeededBinarySegmentation(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
+        self._change_score.fit(X)
+        num_observations = X.shape[0]
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
-            X.values,
-            self._change_score,
-            self.penalty_.values[0],
-            self.min_segment_length,
-            self.max_interval_length,
-            self.growth_factor,
+            change_score=self._change_score,
+            num_observations=num_observations,
+            threshold=self.penalty_.values[0],
+            min_segment_length=self.min_segment_length,
+            max_interval_length=self.max_interval_length,
+            growth_factor=self.growth_factor,
         )
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}

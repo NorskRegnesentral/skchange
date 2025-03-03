@@ -26,8 +26,8 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
 
 
 def run_pelt(
-    X: np.ndarray,
     cost: BaseCost,
+    num_obs: int,
     penalty: float,
     min_segment_length: int = 1,
     split_cost: float = 0.0,
@@ -62,8 +62,7 @@ def run_pelt(
     tuple[np.ndarray, list]
         The optimal costs and the changepoints.
     """
-    num_obs = len(X)
-    cost.fit(X)
+    cost.check_is_fitted()
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to -penalty.
@@ -229,11 +228,13 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
+        self._cost.fit(X)
+
         opt_costs, changepoints = run_pelt(
-            X.values,
-            self._cost,
-            self.penalty_.values[0],
-            self.min_segment_length,
+            cost=self._cost,
+            num_obs=X.shape[0],
+            penalty=self.penalty_.values[0],
+            min_segment_length=self.min_segment_length,
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
