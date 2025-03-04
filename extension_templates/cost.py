@@ -87,64 +87,6 @@ class MyCost(BaseCost):
         # if writes derived values to self, should *not* overwrite self.parama etc
         # instead, write to self._param1, etc.
 
-    # todo: implement, optional, defaults to no checking.
-    # used inside self._check_param in _fit.
-    def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
-        """Check if the fixed parameter is valid relative to the data.
-
-        Parameters
-        ----------
-        param : any
-            Fixed parameter for the cost calculation.
-        X : np.ndarray
-            Input data.
-
-        Returns
-        -------
-        param: any
-            Fixed parameter for the cost calculation.
-        """
-        return param
-
-    # todo: implement, optional, defaults to min_size = 1.
-    # used for automatic validation of cuts in `evaluate`.
-    @property
-    def min_size(self) -> int | None:
-        """Minimum size of the interval to evaluate.
-
-        The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
-
-        Returns
-        -------
-        int or None
-            The minimum valid size of an interval to evaluate. If ``None``, it is
-            unknown what the minimum size is. E.g., the scorer may need to be fitted
-            first to determine the minimum size.
-        """
-        # For example for a covariance matrix cost:
-        # if self.is_fitted:
-        #     return self._X.shape[1] + 1
-        # else:
-        #     return None
-
-    # todo: implement, optional, defaults to output p (one parameter per variable).
-    # used for setting a decent default penalty in detectors.
-    def get_param_size(self, p: int) -> int:
-        """Get the number of parameters in the cost function.
-
-        Parameters
-        ----------
-        p : int
-            Number of variables in the data.
-
-        Returns
-        -------
-        int
-            Number of parameters in the cost function.
-        """
-        # For example for a covariance matrix cost:
-        # return p * (p + 1) // 2
-
     # todo: implement, mandatory
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -220,6 +162,64 @@ class MyCost(BaseCost):
         # todo: implement evaluation logic here. Must have the output format as
         #       described in the docstring.
         # IMPORTANT: avoid side effects to starts, ends.
+
+    # todo: implement, optional, defaults to no checking.
+    # used inside self._check_param in _fit.
+    def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
+        """Check if the fixed parameter is valid relative to the data.
+
+        Parameters
+        ----------
+        param : any
+            Fixed parameter for the cost calculation.
+        X : np.ndarray
+            Input data.
+
+        Returns
+        -------
+        param: any
+            Fixed parameter for the cost calculation.
+        """
+        return param
+
+    # todo: implement, optional, defaults to min_size = 1.
+    # used for automatic validation of cuts in `evaluate`.
+    @property
+    def min_size(self) -> int | None:
+        """Minimum size of the interval to evaluate.
+
+        The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
+
+        Returns
+        -------
+        int or None
+            The minimum valid size of an interval to evaluate. If ``None``, it is
+            unknown what the minimum size is. E.g., the scorer may need to be fitted
+            first to determine the minimum size.
+        """
+        # For example for a covariance matrix cost:
+        # if self.is_fitted:
+        #     return self._X.shape[1] + 1
+        # else:
+        #     return None
+
+    # todo: implement, optional, defaults to output p (one parameter per variable).
+    # used for setting a decent default penalty in detectors.
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters in the cost function.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+
+        Returns
+        -------
+        int
+            Number of parameters in the cost function.
+        """
+        # For example for a covariance matrix cost:
+        # return p * (p + 1) // 2
 
     # todo: return default parameters, so that a test instance can be created.
     #       required for automated unit and integration testing of estimator.
