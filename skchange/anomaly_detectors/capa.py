@@ -45,7 +45,6 @@ def run_capa(
     segment_penalised_saving.check_is_fitted()
     point_penalised_saving.check_is_fitted()
 
-    # num_observations = segment_penalised_saving._X.shape[0]
     opt_savings = np.zeros(num_observations + 1)
     # Store the optimal start and affected components of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
