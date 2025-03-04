@@ -49,8 +49,8 @@ def run_capa(
             "The segment and point saving costs must span the same number of samples."
         )
 
-    # num_observations = segment_penalised_saving._X.shape[0]
     opt_savings = np.zeros(n_samples + 1)
+
     # Store the optimal start and affected components of an anomaly for each t.
     # Used to get the final set of anomalies after the loop.
     opt_anomaly_starts = np.repeat(np.nan, n_samples)
