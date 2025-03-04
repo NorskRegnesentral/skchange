@@ -1088,6 +1088,7 @@ class MultivariateTCost(BaseCost):
     """
 
     evaluation_type = "multivariate"
+    supports_fixed_params = True
 
     def __init__(
         self,

@@ -5,6 +5,10 @@ from skchange.costs.base import BaseCost
 
 
 class DummyCost(BaseCost):
+    """Dummy cost function for testing."""
+
+    supports_fixed_params = True
+
     def _evaluate_optim_param(self, starts, ends):
         return np.array([[1] * len(starts)])
 

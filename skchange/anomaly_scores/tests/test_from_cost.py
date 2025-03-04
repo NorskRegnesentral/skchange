@@ -7,7 +7,7 @@ from skchange.anomaly_scores import (
     to_local_anomaly_score,
     to_saving,
 )
-from skchange.costs import COSTS
+from skchange.costs import COSTS, BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
 
@@ -60,11 +60,23 @@ def test_saving_evaluate(cost_class):
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
-def test_saving_init_error(cost_class):
+def test_to_saving_raises_with_no_param_set(cost_class):
+    """Test that to_saving raises ValueError with BaseCost that has no param set."""
     with pytest.raises(
-        ValueError, match="The baseline cost must have a fixed parameter."
+        ValueError, match="The baseline cost must have fixed parameters"
     ):
-        Saving(baseline_cost=cost_class().set_params(param=None))
+        cost = cost_class().set_params(param=None)
+        to_saving(cost)
+
+
+def test_to_saving_raises_without_fixed_params_support():
+    """Test that `to_saving` raises ValueError when `supports_fixed_params` is False."""
+    with pytest.raises(
+        ValueError, match="The baseline cost must support fixed parameter"
+    ):
+        # BaseCost does not support fixed parameters, by default.
+        cost = BaseCost()
+        to_saving(cost)
 
 
 def test_to_saving_error():
