@@ -43,7 +43,6 @@ def find_affected_components(
 def run_mvcapa(
     segment_penalised_saving: PenalisedScore,
     point_penalised_saving: PenalisedScore,
-    num_observations: int,
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[
@@ -52,7 +51,6 @@ def run_mvcapa(
     opt_savings, segment_anomalies, point_anomalies = run_capa(
         segment_penalised_saving=segment_penalised_saving,
         point_penalised_saving=point_penalised_saving,
-        num_observations=num_observations,
         min_segment_length=min_segment_length,
         max_segment_length=max_segment_length,
     )
@@ -231,7 +229,6 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        num_observations = X.shape[0]
 
         segment_penalised_saving = PenalisedScore(
             scorer=self._segment_saving, penalty=self.segment_penalty_
@@ -243,7 +240,6 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         opt_savings, segment_anomalies, point_anomalies = run_mvcapa(
             segment_penalised_saving=segment_penalised_saving,
             point_penalised_saving=point_penalised_saving,
-            num_observations=num_observations,
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
         )

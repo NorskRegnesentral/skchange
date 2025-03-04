@@ -27,9 +27,8 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
 
 def run_pelt(
     cost: BaseCost,
-    num_obs: int,
     penalty: float,
-    min_segment_length: int = 1,
+    min_segment_length: int,
     split_cost: float = 0.0,
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
@@ -47,7 +46,7 @@ def run_pelt(
         The cost to use.
     penalty : float
         The penalty incurred for adding a changepoint.
-    min_segment_length : int, optional
+    min_segment_length : int
         The minimum length of a segment, by default 1.
     split_cost : float, optional
         The cost of splitting a segment, to ensure that
@@ -63,10 +62,11 @@ def run_pelt(
         The optimal costs and the changepoints.
     """
     cost.check_is_fitted()
+    n_samples = cost._X.shape[0]
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to -penalty.
-    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(num_obs)))
+    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
 
     # Cannot compute the cost for the first 'min_segment_shift' elements:
     opt_cost[1:min_segment_length] = -penalty
@@ -83,12 +83,12 @@ def run_pelt(
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(0, num_obs)
+    prev_cpts = np.repeat(0, n_samples)
 
     # Evolving set of admissible segment starts.
     cost_eval_starts = np.array(([0]), dtype=np.int64)
 
-    observation_indices = np.arange(2 * min_segment_length - 1, num_obs).reshape(-1, 1)
+    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(-1, 1)
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
 
@@ -129,6 +129,12 @@ class PELT(BaseChangeDetector):
         where ``X`` is the input data to `fit`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
+    split_cost : float, optional, default=0.0
+        The cost of splitting a segment, to ensure that
+        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
+        for all possible splits, 0 <= t < p < s <= len(X) - 1.
+        By default set to 0.0, which is sufficient for
+        log likelihood cost functions to satisfy the above inequality.
 
     References
     ----------
@@ -157,10 +163,12 @@ class PELT(BaseChangeDetector):
         cost: BaseCost = None,
         penalty: BasePenalty | float | None = None,
         min_segment_length: int = 2,
+        split_cost: float = 0.0,
     ):
         self.cost = cost
         self.penalty = penalty
         self.min_segment_length = min_segment_length
+        self.split_cost = split_cost
         super().__init__()
 
         self._cost = L2Cost() if cost is None else cost
@@ -229,12 +237,11 @@ class PELT(BaseChangeDetector):
             min_length_name="2*min_segment_length",
         )
         self._cost.fit(X)
-
         opt_costs, changepoints = run_pelt(
             cost=self._cost,
-            num_obs=X.shape[0],
             penalty=self.penalty_.values[0],
             min_segment_length=self.min_segment_length,
+            split_cost=self.split_cost
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
