@@ -88,6 +88,7 @@ class MyCost(BaseCost):
         # instead, write to self._param1, etc.
 
     # todo: implement, optional, defaults to no checking.
+    # used inside self._check_param in _fit.
     def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
         """Check if the fixed parameter is valid relative to the data.
 
@@ -106,6 +107,7 @@ class MyCost(BaseCost):
         return param
 
     # todo: implement, optional, defaults to min_size = 1.
+    # used for automatic validation of cuts in `evaluate`.
     @property
     def min_size(self) -> int | None:
         """Minimum size of the interval to evaluate.
@@ -119,6 +121,7 @@ class MyCost(BaseCost):
         #     return None
 
     # todo: implement, optional, defaults to output p (one parameter per variable).
+    # used for setting a decent default penalty in detectors.
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
