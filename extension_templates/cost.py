@@ -113,6 +113,13 @@ class MyCost(BaseCost):
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
+
+        Returns
+        -------
+        int or None
+            The minimum valid size of an interval to evaluate. If ``None``, it is
+            unknown what the minimum size is. E.g., the scorer may need to be fitted
+            first to determine the minimum size.
         """
         # For example for a covariance matrix cost:
         # if self.is_fitted:
@@ -129,6 +136,11 @@ class MyCost(BaseCost):
         ----------
         p : int
             Number of variables in the data.
+
+        Returns
+        -------
+        int
+            Number of parameters in the cost function.
         """
         # For example for a covariance matrix cost:
         # return p * (p + 1) // 2
@@ -184,7 +196,7 @@ class MyCost(BaseCost):
         # IMPORTANT: avoid side effects to starts, ends.
 
     # todo: implement, mandatory
-    def _evaluate_fixed_param(self, starts, ends):
+    def _evaluate_fixed_param(self, starts, ends) -> np.ndarray:
         """Evaluate the cost for the fixed parameters.
 
         Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
