@@ -20,11 +20,14 @@ How to use this implementation template to implement a new estimator:
   https://www.sktime.net/en/stable/developer_guide/add_estimators.html
 
 Mandatory implements:
-    fitting         - _fit(self, X, y=None)
-    annotating     - _predict(self, X)
+    fitting                  - _fit(self, X, y=None)
+    evaluating optimal param - _evaluate_optim_param(self, starts, ends)
+    evaluating fixed param   - _evaluate_fixed_param(self, starts, ends)
 
 Optional implements:
-    updating        - _update(self, X, y=None)
+    checking fixed param     - _check_fixed_param(self, param, X)
+    minimum size of interval  - min_size(self)
+    number of parameters      - get_param_size(self, p)
 
 Testing - required for sktime test framework and check_estimator usage:
     get default parameters for test instance(s) - get_test_params()
