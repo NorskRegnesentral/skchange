@@ -5,10 +5,13 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_detectors import CAPA, MVCAPA
-from skchange.anomaly_scores import SAVINGS, Saving
-from skchange.costs import COSTS, BaseCost, MultivariateGaussianCost
+from skchange.anomaly_detectors.capa import run_capa
+from skchange.anomaly_scores import SAVINGS, Saving, to_saving
+from skchange.compose import PenalisedScore
+from skchange.costs import COSTS, BaseCost, L2Cost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets.generate import generate_alternating_data
+from skchange.penalties import ChiSquarePenalty
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
 
@@ -130,3 +133,36 @@ def test_capa_errors():
     # Test max_segment_length must be greater than min_segment_length
     with pytest.raises(ValueError):
         CAPA(min_segment_length=5, max_segment_length=4)
+
+
+def test_capa_different_data_shapes():
+    """Test CAPA with segment and point savings having different data shapes."""
+
+    # Create detector
+    detector = CAPA()
+    detector.fit(pd.DataFrame(np.random.randn(10, 2)))
+
+    # Create two PenalisedScore objects with different data shapes
+    segment_saving = to_saving(L2Cost(param=0.0))
+    point_saving = to_saving(L2Cost(param=0.0))
+
+    segment_penalty = ChiSquarePenalty()
+    point_penalty = ChiSquarePenalty()
+
+    segment_data = pd.DataFrame(np.random.randn(20, 2))
+    point_data = pd.DataFrame(np.random.randn(30, 2))  # Different number of samples
+
+    segment_penalised_saving = PenalisedScore(segment_saving, segment_penalty)
+    point_penalised_saving = PenalisedScore(point_saving, point_penalty)
+
+    segment_penalised_saving.fit(segment_data)
+    point_penalised_saving.fit(point_data)
+
+    # Test that run_capa raises ValueError due to different shapes
+    with pytest.raises(ValueError, match="same number of samples"):
+        run_capa(
+            segment_penalised_saving=segment_penalised_saving,
+            point_penalised_saving=point_penalised_saving,
+            min_segment_length=2,
+            max_segment_length=10,
+        )
