@@ -88,7 +88,9 @@ def run_pelt(
     # Evolving set of admissible segment starts.
     cost_eval_starts = np.array(([0]), dtype=np.int64)
 
-    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(-1, 1)
+    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
+        -1, 1
+    )
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
 
@@ -241,7 +243,7 @@ class PELT(BaseChangeDetector):
             cost=self._cost,
             penalty=self.penalty_.values[0],
             min_segment_length=self.min_segment_length,
-            split_cost=self.split_cost
+            split_cost=self.split_cost,
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
