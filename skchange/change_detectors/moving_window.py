@@ -32,20 +32,19 @@ def get_moving_window_changepoints(
 
 
 def moving_window_transform(
-    X: np.ndarray,
     change_score: BaseChangeScore,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
-    change_score.fit(X)
+    change_score.check_is_fitted()
 
-    n = len(X)
-    splits = np.arange(bandwidth, n - bandwidth + 1)
+    n_samples = change_score._X.shape[0]
+    splits = np.arange(bandwidth, n_samples - bandwidth + 1)
     starts = splits - bandwidth + 1
     ends = splits + bandwidth
     change_scores = change_score.evaluate(np.column_stack((starts, splits, ends)))
     agg_change_scores = np.sum(change_scores, axis=1)
 
-    scores = np.zeros(n)
+    scores = np.zeros(n_samples)
     scores[splits] = agg_change_scores
     return scores
 
@@ -185,8 +184,8 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
+        self._change_score.fit(X)
         scores = moving_window_transform(
-            X.values,
             self._change_score,
             self.bandwidth,
         )
@@ -206,7 +205,7 @@ class MovingWindow(BaseChangeDetector):
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the changepoints.
         """
-        self.scores = self.transform_scores(X)
+        self.scores: pd.Series = self.transform_scores(X)
         changepoints = get_moving_window_changepoints(
             self.scores.values, self.penalty_.values[0], self.min_detection_interval
         )

@@ -57,20 +57,21 @@ def make_anomaly_intervals(
 
 
 def run_circular_binseg(
-    X: np.ndarray,
     score: BaseLocalAnomalyScore,
     threshold: float,
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    score.check_is_fitted()
+    n_samples = score._X.shape[0]
+
     starts, ends = make_seeded_intervals(
-        X.shape[0],
+        n_samples,
         2 * min_segment_length,
         max_interval_length,
         growth_factor,
     )
-    score.fit(X)
 
     anomaly_scores = np.zeros(starts.size)
     anomaly_starts = np.zeros(starts.size, dtype=np.int64)
@@ -257,14 +258,15 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
+        self._anomaly_score.fit(X)
         anomalies, scores, maximizers, starts, ends = run_circular_binseg(
-            X.values,
-            self._anomaly_score,
-            self.penalty_.values[0],
-            self.min_segment_length,
-            self.max_interval_length,
-            self.growth_factor,
+            score=self._anomaly_score,
+            threshold=self.penalty_.values[0],
+            min_segment_length=self.min_segment_length,
+            max_interval_length=self.max_interval_length,
+            growth_factor=self.growth_factor,
         )
+
         self.scores = pd.DataFrame(
             {
                 "interval_start": starts,
