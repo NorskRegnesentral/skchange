@@ -28,8 +28,7 @@ def to_saving(scorer: BaseCost | BaseSaving) -> BaseSaving:
         saving = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseSaving or BaseCost. "
-            f"Got {type(scorer)}."
+            f"scorer must be an instance of BaseSaving or BaseCost. Got {type(scorer)}."
         )
     return saving
 
@@ -51,13 +50,21 @@ class Saving(BaseSaving):
     """
 
     def __init__(self, baseline_cost: BaseCost):
-        if baseline_cost.param is None:
-            raise ValueError("The baseline cost must have a fixed parameter.")
-
         self.baseline_cost = baseline_cost
         self.optimised_cost: BaseCost = baseline_cost.clone().set_params(param=None)
         self.evaluation_type = self.baseline_cost.evaluation_type
         super().__init__()
+
+        if not baseline_cost.supports_fixed_params:
+            raise ValueError(
+                "The baseline cost must support fixed"
+                " parameter(s) to use it as a Saving."
+            )
+        elif baseline_cost.param is None:
+            raise ValueError(
+                "The baseline cost must have fixed"
+                " parameters (`param`) set to use it as a Saving."
+            )
 
     @property
     def min_size(self) -> int:

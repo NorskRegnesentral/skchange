@@ -12,6 +12,7 @@ from skchange.costs import COSTS, BaseCost, L2Cost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets.generate import generate_alternating_data
 from skchange.penalties import ChiSquarePenalty
+from skchange.utils.validation.enums import EvaluationType
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
 
@@ -25,7 +26,7 @@ def test_capa_anomalies(Detector, Saving):
         fixed_params = find_fixed_param_combination(Saving)
         saving = saving.set_params(**fixed_params)
 
-    if Detector is MVCAPA and saving.evaluation_type == "multivariate":
+    if Detector is MVCAPA and saving.evaluation_type == EvaluationType.MULTIVARIATE:
         # MVCAPA requires univariate saving.
         pytest.skip("Skipping test for MVCAPA with multivariate saving.")
 

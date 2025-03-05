@@ -5,6 +5,8 @@ from skchange.base.base_interval_scorer import BaseIntervalScorer
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
+    expected_cut_entries = 2
+
     def _evaluate(self, cuts):
         return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
 
