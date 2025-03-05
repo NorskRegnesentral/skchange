@@ -22,9 +22,9 @@ How to use this implementation template to implement a new estimator:
 Mandatory implements:
     fitting                  - _fit(self, X, y=None)
     evaluating optimal param - _evaluate_optim_param(self, starts, ends)
-    evaluating fixed param   - _evaluate_fixed_param(self, starts, ends)
 
 Optional implements:
+    evaluating fixed param   - _evaluate_fixed_param(self, starts, ends)
     checking fixed param     - _check_fixed_param(self, param, X)
     minimum size of interval  - min_size(self)
     number of parameters      - get_param_size(self, p)
@@ -38,6 +38,7 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 import numpy as np
 
 from skchange.costs import BaseCost
+from skchange.utils.validation.enums import EvaluationType
 
 # todo: add any necessary imports here
 
@@ -61,13 +62,17 @@ class MyCost(BaseCost):
     """
 
     # Does the cost evaluate univariate or multivariate data?
-    # If the evaluation type is "univariate":
+    # If the evaluation_type is EvaluationType.UNIVARIATE:
     #   * the cost is vectorized over columns in `X` input to `fit`.
     #   * the output of `evaluate` is has the same number of columns as `X`.
-    # If the evaluation type is "multivariate":
+    # If the evaluation_type is EvaluationType.MULTIVARIATE:
     #   * the cost is evaluated on each row of `X` input to `fit`.
     #   * the output of `evaluate` is always a single column, one value per `cut`.
-    evaluation_type = "univariate"
+    evaluation_type = EvaluationType.UNIVARIATE
+    # Does the cost support fixed parameters? I.e., is `_evaluate_fixed_param`
+    # implemented? Fixed parameter evaluation is required for the cost to be used as a
+    # saving in certain anomaly detectors.
+    supports_fixed_params = False
 
     # todo: add any hyper-parameters and components to constructor
     def __init__(
@@ -137,7 +142,7 @@ class MyCost(BaseCost):
         #       described in the docstring.
         # IMPORTANT: avoid side effects to starts, ends.
 
-    # todo: implement, mandatory
+    # todo: implement, optional. Mandatory if supports_fixed_params = True.
     def _evaluate_fixed_param(self, starts, ends) -> np.ndarray:
         """Evaluate the cost for the fixed parameters.
 
