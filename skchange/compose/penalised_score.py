@@ -5,6 +5,7 @@ import numpy as np
 from skchange.base import BaseIntervalScorer
 from skchange.penalties import BasePenalty
 from skchange.utils.numba import njit
+from skchange.utils.validation.enums import EvaluationType
 
 
 @njit
@@ -101,7 +102,7 @@ class PenalisedScore(BaseIntervalScorer):
         to the data in the `fit` method.
     """
 
-    evaluation_type = "multivariate"
+    evaluation_type = EvaluationType.MULTIVARIATE
 
     def __init__(self, scorer: BaseIntervalScorer, penalty: BasePenalty):
         self.scorer = scorer
@@ -111,7 +112,7 @@ class PenalisedScore(BaseIntervalScorer):
         self.expected_cut_entries = scorer.expected_cut_entries
 
         if (
-            scorer.evaluation_type == "multivariate"
+            scorer.evaluation_type == EvaluationType.MULTIVARIATE
             and penalty.penalty_type != "constant"
         ):
             raise ValueError(

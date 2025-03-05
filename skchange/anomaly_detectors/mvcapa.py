@@ -20,6 +20,7 @@ from skchange.penalties import (
     as_penalty,
 )
 from skchange.utils.validation.data import check_data
+from skchange.utils.validation.enums import EvaluationType
 from skchange.utils.validation.parameters import check_larger_than
 
 
@@ -148,7 +149,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         super().__init__()
 
         _segment_saving = L2Saving() if segment_saving is None else segment_saving
-        if _segment_saving.evaluation_type == "multivariate":
+        if _segment_saving.evaluation_type == EvaluationType.MULTIVARIATE:
             raise ValueError("Segment saving must be univariate.")
         self._segment_saving = to_saving(_segment_saving)
 

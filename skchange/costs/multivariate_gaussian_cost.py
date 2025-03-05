@@ -9,6 +9,7 @@ from skchange.costs.base import BaseCost
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import njit, prange
 from skchange.utils.numba.stats import log_det_covariance
+from skchange.utils.validation.enums import EvaluationType
 
 
 @njit
@@ -179,7 +180,8 @@ class MultivariateGaussianCost(BaseCost):
         If ``None``, the maximum likelihood estimates are used.
     """
 
-    evaluation_type = "multivariate"
+    supports_fixed_params = True
+    evaluation_type = EvaluationType.MULTIVARIATE
 
     def __init__(self, param: tuple[MeanType, CovType] | None = None):
         super().__init__(param)

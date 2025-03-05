@@ -9,21 +9,31 @@ class BaseCost(BaseIntervalScorer):
     """Base class template for cost functions.
 
     This is a common base class for cost functions. It is used to evaluate a cost
-    function on a set of intervals.
+    function on a set of intervals
+
+    If the cost supports fixed parameters, that is indicated by the
+    `supports_fixed_params` class attribute. By default, this is set to `False`.
+    If the cost supports fixed parameters, the `param` attribute can be set
+    in the constructor, and the fixed `param` paramaters will then used when
+    evaluating the cost. The type of `param` is specific to each concrete cost.
 
     Parameters
     ----------
     param : None, optional (default=None)
-        If ``None``, the cost for an optimal parameter is evaluated. If not ``None``,
-        the cost is evaluated for a fixed parameter. The parameter type is specific to
-        each concrete cost.
+        If ``None``, the cost is evaluated with parameters
+        that minimize the cost.  If ```param`` is not ``None``,
+        the cost is evaluated at that fixed parameter.
+        The parameter type is specific to each concrete cost.
     """
 
-    expected_interval_entries = 2
+    supports_fixed_params = False
+    expected_cut_entries = 2
 
     def __init__(self, param=None):
         self.param = param
         super().__init__()
+        if self.param is not None and not self.supports_fixed_params:
+            raise ValueError("This cost does not support fixed parameters.")
 
     def _check_param(self, param, X):
         """Check the parameter with respect to the input data.

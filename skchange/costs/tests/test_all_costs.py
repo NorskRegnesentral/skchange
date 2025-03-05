@@ -1,11 +1,11 @@
 import numpy as np
 import pytest
 
-from skchange.costs import COSTS
+from skchange.costs import COSTS, BaseCost
 from skchange.datasets.generate import generate_alternating_data
 
 
-def find_fixed_param_combination(cost_class):
+def find_fixed_param_combination(cost_class: type[BaseCost]):
     """Find the first fixed parameter combination in the test parameters of a cost."""
     test_param_sets = cost_class.get_test_params()
     fixed_test_param_set = None
@@ -34,19 +34,19 @@ def test_find_fixed_param_combination_value_error():
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_l2_cost_init(CostClass):
+def test_l2_cost_init(CostClass: type[BaseCost]):
     cost = CostClass()
     assert cost.param is None
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_expected_cut_entries(CostClass):
+def test_expected_cut_entries(CostClass: type[BaseCost]):
     cost = CostClass()
     assert cost.expected_cut_entries == 2
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_cost_evaluation_optim_gt_fixed(CostClass):
+def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
     optim_cost = CostClass()
     fixed_params = find_fixed_param_combination(CostClass)
     fixed_cost = CostClass().set_params(**fixed_params)
@@ -61,7 +61,7 @@ def test_cost_evaluation_optim_gt_fixed(CostClass):
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_cost_evaluation_positive(CostClass):
+def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
