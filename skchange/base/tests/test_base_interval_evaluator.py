@@ -6,7 +6,6 @@ from skchange.utils.validation.interface import overrides
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
-
     @property
     @overrides(BaseIntervalScorer)
     def expected_cut_entries(self) -> int:

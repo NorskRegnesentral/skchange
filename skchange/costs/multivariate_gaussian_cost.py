@@ -9,8 +9,8 @@ from skchange.costs.base import BaseCost
 from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
 from skchange.utils.numba import njit, prange
 from skchange.utils.numba.stats import log_det_covariance
-from skchange.utils.validation.interface import overrides
 from skchange.utils.validation.enums import EvaluationType
+from skchange.utils.validation.interface import overrides
 
 
 @njit
