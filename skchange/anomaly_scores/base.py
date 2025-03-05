@@ -1,7 +1,6 @@
 """Base classes for anomaly scores."""
 
 from skchange.base import BaseIntervalScorer
-from skchange.utils.validation.interface import overrides
 
 
 class BaseSaving(BaseIntervalScorer):
@@ -14,11 +13,7 @@ class BaseSaving(BaseIntervalScorer):
     the parameter was optimised for the interval.
     """
 
-    @property
-    @overrides(BaseIntervalScorer)
-    def expected_cut_entries(self) -> int:
-        """Number of expected entries in the cuts array passed to `evaluate`."""
-        return 2
+    expected_cut_entries = 2
 
     def __init__(self):
         super().__init__()
@@ -32,11 +27,7 @@ class BaseLocalAnomalyScore(BaseIntervalScorer):
     local interval.
     """
 
-    @property
-    @overrides(BaseIntervalScorer)
-    def expected_cut_entries(self) -> int:
-        """Number of expected entries in the cuts array passed to `evaluate`."""
-        return 4
+    expected_cut_entries = 4
 
     def __init__(self):
         super().__init__()

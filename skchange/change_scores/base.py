@@ -1,7 +1,6 @@
 """Scores for change detection."""
 
 from skchange.base import BaseIntervalScorer
-from skchange.utils.validation.interface import overrides
 
 
 class BaseChangeScore(BaseIntervalScorer):
@@ -12,11 +11,7 @@ class BaseChangeScore(BaseIntervalScorer):
     changepoint.
     """
 
-    @property
-    @overrides(BaseIntervalScorer)
-    def expected_cut_entries(self) -> int:
-        """Number of expected entries in the cuts array of `evaluate`."""
-        return 3
+    expected_cut_entries = 3
 
     def __init__(self):
         super().__init__()

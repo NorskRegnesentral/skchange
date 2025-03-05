@@ -6,7 +6,6 @@ from skchange.base import BaseIntervalScorer
 from skchange.penalties import BasePenalty
 from skchange.utils.numba import njit
 from skchange.utils.validation.enums import EvaluationType
-from skchange.utils.validation.interface import overrides
 
 
 @njit
@@ -103,11 +102,7 @@ class PenalisedScore(BaseIntervalScorer):
         to the data in the `fit` method.
     """
 
-    @property
-    @overrides(BaseIntervalScorer)
-    def evaluation_type(self):
-        """Type of evaluation for the penalised score."""
-        return EvaluationType.MULTIVARIATE
+    evaluation_type = EvaluationType.MULTIVARIATE
 
     def __init__(self, scorer: BaseIntervalScorer, penalty: BasePenalty):
         self.scorer = scorer

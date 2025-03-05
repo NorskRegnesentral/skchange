@@ -57,10 +57,6 @@ class BaseIntervalScorer(BaseEstimator):
     # value, such that the output is a single column no matter how many variables.
     # TODO: Implement as tags?
     # For now a class variable to pass sktime conformance test.
-
-    # This method must be implemented in subclasses that support fixed parameters.
-    # There it should be marked as an `override` using the
-    # - `skchange.utils.validation.interface.overrides` decorator.
     evaluation_type = EvaluationType.UNIVARIATE
 
     def __init__(self):

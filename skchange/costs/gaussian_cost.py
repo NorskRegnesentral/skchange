@@ -9,7 +9,6 @@ from skchange.costs.utils import MeanType, VarType, check_mean, check_var
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import truncate_below
 from skchange.utils.numba.stats import col_cumsum
-from skchange.utils.validation.interface import overrides
 
 
 @njit
@@ -126,11 +125,7 @@ class GaussianCost(BaseCost):
         If ``None``, the maximum likelihood estimates are used.
     """
 
-    @property
-    @overrides(BaseCost)
-    def supports_fixed_params(self) -> bool:
-        """Determine if the cost supports fixed parameters."""
-        return True
+    supports_fixed_params = True
 
     def __init__(self, param: tuple[MeanType, VarType] | None = None):
         super().__init__(param)
