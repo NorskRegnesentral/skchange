@@ -101,39 +101,6 @@ def laplace_cost_mle_params(starts: np.ndarray, ends: np.ndarray, X: np.ndarray)
     return costs
 
 
-def laplace_cost_mle_location_fixed_scale(starts, ends, X, scales: np.ndarray):
-    """Evaluate the L1 cost for a known scale.
-
-    Parameters
-    ----------
-    starts : np.ndarray
-        Start indices of the intervals (inclusive).
-    ends : np.ndarray
-        End indices of the intervals (exclusive).
-    X : np.ndarray
-        Data to evaluate. Must be a 2D array.
-
-    Returns
-    -------
-    costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of columns
-        is equal to the number of columns in the input data, where each column
-        represents the univariate cost for the corresponding input data column.
-    """
-    n_intervals = len(starts)
-    n_columns = X.shape[1]
-    costs = np.zeros((n_intervals, n_columns))
-
-    for i in range(n_intervals):
-        start, end = starts[i], ends[i]
-        mle_locations = col_median(X[start:end])
-        centered_X = X[start:end, :] - mle_locations[None, :]
-        for j in range(n_columns):
-            costs[i, j] = -2.0 * laplace_log_likelihood(centered_X[:, j], scales[j])
-
-    return costs
-
-
 @njit
 def laplace_cost_fixed_params(
     starts, ends, X, locations: np.ndarray, scales: np.ndarray
@@ -169,8 +136,201 @@ def laplace_cost_fixed_params(
     return costs
 
 
+@njit
+def l1_cost_mle_location(starts: np.ndarray, ends: np.ndarray, X: np.ndarray):
+    """Evaluate the L1 cost for a known scale.
+
+    Parameters
+    ----------
+    starts : np.ndarray
+        Start indices of the intervals (inclusive).
+    ends : np.ndarray
+        End indices of the intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
+
+    Returns
+    -------
+    costs : np.ndarray
+        A 2D array of costs. One row for each interval. The number of columns
+        is equal to the number of columns in the input data, where each column
+        represents the univariate cost for the corresponding input data column.
+    """
+    n_intervals = len(starts)
+    n_columns = X.shape[1]
+    costs = np.zeros((n_intervals, n_columns))
+
+    for i in range(n_intervals):
+        start, end = starts[i], ends[i]
+        mle_locations = col_median(X[start:end])
+        for j in range(n_columns):
+            costs[i, j] = np.sum(np.abs(X[start:end, j] - mle_locations[j]))
+
+    return costs
+
+
+@njit
+def l1_cost_fixed_location(
+    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, locations: np.ndarray
+):
+    """Evaluate the L1 cost for a known scale.
+
+    Parameters
+    ----------
+    starts : np.ndarray
+        Start indices of the intervals (inclusive).
+    ends : np.ndarray
+        End indices of the intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
+
+    Returns
+    -------
+    costs : np.ndarray
+        A 2D array of costs. One row for each interval. The number of columns
+        is equal to the number of columns in the input data, where each column
+        represents the univariate cost for the corresponding input data column.
+    """
+    n_intervals = len(starts)
+    n_columns = X.shape[1]
+    costs = np.zeros((n_intervals, n_columns))
+
+    for i in range(n_intervals):
+        start, end = starts[i], ends[i]
+        centered_X = np.abs(X[start:end, :] - locations[None, :])
+        for j in range(n_columns):
+            costs[i, j] = np.sum(centered_X[:, j])
+
+    return costs
+
+
 class L1Cost(BaseCost):
-    """L1 cost for a constant Laplace distribution.
+    """L1 cost function.
+
+    Parameters
+    ----------
+    param : float, optional (default=None)
+        If None, the cost is evaluated for an interval-optimised parameter, often the
+        maximum likelihood estimate. If not None, the cost is evaluated for the
+        specified fixed parameter.
+    """
+
+    evaluation_type = EvaluationType.UNIVARIATE
+    supports_fixed_params = True
+
+    def __init__(self, param=None):
+        super().__init__(param)
+        self._mean = None
+
+    def _fit(self, X: np.ndarray, y=None):
+        """Fit the cost.
+
+        This method precomputes quantities that speed up the cost evaluation.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
+        y: None
+            Ignored. Included for API consistency by convention.
+        """
+        self._mean = self._check_param(self.param, X)
+        return self
+
+    def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        """Evaluate the cost for the optimal parameter.
+
+        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            A 2D array of costs. One row for each interval. The number of
+            columns is equal to the number of columns in the input data
+            passed to `.fit()`. Each column represents the univariate
+            cost for the corresponding input data column.
+        """
+        return l1_cost_mle_location(
+            starts,
+            ends,
+            self._X,
+        )
+
+    def _evaluate_fixed_param(self, starts, ends):
+        """Evaluate the cost for the fixed parameter.
+
+        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            A 2D array of costs. One row for each interval. The number of
+            columns is equal to the number of columns in the input data
+            passed to `.fit()`. Each column represents the univariate
+            cost for the corresponding input data column.
+        """
+        return l1_cost_fixed_location(starts, ends, self._X, self._mean)
+
+    def _check_fixed_param(self, param: float, X: np.ndarray) -> np.ndarray:
+        """Check if the fixed parameter is valid relative to the data.
+
+        Parameters
+        ----------
+        param : float
+            Fixed parameter for the cost calculation.
+        X : np.ndarray
+            Input data.
+
+        Returns
+        -------
+        param: float
+            Fixed parameter for the cost calculation.
+        """
+        return check_mean(param, X)
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return, for use in tests. If no
+            special parameters are defined for a value, will return `"default"` set.
+            There are currently no reserved values for costs.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+            Each dict are parameters to construct an "interesting" test instance, i.e.,
+            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
+            `create_test_instance` uses the first (or only) dictionary in `params`
+        """
+        params = [
+            {"param": None},
+            {"param": 0.0},
+            {"param": np.array(1.0)},
+        ]
+        return params
+
+
+class LaplaceCost(BaseCost):
+    """Laplace distribution twice negative log likelihood cost.
 
     Parameters
     ----------
@@ -189,20 +349,13 @@ class L1Cost(BaseCost):
     def __init__(
         self,
         param=None,  # Mandatory first parameter (see docs above).
-        known_scale: bool = False,  # Optional parameter with default value.
     ):
         super().__init__(param)
-        self.known_scale = known_scale
         self._locations = None
         self._scales = None
         # param: (location, scale) of the Laplace distribution.
         # (mean & median, diversity).
 
-        # todo: optional, parameter checking logic (if applicable) should happen here
-        # if writes derived values to self, should *not* overwrite self.parama etc
-        # instead, write to self._param1, etc.
-
-    # todo: implement, mandatory
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
 
@@ -217,14 +370,10 @@ class L1Cost(BaseCost):
         """
         self._param = self._check_param(self.param, X)
         if self.param is not None:
-            if self.known_scale:
-                self._scales = self._param
-            else:
-                self._locations, self._scales = self._param
+            self._locations, self._scales = self._param
 
         # MLE of the Laplace distribution location parameter is the median.
         # Tricky to precompute the median, so we'll do it on the fly.
-
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
@@ -269,14 +418,9 @@ class L1Cost(BaseCost):
             passed to `.fit()`. Each column represents the univariate
             cost for the corresponding input data column.
         """
-        if self.known_scale:
-            return laplace_cost_mle_location_fixed_scale(
-                starts, ends, self._X, self._scales
-            )
-        else:
-            return laplace_cost_fixed_params(
-                starts, ends, self._X, self._locations, self._scales
-            )
+        return laplace_cost_fixed_params(
+            starts, ends, self._X, self._locations, self._scales
+        )
 
     def _check_fixed_param(self, param: tuple, X: np.ndarray) -> np.ndarray:
         """Check if the fixed parameter is valid relative to the data.
@@ -293,25 +437,11 @@ class L1Cost(BaseCost):
         param: any
             Fixed parameter for the cost calculation.
         """
-        if self.known_scale:
-            if isinstance(param, tuple):
-                if len(param) != 1:
-                    raise ValueError(
-                        "Fixed parameter must be (scale) when 'known_scale == True'."
-                    )
-                else:
-                    return check_univariate_scale(param[0], X)
-            elif not isinstance(param, tuple):
-                return check_univariate_scale(param, X)
-        else:
-            if not isinstance(param, tuple) or len(param) != 2:
-                raise ValueError(
-                    "Fixed parameter must be (location, scale) when"
-                    " 'known_scale == False'."
-                )
-            means = check_mean(param[0], X)
-            scales = check_univariate_scale(param[1], X)
-            return means, scales
+        if not isinstance(param, tuple) or len(param) != 2:
+            raise ValueError("Fixed Laplace parameters must be (location, scale).")
+        means = check_mean(param[0], X)
+        scales = check_univariate_scale(param[1], X)
+        return means, scales
 
     @property
     def min_size(self) -> int | None:
@@ -341,10 +471,8 @@ class L1Cost(BaseCost):
         int
             Number of parameters in the cost function.
         """
-        return p if self.known_scale else 2 * p
+        return 2 * p
 
-    # todo: return default parameters, so that a test instance can be created.
-    #       required for automated unit and integration testing of estimator.
     @classmethod
     def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
@@ -364,48 +492,19 @@ class L1Cost(BaseCost):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        params = [
+            {"param": None},
+            {"param": (0.0, 1.0)},
+        ]
+        return params
 
-        # todo: set the testing parameters for the estimators
-        # Testing parameters can be dictionary or list of dictionaries
-        # Testing parameter choice should cover internal cases well.
-        #
-        # this method can, if required, use:
-        #   class properties (e.g., inherited); parent class test case
-        #   imported objects such as estimators from sktime or sklearn
-        # important: all such imports should be *inside get_test_params*, not at the top
-        #            since imports are used only at testing time
-        #
-        # The parameter_set argument is not used for automated, module level tests.
-        #   It can be used in custom, estimator specific tests, for "special" settings.
-        # A parameter dictionary must be returned *for all values* of parameter_set,
-        #   i.e., "parameter_set not available" errors should never be raised.
-        #
-        # A good parameter set should primarily satisfy two criteria,
-        #   1. Chosen set of parameters should have a low testing time,
-        #      ideally in the magnitude of few seconds for the entire test suite.
-        #       This is vital for the cases where default values result in
-        #       "big" models which not only increases test time but also
-        #       run into the risk of test workers crashing.
-        #   2. There should be a minimum two such parameter sets with different
-        #      sets of values to ensure a wide range of code coverage is provided.
-        #
-        # example 1: specify params as dictionary
-        # any number of params can be specified
-        # params = {"est": value0, "parama": value1, "paramb": value2}
-        # return params
-        #
-        # example 2: specify params as list of dictionary
-        # note: Only first dictionary will be used by create_test_instance
-        # params = [{"est": value1, "parama": value2},
-        #           {"est": value3, "parama": value4}]
-        # return params
-        #
-        # example 3: parameter set depending on param_set value
-        #   note: only needed if a separate parameter set is needed in tests
-        # if parameter_set == "special_param_set":
-        #     params = {"est": value1, "parama": value2}
-        #     return params
-        #
-        # # "default" params - always returned except for "special_param_set" value
-        # params = {"est": value3, "parama": value4}
-        # return params
+
+# %%
+# a = np.random.randn(100, 2)
+# cost = L1Cost(param=1.0, known_scale=True)
+# cost.fit(a)
+# cost.get_param_size(2)
+
+
+# # %%
+# cost.evaluate(np.array([[0, 50], [50, 100]]))
