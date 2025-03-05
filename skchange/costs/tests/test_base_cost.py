@@ -2,12 +2,16 @@ import numpy as np
 import pytest
 
 from skchange.costs.base import BaseCost
+from skchange.utils.validation.interface import overrides
 
 
 class DummyCost(BaseCost):
     """Dummy cost function for testing."""
 
-    supports_fixed_params = True
+    @property
+    @overrides(BaseCost)
+    def supports_fixed_params(self) -> bool:
+        return True
 
     def _evaluate_optim_param(self, starts, ends):
         return np.array([[1] * len(starts)])

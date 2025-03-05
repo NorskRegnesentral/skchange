@@ -2,9 +2,16 @@ import numpy as np
 import pytest
 
 from skchange.base.base_interval_scorer import BaseIntervalScorer
+from skchange.utils.validation.interface import overrides
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
+
+    @property
+    @overrides(BaseIntervalScorer)
+    def expected_cut_entries(self) -> int:
+        return 2
+
     def _evaluate(self, cuts):
         return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
 

@@ -8,6 +8,8 @@ import numpy as np
 from skchange.change_scores.base import BaseChangeScore
 from skchange.costs.multivariate_gaussian_cost import MultivariateGaussianCost
 from skchange.utils.numba import njit
+from skchange.utils.validation.enums import EvaluationType
+from skchange.utils.validation.interface import overrides
 
 
 @njit
@@ -159,7 +161,11 @@ class MultivariateGaussianScore(BaseChangeScore):
     Journal of Quality Technology, 41(3), 285-303.
     """
 
-    evaluation_type = "multivariate"
+    @property
+    @overrides(BaseChangeScore)
+    def evaluation_type(self):
+        """Type of evaluation for the change score."""
+        return EvaluationType.MULTIVARIATE
 
     def __init__(self, apply_bartlett_correction: bool = True):
         super().__init__()

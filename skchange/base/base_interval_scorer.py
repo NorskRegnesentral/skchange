@@ -21,6 +21,7 @@ from sktime.utils.validation.series import check_series
 
 from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
+from skchange.utils.validation.enums import EvaluationType
 
 
 class BaseIntervalScorer(BaseEstimator):
@@ -45,18 +46,22 @@ class BaseIntervalScorer(BaseEstimator):
         "maintainers": "Tveten",  # current maintainer(s) of the object
     }  # for unit test cases
 
-    # Number of expected entries in the cuts array of `evaluate`. Default is 2, but
-    # can be overridden in subclasses if splitting points are relevant, like for change
-    # scores.
-    expected_cut_entries = 2
-    # evaluation_type tells whether the scorer is univariate or multivariate.
+    # Number of expected entries in the cuts array of `evaluate`. Must be overridden in
+    # subclasses, like for change scores and costs, before call to `evaluate`.
+    expected_cut_entries = None
+
+    # The `evaluation_type` indicates whether the scorer is univariate or multivariate.
     # Univariate scorers are vectorized over variables/columns in the data,
     # such that output is one column per variable.
     # Multivariate scorers take the entire data as input and output a single
     # value, such that the output is a single column no matter how many variables.
     # TODO: Implement as tags?
     # For now a class variable to pass sktime conformance test.
-    evaluation_type = "univariate"
+
+    # This method must be implemented in subclasses that support fixed parameters.
+    # There it should be marked as an `override` using the
+    # - `skchange.utils.validation.interface.overrides` decorator.
+    evaluation_type = EvaluationType.UNIVARIATE
 
     def __init__(self):
         self._is_fitted = False

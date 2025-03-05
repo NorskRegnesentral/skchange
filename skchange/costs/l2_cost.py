@@ -6,6 +6,7 @@ from skchange.costs.base import BaseCost
 from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
+from skchange.utils.validation.interface import overrides
 
 
 @njit
@@ -91,7 +92,11 @@ class L2Cost(BaseCost):
         calculated.
     """
 
-    supports_fixed_params = True
+    @property
+    @overrides(BaseCost)
+    def supports_fixed_params(self) -> bool:
+        """Determine if the cost supports fixed parameters."""
+        return True
 
     def __init__(self, param: MeanType | None = None):
         super().__init__(param)
@@ -151,6 +156,7 @@ class L2Cost(BaseCost):
         """
         return l2_cost_optim(starts, ends, self._sums, self._sums2)
 
+    @overrides(BaseCost)
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
 

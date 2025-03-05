@@ -8,6 +8,7 @@ from skchange.change_scores import CHANGE_SCORES
 from skchange.compose import PenalisedScore
 from skchange.costs import COSTS
 from skchange.datasets import generate_alternating_data, generate_anomalous_data
+from skchange.utils.validation.enums import EvaluationType
 
 INTERVAL_EVALUATORS = COSTS + CHANGE_SCORES + ANOMALY_SCORES + [PenalisedScore]
 
@@ -63,9 +64,9 @@ def test_evaluator_evaluate_by_evaluation_type(Evaluator: BaseIntervalScorer):
 
     results = evaluator.evaluate(cuts)
 
-    if evaluator.evaluation_type == "univariate":
+    if evaluator.evaluation_type == EvaluationType.UNIVARIATE:
         assert results.shape == (2, p)
-    elif evaluator.evaluation_type == "multivariate":
+    elif evaluator.evaluation_type == EvaluationType.MULTIVARIATE:
         assert results.shape == (2, 1)
     else:
         raise ValueError("Invalid scitype:evaluator tag.")

@@ -3,6 +3,7 @@
 import numpy as np
 
 from skchange.base import BaseIntervalScorer
+from skchange.utils.validation.interface import overrides
 
 
 class BaseCost(BaseIntervalScorer):
@@ -26,8 +27,13 @@ class BaseCost(BaseIntervalScorer):
         The parameter type is specific to each concrete cost.
     """
 
-    expected_interval_entries = 2
     supports_fixed_params = False
+
+    @property
+    @overrides(BaseIntervalScorer)
+    def expected_cut_entries(self) -> int:
+        """Number of expected entries in the cuts array of `evaluate`."""
+        return 2
 
     def __init__(self, param=None):
         self.param = param
@@ -96,6 +102,7 @@ class BaseCost(BaseIntervalScorer):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
+        # This method must be implemented in all Cost subclasses.
         raise NotImplementedError("abstract method")
 
     def _evaluate_fixed_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
@@ -117,4 +124,7 @@ class BaseCost(BaseIntervalScorer):
             univariate. In this case, each column represents the univariate cost for
             the corresponding input data column.
         """
+        # This method must be implemented in subclasses that support fixed parameters.
+        # There it be marked as an `override` using the
+        # - `skchange.utils.validation.interface.overrides` decorator.
         raise NotImplementedError("abstract method")

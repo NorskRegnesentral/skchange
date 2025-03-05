@@ -20,6 +20,8 @@ from skchange.utils.numba.stats import (
     log_gamma,
     trigamma,
 )
+from skchange.utils.validation.enums import EvaluationType
+from skchange.utils.validation.interface import overrides
 from skchange.utils.validation.parameters import check_in_interval, check_larger_than
 
 
@@ -1087,8 +1089,17 @@ class MultivariateTCost(BaseCost):
     In 2021 29th European Signal Processing Conference (EUSIPCO), 860-864.
     """
 
-    evaluation_type = "multivariate"
-    supports_fixed_params = True
+    @property
+    @overrides(BaseCost)
+    def supports_fixed_params(self) -> bool:
+        """Determine if the cost supports fixed parameters."""
+        return True
+
+    @property
+    @overrides(BaseCost)
+    def evaluation_type(self) -> EvaluationType:
+        """The type of evaluation for MultivariateTCost."""
+        return EvaluationType.MULTIVARIATE
 
     def __init__(
         self,
