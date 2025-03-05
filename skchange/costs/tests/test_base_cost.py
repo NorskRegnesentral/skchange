@@ -20,6 +20,13 @@ class DummyCost(BaseCost):
         return np.array([[2] * len(starts)])
 
 
+class NonFixedParamCost(BaseCost):
+    """Dummy cost function that doesn't support fixed parameters."""
+
+    def _evaluate_optim_param(self, starts, ends):
+        return np.array([[1] * len(starts)])
+
+
 def test_base_cost_init():
     cost = BaseCost()
     assert cost.param is None
@@ -57,3 +64,30 @@ def test_base_cost_evaluate_fixed_param():
     cost = BaseCost()
     with pytest.raises(NotImplementedError):
         cost._evaluate_fixed_param(np.array([0]), np.array([1]))
+
+
+def test_init_default():
+    """Test default initialization of BaseCost."""
+    cost = BaseCost()
+    assert cost.param is None
+
+
+def test_init_with_param():
+    """Test initialization with a parameter for a cost that supports fixed params."""
+    cost = DummyCost(param=42)
+    assert cost.param == 42
+
+
+def test_init_with_param_not_supported():
+    """Test ValueError is raised when param not None but fixed params not supported."""
+    with pytest.raises(
+        ValueError, match="This cost does not support fixed parameters."
+    ):
+        NonFixedParamCost(param=42)
+
+
+def test_supports_fixed_params_property():
+    """Test the supports_fixed_params property."""
+    assert BaseCost().supports_fixed_params is False
+    assert DummyCost().supports_fixed_params is True
+    assert NonFixedParamCost().supports_fixed_params is False

@@ -38,6 +38,8 @@ class BaseCost(BaseIntervalScorer):
     def __init__(self, param=None):
         self.param = param
         super().__init__()
+        if self.param is not None and not self.supports_fixed_params:
+            raise ValueError("This cost does not support fixed parameters.")
 
     def _check_param(self, param, X):
         """Check the parameter with respect to the input data.
