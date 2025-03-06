@@ -21,4 +21,5 @@ def test_scores(ChangeScore: BaseChangeScore):
         (np.zeros(splits.shape, dtype=int), splits, np.full(splits.shape, n, dtype=int))
     )
     scores = change_score.evaluate(cuts)
-    assert np.all(scores >= 0.0)
+    # Check that the scores are non-negative:
+    assert np.allclose(scores[scores <= 0.0], 0.0)

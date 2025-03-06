@@ -45,7 +45,7 @@ from skchange.utils.validation.enums import EvaluationType
 
 
 @njit
-def laplace_log_likelihood(centered_X: np.ndarray, scale: float) -> float:
+def laplace_log_likelihood(centered_X: np.ndarray, scales: np.ndarray) -> float:
     """Evaluate the log likelihood of a Laplace distribution.
 
     Parameters
@@ -62,7 +62,7 @@ def laplace_log_likelihood(centered_X: np.ndarray, scale: float) -> float:
         with location = 0.0 and scale parameter as specified.
     """
     n_samples = len(centered_X)
-    return -n_samples * np.log(2 * scale) - np.sum(np.abs(centered_X)) / scale
+    return -n_samples * np.log(2 * scales) - np.sum(np.abs(centered_X), axis=0) / scales
 
 
 @njit
@@ -89,14 +89,20 @@ def laplace_cost_mle_params(starts: np.ndarray, ends: np.ndarray, X: np.ndarray)
     n_columns = X.shape[1]
     costs = np.zeros((n_intervals, n_columns))
 
+    mle_locations = np.zeros(n_columns)
+    mle_scales = np.zeros(n_columns)
+
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        mle_locations = col_median(X[start:end])
+        mle_locations[:] = col_median(X[start:end])
         centered_X = X[start:end, :] - mle_locations[None, :]
 
-        for j in range(n_columns):
-            mle_scale = np.mean(np.abs(centered_X[:, j]))
-            costs[i, j] = -2.0 * laplace_log_likelihood(centered_X[:, j], mle_scale)
+        # Compute the MLE scale for each column.
+        # (Numba friendly, cannot supply 'axis' argument to np.mean)
+        for col in range(n_columns):
+            mle_scales[col] = np.mean(np.abs(centered_X[:, col]))
+
+        costs[i, :] = -2.0 * laplace_log_likelihood(centered_X, mle_scales)
 
     return costs
 
@@ -130,8 +136,9 @@ def laplace_cost_fixed_params(
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
         centered_X = X[start:end, :] - locations[None, :]
-        for j in range(n_columns):
-            costs[i, j] = -2.0 * laplace_log_likelihood(centered_X[:, j], scales[j])
+
+        # Compute log-likelihood of samples in each column.
+        costs[i, :] = -2.0 * laplace_log_likelihood(centered_X, scales)
 
     return costs
 
@@ -456,7 +463,10 @@ class LaplaceCost(BaseCost):
             unknown what the minimum size is. E.g., the scorer may need to be fitted
             first to determine the minimum size.
         """
-        return 1
+        if self.is_fitted:
+            return self._X.shape[1]
+        else:
+            return None
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.

@@ -8,7 +8,7 @@ from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_detectors.capa import run_capa
 from skchange.anomaly_scores import SAVINGS, Saving, to_saving
 from skchange.compose import PenalisedScore
-from skchange.costs import COSTS, BaseCost, L2Cost, MultivariateGaussianCost
+from skchange.costs import COSTS, BaseCost, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets.generate import generate_alternating_data
 from skchange.penalties import ChiSquarePenalty
@@ -41,8 +41,16 @@ def test_capa_anomalies(Detector, Saving):
         affected_proportion=0.2,
         random_state=8,
     )
+
+    # Cannot use costs with min_size > 1 as point saving:
+    if not isinstance(saving.min_size, int) or saving.min_size > 1:
+        point_saving = L1Cost(param=0.0)
+    else:
+        point_saving = saving
+
     detector = Detector(
         segment_saving=saving,
+        point_saving=point_saving,
         min_segment_length=20,
         ignore_point_anomalies=True,  # To get test coverage.
     )

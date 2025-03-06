@@ -51,7 +51,7 @@ def check_univariate_scale(scale: MeanType, X: np.ndarray) -> np.ndarray:
     )
     if len(scale) != 1 and len(scale) != X.shape[1]:
         raise ValueError(f"mean must have length 1 or X.shape[1], got {len(scale)}.")
-    if np.any(scale <= 0):
+    if np.any(scale <= 0.0):
         raise ValueError("scales must be positive.")
     return scale
 
