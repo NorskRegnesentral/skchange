@@ -36,12 +36,12 @@ def l1_cost_mle_location(starts: np.ndarray, ends: np.ndarray, X: np.ndarray):
     n_intervals = len(starts)
     n_columns = X.shape[1]
     costs = np.zeros((n_intervals, n_columns))
+    mle_locations = np.zeros(n_columns)
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        mle_locations = col_median(X[start:end])
-        for j in range(n_columns):
-            costs[i, j] = np.sum(np.abs(X[start:end, j] - mle_locations[j]))
+        mle_locations = col_median(X[start:end], mle_locations)
+        costs[i, :] = np.sum(np.abs(X[start:end] - mle_locations[None, :]), axis=0)
 
     return costs
 
@@ -75,8 +75,7 @@ def l1_cost_fixed_location(
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
         centered_X = np.abs(X[start:end, :] - locations[None, :])
-        for j in range(n_columns):
-            costs[i, j] = np.sum(centered_X[:, j])
+        costs[i, :] = np.sum(centered_X, axis=0)
 
     return costs
 
