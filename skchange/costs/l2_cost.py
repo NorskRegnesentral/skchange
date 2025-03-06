@@ -96,6 +96,8 @@ class L2Cost(BaseCost):
         "maintainers": "Tveten",
     }
 
+    supports_fixed_params = True
+
     def __init__(self, param: MeanType | None = None):
         super().__init__(param)
 
