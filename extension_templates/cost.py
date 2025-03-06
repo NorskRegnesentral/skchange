@@ -42,6 +42,8 @@ from skchange.utils.validation.enums import EvaluationType
 
 # todo: add any necessary imports here
 
+# todo: add the cost to the COSTS variable in skchange/costs/__init__.py
+
 
 class MyCost(BaseCost):
     """Custom cost class.
@@ -202,6 +204,9 @@ class MyCost(BaseCost):
             unknown what the minimum size is. E.g., the scorer may need to be fitted
             first to determine the minimum size.
         """
+        # For example for a mean and variance cost:
+        # return 2
+        #
         # For example for a covariance matrix cost:
         # if self.is_fitted:
         #     return self._X.shape[1] + 1
