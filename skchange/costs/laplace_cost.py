@@ -244,10 +244,7 @@ class LaplaceCost(BaseCost):
         """
         if self.is_fitted:
             # Need at least 2 samples to estimate the location and scale.
-            if self.param is None:
-                return 2
-            else:
-                return 1
+            return 2
         else:
             return None
 
