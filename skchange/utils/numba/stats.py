@@ -39,7 +39,7 @@ def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
 
 
 @njit
-def col_median(x: np.ndarray) -> np.ndarray:
+def col_median(x: np.ndarray, medians: np.ndarray | None = None) -> np.ndarray:
     """Calculate the median of each column in a 2D array.
 
     Parameters
@@ -53,7 +53,11 @@ def col_median(x: np.ndarray) -> np.ndarray:
 
     """
     p = x.shape[1]
-    medians = np.zeros(p)
+    if medians is None:
+        medians = np.zeros(p)
+    else:
+        assert len(medians) == p
+
     for j in range(p):
         medians[j] = np.median(x[:, j])
 
