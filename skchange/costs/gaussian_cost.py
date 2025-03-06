@@ -125,6 +125,11 @@ class GaussianCost(BaseCost):
         If ``None``, the maximum likelihood estimates are used.
     """
 
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+    }
+
     supports_fixed_params = True
 
     def __init__(self, param: tuple[MeanType, VarType] | None = None):

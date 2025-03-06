@@ -92,6 +92,11 @@ class L1Cost(BaseCost):
         specified fixed parameter.
     """
 
+    _tags = {
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
+    }
+
     evaluation_type = EvaluationType.UNIVARIATE
     supports_fixed_params = True
 

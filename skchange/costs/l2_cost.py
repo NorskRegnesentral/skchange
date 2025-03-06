@@ -91,7 +91,10 @@ class L2Cost(BaseCost):
         calculated.
     """
 
-    supports_fixed_params = True
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+    }
 
     def __init__(self, param: MeanType | None = None):
         super().__init__(param)

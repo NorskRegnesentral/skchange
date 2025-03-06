@@ -180,6 +180,11 @@ class MultivariateGaussianCost(BaseCost):
         If ``None``, the maximum likelihood estimates are used.
     """
 
+    _tags = {
+        "authors": ["johannvk", "Tveten"],
+        "maintainers": "johannvk",
+    }
+
     supports_fixed_params = True
     evaluation_type = EvaluationType.MULTIVARIATE
 

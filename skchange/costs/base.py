@@ -26,6 +26,11 @@ class BaseCost(BaseIntervalScorer):
         The parameter type is specific to each concrete cost.
     """
 
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+    }
+
     supports_fixed_params = False
     expected_cut_entries = 2
 

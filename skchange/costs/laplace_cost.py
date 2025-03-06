@@ -129,6 +129,11 @@ class LaplaceCost(BaseCost):
         If it is known, the cost is evaluated for the fixed scale parameter(s).
     """
 
+    _tags = {
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
+    }
+
     evaluation_type = EvaluationType.UNIVARIATE
     supports_fixed_params = True
 
