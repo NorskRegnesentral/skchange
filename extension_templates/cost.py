@@ -77,6 +77,7 @@ class MyCost(BaseCost):
     supports_fixed_params = False
 
     # todo: add any hyper-parameters and components to constructor
+    # todo: if fixed parameters are supported, add type hints to `param`
     def __init__(
         self,
         param=None,  # Mandatory first parameter (see docs above).
