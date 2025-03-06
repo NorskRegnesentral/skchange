@@ -30,6 +30,9 @@ def test_capa_anomalies(Detector, Saving):
         # MVCAPA requires univariate saving.
         pytest.skip("Skipping test for MVCAPA with multivariate saving.")
 
+    if isinstance(saving, BaseCost) and not saving.supports_fixed_params:
+        pytest.skip("Skipping test for Cost without support for fixed params.")
+
     n_segments = 2
     seg_len = 50
     p = 5
