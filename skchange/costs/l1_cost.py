@@ -40,7 +40,7 @@ def l1_cost_mle_location(starts: np.ndarray, ends: np.ndarray, X: np.ndarray):
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        mle_locations = col_median(X[start:end], mle_locations)
+        mle_locations = col_median(X[start:end], output_array=mle_locations)
         costs[i, :] = np.sum(np.abs(X[start:end] - mle_locations[None, :]), axis=0)
 
     return costs

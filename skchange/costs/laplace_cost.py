@@ -66,7 +66,7 @@ def laplace_cost_mle_params(
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        col_median(X[start:end], mle_locations)
+        mle_locations = col_median(X[start:end], output_array=mle_locations)
         centered_X = X[start:end, :] - mle_locations[None, :]
 
         # Compute the MLE scale for each column.
@@ -124,7 +124,7 @@ class LaplaceCost(BaseCost):
 
     Parameters
     ----------
-    param : tuple[MeanType, Vartype], optional (default=None)
+    param : tuple[MeanType, VarType], optional (default=None)
         Fixed location and scale parameters of the Laplace distribution.
         If None, the cost is evaluated with location and scale set to
         the MLE estimates of the parameters over each interval.
