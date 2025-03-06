@@ -173,7 +173,7 @@ class L1Cost(BaseCost):
 
         Returns
         -------
-        param: float
+        param: np.ndarray
             Fixed parameter for the cost calculation.
         """
         return check_mean(param, X)

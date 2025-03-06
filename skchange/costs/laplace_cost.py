@@ -209,7 +209,7 @@ class LaplaceCost(BaseCost):
 
     def _check_fixed_param(
         self, param: tuple[MeanType, VarType], X: np.ndarray
-    ) -> np.ndarray:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Check if the fixed parameter is valid relative to the data.
 
         Parameters
