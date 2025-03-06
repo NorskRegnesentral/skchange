@@ -112,7 +112,12 @@ class ChangeScore(BaseChangeScore):
         left_costs = self.cost.evaluate(left_intervals)
         right_costs = self.cost.evaluate(right_intervals)
         no_change_costs = self.cost.evaluate(full_intervals)
+
         change_scores = no_change_costs - (left_costs + right_costs)
+
+        # Ensure that slightly negative scores are set to 0:
+        change_scores[change_scores < 0 & (change_scores > -1e-8)] = 0.0
+
         return change_scores
 
     @classmethod

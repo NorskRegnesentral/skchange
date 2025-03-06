@@ -7,7 +7,7 @@ change point detection based on the L1 (absolute difference) cost.
 import numpy as np
 
 from skchange.costs import BaseCost
-from skchange.costs.utils import check_mean
+from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_median
 from skchange.utils.validation.enums import EvaluationType
@@ -86,16 +86,15 @@ class L1Cost(BaseCost):
 
     Parameters
     ----------
-    param : float, optional (default=None)
-        If None, the cost is evaluated for an interval-optimised parameter, often the
-        maximum likelihood estimate. If not None, the cost is evaluated for the
-        specified fixed parameter.
+    param : float or array-like, optional (default=None)
+        Fixed mean for the cost calculation. If ``None``, the optimal mean is
+        calculated as the median of each variable, for each interval.
     """
 
     evaluation_type = EvaluationType.UNIVARIATE
     supports_fixed_params = True
 
-    def __init__(self, param=None):
+    def __init__(self, param: MeanType | None = None):
         super().__init__(param)
         self._mean = None
 
@@ -162,7 +161,7 @@ class L1Cost(BaseCost):
         """
         return l1_cost_fixed_location(starts, ends, self._X, self._mean)
 
-    def _check_fixed_param(self, param: float, X: np.ndarray) -> np.ndarray:
+    def _check_fixed_param(self, param: MeanType, X: np.ndarray) -> np.ndarray:
         """Check if the fixed parameter is valid relative to the data.
 
         Parameters

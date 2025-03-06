@@ -8,7 +8,7 @@ twice the negative log likelihood of the Laplace distribution.
 import numpy as np
 
 from skchange.costs import BaseCost
-from skchange.costs.utils import check_mean, check_univariate_scale
+from skchange.costs.utils import MeanType, VarType, check_mean, check_univariate_scale
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_median
 from skchange.utils.validation.enums import EvaluationType
@@ -81,7 +81,11 @@ def laplace_cost_mle_params(
 
 @njit
 def laplace_cost_fixed_params(
-    starts, ends, X, locations: np.ndarray, scales: np.ndarray
+    starts: np.ndarray,
+    ends: np.ndarray,
+    X: np.ndarray,
+    locations: np.ndarray,
+    scales: np.ndarray,
 ) -> np.ndarray:
     """Evaluate the Laplace cost for fixed parameters.
 
@@ -120,13 +124,10 @@ class LaplaceCost(BaseCost):
 
     Parameters
     ----------
-    param : any, optional (default=None)
-        If None, the cost is evaluated for an interval-optimised parameter, often the
-        maximum likelihood estimate. If not None, the cost is evaluated for the
-        specified fixed parameter.
-    known_scale : bool, optional (default=False)
-        Whether the scale parameter of the Laplace distribution is known or not.
-        If it is known, the cost is evaluated for the fixed scale parameter(s).
+    param : tuple[MeanType, Vartype], optional (default=None)
+        Fixed location and scale parameters of the Laplace distribution.
+        If None, the cost is evaluated with location and scale set to
+        the MLE estimates of the parameters over each interval.
     """
 
     evaluation_type = EvaluationType.UNIVARIATE
@@ -134,13 +135,11 @@ class LaplaceCost(BaseCost):
 
     def __init__(
         self,
-        param=None,  # Mandatory first parameter (see docs above).
+        param: tuple[MeanType, VarType] | None = None,
     ):
         super().__init__(param)
         self._locations = None
         self._scales = None
-        # param: (location, scale) of the Laplace distribution.
-        # (mean & median, diversity).
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -208,20 +207,22 @@ class LaplaceCost(BaseCost):
             starts, ends, self._X, self._locations, self._scales
         )
 
-    def _check_fixed_param(self, param: tuple, X: np.ndarray) -> np.ndarray:
+    def _check_fixed_param(
+        self, param: tuple[MeanType, VarType], X: np.ndarray
+    ) -> np.ndarray:
         """Check if the fixed parameter is valid relative to the data.
 
         Parameters
         ----------
-        param : any
-            Fixed parameter for the cost calculation.
+        param : tuple[MeanType, VarType]
+            Fixed location and scale parameters of the Laplace distribution.
         X : np.ndarray
             Input data.
 
         Returns
         -------
-        param: any
-            Fixed parameter for the cost calculation.
+        param: tuple[np.ndarray, np.ndarray]
+            Fixed location and scale parameters for the cost calculation.
         """
         if not isinstance(param, tuple) or len(param) != 2:
             raise ValueError("Fixed Laplace parameters must be (location, scale).")
@@ -242,11 +243,8 @@ class LaplaceCost(BaseCost):
             unknown what the minimum size is. E.g., the scorer may need to be fitted
             first to determine the minimum size.
         """
-        if self.is_fitted:
-            # Need at least 2 samples to estimate the location and scale.
-            return 2
-        else:
-            return None
+        # Need at least 2 samples to estimate the location and scale.
+        return 2
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
