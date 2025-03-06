@@ -31,6 +31,31 @@ def check_mean(mean: MeanType, X: np.ndarray) -> np.ndarray:
     return mean
 
 
+def check_univariate_scale(scale: MeanType, X: np.ndarray) -> np.ndarray:
+    """Check if the fixed mean parameter is valid.
+
+    Parameters
+    ----------
+    scale(s) : np.ndarray or numbers.Number
+        Fixed scale(s) for the cost calculation.
+    X : np.ndarray
+        2d input data.
+
+    Returns
+    -------
+    scale(s) : np.ndarray
+        Fixed scales for cost calculation.
+    """
+    scale = (
+        np.array([scale]) if isinstance(scale, numbers.Number) else np.asarray(scale)
+    )
+    if len(scale) != 1 and len(scale) != X.shape[1]:
+        raise ValueError(f"mean must have length 1 or X.shape[1], got {len(scale)}.")
+    if np.any(scale <= 0.0):
+        raise ValueError("scales must be positive.")
+    return scale
+
+
 def check_var(var: VarType, X: np.ndarray) -> np.ndarray:
     """Check if the fixed variance parameter is valid.
 

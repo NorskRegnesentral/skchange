@@ -2,7 +2,9 @@
 
 from skchange.costs.base import BaseCost
 from skchange.costs.gaussian_cost import GaussianCost
+from skchange.costs.l1_cost import L1Cost
 from skchange.costs.l2_cost import L2Cost
+from skchange.costs.laplace_cost import LaplaceCost
 from skchange.costs.multivariate_gaussian_cost import MultivariateGaussianCost
 from skchange.costs.multivariate_t_cost import MultivariateTCost
 
@@ -13,6 +15,8 @@ COSTS = [
     MultivariateGaussianCost,
     MultivariateTCost,
     GaussianCost,
+    LaplaceCost,
+    L1Cost,
     L2Cost,
 ]
 

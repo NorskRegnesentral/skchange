@@ -1,33 +1,30 @@
-"""L2 cost."""
+"""L1 (absolute difference) cost function.
+
+This module contains the L1Cost class, which is a cost function for
+change point detection based on the L1 (absolute difference) cost.
+"""
 
 import numpy as np
 
-from skchange.costs.base import BaseCost
+from skchange.costs import BaseCost
 from skchange.costs.utils import MeanType, check_mean
 from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_cumsum
+from skchange.utils.numba.stats import col_median
+from skchange.utils.validation.enums import EvaluationType
 
 
 @njit
-def l2_cost_optim(
-    starts: np.ndarray,
-    ends: np.ndarray,
-    sums: np.ndarray,
-    sums2: np.ndarray,
-) -> np.ndarray:
-    """Calculate the L2 cost for an optimal constant mean for each segment.
+def l1_cost_mle_location(starts: np.ndarray, ends: np.ndarray, X: np.ndarray):
+    """Evaluate the L1 cost for a known scale.
 
     Parameters
     ----------
     starts : np.ndarray
-        Start indices of the segments.
+        Start indices of the intervals (inclusive).
     ends : np.ndarray
-        End indices of the segments.
-    sums : np.ndarray
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : np.ndarray
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
+        End indices of the intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
 
     Returns
     -------
@@ -36,36 +33,33 @@ def l2_cost_optim(
         is equal to the number of columns in the input data, where each column
         represents the univariate cost for the corresponding input data column.
     """
-    partial_sums = sums[ends] - sums[starts]
-    partial_sums2 = sums2[ends] - sums2[starts]
-    n = (ends - starts).reshape(-1, 1)
-    costs = partial_sums2 - partial_sums**2 / n
+    n_intervals = len(starts)
+    n_columns = X.shape[1]
+    costs = np.zeros((n_intervals, n_columns))
+    mle_locations = np.zeros(n_columns)
+
+    for i in range(n_intervals):
+        start, end = starts[i], ends[i]
+        mle_locations = col_median(X[start:end], output_array=mle_locations)
+        costs[i, :] = np.sum(np.abs(X[start:end] - mle_locations[None, :]), axis=0)
+
     return costs
 
 
 @njit
-def l2_cost_fixed(
-    starts: np.ndarray,
-    ends: np.ndarray,
-    sums: np.ndarray,
-    sums2: np.ndarray,
-    mean: np.ndarray,
-) -> np.ndarray:
-    """Calculate the L2 cost for a fixed constant mean for each segment.
+def l1_cost_fixed_location(
+    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, locations: np.ndarray
+):
+    """Evaluate the L1 cost for a known scale.
 
     Parameters
     ----------
     starts : np.ndarray
-        Start indices of the segments.
+        Start indices of the intervals (inclusive).
     ends : np.ndarray
-        End indices of the segments.
-    sums : np.ndarray
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : np.ndarray
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
-    mean : np.ndarray
-        Fixed mean for the cost calculation.
+        End indices of the intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
 
     Returns
     -------
@@ -74,49 +68,39 @@ def l2_cost_fixed(
         is equal to the number of columns in the input data, where each column
         represents the univariate cost for the corresponding input data column.
     """
-    partial_sums = sums[ends] - sums[starts]
-    partial_sums2 = sums2[ends] - sums2[starts]
-    n = (ends - starts).reshape(-1, 1)
-    costs = partial_sums2 - 2 * mean * partial_sums + n * mean**2
+    n_intervals = len(starts)
+    n_columns = X.shape[1]
+    costs = np.zeros((n_intervals, n_columns))
+
+    for i in range(n_intervals):
+        start, end = starts[i], ends[i]
+        centered_X = np.abs(X[start:end, :] - locations[None, :])
+        costs[i, :] = np.sum(centered_X, axis=0)
+
     return costs
 
 
-class L2Cost(BaseCost):
-    """L2 cost of a constant mean.
+class L1Cost(BaseCost):
+    """L1 cost function.
 
     Parameters
     ----------
     param : float or array-like, optional (default=None)
         Fixed mean for the cost calculation. If ``None``, the optimal mean is
-        calculated.
+        calculated as the median of each variable, for each interval.
     """
 
     _tags = {
-        "authors": ["Tveten"],
-        "maintainers": "Tveten",
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
     }
 
+    evaluation_type = EvaluationType.UNIVARIATE
     supports_fixed_params = True
 
     def __init__(self, param: MeanType | None = None):
         super().__init__(param)
-
-    def _check_fixed_param(self, param: MeanType, X: np.ndarray) -> np.ndarray:
-        """Check if the fixed mean parameter is valid.
-
-        Parameters
-        ----------
-        param : float or array-like
-            The input parameter to check.
-        X : np.ndarray
-            Input data.
-
-        Returns
-        -------
-        mean : np.ndarray
-            Fixed mean for the cost calculation.
-        """
-        return check_mean(param, X)
+        self._mean = None
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -131,15 +115,13 @@ class L2Cost(BaseCost):
             Ignored. Included for API consistency by convention.
         """
         self._mean = self._check_param(self.param, X)
-
-        self._sums = col_cumsum(X, init_zero=True)
-        self._sums2 = col_cumsum(X**2, init_zero=True)
-
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the cost for the optimal parameter.
 
+        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+
         Parameters
         ----------
         starts : np.ndarray
@@ -150,15 +132,22 @@ class L2Cost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of columns
-            is equal to the number of columns in the input data, where each column
-            represents the univariate cost for the corresponding input data column.
+            A 2D array of costs. One row for each interval. The number of
+            columns is equal to the number of columns in the input data
+            passed to `.fit()`. Each column represents the univariate
+            cost for the corresponding input data column.
         """
-        return l2_cost_optim(starts, ends, self._sums, self._sums2)
+        return l1_cost_mle_location(
+            starts,
+            ends,
+            self._X,
+        )
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
 
+        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+
         Parameters
         ----------
         starts : np.ndarray
@@ -169,11 +158,29 @@ class L2Cost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of columns
-            is equal to the number of columns in the input data, where each column
-            represents the univariate cost for the corresponding input data column.
+            A 2D array of costs. One row for each interval. The number of
+            columns is equal to the number of columns in the input data
+            passed to `.fit()`. Each column represents the univariate
+            cost for the corresponding input data column.
         """
-        return l2_cost_fixed(starts, ends, self._sums, self._sums2, self._mean)
+        return l1_cost_fixed_location(starts, ends, self._X, self._mean)
+
+    def _check_fixed_param(self, param: MeanType, X: np.ndarray) -> np.ndarray:
+        """Check if the fixed parameter is valid relative to the data.
+
+        Parameters
+        ----------
+        param : float
+            Fixed parameter for the cost calculation.
+        X : np.ndarray
+            Input data.
+
+        Returns
+        -------
+        param: np.ndarray
+            Fixed parameter for the cost calculation.
+        """
+        return check_mean(param, X)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -184,7 +191,7 @@ class L2Cost(BaseCost):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for interval evaluators.
+            There are currently no reserved values for costs.
 
         Returns
         -------
@@ -197,5 +204,6 @@ class L2Cost(BaseCost):
         params = [
             {"param": None},
             {"param": 0.0},
+            {"param": np.array(1.0)},
         ]
         return params

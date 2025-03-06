@@ -1088,6 +1088,11 @@ class MultivariateTCost(BaseCost):
     In 2021 29th European Signal Processing Conference (EUSIPCO), 860-864.
     """
 
+    _tags = {
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
+    }
+
     supports_fixed_params = True
     evaluation_type = EvaluationType.MULTIVARIATE
 
