@@ -63,6 +63,12 @@ class MyCost(BaseCost):
     and so on
     """
 
+    # todo: add authors and maintaners Github user name
+    _tags = {
+        "authors": ["Tveten", "johannvk"],
+        "maintainers": "Tveten",
+    }
+
     # Does the cost evaluate univariate or multivariate data?
     # If the evaluation_type is EvaluationType.UNIVARIATE:
     #   * the cost is vectorized over columns in `X` input to `fit`.
