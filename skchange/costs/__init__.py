@@ -19,7 +19,11 @@ COSTS = [
     LaplaceCost,
     L1Cost,
     L2Cost,
+]
+INTEGER_COSTS = [
     PoissonCost,
 ]
 
-__all__ = BASE_COSTS + COSTS
+ALL_COSTS = COSTS + INTEGER_COSTS
+
+__all__ = BASE_COSTS + COSTS + INTEGER_COSTS

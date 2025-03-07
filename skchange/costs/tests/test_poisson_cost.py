@@ -12,7 +12,6 @@ from skchange.costs.poisson_cost import (
 def test_poisson_log_likelihood():
     """Test that fast_poisson_log_likelihood agrees with scipy implementation."""
     # Generate random Poisson samples with known rate
-    np.random.seed(42)
     rate = 3.5
     poisson_sample = stats.poisson.rvs(rate, size=1000)
 
@@ -27,7 +26,7 @@ def test_poisson_log_likelihood():
 
 
 def test_poisson_mle_log_likelihood():
-    """Test that fast_poisson_mle_rate_log_likelihood agrees with scipy implementation."""
+    """Test that log likelihood evaluation agrees with scipy implementation."""
     # Generate random Poisson samples
     np.random.seed(42)
     true_rate = 5.0
