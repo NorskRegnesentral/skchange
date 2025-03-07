@@ -7,11 +7,11 @@ from skchange.anomaly_scores import (
     to_local_anomaly_score,
     to_saving,
 )
-from skchange.costs import COSTS, BaseCost
+from skchange.costs import ALL_COSTS, COSTS, BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
 
-@pytest.mark.parametrize("cost_class", COSTS)
+@pytest.mark.parametrize("cost_class", ALL_COSTS)
 def test_saving_init(cost_class):
     param = find_fixed_param_combination(cost_class)
     baseline_cost = cost_class().set_params(**param)
@@ -22,7 +22,7 @@ def test_saving_init(cost_class):
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
-def test_saving_min_size(cost_class):
+def test_saving_min_size(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
     cost = cost_class().set_params(**param)
     saving = Saving(baseline_cost=cost)
@@ -35,7 +35,7 @@ def test_saving_min_size(cost_class):
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
-def test_saving_fit(cost_class):
+def test_saving_fit(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
     cost = cost_class().set_params(**param)
 
@@ -47,7 +47,7 @@ def test_saving_fit(cost_class):
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
-def test_saving_evaluate(cost_class):
+def test_saving_evaluate(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
     cost = cost_class().set_params(**param)
 
@@ -59,8 +59,8 @@ def test_saving_evaluate(cost_class):
     assert savings.shape == (3, 1)
 
 
-@pytest.mark.parametrize("cost_class", COSTS)
-def test_to_saving_raises_with_no_param_set(cost_class):
+@pytest.mark.parametrize("cost_class", ALL_COSTS)
+def test_to_saving_raises_with_no_param_set(cost_class: type[BaseCost]):
     """Test that to_saving raises ValueError with BaseCost that has no param set."""
     with pytest.raises(
         ValueError, match="The baseline cost must have fixed parameters"
@@ -84,8 +84,8 @@ def test_to_saving_error():
         to_saving("invalid_evaluator")
 
 
-@pytest.mark.parametrize("cost_class", COSTS)
-def test_to_local_anomaly_score_with_base_cost(cost_class):
+@pytest.mark.parametrize("cost_class", ALL_COSTS)
+def test_to_local_anomaly_score_with_base_cost(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
     cost = cost_class().set_params(**param)
     local_anomaly_score = to_local_anomaly_score(cost)
@@ -93,8 +93,8 @@ def test_to_local_anomaly_score_with_base_cost(cost_class):
     assert local_anomaly_score.cost == cost
 
 
-@pytest.mark.parametrize("cost_class", COSTS)
-def test_to_local_anomaly_score_with_local_anomaly_score(cost_class):
+@pytest.mark.parametrize("cost_class", ALL_COSTS)
+def test_to_local_anomaly_score_with_local_anomaly_score(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
     cost = cost_class().set_params(**param)
     local_anomaly_score_instance = LocalAnomalyScore(cost=cost)
@@ -103,7 +103,7 @@ def test_to_local_anomaly_score_with_local_anomaly_score(cost_class):
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
-def test_local_anomaly_score_evaluate(cost_class):
+def test_local_anomaly_score_evaluate(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
     cost = cost_class().set_params(**param)
     local_anomaly_score = LocalAnomalyScore(cost=cost)

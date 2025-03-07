@@ -31,8 +31,8 @@ def check_mean(mean: MeanType, X: np.ndarray) -> np.ndarray:
     return mean
 
 
-def check_univariate_scale(scale: MeanType, X: np.ndarray) -> np.ndarray:
-    """Check if the fixed mean parameter is valid.
+def check_non_negative_parameter(scale: MeanType, X: np.ndarray) -> np.ndarray:
+    """Check if the fixed scale parameter is valid.
 
     Parameters
     ----------

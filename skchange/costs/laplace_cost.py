@@ -8,7 +8,12 @@ twice the negative log likelihood of the Laplace distribution.
 import numpy as np
 
 from skchange.costs import BaseCost
-from skchange.costs.utils import MeanType, VarType, check_mean, check_univariate_scale
+from skchange.costs.utils import (
+    MeanType,
+    VarType,
+    check_mean,
+    check_non_negative_parameter,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_median
 from skchange.utils.validation.enums import EvaluationType
@@ -232,7 +237,7 @@ class LaplaceCost(BaseCost):
         if not isinstance(param, tuple) or len(param) != 2:
             raise ValueError("Fixed Laplace parameters must be (location, scale).")
         means = check_mean(param[0], X)
-        scales = check_univariate_scale(param[1], X)
+        scales = check_non_negative_parameter(param[1], X)
         return means, scales
 
     @property
