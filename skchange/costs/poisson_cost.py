@@ -48,7 +48,7 @@ import scipy.stats as stats
 
 stats.poisson.ppf(0.01, 1)
 
-poisson_sample = stats.poisson.rvs(5, size=100)
+poisson_sample = stats.poisson.rvs(5, size=1000)
 mle_rate = np.mean(poisson_sample)
 
 # %%
@@ -199,13 +199,11 @@ sample_hist_2_and_above = construct_sample_hist_2_and_above(poisson_sample)
 sample_counts_v2, sample_hist_v2 = construct_sample_hist_2_and_above_v2(poisson_sample)
 sample_counts_v3 = construct_sample_hist_2_and_above_v3(poisson_sample)
 np.bincount(poisson_sample)
-
-# np.hist()
 # %%
 stats.poisson.logpmf(poisson_sample, mle_rate).sum()
 poisson_mle_rate_log_likelihood(mle_rate, poisson_sample)
-fast_poisson_log_likelihood(mle_rate, poisson_sample)
 poisson_log_likelihood(mle_rate, poisson_sample)
+fast_poisson_log_likelihood(mle_rate, poisson_sample)
 fast_poisson_mle_rate_log_likelihood(mle_rate, poisson_sample)
 
 # %%
