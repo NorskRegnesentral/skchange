@@ -40,7 +40,13 @@ extensions = [
     "sphinx_design",
     "sphinx_issues",
     "sphinx.ext.doctest",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "nbsphinx",
 ]
+
+nbsphinx_allow_errors = True  # Continue through Jupyter errors
 
 # Recommended by sphinx_design when using the MyST Parser
 myst_enable_extensions = ["colon_fence"]
