@@ -14,7 +14,7 @@ from skchange.utils.validation.enums import EvaluationType
 
 
 @njit
-def fast_poisson_log_likelihood(rate, samples):
+def poisson_log_likelihood(rate, samples):
     """Fast Poisson log-likelihood for fixed rate parameter."""
     # Assume sample: np.ndarray[int]
     bin_counts = np.bincount(samples)
@@ -36,7 +36,7 @@ def fast_poisson_log_likelihood(rate, samples):
 
 
 @njit
-def fast_poisson_mle_rate_log_likelihood(mle_rate, samples: np.ndarray[np.integer]):
+def poisson_mle_rate_log_likelihood(mle_rate, samples: np.ndarray[np.integer]):
     """Fast Poisson log-likelihood for MLE rate parameter."""
     # Assume sample: np.ndarray[int]
     bin_counts = np.bincount(samples)
@@ -87,7 +87,7 @@ def poisson_cost_mle_params(
             # MLE for Poisson rate is the sample mean
             mle_rate = np.mean(samples)
             if mle_rate > 0:
-                costs[i, col] = -2.0 * fast_poisson_mle_rate_log_likelihood(
+                costs[i, col] = -2.0 * poisson_mle_rate_log_likelihood(
                     mle_rate, samples
                 )
             else:
@@ -130,7 +130,7 @@ def poisson_cost_fixed_params(
         start, end = starts[i], ends[i]
         for col in range(n_columns):
             samples = X[start:end, col]
-            costs[i, col] = -2.0 * fast_poisson_log_likelihood(rates[col], samples)
+            costs[i, col] = -2.0 * poisson_log_likelihood(rates[col], samples)
 
     return costs
 
