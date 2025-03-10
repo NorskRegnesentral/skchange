@@ -176,12 +176,12 @@ def test_pelt_with_poisson_cost():
     # Check if detected changepoint is close to true changepoint
     detected_cp = result.iloc[0, 0] if len(result) == 1 else None
 
-    # Allow a small margin of error (e.g., ±10 samples)
-    margin = 10
+    # Allow a small margin of error (e.g., ±1 sample(s))
+    margin = 1
     assert detected_cp is not None, "No changepoint detected"
-    assert abs(detected_cp - true_cp) <= margin, (
-        f"Detected CP at {detected_cp}, expected near {true_cp}"
-    )
+    assert (
+        abs(detected_cp - true_cp) <= margin
+    ), f"Detected CP at {detected_cp}, expected near {true_cp}"
 
     # Test with multiple changepoints
     rate_third = 1.0
@@ -203,9 +203,9 @@ def test_pelt_with_poisson_cost():
 
     detected_cps = sorted(multi_result.values)
     for i, (detected, true) in enumerate(zip(detected_cps, true_cps)):
-        assert abs(detected[0] - true) <= margin, (
-            f"CP {i + 1}: detected at {detected}, expected near {true}"
-        )
+        assert (
+            abs(detected[0] - true) <= margin
+        ), f"CP {i + 1}: detected at {detected}, expected near {true}"
 
 
 def test_poisson_cost_with_all_zeroes():
