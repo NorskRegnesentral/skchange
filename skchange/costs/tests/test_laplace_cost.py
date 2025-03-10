@@ -73,6 +73,5 @@ def test_check_fixed_param_wrong_dimensions():
     cost = LaplaceCost()
     param = (np.array([0.0, 0.0]), np.array([1.0, 1.0]))  # Wrong dimensions
 
-    with pytest.raises(ValueError,
-                       match="mean must have length 1 or X.shape\\[1\\]"):
+    with pytest.raises(ValueError, match="mean must have length 1 or X.shape\\[1\\]"):
         cost._check_fixed_param(param, X)
