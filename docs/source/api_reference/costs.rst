@@ -11,7 +11,10 @@ Costs
 
     BaseCost
     L2Cost
+    L1Cost
     GaussianCost
+    PoissonCost
+    LaplaceCost
     MultivariateGaussianCost
     MultivariateTCost
 
