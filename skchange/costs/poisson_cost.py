@@ -14,18 +14,20 @@ from skchange.utils.validation.enums import EvaluationType
 
 
 @njit
-def poisson_log_likelihood(rate, samples):
+def poisson_log_likelihood(rate: float, samples: np.ndarray[np.integer]) -> float:
     """Fast Poisson log-likelihood for fixed rate parameter."""
-    # Assume sample: np.ndarray[int]
+    # Count the number of each sample value [0, 1, 2, ..., max_sample]:
     bin_counts = np.bincount(samples)
+    # Reverse the counts and calculate the cumulative sum:
     sample_counts = np.flip(np.cumsum(np.flip(bin_counts)))
-    max_sample_plus_one = len(sample_counts)
+    max_sample = len(sample_counts) - 1
 
-    if max_sample_plus_one < 2:
+    if max_sample < 2:
+        # Only observed '0'- or '1'-valued samples.
         sum_log_factorial_samples = 0
     else:
         sum_log_factorial_samples = np.sum(
-            np.log(np.arange(2, max_sample_plus_one)) * sample_counts[2:]
+            np.log(np.arange(2, max_sample + 1)) * sample_counts[2:]
         )
 
     return (
@@ -41,13 +43,13 @@ def poisson_mle_rate_log_likelihood(mle_rate, samples: np.ndarray[np.integer]):
     # Assume sample: np.ndarray[int]
     bin_counts = np.bincount(samples)
     sample_counts = np.flip(np.cumsum(np.flip(bin_counts)))
-    max_sample_plus_one = len(sample_counts)
+    max_sample = len(sample_counts) - 1
 
-    if max_sample_plus_one < 2:
+    if max_sample < 2:
         sum_log_factorial_samples = 0
     else:
         sum_log_factorial_samples = np.sum(
-            np.log(np.arange(2, max_sample_plus_one)) * sample_counts[2:]
+            np.log(np.arange(2, max_sample + 1)) * sample_counts[2:]
         )
 
     return (
@@ -242,15 +244,7 @@ class PoissonCost(BaseCost):
         param: np.ndarray
             Fixed rate parameters for the cost calculation, one per column.
         """
-        if param is None:
-            return None
-
         rates = check_non_negative_parameter(param, X)
-
-        # Rates must be positive
-        if np.any(rates <= 0):
-            raise ValueError("Poisson rate parameters must be positive.")
-
         return rates
 
     @property
