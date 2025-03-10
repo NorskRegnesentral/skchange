@@ -55,7 +55,7 @@ def test_check_fixed_param_invalid_scale():
     cost = LaplaceCost()
     param = (0.0, -1.0)  # Negative scale
 
-    with pytest.raises(ValueError, match="scales must be positive."):
+    with pytest.raises(ValueError, match="Parameter must be positive."):
         cost._check_fixed_param(param, X)
 
 
@@ -64,7 +64,7 @@ def test_check_fixed_param_invalid_scale_vector():
     cost = LaplaceCost()
     param = (np.array([0.0, 0.0, 0.0]), np.array([1.0, 0.0, 3.0]))  # Zero scale
 
-    with pytest.raises(ValueError, match="scales must be positive."):
+    with pytest.raises(ValueError, match="Parameter must be positive."):
         cost._check_fixed_param(param, X)
 
 
