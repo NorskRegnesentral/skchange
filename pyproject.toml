@@ -78,6 +78,8 @@ docs = [
   "sphinx-gallery<0.18.0",
   "sphinx-issues<5.0.0",
   "tabulate",
+  "nbsphinx",
+  "pypandoc",
 ]
 
 [build-system]
