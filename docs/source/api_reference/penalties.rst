@@ -52,8 +52,8 @@ Only relevant for multivariate data and detectors supporting variable identifica
     :toctree: auto_generated/
     :template: class.rst
 
-    NonLinearPenalty
-    NonLinearChiSquarePenalty
+    NonlinearPenalty
+    NonlinearChiSquarePenalty
 
 Composition
 -----------
