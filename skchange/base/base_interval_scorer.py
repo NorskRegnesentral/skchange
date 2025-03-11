@@ -15,6 +15,7 @@ __author__ = ["Tveten", "johannvk", "fkiraly"]
 __all__ = ["BaseIntervalScorer"]
 
 import numpy as np
+import pandas as pd
 from numpy.typing import ArrayLike
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
@@ -85,6 +86,10 @@ class BaseIntervalScorer(BaseEstimator):
         Updates the fitted model and sets attributes ending in ``"_"``.
         """
         X = check_series(X, allow_index_names=True)
+        if isinstance(X, pd.DataFrame):
+            self._X_columns = X.columns
+        else:
+            self._X_columns = None
         self._X = as_2d_array(X)
 
         self._fit(X=self._X, y=y)

@@ -6,9 +6,12 @@ residuals from fitting a linear regression model within each segment.
 """
 
 import numpy as np
+import pandas as pd
+from sktime.utils.validation.series import check_series
 
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
+from skchange.utils.validation.data import as_2d_array
 from skchange.utils.validation.enums import EvaluationType
 
 
@@ -45,8 +48,8 @@ def linear_regression_cost(X: np.ndarray, y: np.ndarray) -> float:
 def linear_regression_cost_fixed_params(
     starts: np.ndarray,
     ends: np.ndarray,
-    X: np.ndarray,
-    response_col: int,
+    response_data: np.ndarray,
+    covariate_data: np.ndarray,
     coeffs: np.ndarray,
 ) -> np.ndarray:
     """Evaluate the linear regression cost for fixed parameters.
@@ -74,30 +77,24 @@ def linear_regression_cost_fixed_params(
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        segment = X[start:end]
-
-        y = segment[:, response_col : response_col + 1]  # Keep as 2D array
-
-        # Create feature matrix without the response column
-        if response_col > 0:
-            X_features = np.hstack(
-                (segment[:, :response_col], segment[:, response_col + 1 :])
-            )
-        else:
-            X_features = segment[:, 1:]
+        X_features = covariate_data[start:end]
+        y_response = response_data[start:end, None]
 
         # Compute predictions using fixed parameters:
         y_pred = X_features @ coeffs
 
         # Calculate residual sum of squares:
-        costs[i, 0] = np.sum(np.square(y - y_pred))
+        costs[i, 0] = np.sum(np.square(y_response - y_pred))
 
     return costs
 
 
 @njit
 def linear_regression_cost_intervals(
-    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, response_col: int
+    starts: np.ndarray,
+    ends: np.ndarray,
+    response_data: np.ndarray,
+    covariate_data: np.ndarray,
 ) -> np.ndarray:
     """Evaluate the linear regression cost for each interval.
 
@@ -122,25 +119,56 @@ def linear_regression_cost_intervals(
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        segment = X[start:end]
-
-        y = segment[:, response_col : response_col + 1]  # Keep as 2D array
-
-        # Create feature matrix without the response column
-        if response_col > 0:
-            X_features = np.hstack(
-                (segment[:, :response_col], segment[:, response_col + 1 :])
-            )
-        else:
-            X_features = segment[:, 1:]
-
-        # Add a column of ones for the intercept
-        X_features = np.hstack((np.ones((X_features.shape[0], 1)), X_features))
-
-        # Compute cost for this interval
-        costs[i, 0] = linear_regression_cost(X_features, y)
+        X_features = covariate_data[start:end]
+        y_response = response_data[start:end]
+        costs[i, 0] = linear_regression_cost(X_features, y_response)
 
     return costs
+
+
+def check_data_column(
+    data_column: int | str,
+    column_role: str,
+    X: np.ndarray,
+    X_columns: pd.Index | None,
+) -> int:
+    """Check that a data column name or index is valid.
+
+    Parameters
+    ----------
+    data_column : int or str
+        Column index or name to check.
+    column_role : str
+        Role of the column (e.g., "Response").
+    X : np.ndarray
+        Data array.
+    X_columns : pd.Index or None
+        Column names of the data array.
+
+    Returns
+    -------
+    data_column : int
+        Column index.
+    """
+    if isinstance(data_column, int):
+        if not 0 <= data_column < X.shape[1]:
+            raise ValueError(
+                f"{column_role} column index ({data_column}) must"
+                f" be between 0 and {X.shape[1] - 1}."
+            )
+    elif isinstance(data_column, str) and X_columns is not None:
+        if data_column not in X_columns:
+            raise ValueError(
+                f"{column_role} column ({data_column}) not found "
+                f"among the fit data columns: {X_columns}."
+            )
+        data_column = X_columns.get_loc(data_column)
+    else:
+        raise ValueError(
+            f"{column_role} column must be an integer in the range "
+            f"[0, {X.shape[1]}), or a valid column name. Got {data_column}."
+        )
+    return data_column
 
 
 class LinearRegressionCost(BaseCost):
@@ -172,16 +200,22 @@ class LinearRegressionCost(BaseCost):
 
     def __init__(
         self,
+        response_col: str | int,
+        covariate_cols: list[str | int] = None,
         param=None,
-        response_col=0,
     ):
         super().__init__(param)
 
-        if not isinstance(response_col, int):
-            raise ValueError("response_col must be an integer")
-
         self.response_col = response_col
-        self._coeffs = None
+        self.covariate_cols = covariate_cols
+
+        self._response_col_idx: int | None = None
+        self._covariate_col_indices: list[int] | None = None
+
+        self._response_data: np.ndarray | None = None
+        self._covariate_data: np.ndarray | None = None
+
+        self._coeffs: np.ndarray | None = None
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -202,18 +236,26 @@ class LinearRegressionCost(BaseCost):
                 "(1 for response and at least 1 for predictors)."
             )
 
-        # Check that response_col is valid
-        if not 0 <= self.response_col < X.shape[1]:
-            raise ValueError(
-                f"response_col ({self.response_col}) must be"
-                f" between 0 and {X.shape[1] - 1}."
-            )
-
         self._param = self._check_param(self.param, X)
         if self.param is not None:
             self._coeffs = self._param
 
-        return self
+        # Check that response_col is valid:
+        self._response_col_idx = check_data_column(
+            self.response_col, "Response", X, self._X_columns
+        )
+        if self.covariate_cols is not None:
+            self._covariate_col_indices = [
+                check_data_column(col, "Covariate", X, self._X_columns)
+                for col in self.covariate_cols
+            ]
+        else:
+            # Use all columns except the response column as covariates:
+            self._covariate_col_indices = list(range(X.shape[1]))
+            self._covariate_col_indices.remove(self._response_col_idx)
+
+        self._response_data = X[:, self.response_col]
+        self._covariate_data = X[:, self._covariate_col_indices]
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the linear regression cost for each interval.
@@ -231,7 +273,7 @@ class LinearRegressionCost(BaseCost):
             A 2D array of costs with one row for each interval and one column.
         """
         return linear_regression_cost_intervals(
-            starts, ends, self._X, self.response_col
+            starts, ends, self._response_data, self._covariate_data
         )
 
     def _evaluate_fixed_param(self, starts, ends) -> np.ndarray:
@@ -252,7 +294,7 @@ class LinearRegressionCost(BaseCost):
             A 2D array of costs with one row for each interval and one column.
         """
         return linear_regression_cost_fixed_params(
-            starts, ends, self._X, self.response_col, self._coeffs
+            starts, ends, self._response_data, self._covariate_data, self._coeffs
         )
 
     def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
@@ -302,10 +344,9 @@ class LinearRegressionCost(BaseCost):
         if self.param is not None:
             return 1
 
-        # For parameter estimation, need at least as many samples as features:
         if self.is_fitted:
-            # Need at least n_features samples (n_features = X.shape[1] - 1)
-            return self._X.shape[1] - 1
+            # Need at least as many samples as covariates:
+            return len(self._covariate_col_indices)
         else:
             return None
 
@@ -322,8 +363,13 @@ class LinearRegressionCost(BaseCost):
         int
             Number of parameters in the cost function.
         """
-        # Number of parameters = all features except response variable
-        return p - 1
+        # Number of parameters = all features except response variable.
+        if self.is_fitted:
+            # Could use fewer covariates than the total number of columns:
+            return len(self._covariate_col_indices)
+        else:
+            # Default to all columns except the response variable:
+            return p - 1
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

@@ -11,16 +11,16 @@ from skchange.costs.linear_regression_cost import LinearRegressionCost
 def test_linear_regression_cost_init():
     """Test initialization of LinearRegressionCost."""
     # Default parameters
-    cost = LinearRegressionCost()
+    cost = LinearRegressionCost(response_col=0)
     assert cost.response_col == 0
 
     # Custom response_col
     cost = LinearRegressionCost(response_col=2)
     assert cost.response_col == 2
 
-    # Invalid response_col type
+    # Invalid response_col type:
     with pytest.raises(ValueError):
-        LinearRegressionCost(response_col="invalid")
+        LinearRegressionCost(response_col="invalid").fit(np.random.rand(100, 3))
 
 
 def test_linear_regression_cost_fit():
@@ -36,7 +36,7 @@ def test_linear_regression_cost_fit():
     # Invalid number of columns
     X_single_col = np.random.rand(100, 1)
     with pytest.raises(ValueError):
-        cost = LinearRegressionCost()
+        cost = LinearRegressionCost(response_col=0)
         cost.fit(X_single_col)
 
     # Invalid response_col
@@ -65,11 +65,11 @@ def test_linear_regression_cost_evaluate():
     costs = cost.evaluate(cuts=cuts)
 
     # Compare with sklearn's LinearRegression
-    lr = LinearRegression()
+    lr = LinearRegression(fit_intercept=False)
     lr.fit(X, y)
     expected_cost = np.sum((lr.predict(X) - y) ** 2)
 
-    # Allow for small numerical differences
+    # Allow for small numerical differences:
     assert np.isclose(costs[0, 0], expected_cost, rtol=1e-10)
 
 
@@ -79,7 +79,7 @@ def test_linear_regression_cost_evaluate_multiple_intervals():
     n_samples = 200
     X = np.random.rand(n_samples, 3)
 
-    # Fit the cost
+    # Fit the cost:
     cost = LinearRegressionCost(response_col=0)
     cost.fit(X)
 
@@ -112,7 +112,7 @@ def test_min_size_property():
 
 def test_get_param_size():
     """Test get_param_size method."""
-    cost = LinearRegressionCost()
+    cost = LinearRegressionCost(response_col="log_house_price")
     # Number of parameters is equal to number of variables
     assert cost.get_param_size(5) == 4
 
@@ -221,3 +221,4 @@ def test_min_size_with_fixed_params():
     cost_fixed = LinearRegressionCost(param=fixed_params, response_col=1)
     cost_fixed.fit(X)
     assert cost_fixed.min_size == 1  # Only need 1 sample with fixed parameters
+
