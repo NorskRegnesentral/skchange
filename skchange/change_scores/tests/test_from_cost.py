@@ -18,8 +18,7 @@ def test_change_score_with_costs(cost_class):
 
 @pytest.mark.parametrize("evaluator", ALL_COSTS)
 def test_to_change_score(evaluator: type[BaseCost]):
-    init_params = evaluator.get_test_params()[0]
-    cost_instance = evaluator(**init_params)
+    cost_instance = evaluator.create_test_instance()
     change_score = to_change_score(cost_instance)
     assert isinstance(change_score, ChangeScore)
 

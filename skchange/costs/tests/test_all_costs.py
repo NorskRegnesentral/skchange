@@ -35,15 +35,13 @@ def test_find_fixed_param_combination_value_error():
 
 @pytest.mark.parametrize("CostClass", ALL_COSTS)
 def test_l2_cost_init(CostClass: type[BaseCost]):
-    init_params = CostClass.get_test_params()[0]
-    cost = CostClass(**init_params)
+    cost = CostClass.create_test_instance()
     assert cost.param is None
 
 
 @pytest.mark.parametrize("CostClass", ALL_COSTS)
 def test_expected_cut_entries(CostClass: type[BaseCost]):
-    init_params = CostClass.get_test_params()[0]
-    cost = CostClass(**init_params)
+    cost = CostClass.create_test_instance()
     assert cost.expected_cut_entries == 2
 
 

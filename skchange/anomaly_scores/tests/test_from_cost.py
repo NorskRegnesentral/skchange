@@ -65,8 +65,8 @@ def test_to_saving_raises_with_no_param_set(cost_class: type[BaseCost]):
     with pytest.raises(
         ValueError, match="The baseline cost must have fixed parameters"
     ):
-        init_params = cost_class.get_test_params()[0]
-        cost = cost_class(**init_params).set_params(param=None)
+        cost = cost_class.create_test_instance()
+        cost = cost.set_params(param=None)
         to_saving(cost)
 
 
