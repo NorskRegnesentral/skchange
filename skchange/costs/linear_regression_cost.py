@@ -7,11 +7,9 @@ residuals from fitting a linear regression model within each segment.
 
 import numpy as np
 import pandas as pd
-from sktime.utils.validation.series import check_series
 
 from skchange.costs import BaseCost
 from skchange.utils.numba import njit
-from skchange.utils.validation.data import as_2d_array
 from skchange.utils.validation.enums import EvaluationType
 
 
@@ -181,13 +179,16 @@ class LinearRegressionCost(BaseCost):
 
     Parameters
     ----------
+    response_col : int, optional (default=0)
+        Index of column in X to use as the response variable.
+    covariate_cols : list of `int` or `str`, optional (default=None)
+        Indices of columns in X to use as predictors. If None, all columns
+        except the response column are used as predictors.
     param : array-like, optional (default=None)
         Fixed regression coefficients. If None, coefficients are estimated
         for each interval using ordinary least squares. If provided, must be an array
-        where the first element is the intercept term, followed by coefficients
-        for each predictor variable.
-    response_col : int, optional (default=0)
-        Index of column in X to use as the response variable.
+        with the same length as `covariate_cols`, if provided, or the number of
+        columns in X minus one if `covariate_cols` is None.
     """
 
     _tags = {
@@ -254,7 +255,7 @@ class LinearRegressionCost(BaseCost):
             self._covariate_col_indices = list(range(X.shape[1]))
             self._covariate_col_indices.remove(self._response_col_idx)
 
-        self._response_data = X[:, self.response_col]
+        self._response_data = X[:, self._response_col_idx]
         self._covariate_data = X[:, self._covariate_col_indices]
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:

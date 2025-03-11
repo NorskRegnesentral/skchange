@@ -1,10 +1,12 @@
 """Tests for LinearRegressionCost class."""
 
 import numpy as np
+import pandas as pd
 import pytest
 from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
 
+from skchange.change_detectors import PELT
 from skchange.costs.linear_regression_cost import LinearRegressionCost
 
 
@@ -222,3 +224,120 @@ def test_min_size_with_fixed_params():
     cost_fixed.fit(X)
     assert cost_fixed.min_size == 1  # Only need 1 sample with fixed parameters
 
+
+def test_linear_regression_cost_with_pelt():
+    """Test LinearRegressionCost on a structural change problem."""
+
+    # Create a dataset with a structural change in the regression coefficients
+    n_samples = 200
+    np.random.seed(42)
+
+    # Create predictors
+    x1 = np.random.normal(0, 1, n_samples)
+    x2 = np.random.normal(0, 1, n_samples)
+
+    # Create response with a change in coefficients at index 100
+    y = np.zeros(n_samples)
+
+    # First segment: y = 1*x1 + 0.5*x2 + noise
+    y[:100] = 1.0 * x1[:100] + 0.5 * x2[:100] + np.random.normal(0, 0.5, 100)
+
+    # Second segment: y = -1*x1 + 2*x2 + noise
+    y[100:] = -1.0 * x1[100:] + 2.0 * x2[100:] + np.random.normal(0, 0.5, 100)
+
+    # Create pandas DataFrame with named columns
+    df = pd.DataFrame(
+        {
+            "response": y,
+            "intercept": np.ones_like(y),
+            "predictor1": x1,
+            "predictor2": x2,
+        }
+    )
+
+    # Create the cost function with the response column name
+    cost = LinearRegressionCost(
+        response_col="response",
+        covariate_cols=["intercept", "predictor1", "predictor2"],
+    )
+
+    # Create and fit PELT change detector with the linear regression cost:
+    pelt = PELT(cost=cost, min_segment_length=10)
+    result = pelt.fit_predict(df)
+
+    # Assert that the detected changepoint is close to the actual changepoint (100)
+    assert len(result) == 1, "Expected exactly one changepoint"
+    detected_cp = result.iloc[0].item()
+    assert abs(detected_cp - 100) <= 1, (
+        f"Detected changepoint {detected_cp} not close to actual (100)"
+    )
+
+    # Additional test: verify the coefficients differ between segments
+    segment1 = df.iloc[:detected_cp]
+    segment2 = df.iloc[detected_cp:]
+
+    lr1 = LinearRegression(fit_intercept=False).fit(
+        segment1[["intercept", "predictor1", "predictor2"]], segment1["response"]
+    )
+    lr2 = LinearRegression(fit_intercept=False).fit(
+        segment2[["intercept", "predictor1", "predictor2"]], segment2["response"]
+    )
+
+    # Verify the coefficients are indeed different between segments
+    assert not np.allclose(lr1.coef_, lr2.coef_, rtol=0.3), (
+        "Coefficients should be different between segments"
+    )
+
+
+def test_check_data_column():
+    """Test the check_data_column function through LinearRegressionCost."""
+    # Create test data
+    X = np.random.rand(100, 4)
+    df = pd.DataFrame(X, columns=["col1", "col2", "col3", "col4"])
+
+    # Test valid integer response column
+    cost = LinearRegressionCost(response_col=2)
+    cost.fit(X)
+    assert cost._response_col_idx == 2
+
+    # Test valid string response column with DataFrame
+    cost = LinearRegressionCost(response_col="col3")
+    cost.fit(df)
+    assert cost._response_col_idx == 2
+
+    # Test valid specific covariate columns (integers)
+    cost = LinearRegressionCost(response_col=0, covariate_cols=[1, 3])
+    cost.fit(X)
+    assert cost._response_col_idx == 0
+    assert cost._covariate_col_indices == [1, 3]
+
+    # Test valid specific covariate columns (strings) with DataFrame
+    cost = LinearRegressionCost(response_col="col1", covariate_cols=["col2", "col4"])
+    cost.fit(df)
+    assert cost._response_col_idx == 0
+    assert cost._covariate_col_indices == [1, 3]
+
+    # Test error cases - out of bounds index
+    with pytest.raises(ValueError, match="Response column index.*must be between"):
+        cost = LinearRegressionCost(response_col=10)  # Out of bounds
+        cost.fit(X)
+
+    # Test error cases - invalid column name
+    with pytest.raises(ValueError, match="Response column.*not found among"):
+        cost = LinearRegressionCost(response_col="invalid_column")
+        cost.fit(df)
+
+    # Test error cases - string column name with numpy array (no column names)
+    with pytest.raises(ValueError, match="Response column must be an integer"):
+        cost = LinearRegressionCost(response_col="col1")
+        cost.fit(X)  # X is numpy array, not DataFrame
+
+    # Test error cases - invalid covariate column
+    with pytest.raises(ValueError, match="Covariate column.*not found among"):
+        cost = LinearRegressionCost(response_col=0, covariate_cols=[1, "invalid"])
+        cost.fit(df)
+
+    # Test that all columns except response are used as covariates by default
+    cost = LinearRegressionCost(response_col=2)
+    cost.fit(X)
+    assert cost._covariate_col_indices == [0, 1, 3]
