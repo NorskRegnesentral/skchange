@@ -21,8 +21,10 @@ def test_fit():
 
 def test_evaluate():
     evaluator = ConcreteIntervalEvaluator()
+    assert evaluator.output_dim is None
     X = np.array([1, 2, 3, 4, 5])
     evaluator.fit(X)
+    assert evaluator.output_dim == 1
     cuts = np.array([[0, 2], [2, 5]])
     values = evaluator.evaluate(cuts)
     expected_values = np.array([3, 12])
