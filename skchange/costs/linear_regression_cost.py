@@ -31,16 +31,15 @@ def linear_regression_cost(X: np.ndarray, y: np.ndarray) -> float:
     """
     # Returns: (coeffs, residuals, X_rank, X_singular_values)
     coeffs, residuals, X_rank, _ = np.linalg.lstsq(X, y)
+
     # If rank(X) < X.shape[1], or X.shape[0] <= X.shape[1],
     # "residuals" is an empty array.
-    if residuals.size == 0 and X_rank < X.shape[1]:
-        # Underdetermined system, compute residuals manually.
+    if X_rank < X.shape[1]:
+        # Underdetermined system, need to compute residuals manually.
         manual_residuals = y - X @ coeffs
         return np.sum(np.square(manual_residuals))
     else:
-        # Full rank or overdetermined system, use residuals from
-        # lstsq. If y is 1-dimensional, this is a (1,) shape
-        # array. Otherwise the shape is (y.shape[1],).
+        # Full rank or overdetermined system, use lstsq residuals.
         return np.sum(residuals)
 
 

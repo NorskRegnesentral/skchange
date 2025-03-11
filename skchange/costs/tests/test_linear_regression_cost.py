@@ -393,7 +393,10 @@ def test_linear_regression_cost_underdetermined_system():
     y_pred = lr_low_rank.predict(X_features)
     scikit_residual = np.square(y - y_pred).sum()
 
-    (np_coeffs, residuals, X_rank, X_singular_values) = np.linalg.lstsq(X_features, y)
+    (np_coeffs, empty_residuals, X_rank, _) = np.linalg.lstsq(X_features, y)
+    assert X_rank < n_features, "Matrix should be rank-deficient"
+    assert empty_residuals.size == 0, "Residuals should be empty"
+
     y_np_lstsq_pred = np.dot(X_features, np_coeffs.reshape(-1, 1))
     residuals_np_lstsq = np.square(y.reshape(-1, 1) - y_np_lstsq_pred).sum()
 
@@ -409,8 +412,7 @@ def test_linear_regression_cost_underdetermined_system():
     ends = np.array([n_samples])
     costs = cost.evaluate(cuts=np.column_stack((starts, ends)))
 
-    # For an underdetermined system, the residuals should be zero
-    # because we can find coefficients that give a perfect fit
+    # For an overdetermined system, the residuals are not necessarily zero.
     assert np.isclose(
         costs[0, 0], scikit_residual
     ), "Cost should be close to scikit_residuals for an underdetermined system"
