@@ -58,12 +58,13 @@ def linear_regression_cost_fixed_params(
         Start indices of the intervals (inclusive).
     ends : np.ndarray
         End indices of the intervals (exclusive).
-    X : np.ndarray
-        Data to evaluate. Must be a 2D array.
-    response_col : int
-        Index of column in X to use as the response variable.
-    coeffs : np.ndarray (shape (K, 1))
-        Fixed regression coefficients. First element is the intercept.
+    response_data : np.ndarray
+        Array containing the response variable values.
+    covariate_data : np.ndarray
+        Array containing the covariate/predictor values.
+    coeffs : np.ndarray
+        Fixed regression coefficients. Shape should be compatible with
+        covariate_data for matrix multiplication.
 
     Returns
     -------
@@ -102,10 +103,10 @@ def linear_regression_cost_intervals(
         Start indices of the intervals (inclusive).
     ends : np.ndarray
         End indices of the intervals (exclusive).
-    X : np.ndarray
-        Data to evaluate. Must be a 2D array.
-    response_col : int
-        Index of column in X to use as the response variable.
+    response_data : np.ndarray
+        Array containing the response variable values.
+    covariate_data : np.ndarray
+        Array containing the covariate/predictor values.
 
     Returns
     -------
@@ -186,14 +187,14 @@ class LinearRegressionCost(BaseCost):
         except the response column are used as predictors.
     param : array-like, optional (default=None)
         Fixed regression coefficients. If None, coefficients are estimated
-        for each interval using ordinary least squares. If provided, must be an array
+        for each interval using ordinary least squares. Must be an array
         with the same length as `covariate_cols`, if provided, or the number of
         columns in X minus one if `covariate_cols` is None.
     """
 
     _tags = {
-        "authors": ["Tveten", "johannvk"],
-        "maintainers": "Tveten",
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
     }
 
     evaluation_type = EvaluationType.MULTIVARIATE
@@ -237,10 +238,6 @@ class LinearRegressionCost(BaseCost):
                 "(1 for response and at least 1 for predictors)."
             )
 
-        self._param = self._check_param(self.param, X)
-        if self.param is not None:
-            self._coeffs = self._param
-
         # Check that response_col is valid:
         self._response_col_idx = check_data_column(
             self.response_col, "Response", X, self._X_columns
@@ -258,8 +255,16 @@ class LinearRegressionCost(BaseCost):
         self._response_data = X[:, self._response_col_idx]
         self._covariate_data = X[:, self._covariate_col_indices]
 
+        # Check params after input column indices are set:
+        self._param = self._check_param(self.param, X)
+        if self.param is not None:
+            self._coeffs = self._param
+
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the linear regression cost for each interval.
+
+        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+        The cost is computed using the optimal L2 regression coefficients.
 
         Parameters
         ----------
@@ -281,6 +286,7 @@ class LinearRegressionCost(BaseCost):
         """Evaluate the cost for fixed regression coefficients.
 
         Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+        The cost is computed using the fixed regression coefficients provided.
 
         Parameters
         ----------
@@ -314,9 +320,7 @@ class LinearRegressionCost(BaseCost):
             Fixed regression coefficients for cost calculation.
         """
         param = np.asarray(param)
-
-        # Expected number of coefficients: predictors (excluding response)
-        expected_length = X.shape[1] - 1
+        expected_length = len(self._covariate_col_indices)
 
         if param.size != expected_length:
             raise ValueError(
