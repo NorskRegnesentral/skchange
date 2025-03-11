@@ -413,4 +413,7 @@ def test_linear_regression_cost_underdetermined_system():
     # because we can find coefficients that give a perfect fit
     assert np.isclose(
         costs[0, 0], scikit_residual
-    ), "Cost should be zero for an underdetermined system"
+    ), "Cost should be close to scikit_residuals for an underdetermined system"
+    assert np.isclose(
+        costs[0, 0], residuals_np_lstsq
+    ), "Cost should close to numpy residuals for an underdetermined system"
