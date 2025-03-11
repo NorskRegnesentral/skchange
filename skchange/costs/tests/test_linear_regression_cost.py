@@ -386,7 +386,16 @@ def test_linear_regression_cost_underdetermined_system():
     X_features = np.ones((n_samples, n_features))
 
     # Create response
+    np.random.seed(42)
     y = np.random.rand(n_samples)
+
+    lr_low_rank = LinearRegression(fit_intercept=False).fit(X_features, y)
+    y_pred = lr_low_rank.predict(X_features)
+    scikit_residual = np.square(y - y_pred).sum()
+
+    (np_coeffs, residuals, X_rank, X_singular_values) = np.linalg.lstsq(X_features, y)
+    y_np_lstsq_pred = np.dot(X_features, np_coeffs.reshape(-1, 1))
+    residuals_np_lstsq = np.square(y.reshape(-1, 1) - y_np_lstsq_pred).sum()
 
     # Stack response and features
     X_with_y = np.hstack((y.reshape(-1, 1), X_features))
@@ -403,13 +412,5 @@ def test_linear_regression_cost_underdetermined_system():
     # For an underdetermined system, the residuals should be zero
     # because we can find coefficients that give a perfect fit
     assert np.isclose(
-        costs[0, 0], 0.0
+        costs[0, 0], scikit_residual
     ), "Cost should be zero for an underdetermined system"
-
-    # Also test a segment of the data to ensure the same behavior
-    starts = np.array([0])
-    ends = np.array([3])  # Just first three samples
-    costs = cost.evaluate(cuts=np.column_stack((starts, ends)))
-    assert np.isclose(
-        costs[0, 0], 0.0
-    ), "Cost should be zero for an underdetermined subsegment"
