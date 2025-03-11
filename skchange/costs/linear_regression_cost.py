@@ -318,10 +318,10 @@ class LinearRegressionCost(BaseCost):
         # Expected number of coefficients: predictors (excluding response)
         expected_length = X.shape[1] - 1
 
-        if len(param) != expected_length:
+        if param.size != expected_length:
             raise ValueError(
                 f"Expected {expected_length} coefficients"
-                f" ({expected_length} predictors), got {len(param)}"
+                f" ({expected_length} predictors), got {param.size}."
             )
 
         if param.ndim != 1 and param.shape[1] != 1:

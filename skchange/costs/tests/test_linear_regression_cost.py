@@ -271,9 +271,9 @@ def test_linear_regression_cost_with_pelt():
     # Assert that the detected changepoint is close to the actual changepoint (100)
     assert len(result) == 1, "Expected exactly one changepoint"
     detected_cp = result.iloc[0].item()
-    assert (
-        abs(detected_cp - 100) <= 1
-    ), f"Detected changepoint {detected_cp} not close to actual (100)"
+    assert abs(detected_cp - 100) <= 1, (
+        f"Detected changepoint {detected_cp} not close to actual (100)"
+    )
 
     # Additional test: verify the coefficients differ between segments
     segment1 = df.iloc[:detected_cp]
@@ -287,9 +287,9 @@ def test_linear_regression_cost_with_pelt():
     )
 
     # Verify the coefficients are indeed different between segments
-    assert not np.allclose(
-        lr1.coef_, lr2.coef_, rtol=0.3
-    ), "Coefficients should be different between segments"
+    assert not np.allclose(lr1.coef_, lr2.coef_, rtol=0.3), (
+        "Coefficients should be different between segments"
+    )
 
 
 def test_check_data_column():
@@ -344,3 +344,72 @@ def test_check_data_column():
     cost = LinearRegressionCost(response_col=2)
     cost.fit(X)
     assert cost._covariate_col_indices == [0, 1, 3]
+
+
+def test_check_fixed_param_dimension_validation():
+    """Test validation of parameter dimensions in _check_fixed_param."""
+    # Create simple dataset
+    X = np.random.rand(100, 3)
+
+    # Test case with 2D array of wrong shape (width > 1)
+    invalid_params_wide = np.array([[0.1, 0.2], [0.3, 0.4]])
+    with pytest.raises(ValueError, match="Expected 2 coefficients"):
+        cost = LinearRegressionCost(param=invalid_params_wide, response_col=0)
+        cost.fit(X)
+
+    # Test 3D array (completely invalid shape)
+    invalid_params_3d = np.zeros((1, 2, 1))
+    with pytest.raises(ValueError, match="Coefficients must have shape"):
+        cost = LinearRegressionCost(param=invalid_params_3d, response_col=0)
+        cost.fit(X)
+
+    # Test row vector vs column vector (both should work)
+    row_vector = np.array([0.1, 0.2])  # Shape (2,)
+    col_vector = np.array([[0.1], [0.2]])  # Shape (2, 1)
+
+    cost_row = LinearRegressionCost(param=row_vector, response_col=0)
+    cost_row.fit(X)
+    assert cost_row._coeffs.shape == (2, 1)
+
+    cost_col = LinearRegressionCost(param=col_vector, response_col=0)
+    cost_col.fit(X)
+    assert cost_col._coeffs.shape == (2, 1)
+
+
+def test_linear_regression_cost_underdetermined_system():
+    """Test LinearRegressionCost on an underdetermined system."""
+    # Create a dataset where we have more features than samples
+    n_features = 3
+    n_samples = 5  # Fewer samples than features -> underdetermined
+
+    # Create predictors
+    X_features = np.ones((n_samples, n_features))
+
+    # Create response
+    y = np.random.rand(n_samples)
+
+    # Stack response and features
+    X_with_y = np.hstack((y.reshape(-1, 1), X_features))
+
+    # Fit the cost with y as the response (first column)
+    cost = LinearRegressionCost(response_col=0)
+    cost.fit(X_with_y)
+
+    # Evaluate on the entire interval
+    starts = np.array([0])
+    ends = np.array([n_samples])
+    costs = cost.evaluate(cuts=np.column_stack((starts, ends)))
+
+    # For an underdetermined system, the residuals should be zero
+    # because we can find coefficients that give a perfect fit
+    assert np.isclose(costs[0, 0], 0.0), (
+        "Cost should be zero for an underdetermined system"
+    )
+
+    # Also test a segment of the data to ensure the same behavior
+    starts = np.array([0])
+    ends = np.array([3])  # Just first three samples
+    costs = cost.evaluate(cuts=np.column_stack((starts, ends)))
+    assert np.isclose(costs[0, 0], 0.0), (
+        "Cost should be zero for an underdetermined subsegment"
+    )
