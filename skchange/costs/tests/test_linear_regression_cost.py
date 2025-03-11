@@ -271,9 +271,9 @@ def test_linear_regression_cost_with_pelt():
     # Assert that the detected changepoint is close to the actual changepoint (100)
     assert len(result) == 1, "Expected exactly one changepoint"
     detected_cp = result.iloc[0].item()
-    assert abs(detected_cp - 100) <= 1, (
-        f"Detected changepoint {detected_cp} not close to actual (100)"
-    )
+    assert (
+        abs(detected_cp - 100) <= 1
+    ), f"Detected changepoint {detected_cp} not close to actual (100)"
 
     # Additional test: verify the coefficients differ between segments
     segment1 = df.iloc[:detected_cp]
@@ -287,9 +287,9 @@ def test_linear_regression_cost_with_pelt():
     )
 
     # Verify the coefficients are indeed different between segments
-    assert not np.allclose(lr1.coef_, lr2.coef_, rtol=0.3), (
-        "Coefficients should be different between segments"
-    )
+    assert not np.allclose(
+        lr1.coef_, lr2.coef_, rtol=0.3
+    ), "Coefficients should be different between segments"
 
 
 def test_check_data_column():
@@ -402,14 +402,14 @@ def test_linear_regression_cost_underdetermined_system():
 
     # For an underdetermined system, the residuals should be zero
     # because we can find coefficients that give a perfect fit
-    assert np.isclose(costs[0, 0], 0.0), (
-        "Cost should be zero for an underdetermined system"
-    )
+    assert np.isclose(
+        costs[0, 0], 0.0
+    ), "Cost should be zero for an underdetermined system"
 
     # Also test a segment of the data to ensure the same behavior
     starts = np.array([0])
     ends = np.array([3])  # Just first three samples
     costs = cost.evaluate(cuts=np.column_stack((starts, ends)))
-    assert np.isclose(costs[0, 0], 0.0), (
-        "Cost should be zero for an underdetermined subsegment"
-    )
+    assert np.isclose(
+        costs[0, 0], 0.0
+    ), "Cost should be zero for an underdetermined subsegment"
