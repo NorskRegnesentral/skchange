@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.base.base_interval_scorer import BaseIntervalScorer
+from skchange.base import BaseIntervalScorer
 from skchange.utils.validation.enums import EvaluationType
 
 

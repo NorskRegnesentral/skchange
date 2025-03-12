@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_scores import ANOMALY_SCORES
-from skchange.base.base_interval_scorer import BaseIntervalScorer
+from skchange.base import BaseIntervalScorer
 from skchange.change_scores import CHANGE_SCORES
 from skchange.compose import PenalisedScore
 from skchange.costs import COSTS, LinearRegressionCost
