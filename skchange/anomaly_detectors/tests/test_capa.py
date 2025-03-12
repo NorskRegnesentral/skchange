@@ -26,9 +26,9 @@ def test_capa_anomalies(Detector, Saving):
         fixed_params = find_fixed_param_combination(Saving)
         saving = saving.set_params(**fixed_params)
 
-    if Detector is MVCAPA and saving.evaluation_type == EvaluationType.MULTIVARIATE:
+    if Detector is MVCAPA and saving.evaluation_type != EvaluationType.UNIVARIATE:
         # MVCAPA requires univariate saving.
-        pytest.skip("Skipping test for MVCAPA with multivariate saving.")
+        pytest.skip("Skipping test for MVCAPA with non-univariate saving.")
 
     if isinstance(saving, BaseCost) and not saving.supports_fixed_params:
         pytest.skip("Skipping test for Cost without support for fixed params.")

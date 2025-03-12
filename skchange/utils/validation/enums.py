@@ -8,3 +8,4 @@ class EvaluationType(Enum):
 
     UNIVARIATE = 1
     MULTIVARIATE = 2
+    CONDITIONAL = 3
