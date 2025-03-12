@@ -7,7 +7,8 @@ from skchange.anomaly_scores import (
     to_local_anomaly_score,
     to_saving,
 )
-from skchange.costs import ALL_COSTS, COSTS, BaseCost
+from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
 
