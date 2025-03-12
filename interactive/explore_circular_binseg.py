@@ -2,7 +2,7 @@
 
 import plotly.express as px
 
-from skchange.anomaly_detectors.circular_binseg import (
+from skchange.anomaly_detectors._circular_binseg import (
     CircularBinarySegmentation,
     make_anomaly_intervals,
 )

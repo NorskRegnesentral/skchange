@@ -2,9 +2,8 @@
 
 import numpy as np
 
-from skchange.anomaly_detectors.anomalisers import StatThresholdAnomaliser
-from skchange.change_detectors._moving_window import MovingWindow
-from skchange.change_detectors._pelt import PELT
+from skchange.anomaly_detectors import StatThresholdAnomaliser
+from skchange.change_detectors import PELT, MovingWindow
 from skchange.datasets import generate_anomalous_data
 
 n = 500

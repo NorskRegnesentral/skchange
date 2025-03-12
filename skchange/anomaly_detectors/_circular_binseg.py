@@ -6,14 +6,17 @@ __all__ = ["CircularBinarySegmentation"]
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
-from skchange.anomaly_scores import BaseLocalAnomalyScore, to_local_anomaly_score
-from skchange.change_detectors.seeded_binseg import make_seeded_intervals
-from skchange.costs import BaseCost, L2Cost
-from skchange.penalties import BasePenalty, BICPenalty, as_penalty
-from skchange.utils.numba import njit
-from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_in_interval, check_larger_than
+from ..anomaly_scores import to_local_anomaly_score
+from ..anomaly_scores.base import BaseLocalAnomalyScore
+from ..change_detectors._seeded_binseg import make_seeded_intervals
+from ..costs import L2Cost
+from ..costs.base import BaseCost
+from ..penalties import BICPenalty, as_penalty
+from ..penalties.base import BasePenalty
+from ..utils.numba import njit
+from ..utils.validation.data import check_data
+from ..utils.validation.parameters import check_in_interval, check_larger_than
+from .base import BaseSegmentAnomalyDetector
 
 
 @njit

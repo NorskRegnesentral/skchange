@@ -3,8 +3,7 @@
 import pandas as pd
 import plotly.express as px
 
-from skchange.anomaly_detectors.capa import CAPA
-from skchange.anomaly_detectors.mvcapa import MVCAPA
+from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.datasets import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
