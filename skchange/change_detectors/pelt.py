@@ -216,7 +216,8 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self.penalty_ = self._penalty.fit(X, self._cost)
+        self.penalty_: BasePenalty = self._penalty.clone()
+        self.penalty_.fit(X, self._cost)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:

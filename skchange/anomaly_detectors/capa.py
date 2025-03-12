@@ -244,8 +244,10 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        self.segment_penalty_ = self._segment_penalty.fit(X, self._segment_saving)
-        self.point_penalty_ = self._point_penalty.fit(X, self._point_saving)
+        self.segment_penalty_: BasePenalty = self._segment_penalty.clone()
+        self.point_penalty_: BasePenalty = self._point_penalty.clone()
+        self.segment_penalty_.fit(X, self._segment_saving)
+        self.point_penalty_.fit(X, self._point_saving)
 
         return self
 
