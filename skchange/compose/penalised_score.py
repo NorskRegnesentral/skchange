@@ -4,10 +4,10 @@ import copy
 
 import numpy as np
 
-from skchange.base import BaseIntervalScorer
-from skchange.penalties import BasePenalty
-from skchange.utils.numba import njit
-from skchange.utils.validation.enums import EvaluationType
+from ..base import BaseIntervalScorer
+from ..penalties.base import BasePenalty
+from ..utils.numba import njit
+from ..utils.validation.enums import EvaluationType
 
 
 @njit

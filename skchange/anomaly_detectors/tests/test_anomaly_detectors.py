@@ -5,7 +5,7 @@ import pytest
 
 from skchange.anomaly_detectors import COLLECTIVE_ANOMALY_DETECTORS
 from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
-from skchange.datasets.generate import generate_anomalous_data
+from skchange.datasets import generate_anomalous_data
 
 true_anomalies = [(30, 35), (70, 75)]
 anomaly_data = generate_anomalous_data(

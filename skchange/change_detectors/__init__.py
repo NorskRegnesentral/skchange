@@ -1,9 +1,9 @@
 """Change detection algorithms."""
 
-from skchange.change_detectors.base import BaseChangeDetector
-from skchange.change_detectors.moving_window import MovingWindow
-from skchange.change_detectors.pelt import PELT
-from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
+from ._moving_window import MovingWindow
+from ._pelt import PELT
+from ._seeded_binseg import SeededBinarySegmentation
+from .base import BaseChangeDetector
 
 BASE_CHANGE_DETECTORS = [BaseChangeDetector]
 CHANGE_DETECTORS = [MovingWindow, PELT, SeededBinarySegmentation]

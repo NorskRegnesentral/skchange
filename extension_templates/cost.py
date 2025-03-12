@@ -35,14 +35,19 @@ Testing - required for sktime test framework and check_estimator usage:
 copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 """
 
+# todo: add any necessary imports
+
 import numpy as np
 
-from skchange.costs import BaseCost
-from skchange.utils.validation.enums import EvaluationType
+# internal extensions located in skchange.costs:
+from ..utils.validation.enums import EvaluationType
+from .base import BaseCost
 
-# todo: add any necessary imports here
+# external extensions:
+# from skchange.costs.base import BaseCost
+# from skchange.utils.validation.enums import EvaluationType
 
-# todo: add the cost to the COSTS variable in skchange/costs/__init__.py
+# todo: add the cost to the COSTS variable in skchange.costs.__init__.py
 
 
 class MyCost(BaseCost):

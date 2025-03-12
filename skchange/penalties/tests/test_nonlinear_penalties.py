@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from skchange.change_scores import CUSUM
-from skchange.penalties.nonlinear_penalties import (
+from skchange.penalties import (
     NonlinearChiSquarePenalty,
     NonlinearPenalty,
 )

@@ -8,7 +8,7 @@ from scipy.special import digamma, gammaln
 
 from skchange.change_detectors import PELT, MovingWindow
 from skchange.costs import MultivariateTCost
-from skchange.costs.multivariate_t_cost import (
+from skchange.costs._multivariate_t_cost import (
     _isotropic_mv_t_dof_estimate,
     _iterative_mv_t_dof_estimate,
     _kurtosis_mv_t_dof_estimate,

@@ -6,8 +6,7 @@ import pytest
 
 from skchange.change_scores import CUSUM, MultivariateGaussianScore
 from skchange.compose import PenalisedScore
-from skchange.penalties.constant_penalties import BICPenalty
-from skchange.penalties.linear_penalties import LinearChiSquarePenalty
+from skchange.penalties import BICPenalty, LinearChiSquarePenalty
 
 
 def test_penalised_score_init():

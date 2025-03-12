@@ -6,14 +6,16 @@ __all__ = ["CAPA"]
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
-from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
-from skchange.compose import PenalisedScore
-from skchange.costs import BaseCost
-from skchange.penalties import BasePenalty, ChiSquarePenalty, as_penalty
-from skchange.utils.numba import njit
-from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_larger_than
+from ..anomaly_scores import L2Saving, to_saving
+from ..anomaly_scores.base import BaseSaving
+from ..compose import PenalisedScore
+from ..costs.base import BaseCost
+from ..penalties import ChiSquarePenalty, as_penalty
+from ..penalties.base import BasePenalty
+from ..utils.numba import njit
+from ..utils.validation.data import check_data
+from ..utils.validation.parameters import check_larger_than
+from .base import BaseSegmentAnomalyDetector
 
 
 @njit

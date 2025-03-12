@@ -5,7 +5,7 @@ import plotly.express as px
 
 from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.change_detectors import MovingWindow
-from skchange.datasets.generate import generate_anomalous_data
+from skchange.datasets import generate_anomalous_data
 
 # Generate data
 n = 300

@@ -4,7 +4,7 @@ import pytest
 import scipy.stats as stats
 
 from skchange.change_detectors import PELT
-from skchange.costs.poisson_cost import (
+from skchange.costs._poisson_cost import (
     PoissonCost,
     poisson_log_likelihood,
     poisson_mle_rate_log_likelihood,

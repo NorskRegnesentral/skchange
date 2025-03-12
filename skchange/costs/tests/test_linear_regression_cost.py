@@ -7,7 +7,7 @@ from sklearn.datasets import make_regression
 from sklearn.linear_model import LinearRegression
 
 from skchange.change_detectors import PELT
-from skchange.costs.linear_regression_cost import LinearRegressionCost
+from skchange.costs import LinearRegressionCost
 
 
 def test_linear_regression_cost_init():

@@ -1,6 +1,6 @@
 """Scores for change detection."""
 
-from skchange.base import BaseIntervalScorer
+from ..base import BaseIntervalScorer
 
 
 class BaseChangeScore(BaseIntervalScorer):

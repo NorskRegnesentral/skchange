@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.costs.l2_cost import L2Cost
+from skchange.costs import L2Cost
 
 
 def test_l2_cost_check_fixed_param():

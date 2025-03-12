@@ -7,7 +7,7 @@ import pytest
 from skchange.anomaly_detectors import ANOMALY_DETECTORS
 from skchange.base import BaseDetector
 from skchange.change_detectors import CHANGE_DETECTORS
-from skchange.datasets.generate import generate_anomalous_data
+from skchange.datasets import generate_anomalous_data
 
 ALL_DETECTORS = ANOMALY_DETECTORS + CHANGE_DETECTORS
 

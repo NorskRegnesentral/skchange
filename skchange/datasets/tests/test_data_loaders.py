@@ -1,6 +1,6 @@
 import pandas as pd
 
-from skchange.datasets._data_loaders import load_hvac_system_data
+from skchange.datasets import load_hvac_system_data
 
 
 def test_load_hvac_system_data():

@@ -18,7 +18,7 @@ Optional to implement:
 import numpy as np
 import pandas as pd
 
-from skchange.base import BaseDetector
+from ..base import BaseDetector
 
 
 class BaseChangeDetector(BaseDetector):

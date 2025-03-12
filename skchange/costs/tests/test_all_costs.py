@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 
-from skchange.costs import ALL_COSTS, COSTS, BaseCost
-from skchange.datasets.generate import generate_alternating_data
+from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs.base import BaseCost
+from skchange.datasets import generate_alternating_data
 
 
 def find_fixed_param_combination(cost_class: type[BaseCost]):

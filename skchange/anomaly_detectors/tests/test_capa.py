@@ -5,12 +5,13 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_detectors import CAPA, MVCAPA
-from skchange.anomaly_detectors.capa import run_capa
+from skchange.anomaly_detectors._capa import run_capa
 from skchange.anomaly_scores import SAVINGS, Saving, to_saving
 from skchange.compose import PenalisedScore
-from skchange.costs import COSTS, BaseCost, L1Cost, L2Cost, MultivariateGaussianCost
+from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
+from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 from skchange.penalties import ChiSquarePenalty
 from skchange.utils.validation.enums import EvaluationType
 

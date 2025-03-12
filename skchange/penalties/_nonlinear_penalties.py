@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from skchange.base import BaseIntervalScorer
-from skchange.penalties.base import BasePenalty
+from ..base import BaseIntervalScorer
+from .base import BasePenalty
 
 
-def check_penalty_array(penalty_array: np.ndarray) -> None:
+def _check_penalty_array(penalty_array: np.ndarray) -> None:
     """Check the base penalty values.
 
     Parameters
@@ -40,7 +40,7 @@ class NonlinearPenalty(BasePenalty):
         self.base_values = base_values
         super().__init__(scale)
 
-        check_penalty_array(self.base_values)
+        _check_penalty_array(self.base_values)
 
     def _fit(
         self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer

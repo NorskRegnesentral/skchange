@@ -5,8 +5,8 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
-from skchange.change_detectors.base import BaseChangeDetector
+from ..change_detectors.base import BaseChangeDetector
+from .base import BaseSegmentAnomalyDetector
 
 
 class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
@@ -118,7 +118,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
             MyClass(**params) or MyClass(**params[i]) creates a valid test instance.
             create_test_instance uses the first (or only) dictionary in params
         """
-        from skchange.change_detectors.moving_window import MovingWindow
+        from skchange.change_detectors import MovingWindow
 
         params = [
             {

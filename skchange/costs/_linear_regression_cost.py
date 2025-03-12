@@ -8,9 +8,9 @@ residuals from fitting a linear regression model within each segment.
 import numpy as np
 import pandas as pd
 
-from skchange.costs import BaseCost
-from skchange.utils.numba import njit
-from skchange.utils.validation.enums import EvaluationType
+from ..utils.numba import njit
+from ..utils.validation.enums import EvaluationType
+from .base import BaseCost
 
 
 @njit

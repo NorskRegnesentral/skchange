@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 
-from skchange.change_scores.from_cost import ChangeScore, to_change_score
-from skchange.costs import ALL_COSTS, COSTS, BaseCost
+from skchange.change_scores import ChangeScore, to_change_score
+from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs.base import BaseCost
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
