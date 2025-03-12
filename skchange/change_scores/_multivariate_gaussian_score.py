@@ -5,10 +5,10 @@ __all__ = ["MultivariateGaussianScore"]
 
 import numpy as np
 
-from skchange.change_scores.base import BaseChangeScore
-from skchange.costs.multivariate_gaussian_cost import MultivariateGaussianCost
-from skchange.utils.numba import njit
-from skchange.utils.validation.enums import EvaluationType
+from ..costs._multivariate_gaussian_cost import MultivariateGaussianCost
+from ..utils.numba import njit
+from ..utils.validation.enums import EvaluationType
+from .base import BaseChangeScore
 
 
 @njit

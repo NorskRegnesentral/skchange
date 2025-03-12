@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.special import digamma
 
-from skchange.change_scores.multivariate_gaussian_score import (
+from skchange.change_scores._multivariate_gaussian_score import (
     MultivariateGaussianScore,
     _half_integer_digamma,
 )

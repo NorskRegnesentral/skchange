@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skchange.change_scores.base import BaseChangeScore
-from skchange.costs.base import BaseCost
+from ..costs.base import BaseCost
+from .base import BaseChangeScore
 
 
 def to_change_score(scorer: BaseCost | BaseChangeScore) -> BaseChangeScore:
