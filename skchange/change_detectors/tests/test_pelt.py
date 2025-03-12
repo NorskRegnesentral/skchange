@@ -3,11 +3,12 @@
 import numpy as np
 import pytest
 
-from skchange.change_detectors.pelt import (
+from skchange.change_detectors._pelt import (
     get_changepoints,
     run_pelt,
 )
-from skchange.costs import BaseCost, L2Cost
+from skchange.costs import L2Cost
+from skchange.costs.base import BaseCost
 from skchange.datasets.generate import generate_alternating_data
 
 n_segments = 2

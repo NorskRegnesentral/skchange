@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skchange.change_detectors.seeded_binseg import SeededBinarySegmentation
+from skchange.change_detectors import SeededBinarySegmentation
 from skchange.change_scores import CHANGE_SCORES
 from skchange.costs import COSTS
 from skchange.datasets.generate import generate_alternating_data

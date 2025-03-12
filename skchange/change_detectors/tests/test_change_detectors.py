@@ -3,7 +3,8 @@
 import pandas as pd
 import pytest
 
-from skchange.change_detectors import CHANGE_DETECTORS, BaseChangeDetector
+from skchange.change_detectors import CHANGE_DETECTORS
+from skchange.change_detectors.base import BaseChangeDetector
 from skchange.datasets.generate import generate_alternating_data
 
 n_segments = 3
