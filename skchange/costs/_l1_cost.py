@@ -6,11 +6,11 @@ change point detection based on the L1 (absolute difference) cost.
 
 import numpy as np
 
-from skchange.costs import BaseCost
-from skchange.costs.utils import MeanType, check_mean
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_median
-from skchange.utils.validation.enums import EvaluationType
+from ..utils.numba import njit
+from ..utils.numba.stats import col_median
+from ..utils.validation.enums import EvaluationType
+from ._utils import MeanType, check_mean
+from .base import BaseCost
 
 
 @njit

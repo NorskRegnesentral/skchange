@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from skchange.costs import ALL_COSTS, COSTS, BaseCost
+from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs.base import BaseCost
 from skchange.datasets.generate import generate_alternating_data
 
 

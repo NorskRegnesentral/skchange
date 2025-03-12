@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.costs.utils import check_non_negative_parameter
+from skchange.costs._utils import check_non_negative_parameter
 
 
 def test_check_univariate_scale_with_scalar():

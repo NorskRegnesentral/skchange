@@ -1,15 +1,47 @@
-"""L2 cost."""
+"""Univariate Gaussian likelihood cost."""
+
+__author__ = ["Tveten"]
 
 import numpy as np
 
-from skchange.costs.base import BaseCost
-from skchange.costs.utils import MeanType, check_mean
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_cumsum
+from ..utils.numba import njit
+from ..utils.numba.general import truncate_below
+from ..utils.numba.stats import col_cumsum
+from ._utils import MeanType, VarType, check_mean, check_var
+from .base import BaseCost
 
 
 @njit
-def l2_cost_optim(
+def var_from_sums(
+    sums: np.ndarray, sums2: np.ndarray, starts: np.ndarray, ends: np.ndarray
+):
+    """Calculate variance from precomputed sums.
+
+    Parameters
+    ----------
+    sums : np.ndarray
+        Cumulative sums of ``X``, where the first row are ``0``s.
+    sums2 : np.ndarray
+        Cumulative sums of ``X**2``, where the first row are ``0``s.
+    starts : np.ndarray
+        Start indices in the original data ``X``.
+    ends : np.ndarray
+        End indices in the original data ``X``.
+
+    Returns
+    -------
+    var : float
+        Variance of ``X[i:j]``.
+    """
+    n = (ends - starts).reshape(-1, 1)
+    partial_sums = sums[ends] - sums[starts]
+    partial_sums2 = sums2[ends] - sums2[starts]
+    var = partial_sums2 / n - (partial_sums / n) ** 2
+    return truncate_below(var, 1e-16)  # standard deviation lower bound of 1e-8
+
+
+@njit
+def gaussian_var_cost_optim(
     starts: np.ndarray,
     ends: np.ndarray,
     sums: np.ndarray,
@@ -24,32 +56,31 @@ def l2_cost_optim(
     ends : np.ndarray
         End indices of the segments.
     sums : np.ndarray
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
+        Cumulative sum of the input data, with a row of ``0``-entries as the first row.
     sums2 : np.ndarray
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
+        Cumulative sum of the squared input data, with a row of ``0``-entries as the
+        first row.
 
     Returns
     -------
     costs : np.ndarray
         A 2D array of costs. One row for each interval. The number of columns
-        is equal to the number of columns in the input data, where each column
-        represents the univariate cost for the corresponding input data column.
+        is equal to the number of columns in the input data.
     """
-    partial_sums = sums[ends] - sums[starts]
-    partial_sums2 = sums2[ends] - sums2[starts]
     n = (ends - starts).reshape(-1, 1)
-    costs = partial_sums2 - partial_sums**2 / n
-    return costs
+    var = var_from_sums(sums, sums2, starts, ends)
+    log_likelihood = -n * np.log(2 * np.pi * var) - n
+    return -log_likelihood
 
 
 @njit
-def l2_cost_fixed(
+def gaussian_var_cost_fixed(
     starts: np.ndarray,
     ends: np.ndarray,
     sums: np.ndarray,
     sums2: np.ndarray,
     mean: np.ndarray,
+    var: np.ndarray,
 ) -> np.ndarray:
     """Calculate the L2 cost for a fixed constant mean for each segment.
 
@@ -60,35 +91,38 @@ def l2_cost_fixed(
     ends : np.ndarray
         End indices of the segments.
     sums : np.ndarray
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
+        Cumulative sum of the input data, with a row of ``0``-entries as the first row.
     sums2 : np.ndarray
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
+        Cumulative sum of the squared input data, with a row of ``0``-entries as the
+        first row.
     mean : np.ndarray
         Fixed mean for the cost calculation.
+    var : np.ndarray
+        Fixed variance for the cost calculation.
 
     Returns
     -------
     costs : np.ndarray
         A 2D array of costs. One row for each interval. The number of columns
-        is equal to the number of columns in the input data, where each column
-        represents the univariate cost for the corresponding input data column.
+        is equal to the number of columns in the input data.
     """
+    n = (ends - starts).reshape(-1, 1)
     partial_sums = sums[ends] - sums[starts]
     partial_sums2 = sums2[ends] - sums2[starts]
-    n = (ends - starts).reshape(-1, 1)
-    costs = partial_sums2 - 2 * mean * partial_sums + n * mean**2
-    return costs
+
+    quadratic_form = partial_sums2 - 2 * mean * partial_sums + n * mean**2
+    log_likelihood = -n * np.log(2 * np.pi * var) - quadratic_form / var
+    return -log_likelihood
 
 
-class L2Cost(BaseCost):
-    """L2 cost of a constant mean.
+class GaussianCost(BaseCost):
+    """Univariate Gaussian likelihood cost.
 
     Parameters
     ----------
-    param : float or array-like, optional (default=None)
-        Fixed mean for the cost calculation. If ``None``, the optimal mean is
-        calculated.
+    param : 2-tuple of float or np.ndarray, or None (default=None)
+        Fixed mean(s) and variance(s) for the cost calculation.
+        If ``None``, the maximum likelihood estimates are used.
     """
 
     _tags = {
@@ -98,16 +132,18 @@ class L2Cost(BaseCost):
 
     supports_fixed_params = True
 
-    def __init__(self, param: MeanType | None = None):
+    def __init__(self, param: tuple[MeanType, VarType] | None = None):
         super().__init__(param)
 
-    def _check_fixed_param(self, param: MeanType, X: np.ndarray) -> np.ndarray:
+    def _check_fixed_param(
+        self, param: tuple[MeanType, VarType], X: np.ndarray
+    ) -> np.ndarray:
         """Check if the fixed mean parameter is valid.
 
         Parameters
         ----------
-        param : float or array-like
-            The input parameter to check.
+        param : 2-tuple of float or np.ndarray, or None (default=None)
+            Fixed mean(s) and variance(s) for the cost calculation.
         X : np.ndarray
             Input data.
 
@@ -116,7 +152,28 @@ class L2Cost(BaseCost):
         mean : np.ndarray
             Fixed mean for the cost calculation.
         """
-        return check_mean(param, X)
+        mean, var = param
+        mean = check_mean(mean, X)
+        var = check_var(var, X)
+        return mean, var
+
+    @property
+    def min_size(self) -> int:
+        """Minimum size of the interval to evaluate.
+
+        The size of each interval is defined as ``intervals[i, 1] - intervals[i, 0]``.
+        """
+        return 2
+
+    def get_param_size(self, p: int) -> int:
+        """Get the number of parameters in the cost function.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+        """
+        return 2 * p
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -130,11 +187,10 @@ class L2Cost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
-        self._mean = self._check_param(self.param, X)
+        self._param = self._check_param(self.param, X)
 
         self._sums = col_cumsum(X, init_zero=True)
         self._sums2 = col_cumsum(X**2, init_zero=True)
-
         return self
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
@@ -154,7 +210,7 @@ class L2Cost(BaseCost):
             is equal to the number of columns in the input data, where each column
             represents the univariate cost for the corresponding input data column.
         """
-        return l2_cost_optim(starts, ends, self._sums, self._sums2)
+        return gaussian_var_cost_optim(starts, ends, self._sums, self._sums2)
 
     def _evaluate_fixed_param(self, starts, ends):
         """Evaluate the cost for the fixed parameter.
@@ -173,7 +229,8 @@ class L2Cost(BaseCost):
             is equal to the number of columns in the input data, where each column
             represents the univariate cost for the corresponding input data column.
         """
-        return l2_cost_fixed(starts, ends, self._sums, self._sums2, self._mean)
+        mean, var = self._param
+        return gaussian_var_cost_fixed(starts, ends, self._sums, self._sums2, mean, var)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -183,7 +240,7 @@ class L2Cost(BaseCost):
         ----------
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
+            special parameters are defined for a value, will return "default" set.
             There are currently no reserved values for interval evaluators.
 
         Returns
@@ -196,6 +253,7 @@ class L2Cost(BaseCost):
         """
         params = [
             {"param": None},
-            {"param": 0.0},
+            {"param": (0.0, 1.0)},
+            {"param": (np.zeros(1), np.ones(1))},
         ]
         return params

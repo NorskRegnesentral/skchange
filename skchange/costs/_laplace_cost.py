@@ -7,16 +7,16 @@ twice the negative log likelihood of the Laplace distribution.
 
 import numpy as np
 
-from skchange.costs import BaseCost
-from skchange.costs.utils import (
+from ..costs._utils import (
     MeanType,
     VarType,
     check_mean,
     check_non_negative_parameter,
 )
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_median
-from skchange.utils.validation.enums import EvaluationType
+from ..utils.numba import njit
+from ..utils.numba.stats import col_median
+from ..utils.validation.enums import EvaluationType
+from .base import BaseCost
 
 
 @njit

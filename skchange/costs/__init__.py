@@ -1,18 +1,14 @@
 """Cost functions for cost-based change and anomaly detection."""
 
-from skchange.costs.base import BaseCost
-from skchange.costs.gaussian_cost import GaussianCost
-from skchange.costs.l1_cost import L1Cost
-from skchange.costs.l2_cost import L2Cost
-from skchange.costs.laplace_cost import LaplaceCost
-from skchange.costs.linear_regression_cost import LinearRegressionCost
-from skchange.costs.multivariate_gaussian_cost import MultivariateGaussianCost
-from skchange.costs.multivariate_t_cost import MultivariateTCost
-from skchange.costs.poisson_cost import PoissonCost
+from ._gaussian_cost import GaussianCost
+from ._l1_cost import L1Cost
+from ._l2_cost import L2Cost
+from ._laplace_cost import LaplaceCost
+from ._linear_regression_cost import LinearRegressionCost
+from ._multivariate_gaussian_cost import MultivariateGaussianCost
+from ._multivariate_t_cost import MultivariateTCost
+from ._poisson_cost import PoissonCost
 
-BASE_COSTS = [
-    BaseCost,
-]
 COSTS = [
     MultivariateGaussianCost,
     MultivariateTCost,
@@ -30,4 +26,4 @@ REGRESSION_COSTS = [
 
 ALL_COSTS = COSTS + INTEGER_COSTS + REGRESSION_COSTS
 
-__all__ = BASE_COSTS + COSTS + INTEGER_COSTS
+__all__ = ALL_COSTS
