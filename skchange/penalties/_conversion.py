@@ -4,10 +4,10 @@ import numbers
 
 import numpy as np
 
-from skchange.penalties.base import BasePenalty
-from skchange.penalties.constant_penalties import BICPenalty, ConstantPenalty
-from skchange.penalties.linear_penalties import LinearPenalty
-from skchange.penalties.nonlinear_penalties import NonlinearPenalty
+from ._constant_penalties import BICPenalty, ConstantPenalty
+from ._linear_penalties import LinearPenalty
+from ._nonlinear_penalties import NonlinearPenalty
+from .base import BasePenalty
 
 
 def as_penalty(

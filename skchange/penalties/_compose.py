@@ -3,8 +3,8 @@
 import numpy as np
 import pandas as pd
 
-from skchange.base import BaseIntervalScorer
-from skchange.penalties.base import BasePenalty
+from ..base import BaseIntervalScorer
+from .base import BasePenalty
 
 
 class MinimumPenalty(BasePenalty):

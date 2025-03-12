@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from skchange.change_scores import CUSUM
-from skchange.penalties import PENALTIES, BasePenalty
+from skchange.penalties import PENALTIES
+from skchange.penalties.base import BasePenalty
 
 df = pd.DataFrame(np.random.randn(100, 3))
 scorer = CUSUM()

@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skchange.penalties.base import BasePenalty
-from skchange.utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than
+from .base import BasePenalty
 
 
 class LinearPenalty(BasePenalty):

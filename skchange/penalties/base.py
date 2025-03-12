@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from sktime.base import BaseEstimator
 
-from skchange.base.base_interval_scorer import BaseIntervalScorer
-from skchange.utils.validation.data import as_2d_array
+from ..base import BaseIntervalScorer
+from ..utils.validation.data import as_2d_array
 
 
 class BasePenalty(BaseEstimator):
