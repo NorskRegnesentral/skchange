@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors._pelt import PELT
+from skchange.change_detectors import PELT
 from skchange.costs import L2Cost
 from skchange.datasets import generate_alternating_data
 

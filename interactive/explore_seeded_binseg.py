@@ -2,7 +2,7 @@
 
 import plotly.express as px
 
-from skchange.change_detectors._seeded_binseg import SeededBinarySegmentation
+from skchange.change_detectors import SeededBinarySegmentation
 from skchange.datasets import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 

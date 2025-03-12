@@ -1,6 +1,6 @@
 """Interactive exploration of the PELT change detector."""
 
-from skchange.change_detectors._pelt import PELT
+from skchange.change_detectors import PELT
 from skchange.datasets import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
