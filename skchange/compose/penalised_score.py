@@ -5,7 +5,7 @@ import copy
 import numpy as np
 
 from ..base import BaseIntervalScorer
-from ..penalties import BasePenalty
+from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
 
