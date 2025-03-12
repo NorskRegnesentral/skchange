@@ -1,5 +1,7 @@
 """Penalised interval scorer."""
 
+import copy
+
 import numpy as np
 
 from skchange.base import BaseIntervalScorer
@@ -142,17 +144,19 @@ class PenalisedScore(BaseIntervalScorer):
         self.scorer_: BaseIntervalScorer = self.scorer.clone()
         self.scorer_.fit(X)
 
-        self.penalty_: BasePenalty = self.penalty.clone()
-        if self.penalty_.is_fitted:
+        if self.penalty.is_fitted:
+            # Need to copy the penalty because a `clone` will not copy the fitted values
+            self.penalty_ = copy.deepcopy(self.penalty)
             if X.shape[1] != self.penalty_.p_:
                 raise ValueError(
                     "The number of variables in the data must match the number of"
                     " variables in the penalty."
-                    f" 'X.shape[1]' = {X.shape[1]} and 'penalty.p' = {self.penalty.p_}."
+                    f" 'X.shape[1]' = {X.shape[1]} and 'penalty.p' = {self.penalty.p}."
                     " This error is most likely due to the penalty being fitted to a "
                     " different data set than the scorer."
                 )
         else:
+            self.penalty_: BasePenalty = self.penalty.clone()
             self.penalty_.fit(X, self.scorer_)
 
         if self.penalty.penalty_type == "constant" or X.shape[1] == 1:
