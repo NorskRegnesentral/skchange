@@ -163,7 +163,10 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self.penalty_ = self._penalty.fit(X, self._change_score)
+
+        self.penalty_: BasePenalty = self._penalty.clone()
+        self.penalty_.fit(X, self._change_score)
+
         return self
 
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:

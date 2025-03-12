@@ -235,7 +235,8 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="min_interval_length",
         )
-        self.penalty_ = self._penalty.fit(X, self._anomaly_score)
+        self.penalty_: BasePenalty = self._penalty.clone()
+        self.penalty_.fit(X, self._anomaly_score)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:

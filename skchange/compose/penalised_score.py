@@ -139,10 +139,12 @@ class PenalisedScore(BaseIntervalScorer):
         If the penalty is already fitted, it will not be refitted to the data. If the
         data is not compatible with the penalty, a ValueError will be raised.
         """
-        self.scorer.fit(X)
+        self.scorer_: BaseIntervalScorer = self.scorer.clone()
+        self.scorer_.fit(X)
 
-        if self.penalty.is_fitted:
-            if X.shape[1] != self.penalty.p_:
+        self.penalty_: BasePenalty = self.penalty.clone()
+        if self.penalty_.is_fitted:
+            if X.shape[1] != self.penalty_.p_:
                 raise ValueError(
                     "The number of variables in the data must match the number of"
                     " variables in the penalty."
@@ -151,7 +153,7 @@ class PenalisedScore(BaseIntervalScorer):
                     " different data set than the scorer."
                 )
         else:
-            self.penalty.fit(X, self.scorer)
+            self.penalty_.fit(X, self.scorer_)
 
         if self.penalty.penalty_type == "constant" or X.shape[1] == 1:
             self.penalise_scores = _penalise_scores_constant
@@ -176,8 +178,8 @@ class PenalisedScore(BaseIntervalScorer):
         values : np.ndarray
             A 2D array of scores. One row for each row in cuts.
         """
-        scores = self.scorer.evaluate(cuts)
-        return self.penalise_scores(scores, self.penalty.values).reshape(-1, 1)
+        scores = self.scorer_.evaluate(cuts)
+        return self.penalise_scores(scores, self.penalty_.values).reshape(-1, 1)
 
     @property
     def min_size(self) -> int:
@@ -195,7 +197,10 @@ class PenalisedScore(BaseIntervalScorer):
             unknown what the minimum size is. E.g., the scorer may need to be fitted
             first to determine the minimum size.
         """
-        return self.scorer.min_size
+        if self.is_fitted:
+            return self.scorer_.min_size
+        else:
+            return None
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.

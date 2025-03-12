@@ -28,13 +28,13 @@ def find_affected_components(
     penalised_scorer: PenalisedScore,
     anomalies: list[tuple[int, int]],
 ) -> list[tuple[int, int, np.ndarray]]:
-    penalised_scorer.scorer.check_is_fitted()
+    penalised_scorer.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving_values = penalised_scorer.scorer.evaluate(np.array([start, end]))[0]
+        saving_values = penalised_scorer.scorer_.evaluate(np.array([start, end]))[0]
         saving_order = np.argsort(-saving_values)  # Decreasing order.
         penalised_savings = (
-            np.cumsum(saving_values[saving_order]) - penalised_scorer.penalty.values
+            np.cumsum(saving_values[saving_order]) - penalised_scorer.penalty_.values
         )
         argmax = np.argmax(penalised_savings)
         new_anomalies.append((start, end, saving_order[: argmax + 1]))
@@ -206,8 +206,10 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        self.segment_penalty_ = self._segment_penalty.fit(X, self._segment_saving)
-        self.point_penalty_ = self._point_penalty.fit(X, self._point_saving)
+        self.segment_penalty_: BasePenalty = self._segment_penalty.clone()
+        self.point_penalty_: BasePenalty = self._point_penalty.clone()
+        self.segment_penalty_.fit(X, self._segment_saving)
+        self.point_penalty_.fit(X, self._point_saving)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
