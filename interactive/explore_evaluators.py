@@ -3,9 +3,9 @@
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors.pelt import PELT
+from skchange.change_detectors._pelt import PELT
 from skchange.costs import L2Cost
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 
 
 def generate_all_intervals(df):

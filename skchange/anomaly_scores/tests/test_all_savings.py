@@ -3,7 +3,7 @@ import pytest
 
 from skchange.anomaly_scores import SAVINGS, to_saving
 from skchange.costs import COSTS
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 
 SCORES_AND_COSTS = SAVINGS + COSTS
 

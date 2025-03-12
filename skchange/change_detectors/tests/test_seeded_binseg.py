@@ -7,7 +7,7 @@ import pytest
 from skchange.change_detectors import SeededBinarySegmentation
 from skchange.change_scores import CHANGE_SCORES
 from skchange.costs import COSTS
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 
 SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 

@@ -2,8 +2,8 @@
 
 import plotly.express as px
 
-from skchange.change_detectors.moving_window import MovingWindow
-from skchange.datasets.generate import generate_alternating_data
+from skchange.change_detectors._moving_window import MovingWindow
+from skchange.datasets import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
 # Simple univariate example

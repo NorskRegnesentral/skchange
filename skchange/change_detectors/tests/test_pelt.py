@@ -9,7 +9,7 @@ from skchange.change_detectors._pelt import (
 )
 from skchange.costs import L2Cost
 from skchange.costs.base import BaseCost
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 
 n_segments = 2
 seg_len = 50

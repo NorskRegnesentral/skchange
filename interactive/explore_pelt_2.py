@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 
-from skchange.change_detectors.pelt import (
+from skchange.change_detectors._pelt import (
     pelt_partition_cost,
     run_optimal_partitioning,
     run_pelt,
 )
 from skchange.change_detectors.tests.test_pelt import run_pelt_old
 from skchange.costs_old.cost_factory import cost_factory
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 
 # %%
 # X = np.random.randn(100, 1)

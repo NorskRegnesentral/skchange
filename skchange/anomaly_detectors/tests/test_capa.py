@@ -10,7 +10,7 @@ from skchange.anomaly_scores import SAVINGS, Saving, to_saving
 from skchange.compose import PenalisedScore
 from skchange.costs import COSTS, BaseCost, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 from skchange.penalties import ChiSquarePenalty
 from skchange.utils.validation.enums import EvaluationType
 

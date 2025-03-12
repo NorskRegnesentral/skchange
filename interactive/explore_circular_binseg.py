@@ -6,7 +6,7 @@ from skchange.anomaly_detectors.circular_binseg import (
     CircularBinarySegmentation,
     make_anomaly_intervals,
 )
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
 df = generate_alternating_data(
