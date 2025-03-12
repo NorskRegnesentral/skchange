@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 from sktime.base import BaseEstimator
 
-from skchange.base.base_interval_scorer import BaseIntervalScorer
-from skchange.utils.validation.data import as_2d_array
+from ..base import BaseIntervalScorer
+from ..utils.validation.data import as_2d_array
 
 
 class BasePenalty(BaseEstimator):
@@ -62,10 +62,10 @@ class BasePenalty(BaseEstimator):
             Reference to a fitted instance of self.
         """
         X = as_2d_array(X)
-        self.n = X.shape[0]
-        self.p = X.shape[1]
-        self.n_params_total = scorer.get_param_size(self.p)
-        self.n_params_per_variable = scorer.get_param_size(1)
+        self.n_ = X.shape[0]
+        self.p_ = X.shape[1]
+        self.n_params_total_ = scorer.get_param_size(self.p_)
+        self.n_params_per_variable_ = scorer.get_param_size(1)
 
         self._fit(X=X, scorer=scorer)
 

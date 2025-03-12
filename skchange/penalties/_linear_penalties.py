@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skchange.penalties.base import BasePenalty
-from skchange.utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than
+from .base import BasePenalty
 
 
 class LinearPenalty(BasePenalty):
@@ -31,7 +31,7 @@ class LinearPenalty(BasePenalty):
             the array is the base penalty value for ``i+1`` variables being affected by
             the change. The base penalty array is non-decreasing.
         """
-        return self.intercept + self.slope * np.arange(1, self.p + 1)
+        return self.intercept + self.slope * np.arange(1, self.p_ + 1)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -95,9 +95,9 @@ class LinearChiSquarePenalty(BasePenalty):
             the array is the base penalty value for ``i+1`` variables being affected by
             the change. The base penalty array is non-decreasing.
         """
-        psi = np.log(self.n)
-        component_penalty = 2 * np.log(self.n_params_per_variable * self.p)
-        base_penalties = 2 * psi + 2 * np.cumsum(np.full(self.p, component_penalty))
+        psi = np.log(self.n_)
+        component_penalty = 2 * np.log(self.n_params_per_variable_ * self.p_)
+        base_penalties = 2 * psi + 2 * np.cumsum(np.full(self.p_, component_penalty))
         return base_penalties
 
     @classmethod

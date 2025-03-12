@@ -7,10 +7,10 @@ twice the negative log likelihood of the Poisson distribution.
 
 import numpy as np
 
-from skchange.costs import BaseCost
-from skchange.costs.utils import MeanType, check_non_negative_parameter
-from skchange.utils.numba import njit
-from skchange.utils.validation.enums import EvaluationType
+from ..utils.numba import njit
+from ..utils.validation.enums import EvaluationType
+from ._utils import MeanType, check_non_negative_parameter
+from .base import BaseCost
 
 
 @njit

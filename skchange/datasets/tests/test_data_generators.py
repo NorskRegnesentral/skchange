@@ -1,6 +1,6 @@
 import pytest
 
-from skchange.datasets.generate import generate_changing_data
+from skchange.datasets import generate_changing_data
 
 
 def test_generate_changing_data():

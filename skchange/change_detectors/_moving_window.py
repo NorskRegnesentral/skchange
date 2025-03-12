@@ -6,14 +6,16 @@ __all__ = ["MovingWindow"]
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors import BaseChangeDetector
-from skchange.change_scores import CUSUM, BaseChangeScore, to_change_score
-from skchange.costs import BaseCost
-from skchange.penalties import BasePenalty, BICPenalty, as_penalty
-from skchange.utils.numba import njit
-from skchange.utils.numba.general import where
-from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_in_interval, check_larger_than
+from ..change_scores import CUSUM, to_change_score
+from ..change_scores.base import BaseChangeScore
+from ..costs.base import BaseCost
+from ..penalties import BICPenalty, as_penalty
+from ..penalties.base import BasePenalty
+from ..utils.numba import njit
+from ..utils.numba.general import where
+from ..utils.validation.data import check_data
+from ..utils.validation.parameters import check_in_interval, check_larger_than
+from .base import BaseChangeDetector
 
 
 @njit
@@ -163,7 +165,10 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self.penalty_ = self._penalty.fit(X, self._change_score)
+
+        self.penalty_: BasePenalty = self._penalty.clone()
+        self.penalty_.fit(X, self._change_score)
+
         return self
 
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:

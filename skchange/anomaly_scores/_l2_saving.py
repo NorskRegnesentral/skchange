@@ -4,9 +4,9 @@ __author__ = ["Tveten"]
 
 import numpy as np
 
-from skchange.anomaly_scores.base import BaseSaving
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_cumsum
+from ..utils.numba import njit
+from ..utils.numba.stats import col_cumsum
+from .base import BaseSaving
 
 
 @njit

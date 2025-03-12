@@ -5,7 +5,8 @@ import pandas as pd
 import pytest
 
 from skchange.change_scores import CUSUM
-from skchange.penalties import PENALTIES, BasePenalty
+from skchange.penalties import PENALTIES
+from skchange.penalties.base import BasePenalty
 
 df = pd.DataFrame(np.random.randn(100, 3))
 scorer = CUSUM()
@@ -35,7 +36,7 @@ def test_values(Penalty: BasePenalty):
     if penalty.penalty_type == "constant":
         assert penalty.values.shape == (1,)
     else:
-        assert penalty.values.shape == (penalty.p,)
+        assert penalty.values.shape == (penalty.p_,)
 
     # Penalties can have value = 0, but the test instances should have positive values.
     assert np.all(penalty.values > 0.0)

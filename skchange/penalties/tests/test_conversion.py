@@ -3,11 +3,14 @@
 import numpy as np
 import pytest
 
+from skchange.penalties import (
+    BICPenalty,
+    ConstantPenalty,
+    LinearPenalty,
+    NonlinearPenalty,
+    as_penalty,
+)
 from skchange.penalties.base import BasePenalty
-from skchange.penalties.constant_penalties import BICPenalty, ConstantPenalty
-from skchange.penalties.conversion import as_penalty
-from skchange.penalties.linear_penalties import LinearPenalty
-from skchange.penalties.nonlinear_penalties import NonlinearPenalty
 
 
 class MockPenalty(BasePenalty):

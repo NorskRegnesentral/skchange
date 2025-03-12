@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.costs.laplace_cost import LaplaceCost
+from skchange.costs import LaplaceCost
 
 
 def test_check_fixed_param_valid_parameters():

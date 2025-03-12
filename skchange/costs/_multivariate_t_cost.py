@@ -6,22 +6,22 @@ __all__ = ["MultivariateTCost"]
 import numpy as np
 import pandas as pd
 
-from skchange.costs.base import BaseCost
-from skchange.costs.multivariate_gaussian_cost import (
-    gaussian_cost_fixed_params,
-    gaussian_cost_mle_params,
-)
-from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
-from skchange.utils.numba import njit, numba_available, prange
-from skchange.utils.numba.stats import (
+from ..utils.numba import njit, numba_available, prange
+from ..utils.numba.stats import (
     col_median,
     digamma,
     kurtosis,
     log_gamma,
     trigamma,
 )
-from skchange.utils.validation.enums import EvaluationType
-from skchange.utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.enums import EvaluationType
+from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ._multivariate_gaussian_cost import (
+    gaussian_cost_fixed_params,
+    gaussian_cost_mle_params,
+)
+from ._utils import CovType, MeanType, check_cov, check_mean
+from .base import BaseCost
 
 
 @njit

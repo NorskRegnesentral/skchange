@@ -6,14 +6,16 @@ __all__ = ["CAPA"]
 import numpy as np
 import pandas as pd
 
-from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
-from skchange.anomaly_scores import BaseSaving, L2Saving, to_saving
-from skchange.compose import PenalisedScore
-from skchange.costs import BaseCost
-from skchange.penalties import BasePenalty, ChiSquarePenalty, as_penalty
-from skchange.utils.numba import njit
-from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_larger_than
+from ..anomaly_scores import L2Saving, to_saving
+from ..anomaly_scores.base import BaseSaving
+from ..compose import PenalisedScore
+from ..costs.base import BaseCost
+from ..penalties import ChiSquarePenalty, as_penalty
+from ..penalties.base import BasePenalty
+from ..utils.numba import njit
+from ..utils.validation.data import check_data
+from ..utils.validation.parameters import check_larger_than
+from .base import BaseSegmentAnomalyDetector
 
 
 @njit
@@ -244,8 +246,10 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length=self.min_segment_length,
             min_length_name="min_segment_length",
         )
-        self.segment_penalty_ = self._segment_penalty.fit(X, self._segment_saving)
-        self.point_penalty_ = self._point_penalty.fit(X, self._point_saving)
+        self.segment_penalty_: BasePenalty = self._segment_penalty.clone()
+        self.point_penalty_: BasePenalty = self._point_penalty.clone()
+        self.segment_penalty_.fit(X, self._segment_saving)
+        self.point_penalty_.fit(X, self._point_saving)
 
         return self
 

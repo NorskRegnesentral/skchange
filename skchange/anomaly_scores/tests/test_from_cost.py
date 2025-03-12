@@ -7,14 +7,15 @@ from skchange.anomaly_scores import (
     to_local_anomaly_score,
     to_saving,
 )
-from skchange.costs import ALL_COSTS, COSTS, BaseCost
+from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
 
 @pytest.mark.parametrize("cost_class", ALL_COSTS)
 def test_saving_init(cost_class):
     param = find_fixed_param_combination(cost_class)
-    baseline_cost = cost_class().set_params(**param)
+    baseline_cost = cost_class(**param)
 
     saving = Saving(baseline_cost)
     assert saving.baseline_cost == baseline_cost
@@ -65,7 +66,8 @@ def test_to_saving_raises_with_no_param_set(cost_class: type[BaseCost]):
     with pytest.raises(
         ValueError, match="The baseline cost must have fixed parameters"
     ):
-        cost = cost_class().set_params(param=None)
+        cost = cost_class.create_test_instance()
+        cost = cost.set_params(param=None)
         to_saving(cost)
 
 
@@ -87,7 +89,7 @@ def test_to_saving_error():
 @pytest.mark.parametrize("cost_class", ALL_COSTS)
 def test_to_local_anomaly_score_with_base_cost(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
-    cost = cost_class().set_params(**param)
+    cost = cost_class(**param)
     local_anomaly_score = to_local_anomaly_score(cost)
     assert isinstance(local_anomaly_score, LocalAnomalyScore)
     assert local_anomaly_score.cost == cost
@@ -96,7 +98,7 @@ def test_to_local_anomaly_score_with_base_cost(cost_class: type[BaseCost]):
 @pytest.mark.parametrize("cost_class", ALL_COSTS)
 def test_to_local_anomaly_score_with_local_anomaly_score(cost_class: type[BaseCost]):
     param = find_fixed_param_combination(cost_class)
-    cost = cost_class().set_params(**param)
+    cost = cost_class(**param)
     local_anomaly_score_instance = LocalAnomalyScore(cost=cost)
     result = to_local_anomaly_score(local_anomaly_score_instance)
     assert result is local_anomaly_score_instance

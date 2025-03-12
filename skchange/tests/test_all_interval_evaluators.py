@@ -3,18 +3,18 @@ import pandas as pd
 import pytest
 
 from skchange.anomaly_scores import ANOMALY_SCORES
-from skchange.base.base_interval_scorer import BaseIntervalScorer
+from skchange.base import BaseIntervalScorer
 from skchange.change_scores import CHANGE_SCORES
 from skchange.compose import PenalisedScore
-from skchange.costs import COSTS
+from skchange.costs import COSTS, LinearRegressionCost
 from skchange.datasets import generate_alternating_data, generate_anomalous_data
 from skchange.utils.validation.enums import EvaluationType
 
-INTERVAL_EVALUATORS = COSTS + CHANGE_SCORES + ANOMALY_SCORES + [PenalisedScore]
+SIMPLE_EVAL_TEST_EVALUATORS = COSTS + CHANGE_SCORES + ANOMALY_SCORES + [PenalisedScore]
 
 
-@pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
-def test_evaluator_fit(Evaluator):
+@pytest.mark.parametrize("Evaluator", SIMPLE_EVAL_TEST_EVALUATORS)
+def test_evaluator_fit(Evaluator: type[BaseIntervalScorer]):
     evaluator = Evaluator.create_test_instance()
     x = generate_anomalous_data()
     x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
@@ -22,8 +22,8 @@ def test_evaluator_fit(Evaluator):
     assert fit_evaluator.is_fitted
 
 
-@pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
-def test_evaluator_evaluate(Evaluator):
+@pytest.mark.parametrize("Evaluator", SIMPLE_EVAL_TEST_EVALUATORS)
+def test_evaluator_evaluate(Evaluator: type[BaseIntervalScorer]):
     evaluator = Evaluator.create_test_instance()
     x = generate_anomalous_data()
     x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
@@ -43,7 +43,7 @@ def test_evaluator_evaluate(Evaluator):
     assert len(results) == len(cuts)
 
 
-@pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
+@pytest.mark.parametrize("Evaluator", SIMPLE_EVAL_TEST_EVALUATORS)
 def test_evaluator_evaluate_by_evaluation_type(Evaluator: BaseIntervalScorer):
     evaluator = Evaluator.create_test_instance()
     n_segments = 1
@@ -66,13 +66,23 @@ def test_evaluator_evaluate_by_evaluation_type(Evaluator: BaseIntervalScorer):
 
     if evaluator.evaluation_type == EvaluationType.UNIVARIATE:
         assert results.shape == (2, p)
+        assert evaluator.output_dim == p
     elif evaluator.evaluation_type == EvaluationType.MULTIVARIATE:
         assert results.shape == (2, 1)
+        assert evaluator.output_dim == 1
     else:
         raise ValueError("Invalid scitype:evaluator tag.")
 
 
-@pytest.mark.parametrize("Evaluator", INTERVAL_EVALUATORS)
+def test_conditional_evaluator_output_dim():
+    evaluator = LinearRegressionCost(response_col=0)
+    X = np.random.randn(50, 3)
+    evaluator.fit(X)
+    assert evaluator.evaluation_type == EvaluationType.CONDITIONAL
+    assert evaluator.output_dim == 1
+
+
+@pytest.mark.parametrize("Evaluator", SIMPLE_EVAL_TEST_EVALUATORS)
 def test_evaluator_invalid_cuts(Evaluator: BaseIntervalScorer):
     evaluator = Evaluator.create_test_instance()
     x = generate_anomalous_data()

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skchange.base import BaseIntervalScorer
+from ..base import BaseIntervalScorer
 
 
 class BaseCost(BaseIntervalScorer):

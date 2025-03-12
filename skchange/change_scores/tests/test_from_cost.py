@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
 
-from skchange.change_scores.from_cost import ChangeScore, to_change_score
+from skchange.change_scores import ChangeScore, to_change_score
 from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs.base import BaseCost
 
 
 @pytest.mark.parametrize("cost_class", COSTS)
@@ -17,8 +18,8 @@ def test_change_score_with_costs(cost_class):
 
 
 @pytest.mark.parametrize("evaluator", ALL_COSTS)
-def test_to_change_score(evaluator):
-    cost_instance = evaluator()
+def test_to_change_score(evaluator: type[BaseCost]):
+    cost_instance = evaluator.create_test_instance()
     change_score = to_change_score(cost_instance)
     assert isinstance(change_score, ChangeScore)
 

@@ -2,10 +2,11 @@
 
 import numpy as np
 
-from skchange.anomaly_scores.base import BaseLocalAnomalyScore, BaseSaving
-from skchange.costs import BaseCost, L2Cost
-from skchange.utils.validation.cuts import check_cuts_array
-from skchange.utils.validation.data import as_2d_array
+from ..costs import L2Cost
+from ..costs.base import BaseCost
+from ..utils.validation.cuts import check_cuts_array
+from ..utils.validation.data import as_2d_array
+from .base import BaseLocalAnomalyScore, BaseSaving
 
 
 def to_saving(scorer: BaseCost | BaseSaving) -> BaseSaving:
@@ -147,7 +148,7 @@ class Saving(BaseSaving):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        from skchange.costs.l2_cost import L2Cost
+        from skchange.costs import L2Cost
 
         params = [
             {"baseline_cost": L2Cost(param=0.0)},

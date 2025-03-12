@@ -5,11 +5,11 @@ __all__ = ["MultivariateGaussianCost"]
 
 import numpy as np
 
-from skchange.costs.base import BaseCost
-from skchange.costs.utils import CovType, MeanType, check_cov, check_mean
-from skchange.utils.numba import njit, prange
-from skchange.utils.numba.stats import log_det_covariance
-from skchange.utils.validation.enums import EvaluationType
+from ..utils.numba import njit, prange
+from ..utils.numba.stats import log_det_covariance
+from ..utils.validation.enums import EvaluationType
+from ._utils import CovType, MeanType, check_cov, check_mean
+from .base import BaseCost
 
 
 @njit

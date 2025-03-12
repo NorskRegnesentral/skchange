@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2
 
-from skchange.base import BaseIntervalScorer
-from skchange.penalties.base import BasePenalty
+from ..base import BaseIntervalScorer
+from .base import BasePenalty
 
 
-def check_penalty_array(penalty_array: np.ndarray) -> None:
+def _check_penalty_array(penalty_array: np.ndarray) -> None:
     """Check the base penalty values.
 
     Parameters
@@ -40,7 +40,7 @@ class NonlinearPenalty(BasePenalty):
         self.base_values = base_values
         super().__init__(scale)
 
-        check_penalty_array(self.base_values)
+        _check_penalty_array(self.base_values)
 
     def _fit(
         self, X: pd.DataFrame | pd.Series | np.ndarray, scorer: BaseIntervalScorer
@@ -167,14 +167,14 @@ class NonlinearChiSquarePenalty(BasePenalty):
         self
             Reference to self.
         """
-        if self.n_params_per_variable > 2:
+        if self.n_params_per_variable_ > 2:
             raise ValueError(
                 "NonlinearChiSquarePenalty can only be used with scorers that have at"
                 " most 2 parameters per variable (scorer.get_param_size(1) <= 2)"
             )
 
         self._base_penalty_values = self._make_penalty(
-            self.n, self.p, self.n_params_per_variable
+            self.n_, self.p_, self.n_params_per_variable_
         )
         return self
 

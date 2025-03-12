@@ -1,23 +1,22 @@
 """Penalties and penalty functions for change and anomaly detection."""
 
-from skchange.penalties.base import BasePenalty
-from skchange.penalties.composition import MinimumPenalty
-from skchange.penalties.constant_penalties import (
+from ._compose import MinimumPenalty
+from ._constant_penalties import (
     BICPenalty,
     ChiSquarePenalty,
     ConstantPenalty,
 )
-from skchange.penalties.conversion import as_penalty
-from skchange.penalties.linear_penalties import LinearChiSquarePenalty, LinearPenalty
-from skchange.penalties.nonlinear_penalties import (
+from ._conversion import as_penalty
+from ._linear_penalties import LinearChiSquarePenalty, LinearPenalty
+from ._nonlinear_penalties import (
     NonlinearChiSquarePenalty,
     NonlinearPenalty,
 )
 
 PENALTIES = [
-    ConstantPenalty,
     BICPenalty,
     ChiSquarePenalty,
+    ConstantPenalty,
     LinearChiSquarePenalty,
     LinearPenalty,
     NonlinearChiSquarePenalty,
@@ -25,15 +24,6 @@ PENALTIES = [
     MinimumPenalty,
 ]
 
-__all__ = [
-    "BasePenalty",
-    "BICPenalty",
-    "ChiSquarePenalty",
-    "ConstantPenalty",
-    "LinearChiSquarePenalty",
-    "LinearPenalty",
-    "MinimumPenalty",
-    "NonlinearChiSquarePenalty",
-    "NonlinearPenalty",
+__all__ = PENALTIES + [
     "as_penalty",
 ]

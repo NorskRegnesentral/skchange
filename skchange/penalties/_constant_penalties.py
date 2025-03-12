@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skchange.penalties.base import BasePenalty
-from skchange.utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than
+from .base import BasePenalty
 
 
 class ConstantPenalty(BasePenalty):
@@ -83,7 +83,7 @@ class BICPenalty(BasePenalty):
             Shape ``(1,)`` array with the base (unscaled) penalty values.
         """
         # +1 due to the additional change point parameter in the model.
-        base_penalty = (self.n_params_total + 1) * np.log(self.n)
+        base_penalty = (self.n_params_total_ + 1) * np.log(self.n_)
         return base_penalty
 
     @classmethod
@@ -148,9 +148,9 @@ class ChiSquarePenalty(BasePenalty):
         base_values : np.ndarray
             Shape ``(1,)`` array with the base (unscaled) penalty values.
         """
-        psi = np.log(self.n)
+        psi = np.log(self.n_)
         base_penalty = (
-            self.n_params_total + 2 * np.sqrt(self.n_params_total * psi) + 2 * psi
+            self.n_params_total_ + 2 * np.sqrt(self.n_params_total_ * psi) + 2 * psi
         )
         return base_penalty
 

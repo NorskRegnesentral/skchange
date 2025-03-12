@@ -15,6 +15,7 @@ __author__ = ["Tveten", "johannvk", "fkiraly"]
 __all__ = ["BaseIntervalScorer"]
 
 import numpy as np
+import pandas as pd
 from numpy.typing import ArrayLike
 from sktime.base import BaseEstimator
 from sktime.utils.validation.series import check_series
@@ -85,6 +86,10 @@ class BaseIntervalScorer(BaseEstimator):
         Updates the fitted model and sets attributes ending in ``"_"``.
         """
         X = check_series(X, allow_index_names=True)
+        if isinstance(X, pd.DataFrame):
+            self._X_columns = X.columns
+        else:
+            self._X_columns = None
         self._X = as_2d_array(X)
 
         self._fit(X=self._X, y=y)
@@ -178,6 +183,30 @@ class BaseIntervalScorer(BaseEstimator):
             first to determine the minimum size.
         """
         return 1
+
+    @property
+    def output_dim(self) -> int:
+        """Get the output dimension of the scorer.
+
+        Returns the number of columns in the output of the scorer. For univariate
+        scorers, this is the number of variables in the data. For multivariate scorers,
+        this is 1. Subclasses should override this method accordingly.
+        """
+        if self.evaluation_type == EvaluationType.UNIVARIATE:
+            return self._X.shape[1] if self._X is not None else None
+        elif self.evaluation_type == EvaluationType.MULTIVARIATE:
+            return 1
+        elif self.evaluation_type == EvaluationType.CONDITIONAL:
+            return self._output_dim()
+
+    def _output_dim(self) -> int:
+        """Get the output dimension of the scorer.
+
+        In the case of a scorer with 'evaluation_type' as 'CONDITIONAL', this method
+        should be overridden to return the number of columns in the scorer output.
+        Subclasses should override this method accordingly.
+        """
+        raise NotImplementedError("abstract method")
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.

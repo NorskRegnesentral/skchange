@@ -6,12 +6,14 @@ __all__ = ["PELT"]
 import numpy as np
 import pandas as pd
 
-from skchange.change_detectors import BaseChangeDetector
-from skchange.costs import BaseCost, L2Cost
-from skchange.penalties import BasePenalty, BICPenalty, as_penalty
-from skchange.utils.numba import njit
-from skchange.utils.validation.data import check_data
-from skchange.utils.validation.parameters import check_larger_than
+from ..costs import L2Cost
+from ..costs.base import BaseCost
+from ..penalties import BICPenalty, as_penalty
+from ..penalties.base import BasePenalty
+from ..utils.numba import njit
+from ..utils.validation.data import check_data
+from ..utils.validation.parameters import check_larger_than
+from .base import BaseChangeDetector
 
 
 @njit
@@ -216,7 +218,8 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self.penalty_ = self._penalty.fit(X, self._cost)
+        self.penalty_: BasePenalty = self._penalty.clone()
+        self.penalty_.fit(X, self._cost)
         return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:

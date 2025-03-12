@@ -1,6 +1,6 @@
 """Base classes for anomaly scores."""
 
-from skchange.base import BaseIntervalScorer
+from ..base import BaseIntervalScorer
 
 
 class BaseSaving(BaseIntervalScorer):
