@@ -15,7 +15,7 @@ def as_penalty(
     default: BasePenalty = None,
     require_penalty_type: str = None,
 ):
-    """Convert an input object to a constant penalty.
+    """Convert an input object to a penalty.
 
     Parameters
     ----------
