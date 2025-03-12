@@ -1,7 +1,7 @@
 """Datasets and dataset generators for skchange."""
 
 from skchange.datasets._data_loaders import load_hvac_system_data
-from skchange.datasets.generate import (
+from skchange.datasets._generate import (
     add_linspace_outliers,
     generate_alternating_data,
     generate_anomalous_data,
