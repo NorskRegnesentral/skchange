@@ -54,6 +54,6 @@ def test_nonlinear_chisquare_too_many_params():
     penalty = NonlinearChiSquarePenalty(scale=1.0)
     X = np.random.rand(100, 3)
     scorer = CUSUM()
-    penalty.n_params_per_variable = 3
+    penalty.n_params_per_variable_ = 3
     with pytest.raises(ValueError):
         penalty._fit(X, scorer)

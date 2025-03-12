@@ -35,7 +35,7 @@ def test_values(Penalty: BasePenalty):
     if penalty.penalty_type == "constant":
         assert penalty.values.shape == (1,)
     else:
-        assert penalty.values.shape == (penalty.p,)
+        assert penalty.values.shape == (penalty.p_,)
 
     # Penalties can have value = 0, but the test instances should have positive values.
     assert np.all(penalty.values > 0.0)

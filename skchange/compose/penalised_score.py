@@ -142,11 +142,11 @@ class PenalisedScore(BaseIntervalScorer):
         self.scorer.fit(X)
 
         if self.penalty.is_fitted:
-            if X.shape[1] != self.penalty.p:
+            if X.shape[1] != self.penalty.p_:
                 raise ValueError(
                     "The number of variables in the data must match the number of"
                     " variables in the penalty."
-                    f" 'X.shape[1]' = {X.shape[1]} and 'penalty.p' = {self.penalty.p}."
+                    f" 'X.shape[1]' = {X.shape[1]} and 'penalty.p' = {self.penalty.p_}."
                     " This error is most likely due to the penalty being fitted to a "
                     " different data set than the scorer."
                 )

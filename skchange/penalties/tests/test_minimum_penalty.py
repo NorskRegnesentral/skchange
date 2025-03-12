@@ -20,7 +20,7 @@ def test_minimum_penalty_initialization():
     penalty = MinimumPenalty([penalty1, penalty2], scale=1.0)
     penalty.fit(df, scorer)
     assert penalty.penalty_type == "linear"
-    assert penalty.p == df.shape[1]
+    assert penalty.p_ == df.shape[1]
 
 
 def test_minimum_penalty_invalid_initialization():
@@ -60,4 +60,4 @@ def test_minimum_penalty_nonlinear():
     penalty = MinimumPenalty([penalty1, penalty2], scale=1.0)
     penalty.fit(df, scorer)
     assert penalty.penalty_type == "nonlinear"
-    assert penalty.p == df.shape[1]
+    assert penalty.p_ == df.shape[1]

@@ -167,14 +167,14 @@ class NonlinearChiSquarePenalty(BasePenalty):
         self
             Reference to self.
         """
-        if self.n_params_per_variable > 2:
+        if self.n_params_per_variable_ > 2:
             raise ValueError(
                 "NonlinearChiSquarePenalty can only be used with scorers that have at"
                 " most 2 parameters per variable (scorer.get_param_size(1) <= 2)"
             )
 
         self._base_penalty_values = self._make_penalty(
-            self.n, self.p, self.n_params_per_variable
+            self.n_, self.p_, self.n_params_per_variable_
         )
         return self
 
