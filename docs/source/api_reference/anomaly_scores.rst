@@ -3,6 +3,17 @@
 Anomaly scores
 ==============
 
+Base
+----
+.. currentmodule:: skchange.anomaly_scores.base
+
+.. autosummary::
+    :toctree: auto_generated/
+    :template: class.rst
+
+    BaseSaving
+    BaseLocalAnomalyScore
+
 Savings
 -------
 
@@ -12,7 +23,6 @@ Savings
     :toctree: auto_generated/
     :template: class.rst
 
-    BaseSaving
     Saving
     L2Saving
 
@@ -23,7 +33,6 @@ Local anomaly scores
     :toctree: auto_generated/
     :template: class.rst
 
-    BaseLocalAnomalyScore
     LocalAnomalyScore
 
 Utility functions

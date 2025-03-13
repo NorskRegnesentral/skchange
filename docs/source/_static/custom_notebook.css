@@ -1,0 +1,52 @@
+/* Make notebook cells appear like markdown code blocks */
+
+/* Remove cell borders*/
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    border: none !important;
+    padding: 0;
+    margin: 0;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Fix border in dark mode */
+.dark-mode div.nbinput div.input_area,
+.dark-mode div.nboutput div.output_area,
+[data-theme="dark"] div.nbinput div.input_area,
+[data-theme="dark"] div.nboutput div.output_area {
+    background-color: var(--color-code-background);
+    border-color: transparent !important;
+}
+
+/* Add space between cell text and border */
+div.nbinput div.input_area > div.highlight > pre,
+div.nboutput div.output_area > div.highlight > pre {
+    padding: 1em !important;
+    margin: 0;
+}
+
+/* Hide the prompt column completely */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    display: none;
+    width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* Ensure the code takes full width */
+div.nbinput div.input_area {
+    width: 100%;
+    box-shadow: none;
+}
+
+/* Style similar to markdown code blocks */
+div.nbinput {
+    margin-bottom: 1em;
+}
+
+/* Clean spacing */
+div.nbinput:not(:first-child) {
+    margin-top: 1em;
+}

@@ -6,7 +6,7 @@ Anomaly detectors
 Base
 ----
 
-.. currentmodule:: skchange.anomaly_detectors
+.. currentmodule:: skchange.anomaly_detectors.base
 .. autosummary::
     :toctree: auto_generated/
     :template: class.rst

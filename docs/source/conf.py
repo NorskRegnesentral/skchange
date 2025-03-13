@@ -3,7 +3,11 @@
 import datetime
 import sys
 
+import plotly.io as pio
+
 import skchange
+
+pio.renderers.default = "notebook"  # Needed for plotly to render in Sphinx
 
 # -- Project information
 
@@ -40,7 +44,18 @@ extensions = [
     "sphinx_design",
     "sphinx_issues",
     "sphinx.ext.doctest",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "nbsphinx",
 ]
+
+# Notebook options
+nbsphinx_allow_errors = True
+nbsphinx_execute = "always"
+nbsphinx_codecell_lexer = "ipython3"
+
+html_static_path = ["_static"]
+html_css_files = ["custom_notebook.css"]
 
 # Recommended by sphinx_design when using the MyST Parser
 myst_enable_extensions = ["colon_fence"]

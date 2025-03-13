@@ -75,7 +75,7 @@ This project is a free and open-source software licensed under the
     :maxdepth: 2
     :hidden:
 
-    user_guide
-    api_reference
-    developer_guide
+    user_guide/index
+    api_reference/index
+    developer_guide/index
     releases
