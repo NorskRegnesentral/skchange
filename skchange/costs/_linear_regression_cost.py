@@ -6,10 +6,10 @@ residuals from fitting a linear regression model within each segment.
 """
 
 import numpy as np
-import pandas as pd
 
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
+from ..utils.validation.parameters import check_data_column
 from .base import BaseCost
 
 
@@ -124,51 +124,6 @@ def linear_regression_cost_intervals(
         costs[i, 0] = linear_regression_cost(X_features, y_response)
 
     return costs
-
-
-def check_data_column(
-    data_column: int | str,
-    column_role: str,
-    X: np.ndarray,
-    X_columns: pd.Index | None,
-) -> int:
-    """Check that a data column name or index is valid.
-
-    Parameters
-    ----------
-    data_column : int or str
-        Column index or name to check.
-    column_role : str
-        Role of the column (e.g., "Response").
-    X : np.ndarray
-        Data array.
-    X_columns : pd.Index or None
-        Column names of the data array.
-
-    Returns
-    -------
-    data_column : int
-        Column index.
-    """
-    if isinstance(data_column, int):
-        if not 0 <= data_column < X.shape[1]:
-            raise ValueError(
-                f"{column_role} column index ({data_column}) must"
-                f" be between 0 and {X.shape[1] - 1}."
-            )
-    elif isinstance(data_column, str) and X_columns is not None:
-        if data_column not in X_columns:
-            raise ValueError(
-                f"{column_role} column ({data_column}) not found "
-                f"among the fit data columns: {X_columns}."
-            )
-        data_column = X_columns.get_loc(data_column)
-    else:
-        raise ValueError(
-            f"{column_role} column must be an integer in the range "
-            f"[0, {X.shape[1]}), or a valid column name. Got {data_column}."
-        )
-    return data_column
 
 
 class LinearRegressionCost(BaseCost):

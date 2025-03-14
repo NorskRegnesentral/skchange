@@ -24,8 +24,11 @@ def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
     if isinstance(saving, BaseCost):
-        fixed_params = find_fixed_param_combination(Saving)
-        saving = saving.set_params(**fixed_params)
+        if not saving.supports_fixed_params:
+            pytest.skip(f"{type(saving).__name__} does not support fixed parameters.")
+        else:
+            fixed_params = find_fixed_param_combination(Saving)
+            saving = saving.set_params(**fixed_params)
 
     if Detector is MVCAPA and saving.evaluation_type != EvaluationType.UNIVARIATE:
         # MVCAPA requires univariate saving.
