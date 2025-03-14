@@ -5,6 +5,8 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
+from skchange.anomaly_detectors import MVCAPA
+from skchange.anomaly_scores import to_saving
 from skchange.change_detectors import PELT
 from skchange.costs import LinearTrendCost
 from skchange.costs._linear_trend_cost import (
@@ -346,3 +348,100 @@ def test_indexed_trend_vs_explicit_time():
 
     # Both methods should give very similar results
     assert np.isclose(costs_explicit[0, 0], costs_indexed[0, 0], rtol=1e-6)
+
+
+def test_linear_trend_cost_as_saving():
+    """Test using LinearTrendCost as a Saving within MVCAPA detector."""
+
+    # Create data with two trend anomalies
+    n_samples = 300
+    np.random.seed(25)
+
+    # Normal data: constant with slight noise
+    normal_data = np.random.normal(0, 0.2, (n_samples, 2))
+
+    # First anomaly: linear trend in first column only (index 80-100)
+    anomaly_idx1 = slice(80, 100)
+    t1 = np.arange(anomaly_idx1.stop - anomaly_idx1.start)
+    normal_data[anomaly_idx1, 0] = 0.5 * t1 + np.random.normal(0, 0.2, len(t1))
+
+    # Second anomaly: linear trend in both columns (index 200-230)
+    anomaly_idx2 = slice(200, 230)
+    t2 = np.arange(anomaly_idx2.stop - anomaly_idx2.start)
+    normal_data[anomaly_idx2, 0] = 0.7 * t2 + np.random.normal(0, 0.2, len(t2))
+    normal_data[anomaly_idx2, 1] = -0.5 * t2 + np.random.normal(0, 0.2, len(t2))
+
+    # Create DataFrame
+    df = pd.DataFrame(normal_data, columns=["var1", "var2"])
+
+    # Create LinearTrendCost with zero slope and intercept as baseline
+    baseline_cost = LinearTrendCost(param=np.array([[0.0, 0.0], [0.0, 0.0]]))
+
+    # Convert to Saving
+    trend_saving = to_saving(baseline_cost)
+
+    # Create MVCAPA detector with LinearTrendCost as Saving
+    detector = MVCAPA(
+        segment_saving=trend_saving,
+        min_segment_length=5,
+        max_segment_length=50,
+    )
+
+    # Detect anomalies
+    anomalies = detector.fit_predict(df)
+
+    # Check that both anomalies were detected
+    assert len(anomalies) >= 2, "Should detect at least two anomalies"
+
+    # Check if the anomalies are close to the ground truth
+    detected_intervals = [
+        (interval.left, interval.right) for interval in anomalies["ilocs"]
+    ]
+
+    # Check if any detected interval overlaps with the first anomaly
+    first_anomaly_detected = any(
+        (start <= anomaly_idx1.start and end >= anomaly_idx1.stop)
+        # or (start >= anomaly_idx1.start and start < anomaly_idx1.stop)
+        # or (end > anomaly_idx1.start and end <= anomaly_idx1.stop)
+        for start, end in detected_intervals
+    )
+
+    # Check if any detected interval overlaps with the second anomaly
+    second_anomaly_detected = any(
+        (start <= anomaly_idx2.start and end >= anomaly_idx2.stop)
+        # or (start >= anomaly_idx2.start and start < anomaly_idx2.stop)
+        # or (end > anomaly_idx2.start and end <= anomaly_idx2.stop)
+        for start, end in detected_intervals
+    )
+
+    assert first_anomaly_detected, "First anomaly (index 80-100) was not detected"
+    assert second_anomaly_detected, "Second anomaly (index 200-230) was not detected"
+
+    # Check that the affected columns are correctly identified
+    # First anomaly should only affect the first column
+    first_anomaly_cols = next(
+        (
+            cols
+            for (start, end), cols in zip(detected_intervals, anomalies["icolumns"])
+            if start <= anomaly_idx1.stop and end >= anomaly_idx1.start
+        ),
+        None,
+    )
+
+    assert len(first_anomaly_cols) == 1 and first_anomaly_cols[0] == 0, (
+        "First column should be affected in first anomaly"
+    )
+
+    # Second anomaly should affect both columns
+    second_anomaly_cols = next(
+        (
+            cols
+            for (start, end), cols in zip(detected_intervals, anomalies["icolumns"])
+            if start <= anomaly_idx2.stop and end >= anomaly_idx2.start
+        ),
+        None,
+    )
+
+    assert {0, 1} == set(second_anomaly_cols), (
+        "Both columns should be affected in second anomaly"
+    )
