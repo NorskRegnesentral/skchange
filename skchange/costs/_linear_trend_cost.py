@@ -2,16 +2,15 @@
 
 This module contains the LinearTrendCost class, which is a cost function for
 change point detection based on the squared error between data points
-and a fitted linear trend line within each interval.
+and a best fit linear trend line within each interval.
 """
 
 import numpy as np
 
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
+from ..utils.validation.parameters import check_data_column
 from .base import BaseCost
-
-# todo: add the cost to the COSTS variable in skchange.costs.__init__.py
 
 
 @njit
@@ -116,7 +115,9 @@ def linear_trend_cost_mle(
             segment_data = X[start:end, col]
             segment_ts = ts[start:end]
 
-            slope, intercept = fit_linear_trend(segment_data, segment_ts)
+            slope, intercept = fit_linear_trend(
+                time_steps=segment_ts, values=segment_data
+            )
             costs[i, col] = np.sum(
                 np.square(segment_data - (intercept + slope * segment_ts))
             )
@@ -246,9 +247,10 @@ class LinearTrendCost(BaseCost):
     evaluation_type = EvaluationType.UNIVARIATE
     supports_fixed_params = True
 
-    def __init__(self, param=None):
+    def __init__(self, param=None, time_column: str | int | None = None):
         super().__init__(param)
         self._trend_params = None
+        self.time_column = time_column
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -262,7 +264,30 @@ class LinearTrendCost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
-        self._param = self._check_param(self.param, X)
+        if self.time_column is not None:
+            self.time_column_idx = check_data_column(
+                self.time_column, "Time", X, self._X_columns
+            )
+        else:
+            self.time_column_idx = None
+
+        if self.time_column_idx is not None:
+            self._time_stamps = X[:, self.time_column_idx]
+        elif self.param is not None and self.time_column_idx is None:
+            # If using fixed parameters, we need a time column:
+            self._time_stamps = np.arange(X.shape[0])
+        else:
+            # No provided time column or fixed parameters, so we assume
+            # the time steps are [0, 1, 2, ..., n-1] for each segment.
+            self._time_stamps = None
+
+        if self.time_column_idx is not None:
+            trend_columns = np.delete(np.arange(X.shape[1]), self.time_column_idx)
+            self._trend_data = X[:, trend_columns]
+        else:
+            self._trend_data = X
+
+        self._param = self._check_param(self.param, self._trend_data)
         if self.param is not None:
             self._trend_params = self._param
 
@@ -288,7 +313,12 @@ class LinearTrendCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of
             columns is equal to the number of columns in the input data.
         """
-        return linear_trend_cost_mle(starts, ends, self._X)
+        if self._time_stamps is not None:
+            return linear_trend_cost_mle(
+                starts, ends, self._trend_data, self._time_stamps
+            )
+        else:
+            return linear_trend_cost_index_times_mle(starts, ends, self._trend_data)
 
     def _evaluate_fixed_param(self, starts, ends) -> np.ndarray:
         """Evaluate the cost for fixed linear trend parameters.
@@ -310,9 +340,11 @@ class LinearTrendCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of
             columns is equal to the number of columns in the input data.
         """
-        return linear_trend_cost_fixed(starts, ends, self._X, self._trend_params)
+        return linear_trend_cost_fixed(
+            starts, ends, self._trend_data, self._time_stamps, self._trend_params
+        )
 
-    def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
+    def _check_fixed_param(self, param, trend_data: np.ndarray) -> np.ndarray:
         """Check if the fixed parameter is valid relative to the data.
 
         Parameters
@@ -322,7 +354,7 @@ class LinearTrendCost(BaseCost):
                                                     [slope_2, intercept_2],
                                                      ...]
             where each pair of parameters corresponds to a column in X.
-        X : np.ndarray
+        trend_data : np.ndarray
             Input data.
 
         Returns
@@ -337,13 +369,13 @@ class LinearTrendCost(BaseCost):
         param_array = np.asarray(param, dtype=float)
 
         # Check that we have the right number of parameters (2 per column)
-        if param_array.size != 2 * X.shape[1]:
+        if param_array.size != 2 * trend_data.shape[1]:
             raise ValueError(
-                f"Expected {2 * X.shape[1]} parameters "
+                f"Expected {2 * trend_data.shape[1]} parameters "
                 f"(2 per column), but got {param_array.size}."
             )
 
-        if param_array.ndim == 1 and X.shape[1] == 1:
+        if param_array.ndim == 1 and trend_data.shape[1] == 1:
             # Got a 1D array for a single column, reshape to 2D.
             param_array = param_array.reshape(-1, 2)
 
@@ -401,8 +433,9 @@ class LinearTrendCost(BaseCost):
         """
         params = [
             {"param": None},
-            {
-                "param": np.array([1.0, 0.0])
-            },  # slope=1, intercept=0 for a single column.
+            # Fixed parameters dependend on the data:
+            # {
+            #     "param": np.array([1.0, 0.0])
+            # },  # slope=1, intercept=0 for a single column.
         ]
         return params
