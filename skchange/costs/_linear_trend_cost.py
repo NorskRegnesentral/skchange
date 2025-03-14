@@ -374,9 +374,6 @@ class LinearTrendCost(BaseCost):
         param: np.ndarray
             Fixed parameters for the cost calculation.
         """
-        if param is None:
-            return param
-
         # Convert to numpy array if not already
         param_array = np.asarray(param, dtype=float)
 
