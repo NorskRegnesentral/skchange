@@ -214,8 +214,8 @@ def test_linear_trend_cost_fixed_params():
     # Correct parameters should give lower cost than wrong parameters
     assert costs_correct[0, 0] < costs_wrong[0, 0]
 
-    # Verify that min_size is 1 with fixed params and 3 without
-    assert cost_correct.min_size == 1
+    # Verify that min_size is 3 with fixed params and 3 without.
+    assert cost_correct.min_size == 3
 
     cost_optim = LinearTrendCost(time_column=0)
     cost_optim.fit(X)

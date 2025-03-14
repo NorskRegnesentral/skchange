@@ -237,6 +237,11 @@ class LinearTrendCost(BaseCost):
         i.e. with shape: (n_columns, 2). Each pair of parameters corresponds to a column
         in the input data. If None, the optimal parameters (i.e., the best-fit line) are
         calculated for each interval.
+    time_column : str or int, optional (default=None)
+        Name or index of the column containing the time steps. If None, the time steps
+        are assumed to be [0, 1, 2, ..., len(X)-1] if fixed parameters are used.
+    shared_linear_trend : bool, optional (default=False)
+        If True, the same linear trend parameters are used for all columns.
     """
 
     _tags = {
@@ -247,10 +252,15 @@ class LinearTrendCost(BaseCost):
     evaluation_type = EvaluationType.UNIVARIATE
     supports_fixed_params = True
 
-    def __init__(self, param=None, time_column: str | int | None = None):
+    def __init__(
+        self,
+        param=None,
+        time_column: str | int | None = None,
+        share_fixed_trend: bool = False,
+    ):
         super().__init__(param)
-        self._trend_params = None
         self.time_column = time_column
+        self.share_fixed_trend = share_fixed_trend
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -290,6 +300,8 @@ class LinearTrendCost(BaseCost):
         self._param = self._check_param(self.param, self._trend_data)
         if self.param is not None:
             self._trend_params = self._param
+        else:
+            self._trend_params = None
 
         return self
 
@@ -350,12 +362,12 @@ class LinearTrendCost(BaseCost):
         Parameters
         ----------
         param : array-like
-            Fixed parameters for the linear trend: [[slope_1, intercept_1],
-                                                    [slope_2, intercept_2],
-                                                     ...]
-            where each pair of parameters corresponds to a column in X.
+            Fixed parameters for the linear trend: `[[slope_1, intercept_1],\
+                                                    [slope_2, intercept_2],\
+                                                     ...]`,
+            where each pair of parameters corresponds to a column in `trend_data`.
         trend_data : np.ndarray
-            Input data.
+            Input data to evaluate LinearTrendCost on. Must be a 2D array.
 
         Returns
         -------
@@ -368,7 +380,14 @@ class LinearTrendCost(BaseCost):
         # Convert to numpy array if not already
         param_array = np.asarray(param, dtype=float)
 
-        # Check that we have the right number of parameters (2 per column)
+        # If shared_linear_trend is True, allow providing a single
+        # [slope, intercept] pair that will be applied to all columns.
+        if self.share_fixed_trend and param_array.size == 2:
+            # Repeat the parameters for each column:
+            param_array = np.tile(param_array.reshape(1, 2), (trend_data.shape[1], 1))
+            return param_array
+
+        # Otherwise, check that we have the right number of parameters (2 per column)
         if param_array.size != 2 * trend_data.shape[1]:
             raise ValueError(
                 f"Expected {2 * trend_data.shape[1]} parameters "
@@ -396,10 +415,7 @@ class LinearTrendCost(BaseCost):
         int
             The minimum valid size of an interval to evaluate.
         """
-        if self._trend_params is None:
-            return 3
-        else:
-            return 1
+        return 3
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
@@ -433,9 +449,10 @@ class LinearTrendCost(BaseCost):
         """
         params = [
             {"param": None},
-            # Fixed parameters dependend on the data:
-            # {
-            #     "param": np.array([1.0, 0.0])
-            # },  # slope=1, intercept=0 for a single column.
+            # Fixed parameter shape depends on the data:
+            {
+                "param": np.zeros((1, 2)),
+                "share_fixed_trend": True,
+            },  # slope=0, intercept=0 for all columns.
         ]
         return params
