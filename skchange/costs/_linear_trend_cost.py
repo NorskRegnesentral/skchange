@@ -28,18 +28,12 @@ def fit_linear_trend(time_steps: np.ndarray, values: np.ndarray) -> tuple[float,
     tuple
         (slope, intercept) of the best-fit line
     """
-    n = len(values)
-    if n < 3:
-        return 0.0, 0.0
-
-    # Use the fact that for evenly spaced x values starting at 0,
-    # the slope and intercept can be calculated more efficiently
     mean_t = np.mean(time_steps)
     centered_time_steps = time_steps - mean_t
     mean_value = np.mean(values)
 
     # Calculate linear regression denominator = sum((t-mean_t)²):
-    denominator = np.sum(centered_time_steps**2)
+    denominator = np.sum(np.square(centered_time_steps))
 
     # Calculate linear regression numerator = sum((t-mean_t)*(x-mean_x)):
     numerator = np.sum(centered_time_steps * (values - mean_value))
@@ -51,29 +45,42 @@ def fit_linear_trend(time_steps: np.ndarray, values: np.ndarray) -> tuple[float,
 
 
 @njit
-def linear_trend_cost(
-    xs: np.ndarray, ts: np.ndarray, slope: float, intercept: float
-) -> float:
-    """Calculate the squared error cost between array and a linear trend.
+def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
+    """Calculate the optimal linear trend for a given array.
+
+    Assuming the time steps are [0, 1, 2, ..., n-1], we can optimize the calculation.
 
     Parameters
     ----------
     xs : np.ndarray
         1D array of data points
-    ts : np.ndarray
-        1D array of time steps corresponding to the data points
-    slope : float
-        Slope of the linear trend
-    intercept : float
-        Intercept of the linear trend
 
     Returns
     -------
-    float
-        Sum of squared errors between data points and the linear trend
+    tuple
+        (slope, intercept) of the best-fit line
     """
-    linear_trend = intercept + slope * ts
-    return np.sum((xs - linear_trend) ** 2)
+    n_samples = len(xs)
+
+    # For evenly spaced time steps [0, 1, 2, ..., n-1],
+    # the mean time step is (n-1)/2.
+    mean_t = (n_samples - 1) / 2.0
+
+    # Optimized calculation for denominator:
+    # sum of (t - mean_t)^2 = n*(n^2-1)/12
+    denominator = n_samples * (n_samples * n_samples - 1) / 12.0
+
+    # Calculate numerator: sum((t-mean_t)*(x-mean_x))
+    # numerator = np.sum((np.arange(n) - mean_t) * (xs - mean_x))
+    mean_x = np.mean(xs)
+    numerator = 0.0
+    for i in range(n_samples):
+        numerator += (i - mean_t) * (xs[i] - mean_x)
+
+    slope = numerator / denominator
+    intercept = mean_x - slope * mean_t
+
+    return slope, intercept
 
 
 @njit
@@ -91,7 +98,7 @@ def linear_trend_cost_mle(
     X : np.ndarray
         Data to evaluate. Must be a 2D array.
     ts : np.ndarray
-        Time steps for the data points. By default, this is the index of the data.
+        Time points the data points were observed at.
 
     Returns
     -------
@@ -110,16 +117,60 @@ def linear_trend_cost_mle(
             segment_ts = ts[start:end]
 
             slope, intercept = fit_linear_trend(segment_data, segment_ts)
-            costs[i, col] = linear_trend_cost(
-                segment_data, segment_ts, slope, intercept
+            costs[i, col] = np.sum(
+                np.square(segment_data - (intercept + slope * segment_ts))
             )
 
     return costs
 
 
 @njit
+def linear_trend_cost_index_times_mle(
+    starts: np.ndarray, ends: np.ndarray, X: np.ndarray
+) -> np.ndarray:
+    """Evaluate the linear trend cost with optimized parameters.
+
+    Assumes that the data is observed at time steps [0, 1, 2, ..., n-1]
+    within each segment, with n being the length of the segment.
+
+    Parameters
+    ----------
+    starts : np.ndarray
+        Start indices of the intervals (inclusive).
+    ends : np.ndarray
+        End indices of the intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
+
+    Returns
+    -------
+    costs : np.ndarray
+        A 2D array of costs. One row for each interval. The number of columns
+        is equal to the number of columns in the input data.
+    """
+    n_intervals = len(starts)
+    n_columns = X.shape[1]
+    costs = np.zeros((n_intervals, n_columns))
+
+    for i in range(n_intervals):
+        start, end = starts[i], ends[i]
+        for col in range(n_columns):
+            segment_data = X[start:end, col]
+
+            slope, intercept = fit_indexed_linear_trend(segment_data)
+            linear_trend_values = intercept + slope * np.arange(segment_data.shape[0])
+            costs[i, col] = np.sum(np.square(segment_data - linear_trend_values))
+
+    return costs
+
+
+@njit
 def linear_trend_cost_fixed(
-    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, params: np.ndarray
+    starts: np.ndarray,
+    ends: np.ndarray,
+    X: np.ndarray,
+    time_steps: np.ndarray,
+    params: np.ndarray,
 ) -> np.ndarray:
     """Evaluate the linear trend cost with fixed parameters.
 
@@ -131,6 +182,8 @@ def linear_trend_cost_fixed(
         End indices of the intervals (exclusive).
     X : np.ndarray
         Data to evaluate. Must be a 2D array.
+    time_steps : np.ndarray
+        Time points the data points were observed at.
     params : np.ndarray
         Fixed parameters for linear trend: [[slope_1, intercept_1],
                                             [slope_2, intercept_2],
@@ -144,6 +197,7 @@ def linear_trend_cost_fixed(
         is equal to the number of columns in the input data.
     """
     n_intervals = len(starts)
+
     n_columns = X.shape[1]
     costs = np.zeros((n_intervals, n_columns))
 
@@ -151,8 +205,11 @@ def linear_trend_cost_fixed(
         slope, intercept = params[col, :]
         for i in range(n_intervals):
             start, end = starts[i], ends[i]
-            segment = X[start:end, col]
-            costs[i, col] = linear_trend_cost(segment, slope, intercept)
+            segment_data = X[start:end, col]
+            segment_ts = time_steps[start:end]
+
+            linear_trend_values = intercept + slope * segment_ts
+            costs[i, col] = np.sum(np.square(segment_data - linear_trend_values))
 
     return costs
 
@@ -168,13 +225,21 @@ class LinearTrendCost(BaseCost):
     Parameters
     ----------
     param : array-like, optional (default=None)
-        Fixed parameters for the cost calculation in the form [slope_1, intercept_1, slope_2, intercept_2, ...]
-        where each pair corresponds to a column in the input data.
-        If None, the optimal parameters (i.e., the best-fit line) are calculated for each interval.
+        Fixed parameters for the cost calculation in the form:
+
+            [[slope_1, intercept_1],
+
+            [slope_2, intercept_2],
+
+            ...],
+
+        i.e. with shape: (n_columns, 2). Each pair of parameters corresponds to a column
+        in the input data. If None, the optimal parameters (i.e., the best-fit line) are
+        calculated for each interval.
     """
 
     _tags = {
-        "authors": ["Tveten", "johannvk"],
+        "authors": ["johannvk"],
         "maintainers": "johannvk",
     }
 
@@ -183,7 +248,7 @@ class LinearTrendCost(BaseCost):
 
     def __init__(self, param=None):
         super().__init__(param)
-        self._fixed_params = None
+        self._trend_params = None
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -199,7 +264,7 @@ class LinearTrendCost(BaseCost):
         """
         self._param = self._check_param(self.param, X)
         if self.param is not None:
-            self._fixed_params = self._param
+            self._trend_params = self._param
 
         return self
 
@@ -245,7 +310,7 @@ class LinearTrendCost(BaseCost):
             A 2D array of costs. One row for each interval. The number of
             columns is equal to the number of columns in the input data.
         """
-        return linear_trend_cost_fixed(starts, ends, self._X, self._fixed_params)
+        return linear_trend_cost_fixed(starts, ends, self._X, self._trend_params)
 
     def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
         """Check if the fixed parameter is valid relative to the data.
@@ -282,8 +347,8 @@ class LinearTrendCost(BaseCost):
             # Got a 1D array for a single column, reshape to 2D.
             param_array = param_array.reshape(-1, 2)
 
-        if param_array.ndim != 2:
-            raise ValueError("Fixed parameters must be convertible to a 2D array.")
+        if param_array.ndim != 2 or param_array.shape[1] != 2:
+            raise ValueError("Fixed parameters must convertible to shape (n_cols, 2).")
 
         return param_array
 
@@ -299,7 +364,10 @@ class LinearTrendCost(BaseCost):
         int
             The minimum valid size of an interval to evaluate.
         """
-        return 3
+        if self._trend_params is None:
+            return 3
+        else:
+            return 1
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
@@ -333,6 +401,8 @@ class LinearTrendCost(BaseCost):
         """
         params = [
             {"param": None},
-            {"param": np.array([1.0, 0.0])},  # slope=1, intercept=0 for a single column
+            {
+                "param": np.array([1.0, 0.0])
+            },  # slope=1, intercept=0 for a single column.
         ]
         return params
