@@ -13,7 +13,7 @@ from skchange.datasets import generate_alternating_data
 SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 
 
-@pytest.mark.parametrize("Score", SCORES_AND_COSTS)
+@pytest.mark.parametrize("ScoreType", SCORES_AND_COSTS)
 def test_moving_window_changepoint(ScoreType: type[BaseCost] | type[BaseChangeScore]):
     """Test MovingWindow changepoints."""
     score = ScoreType.create_test_instance()
