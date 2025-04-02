@@ -111,10 +111,9 @@ def linear_trend_cost_mle(
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
+        segment_ts = ts[start:end]
         for col in range(n_columns):
             segment_data = X[start:end, col]
-            segment_ts = ts[start:end]
-
             slope, intercept = fit_linear_trend(
                 time_steps=segment_ts, values=segment_data
             )
