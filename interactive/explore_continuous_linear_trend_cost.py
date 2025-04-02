@@ -229,14 +229,10 @@ ax5.legend(by_label5.values(), by_label5.keys())
 fig3
 
 # %%
-# best_fit_linear_trend_score = BestFitLinearTrendScore()
-best_fit_linear_trend_cost = 
+best_fit_linear_trend_score = BestFitLinearTrendScore()
 
 # Create detector with LinearTrendCost
-best_fit_linear_trend_score_mw_detector = MovingWindow(
-    # best_fit_linear_trend_score
-    best_fit_linear_trend_cost,
-)
+best_fit_linear_trend_score_mw_detector = MovingWindow(best_fit_linear_trend_score)
 best_fit_linear_trend_score_mw_detector.fit(df)
 best_fit_linear_trend_score_changepoints = (
     best_fit_linear_trend_score_mw_detector.predict(df)
@@ -304,7 +300,8 @@ fig4
 # %%
 # Use the SeededBinarySegmentation algorithm with the BestFitLinearTrendScore:
 bf_linear_trend_seeded_bin_seg_detector = SeededBinarySegmentation(
-    best_fit_linear_trend_score
+    best_fit_linear_trend_score,
+    min_segment_length=5,
 )
 
 # Fit the detector to the data
@@ -318,7 +315,7 @@ bf_linear_trend_seeded_bin_seg_changepoints = (
 fig5, ax9 = plt.subplots(figsize=(12, 6))
 ax9.plot(df, label="Data", color="blue")
 # Plot the changepoints on the upper axis
-for cp in best_fit_linear_trend_score_changepoints["ilocs"]:
+for cp in bf_linear_trend_seeded_bin_seg_changepoints["ilocs"]:
     ax9.axvline(x=cp, color="red", linestyle="--", label="Changepoint")
 ax9.set_ylabel("Value")
 ax9.set_title(
@@ -381,5 +378,6 @@ print(ruptures_clinear_cost.sum_of_costs([10, 100, 200, 250, n_samples]))
 
 ruptures_clinear_cost = rpt.costs.CostCLinear()
 algo = rpt.Dynp(custom_cost=ruptures_clinear_cost)
+ruptures_bkps = algo.fit_predict(df.values, n_bkps=2)
 # is equivalent to
 # algo = rpt.Dynp(model="clinear")

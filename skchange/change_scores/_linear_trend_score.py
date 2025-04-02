@@ -47,8 +47,17 @@ def linear_trend_score(
         split_interval_trend_data[:, 0] = 1.0  # Intercept
         # Whole interval slope:
         split_interval_trend_data[:, 1] = np.arange(end - start)  # Time steps
-        # Change in slope from the split point: trend data index starts at 0 from 'start'.
-        split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
+
+        # Change in slope from the split point:
+        # trend data index starts at 0 from 'start'.
+        # Continuous at the first point of the second interal, [split, end - 1]:
+        # split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
+
+        # Change in slope from the split point:
+        # trend data index starts at 0 from 'start'.
+        # Continuous in the last point of the first interval, [start, split - 1]:
+        # THIS IS WHAT the 'NOT' people DO:
+        split_interval_trend_data[(split - start) :, 2] = np.arange(1, end - split + 1)
 
         # Calculate the slope and intercept for the whole interval:
         split_interval_linreg_res = np.linalg.lstsq(
@@ -68,6 +77,51 @@ def linear_trend_score(
         )
 
     return scores
+
+
+def continuous_piecewise_linear_trend_squared_contrast(
+    signal: np.ndarray,
+    first_interval_inclusive_start: int,
+    second_interval_inclusive_start: int,
+    non_inclusive_end: int,
+):
+    # Assume 'start' is the first index of the data, perform inner product with the
+    # desired segment of the data to get the cost.
+    assert (
+        first_interval_inclusive_start + 1
+        < second_interval_inclusive_start
+        < non_inclusive_end
+    )
+    ## Translate named parameters to the NOT-paper sytax.
+    ## We are zero-indexing the data, whilst the paper is one-indexing.
+    s = first_interval_inclusive_start - 1
+    b = second_interval_inclusive_start - 1
+    e = non_inclusive_end - 1
+    l = e - s
+    alpha = np.sqrt(
+        6.0 / (l * (l**2 - 1) * (1 + (e - b + 1) * (b - s) + (e - b) * (b - s - 1)))
+    )
+    beta = np.sqrt(((e - b + 1.0) * (e - b)) / ((b - s - 1.0) * (b - s)))
+
+    first_interval_slope = 3.0 * (b - s) + (e - b) - 1.0
+    first_interval_constant = b * (e - s - 1.0) + 2.0 * (s + 1.0) * (b - s)
+
+    second_interval_slope = 3.0 * (e - b) + (b - s) + 1.0
+    second_interval_constant = b * (e - s - 1.0) + 2.0 * e * (e - b + 1)
+
+    # Accumulate the contrast value inner product:
+    contrast = 0.0
+    for t in range(s + 1, b + 1):
+        contrast += (
+            alpha * beta * (first_interval_slope * t - first_interval_constant)
+        ) * signal[t]
+
+    for t in range(b + 1, e + 1):
+        contrast += (
+            (-alpha / beta) * (second_interval_slope * t - second_interval_constant)
+        ) * signal[t]
+
+    return np.square(contrast)
 
 
 class BestFitLinearTrendScore(BaseChangeScore):
