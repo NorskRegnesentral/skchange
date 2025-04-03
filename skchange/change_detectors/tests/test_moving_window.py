@@ -19,7 +19,7 @@ def test_moving_window_changepoint(ScoreType: type[BaseCost] | type[BaseChangeSc
     score = ScoreType.create_test_instance()
     if isinstance(score, ContinuousLinearTrendScore):
         pytest.skip(
-            "Skipping test for ContinuousLinearTrendCost. It finds two changes in "
+            "Skipping test for ContinuousLinearTrendScore. It finds two changes in "
             "linear trend (flat, steep, flat), instead of a single change in mean."
         )
 
@@ -34,7 +34,7 @@ def test_moving_window_changepoint(ScoreType: type[BaseCost] | type[BaseChangeSc
 
 
 def test_moving_window_continuous_linear_trend_score():
-    """Test that MovingWindow finds two change points with ContinuousLinearTrendCost."""
+    """Test that MovingWindow finds two change points with ContinuousLinearTrendScore."""
     n_segments = 2
     seg_len = 50
     df = generate_alternating_data(

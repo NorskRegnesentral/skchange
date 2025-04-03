@@ -5,7 +5,7 @@ import pandas as pd
 
 from skchange.change_detectors import MovingWindow, SeededBinarySegmentation
 from skchange.change_scores import ContinuousLinearTrendScore
-from skchange.change_scores._linear_trend_score import (
+from skchange.change_scores._continuous_linear_trend_score import (
     analytical_cont_piecewise_linear_trend_score,
     lin_reg_cont_piecewise_linear_trend_score,
 )
