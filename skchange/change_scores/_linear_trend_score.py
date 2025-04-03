@@ -9,12 +9,17 @@ import numpy as np
 
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
+from ..utils.validation.parameters import check_data_column
 from .base import BaseChangeScore
 
 
 @njit
-def linear_trend_score(
-    starts: np.ndarray, splits: np.ndarray, ends: np.ndarray, X: np.ndarray
+def lin_reg_cont_piecewise_linear_trend_score(
+    starts: np.ndarray,
+    splits: np.ndarray,
+    ends: np.ndarray,
+    X: np.ndarray,
+    times: np.ndarray,
 ) -> np.ndarray:
     """Evaluate the continuous linear trend cost.
 
@@ -28,15 +33,16 @@ def linear_trend_score(
         End indices of the second intervals (exclusive).
     X : np.ndarray
         Data to evaluate. Must be a 2D array.
+    times : np.ndarray, optional
+        Time steps corresponding to the data points. If the data points
+        are evenly spaced, instead call the optimized NOT-score function.
 
     Returns
     -------
-    costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of columns
+    scores : np.ndarray
+        A 2D array of scores. One row for each interval. The number of columns
         is equal to the number of columns in the input data.
     """
-    ### NOTE: Assume 'time' is index of the data. i.e. time = 0, 1, 2, ..., len(X)-1
-    ###       This assumption could be changed later.
     n_intervals = len(starts)
     n_columns = X.shape[1]
     scores = np.zeros((n_intervals, n_columns))
@@ -45,19 +51,27 @@ def linear_trend_score(
         start, split, end = starts[i], splits[i], ends[i]
         split_interval_trend_data = np.zeros((end - start, 3))
         split_interval_trend_data[:, 0] = 1.0  # Intercept
+
         # Whole interval slope:
-        split_interval_trend_data[:, 1] = np.arange(end - start)  # Time steps
+        # split_interval_trend_data[:, 1] = np.arange(end - start)  # Time steps
+        split_interval_trend_data[:, 1] = times[start:end]  # Time steps
 
-        # Change in slope from the split point:
-        # trend data index starts at 0 from 'start'.
+        # Change in slope 'split + 1' index:
         # Continuous at the first point of the second interal, [split, end - 1]:
-        # split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
-
-        # Change in slope from the split point:
         # trend data index starts at 0 from 'start'.
+        # split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
+        # split_interval_trend_data[(split - start) :, 2] = (
+        #     times[split:end] - times[split]
+        # )
+
+        ### THIS IS WHAT the 'NOT' people DO: ###
+        # Change in slope from 'split' index:
         # Continuous in the last point of the first interval, [start, split - 1]:
-        # THIS IS WHAT the 'NOT' people DO:
-        split_interval_trend_data[(split - start) :, 2] = np.arange(1, end - split + 1)
+        # trend data index starts at 0 from 'start'.
+        # split_interval_trend_data[(split-start):, 2] = np.arange(1, end-split+1)
+        split_interval_trend_data[(split - start) :, 2] = (
+            times[split:end] - times[split - 1]
+        )
 
         # Calculate the slope and intercept for the whole interval:
         split_interval_linreg_res = np.linalg.lstsq(
@@ -68,7 +82,7 @@ def linear_trend_score(
         # By only regressing onto the first two columns, we can calculate the cost
         # without allowing for a change in slope at the split point.
         joint_interval_linreg_res = np.linalg.lstsq(
-            split_interval_trend_data[:, [0, 1]], X[start:end, :]
+            split_interval_trend_data[:, np.array([0, 1])], X[start:end, :]
         )
         joint_interval_squared_residuals = joint_interval_linreg_res[1]
 
@@ -79,6 +93,7 @@ def linear_trend_score(
     return scores
 
 
+@njit
 def continuous_piecewise_linear_trend_squared_contrast(
     signal: np.ndarray,
     first_interval_inclusive_start: int,
@@ -114,17 +129,57 @@ def continuous_piecewise_linear_trend_squared_contrast(
     for t in range(s + 1, b + 1):
         contrast += (
             alpha * beta * (first_interval_slope * t - first_interval_constant)
-        ) * signal[t]
+        ) * signal[t - first_interval_inclusive_start]
 
     for t in range(b + 1, e + 1):
         contrast += (
             (-alpha / beta) * (second_interval_slope * t - second_interval_constant)
-        ) * signal[t]
+        ) * signal[t - first_interval_inclusive_start]
 
     return np.square(contrast)
 
 
-class BestFitLinearTrendScore(BaseChangeScore):
+@njit
+def analytical_cont_piecewise_linear_trend_score(
+    starts: np.ndarray, splits: np.ndarray, ends: np.ndarray, X: np.ndarray
+):
+    """Evaluate the continuous piecewise linear trend cost.
+
+    Using the analytical solution, this function evaluates the cost for
+    `X[start:end]` for each each `[start, split, end]` triplett in `cuts`.
+
+    Parameters
+    ----------
+    starts : np.ndarray
+        Start indices of the first intervals (inclusive).
+    splits : np.ndarray
+        Split indices between the intervals (contained in second interval).
+    ends : np.ndarray
+        End indices of the second intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
+
+    Returns
+    -------
+    scores : np.ndarray
+        A 2D array of scores. One row for each interval. The number of columns
+        is equal to the number of columns in the input data.
+    """
+    scores = np.zeros((len(starts), X.shape[1]))
+    for i in range(len(starts)):
+        start, split, end = starts[i], splits[i], ends[i]
+        for j in range(X.shape[1]):
+            scores[i, j] = continuous_piecewise_linear_trend_squared_contrast(
+                X[start:end, j],
+                first_interval_inclusive_start=start,
+                second_interval_inclusive_start=split,
+                non_inclusive_end=end,
+            )
+
+    return scores
+
+
+class ContinuousLinearTrendScore(BaseChangeScore):
     """Continuous linear trend change score.
 
     This change score calculates the sum of squared errors between observed data
@@ -144,8 +199,12 @@ class BestFitLinearTrendScore(BaseChangeScore):
 
     def __init__(
         self,
+        time_column: str | None = None,
     ):
         super().__init__()
+        self.time_column = time_column
+        self.time_column_idx = None
+        self._time_stamps = None
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -159,40 +218,81 @@ class BestFitLinearTrendScore(BaseChangeScore):
         y: None
             Ignored. Included for API consistency by convention.
         """
+        if self.time_column is not None:
+            self.time_column_idx = check_data_column(
+                self.time_column, "Time", X, self._X_columns
+            )
+        else:
+            self.time_column_idx = None
+
+        if self.time_column_idx is not None:
+            self._time_stamps = X[:, self.time_column_idx]
+        else:
+            # No provided time column or fixed parameters, so we assume
+            # the time steps are [0, 1, 2, ..., n-1] for each segment.
+            self._time_stamps = None
+
+        if self.time_column_idx is not None:
+            piecewise_linear_trend_columns = np.delete(
+                np.arange(X.shape[1]), self.time_column_idx
+            )
+            self._piecewise_linear_trend_data = X[:, piecewise_linear_trend_columns]
+        else:
+            self._piecewise_linear_trend_data = X
         return self
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
-        """Evaluate the cost for the continuous linear trend parameters.
+        """Evaluate the continuous piecewise linear trend scores.
 
-        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
-        On each interval, a trend line connecting the first and last points is created,
-        and the squared differences between the data points and the
-        trend line are summed. This is done for each column in the data.
+        Evaluates the score on `X[start:end]` for each each `[start, split, end]`
+        triplett in cuts.  On each interval, the difference in summed squared
+        residuals between the best fit linear trend accross the whole interval
+        and the best fit linear trend with a kink at the split point
+        is calculated. The score is calculated for each column in the data.
 
         Parameters
         ----------
-        starts : np.ndarray
-            Start indices of the intervals (inclusive).
-        ends : np.ndarray
-            End indices of the intervals (exclusive).
+        cuts : np.ndarray
+            A 2D array with three columns of integer locations.
+            The first column is the ``start``, the second is the ``split``, and the
+            third is the ``end`` of the interval to evaluate the score on.
 
         Returns
         -------
-        costs : np.ndarray
+        scores : np.ndarray
             A 2D array of costs. One row for each interval. The number of
             columns is equal to the number of columns in the input data.
         """
         starts = cuts[:, 0]
         splits = cuts[:, 1]
         ends = cuts[:, 2]
-        return linear_trend_score(starts=starts, splits=splits, ends=ends, X=self._X)
+        if self.time_column is None:
+            scores = analytical_cont_piecewise_linear_trend_score(
+                # scores = linear_trend_score(
+                starts=starts,
+                splits=splits,
+                ends=ends,
+                X=self._piecewise_linear_trend_data,
+            )
+        else:
+            scores = lin_reg_cont_piecewise_linear_trend_score(
+                starts=starts,
+                splits=splits,
+                ends=ends,
+                X=self._piecewise_linear_trend_data,
+                times=self._time_stamps,
+            )
+        return scores
 
     @property
     def min_size(self) -> int:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
-        For continuous linear trend, we need at least 2 points.
+        To solve for a linear trend, we need at least 2 points.
+
+        TODO: Possible issue, cannot use analytical solution to calculate the score
+        when start = split - 1. Need at least one point between start and split.
 
         Returns
         -------
@@ -232,5 +332,5 @@ class BestFitLinearTrendScore(BaseChangeScore):
         params : list of dict
             Parameters to create testing instances of the class
         """
-        params = [{}]
+        params = [{}, {}]
         return params

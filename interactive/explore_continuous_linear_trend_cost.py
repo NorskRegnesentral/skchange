@@ -12,7 +12,7 @@ import seaborn as sns
 from ruptures.utils.utils import pairwise
 
 from skchange.change_detectors import MovingWindow, SeededBinarySegmentation
-from skchange.change_scores import BestFitLinearTrendScore, ContinuousLinearTrendScore
+from skchange.change_scores import ContinuousLinearTrendScore, ContinuousLinearTrendScore
 from skchange.costs import ContinuousLinearTrendCost, LinearTrendCost
 from skchange.datasets import generate_alternating_data
 
@@ -229,7 +229,7 @@ ax5.legend(by_label5.values(), by_label5.keys())
 fig3
 
 # %%
-best_fit_linear_trend_score = BestFitLinearTrendScore()
+best_fit_linear_trend_score = ContinuousLinearTrendScore()
 
 # Create detector with LinearTrendCost
 best_fit_linear_trend_score_mw_detector = MovingWindow(best_fit_linear_trend_score)

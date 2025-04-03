@@ -84,7 +84,7 @@ def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
 
 @njit
 def linear_trend_cost_mle(
-    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, ts: np.ndarray
+    starts: np.ndarray, ends: np.ndarray, X: np.ndarray, times: np.ndarray
 ) -> np.ndarray:
     """Evaluate the linear trend cost with optimized parameters.
 
@@ -111,14 +111,14 @@ def linear_trend_cost_mle(
 
     for i in range(n_intervals):
         start, end = starts[i], ends[i]
-        segment_ts = ts[start:end]
+        segment_times = times[start:end]
         for col in range(n_columns):
             segment_data = X[start:end, col]
             slope, intercept = fit_linear_trend(
-                time_steps=segment_ts, values=segment_data
+                time_steps=segment_times, values=segment_data
             )
             costs[i, col] = np.sum(
-                np.square(segment_data - (intercept + slope * segment_ts))
+                np.square(segment_data - (intercept + slope * segment_times))
             )
 
     return costs

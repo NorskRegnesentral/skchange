@@ -1,6 +1,5 @@
 """Cost functions for cost-based change and anomaly detection."""
 
-from ._continuous_linear_trend_cost import ContinuousLinearTrendCost
 from ._gaussian_cost import GaussianCost
 from ._l1_cost import L1Cost
 from ._l2_cost import L2Cost
@@ -12,7 +11,6 @@ from ._multivariate_t_cost import MultivariateTCost
 from ._poisson_cost import PoissonCost
 
 COSTS = [
-    ContinuousLinearTrendCost,
     MultivariateGaussianCost,
     MultivariateTCost,
     GaussianCost,

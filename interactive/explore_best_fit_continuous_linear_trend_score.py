@@ -187,7 +187,7 @@ def continuous_piecewise_linear_trend_squared_contrast(
 
 
 # %%
-from skchange.change_scores import BestFitLinearTrendScore
+from skchange.change_scores import ContinuousLinearTrendScore
 
 # Test the functions:
 if __name__ == "__main__":
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         loc=0, scale=0.5, size=10
     )
 
-    best_fit_linear_trend_score = BestFitLinearTrendScore()
+    best_fit_linear_trend_score = ContinuousLinearTrendScore()
     best_fit_linear_trend_score.fit(signal)
 
     #  split_index = 4
