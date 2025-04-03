@@ -34,7 +34,7 @@ def test_moving_window_changepoint(ScoreType: type[BaseCost] | type[BaseChangeSc
 
 
 def test_moving_window_continuous_linear_trend_score():
-    """Test that MovingWindow finds two change points with ContinuousLinearTrendScore."""
+    """Test MovingWindow finds two change points with ContinuousLinearTrendScore."""
     n_segments = 2
     seg_len = 50
     df = generate_alternating_data(
