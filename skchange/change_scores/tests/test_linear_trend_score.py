@@ -305,46 +305,6 @@ def test_multivariate_detection():
         )
 
 
-true_change_points = [100]
-slopes = [0.1, -0.2]
-n_samples = 200
-
-df = generate_continuous_piecewise_linear_signal(
-    change_points=true_change_points,
-    slopes=slopes,
-    n_samples=n_samples,
-    noise_std=0.1,
-    random_seed=42,
-)
-
-# Create irregular time sampling by selectively removing points
-# Keep all points around the changepoint for accurate detection
-np.random.seed(42)
-selection_mask = np.ones(n_samples, dtype=bool)
-
-# Remove ~30% of points away from the changepoint
-for region in [(0, 80), (120, 200)]:
-    start, end = region
-    region_len = end - start
-    # Remove about 30% of points in each region
-    to_remove = np.random.choice(
-        np.arange(start, end), size=int(region_len * 0.3), replace=False
-    )
-    selection_mask[to_remove] = False
-
-# Apply the mask to create irregularly sampled data
-irregular_df = df[selection_mask].copy()
-
-# Create a sample_times column that reflects the original indices
-irregular_df["sample_times"] = 50.0 + 2.0 * np.arange(n_samples)[selection_mask]
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-sns.set_theme(style="whitegrid")
-plt.plot(irregular_df["sample_times"], irregular_df["signal"], label="Irregular Signal")
-
-
 def test_irregular_time_sampling():
     """Test ContinuousLinearTrendScore with irregular time sampling."""
     # Generate data with a single changepoint
