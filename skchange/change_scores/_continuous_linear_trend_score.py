@@ -182,11 +182,33 @@ def analytical_cont_piecewise_linear_trend_score(
 class ContinuousLinearTrendScore(BaseChangeScore):
     """Continuous linear trend change score.
 
-    This change score calculates the sum of squared errors between observed data
-    and a continuous piecewise linear trend line connecting the `start`, `split`,
-    and `end` points within each test interval, with a kink at the `split` point.
+    This change score calculates the difference in the squared error between
+    observed data and a two parameter linear trend accross the whole interval,
+    with the squared error between a three parameter linear trend with an added
+    kink at the split point. The cost is calculated for each column in the data.
 
-    # REF: https://www.tandfonline.com/doi/pdf/10.1080/10618600.2018.1512868
+    By default time steps are assumed to be evenly spaced. If a time column is
+    provided, its time steps are used to calculate the linear trends.
+
+    When a time columns is not provided, an analytical solution is used to calculate
+    the score for each column in the data, courtesy of [1]_. Otherwise, two linear
+    regression problems are solved for each interval, one with a kink at the split
+    point and one without.
+
+    Parameters
+    ----------
+    time_column : str, optional
+            Name of the time column in the data. If provided, the time steps are used to
+            calculate the linear trends. If not provided, the time steps are assumed to
+            be evenly spaced.
+
+    References
+    ----------
+    .. [1] Baranowski, R., Chen, Y., & Fryzlewicz, P. (2019). Narrowest-over-threshold \
+    detection of multiple change points and change-point-like features. Journal of the \
+    Royal Statistical Society Series B: Statistical Methodology, 81(3), 649-672.
+    ----------
+
     """
 
     _tags = {

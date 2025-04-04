@@ -222,6 +222,16 @@ class LinearTrendCost(BaseCost):
     a straight line is fitted (or provided as a fixed parameter) and the squared
     differences between the actual data points and the fitted line are summed.
 
+    By default the time steps are assumed to be [0, 1, 2, ..., (start - end) - 1] for
+    each segment. If a time column is provided, time steps are taken from that column.
+
+    Inspired by [1]_ who propose the same cost function for detecting changes in
+    piecewise-linear signals, but within an optimization problem which enforces
+    continuity of the linear trend across segments. To achieve similar results
+    in the `skchange` pacakge, we recommend using the `ContinuousLinearTrendScore`
+    within a change detection algorithm such as `SeededBinarySegmentation` or
+    `MovingWindow`.
+
     Parameters
     ----------
     param : array-like, optional (default=None)
@@ -241,6 +251,11 @@ class LinearTrendCost(BaseCost):
         are assumed to be [0, 1, 2, ..., len(X)-1] if fixed parameters are used.
     shared_linear_trend : bool, optional (default=False)
         If True, the same linear trend parameters are used for all columns.
+
+    References
+    ----------
+    .. [1] Fearnhead, P., & Grose, D. (2024). cpop: Detecting Changes in \
+    Piecewise-Linear Signals. Journal of Statistical Software, 109(7), 1-30.
     """
 
     _tags = {
