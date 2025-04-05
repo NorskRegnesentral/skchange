@@ -54,7 +54,7 @@ def greedy_changepoint_selection(
         cpt = maximizers[argmax]
         cpts.append(int(cpt))
         # remove intervals that contain the detected changepoint.
-        scores[(cpt >= starts) & (cpt <= ends - 1)] = 0.0
+        scores[(cpt >= starts) & (cpt < ends)] = 0.0
     cpts.sort()
     return cpts
 
