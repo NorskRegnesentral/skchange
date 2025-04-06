@@ -320,7 +320,7 @@ def test_compare_all_pelt_functions(
 
 @pytest.mark.parametrize("min_segment_length", [1, 5, 10])
 @pytest.mark.parametrize(
-    "signal_end_index", list(range(20, len(alternating_sequence), 5))
+    "signal_end_index", list(range(20, len(alternating_sequence) + 1, 5))
 )
 def test_pelt_on_tricky_data(
     cost: BaseCost, penalty: float, min_segment_length: int, signal_end_index: int
