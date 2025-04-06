@@ -32,6 +32,7 @@ def run_pelt(
     penalty: float,
     min_segment_length: int,
     split_cost: float = 0.0,
+    percent_pruning_margin: float = 0.0,
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -57,6 +58,11 @@ def run_pelt(
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the
         above inequality.
+    percent_pruning_margin : float, optional
+        The percentage of pruning margin to use. By default set to 10.0.
+        This is used to prune the admissible starts set.
+        The pruning margin is used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
 
     Returns
     -------
@@ -110,8 +116,18 @@ def run_pelt(
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
         # Trimming the admissible starts set: (reuse the array of optimal costs)
+        current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
+        # Handle cases where the optimal cost is negative:
+        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+        start_inclusion_threshold = (
+            current_obs_ind_opt_cost
+            + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+        )
         cost_eval_starts = cost_eval_starts[
-            candidate_opt_costs + split_cost <= opt_cost[current_obs_ind + 1] + penalty
+            # candidate_opt_costs + split_cost <= opt_cost[current_obs_ind + 1] + penalty
+            # Introduce a small tolerance to avoid numerical issues:
+            # candidate_opt_costs + split_cost <= opt_cost[current_obs_ind + 1] * (1.05)
+            candidate_opt_costs + split_cost <= start_inclusion_threshold
         ]
 
     return opt_cost[1:], get_changepoints(prev_cpts)
