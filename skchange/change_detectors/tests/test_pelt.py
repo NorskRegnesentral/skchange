@@ -318,18 +318,12 @@ def test_compare_all_pelt_functions(
     np.testing.assert_array_almost_equal(old_pelt_costs, pelt_costs)
 
 
-@pytest.mark.parametrize(
-    "min_segment_length,percent_pruning_margin", [(1, 0.0), (5, 10.0), (10, 0.0)]
-)
+@pytest.mark.parametrize("min_segment_length", [1, 5, 10])
 @pytest.mark.parametrize(
     "signal_end_index", list(range(20, len(alternating_sequence), 5))
 )
 def test_pelt_on_tricky_data(
-    cost: BaseCost,
-    penalty: float,
-    min_segment_length: int,
-    signal_end_index: int,
-    percent_pruning_margin: float,
+    cost: BaseCost, penalty: float, min_segment_length: int, signal_end_index: int
 ):
     """
     Test PELT on a slightly more complex data set. There are
@@ -339,6 +333,7 @@ def test_pelt_on_tricky_data(
     less than 20.
     """
     # Original "run_pelt" found 7 changepoints.
+    percent_pruning_margin = 0.0
     cost.fit(alternating_sequence[0:signal_end_index])
     pelt_costs, pelt_changepoints = run_pelt(
         cost,
@@ -346,7 +341,6 @@ def test_pelt_on_tricky_data(
         min_segment_length=min_segment_length,
         percent_pruning_margin=percent_pruning_margin,
     )
-
     opt_part_costs, opt_part_changepoints = run_optimal_partitioning(
         cost,
         penalty=penalty,
@@ -416,7 +410,7 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        percent_pruning_margin=15.0,
+        percent_pruning_margin=12.0,
     )
 
     cost.fit(alternating_sequence)

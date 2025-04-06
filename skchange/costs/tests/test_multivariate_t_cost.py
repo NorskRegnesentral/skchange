@@ -330,9 +330,9 @@ def test_scale_matrix_mle(seed=4125):
         centered_samples, loc=np.zeros(p), shape=mle_scale_matrix, df=t_dof
     ).sum()
 
-    assert (
-        mle_scale_matrix_ll > true_scale_matrix_ll
-    ), "MLE log-likelihood is not maximal."
+    assert mle_scale_matrix_ll > true_scale_matrix_ll, (
+        "MLE log-likelihood is not maximal."
+    )
 
 
 def test_loo_scale_matrix_mle(seed=4125):
@@ -514,30 +514,30 @@ def test_iso_and_kurt_dof_estimates_on_gaussian_data():
     mv_t_kurt_dof_est = _kurtosis_mv_t_dof_estimate(
         mv_t_samples, infinite_dof_threshold=50.0
     )
-    assert np.isfinite(mv_t_kurt_dof_est) and (
-        mv_t_kurt_dof_est > 0.0
-    ), "Kurtosis dof estimate should be finite on multivariate t samples."
+    assert np.isfinite(mv_t_kurt_dof_est) and (mv_t_kurt_dof_est > 0.0), (
+        "Kurtosis dof estimate should be finite on multivariate t samples."
+    )
 
     mv_t_isotropic_dof_est = _isotropic_mv_t_dof_estimate(
         mv_t_samples, infinite_dof_threshold=50.0
     )
-    assert np.isfinite(mv_t_isotropic_dof_est) and (
-        mv_t_isotropic_dof_est > 0.0
-    ), "Isotropic dof estimate should be finite on multivariate t samples."
+    assert np.isfinite(mv_t_isotropic_dof_est) and (mv_t_isotropic_dof_est > 0.0), (
+        "Isotropic dof estimate should be finite on multivariate t samples."
+    )
 
     normal_kurt_dof_est = _kurtosis_mv_t_dof_estimate(
         mv_normal_samples, infinite_dof_threshold=50.0
     )
-    assert np.isposinf(
-        normal_kurt_dof_est
-    ), "Kurtosis dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(normal_kurt_dof_est), (
+        "Kurtosis dof estimate should be infinite on Gaussian data."
+    )
 
     normal_isotropic_dof_est = _isotropic_mv_t_dof_estimate(
         mv_normal_samples, infinite_dof_threshold=50.0
     )
-    assert np.isposinf(
-        normal_isotropic_dof_est
-    ), "Isotropic dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(normal_isotropic_dof_est), (
+        "Isotropic dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_iterative_t_dof_estimate():
@@ -572,9 +572,9 @@ def test_iterative_t_dof_estimate():
         mle_scale_max_iter=100,
     )
     assert iterative_dof_estimate > 0, "Data-driven dof estimate should be positive."
-    assert (
-        np.abs(iterative_dof_estimate - t_dof) < 1.0
-    ), "Data-driven dof estimate is off."
+    assert np.abs(iterative_dof_estimate - t_dof) < 1.0, (
+        "Data-driven dof estimate is off."
+    )
 
 
 def test_loo_iterative_t_dof_estimate():
@@ -608,9 +608,9 @@ def test_loo_iterative_t_dof_estimate():
         mle_scale_max_iter=100,
     )
     assert loo_iterative_dof > 0, "LOO data-driven dof estimate should be positive."
-    assert (
-        np.abs(loo_iterative_dof - t_dof) < 0.15
-    ), "LOO data-driven dof estimate is off."
+    assert np.abs(loo_iterative_dof - t_dof) < 0.15, (
+        "LOO data-driven dof estimate is off."
+    )
 
 
 def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
@@ -640,9 +640,9 @@ def test_iterative_dof_estimate_returns_inf_on_gaussian_data():
         mle_scale_max_iter=100,
     )
 
-    assert np.isposinf(
-        iterative_dof_estimate
-    ), "Dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(iterative_dof_estimate), (
+        "Dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
@@ -671,9 +671,9 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
         mle_scale_max_iter=100,
     )
 
-    assert np.isposinf(
-        loo_iterative_dof
-    ), "Dof estimate should be infinite on Gaussian data."
+    assert np.isposinf(loo_iterative_dof), (
+        "Dof estimate should be infinite on Gaussian data."
+    )
 
 
 def test_MultiVariateTCost_with_PELT(
@@ -709,7 +709,10 @@ def test_MultiVariateTCost_with_PELT(
         mle_scale_rel_tol=mle_scale_rel_tol,
     )
     change_detector = PELT(
-        cost=mv_t_cost, min_segment_length=2 * p + 1, penalty=BICPenalty()
+        cost=mv_t_cost,
+        min_segment_length=2 * p + 1,
+        # penalty=70.0,
+        penalty=BICPenalty()
     )
 
     segmentation = change_detector.fit_transform(X)
@@ -719,9 +722,9 @@ def test_MultiVariateTCost_with_PELT(
     print(f"Estimated dof: {mv_t_cost.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
-    assert (
-        change_points.loc[0, "ilocs"] == n_samples
-    ), "Change point should be at the end of the first segment."
+    assert change_points.loc[0, "ilocs"] == n_samples, (
+        "Change point should be at the end of the first segment."
+    )
     assert np.isfinite(mv_t_cost.dof_), "Fitted dof should be finite."
 
 
@@ -756,9 +759,9 @@ def test_MultiVariateTCost_with_moving_window(
     print(f"Estimated dof: {t_cost.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
-    assert (
-        change_points.loc[0, "ilocs"] == n_samples
-    ), "Change point should be at the end of the first segment."
+    assert change_points.loc[0, "ilocs"] == n_samples, (
+        "Change point should be at the end of the first segment."
+    )
     assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."
 
 
@@ -813,9 +816,9 @@ def test_iterative_mv_t_dof_estimate_returns_inf_for_high_initial_dof():
         mle_scale_max_iter=100,
     )
 
-    assert np.isposinf(
-        dof_estimate
-    ), "Dof estimate should be infinite for high initial dof."
+    assert np.isposinf(dof_estimate), (
+        "Dof estimate should be infinite for high initial dof."
+    )
 
 
 def test_multivariate_t_log_likelihood_returns_nan_for_non_pos_def_scale_matrix():
@@ -830,9 +833,9 @@ def test_multivariate_t_log_likelihood_returns_nan_for_non_pos_def_scale_matrix(
         dof=dof,
     )
 
-    assert np.isnan(
-        log_likelihood
-    ), "Log likelihood should be np.nan for non-positive definite scale matrix."
+    assert np.isnan(log_likelihood), (
+        "Log likelihood should be np.nan for non-positive definite scale matrix."
+    )
 
 
 def test_solve_for_mle_scale_matrix_throws_value_error_if_max_iter_reached():
