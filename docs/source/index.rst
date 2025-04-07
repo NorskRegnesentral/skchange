@@ -49,7 +49,7 @@ Example
 
     import numpy as np
     from skchange.anomaly_detectors import MVCAPA
-    from skchange.datasets.generate import generate_anomalous_data
+    from skchange.datasets import generate_anomalous_data
 
     n = 300
     anomalies = [(100, 120), (250, 300)]

@@ -35,7 +35,7 @@ pip install skchange
 ### Changepoint detection / time series segmentation
 ```python
 from skchange.change_detectors.moving_window import MovingWindow
-from skchange.datasets.generate import generate_alternating_data
+from skchange.datasets import generate_alternating_data
 
 df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 
@@ -59,7 +59,7 @@ detector.fit_predict(df)
 ```python
 import numpy as np
 from skchange.anomaly_detectors import MVCAPA
-from skchange.datasets.generate import generate_anomalous_data
+from skchange.datasets import generate_anomalous_data
 
 n = 300
 anomalies = [(100, 120), (250, 300)]

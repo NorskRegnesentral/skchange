@@ -110,7 +110,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
     --------
     >>> import numpy as np
     >>> from skchange.anomaly_detectors import MVCAPA
-    >>> from skchange.datasets.generate import generate_anomalous_data
+    >>> from skchange.datasets import generate_anomalous_data
     >>> n = 300
     >>> means = [np.array([8.0, 0.0, 0.0]), np.array([2.0, 3.0, 5.0])]
     >>> df = generate_anomalous_data(

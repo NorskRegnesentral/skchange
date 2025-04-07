@@ -524,9 +524,9 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
     print(df.iloc[:, [0, 1, 2]])
 
     # Assert that array-based implementation is generally faster
-    assert all(r["overhead_speedup"] < 1.0 for r in results), (
-        "Array-based implementation should be faster for at least some cases"
-    )
+    assert all(
+        r["overhead_speedup"] < 1.0 for r in results
+    ), "Array-based implementation should be faster for at least some cases"
 
 
 @pytest.mark.parametrize("min_segment_length", [1])
