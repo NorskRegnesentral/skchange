@@ -94,45 +94,65 @@ def run_pelt(
     # Used to get the final set of changepoints after the loop.
     prev_cpts = np.repeat(0, n_samples)
 
-    # Evolving set of admissible segment starts.
-    cost_eval_starts = np.array(([0]), dtype=np.int64)
+    # Pre-allocate array for all possible start positions
+    all_possible_starts = np.arange(n_samples - min_segment_shift)
+    # Initialize mask for admissible starts (only position 0 is initially valid)
+    valid_start_mask = np.zeros(n_samples - min_segment_shift, dtype=bool)
+    valid_start_mask[0] = True
 
-    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
-        -1, 1
-    )
+    # Precompute all possible intervals (will use masking to select valid ones)
+    # Each row is a potential (start, end) interval
+    max_intervals = n_samples - min_segment_length + 1
+    all_intervals = np.zeros((max_intervals, 2), dtype=np.int64)
 
-    # TODO: Use a 'mask' to control start and end indices for
-    # the cost evaluation intervals.
-    for current_obs_ind in observation_indices:
+    observation_indices = np.arange(2 * min_segment_length - 1, n_samples)
+
+    for i, current_obs_ind in enumerate(observation_indices):
         latest_start = current_obs_ind - min_segment_shift
 
-        # Add the next start to the admissible starts set:
-        cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
-        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
-        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        # Add the next valid start position to the admissible set
+        valid_start_mask[latest_start] = True
+
+        # Get current valid starts using the mask
+        current_valid_starts = all_possible_starts[valid_start_mask]
+
+        # Set up intervals for cost evaluation
+        n_valid_intervals = len(current_valid_starts)
+        current_end = current_obs_ind + 1
+
+        # Fill interval array with current valid starts and the current end
+        cost_eval_intervals = np.column_stack(
+            (current_valid_starts, np.repeat(current_end, n_valid_intervals))
+        )
+
+        # Evaluate costs:
         costs = cost.evaluate(cost_eval_intervals)
         agg_costs = np.sum(costs, axis=1)
 
-        # Add the cost and penalty for a new segment (since last changepoint):
-        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+        # Add the cost and penalty for a new segment (since last changepoint)
+        candidate_opt_costs = opt_cost[current_valid_starts] + agg_costs + penalty
 
+        # Find the optimal cost and previous changepoint
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
+        min_start_idx = current_valid_starts[argmin_candidate_cost]
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = min_start_idx
 
-        # Trimming the admissible starts set: (reuse the array of optimal costs)
+        # Pruning: update valid_start_mask to exclude positions that cannot be optimal
         current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
-        # Handle cases where the optimal cost is negative:
         abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+
+        # Calculate pruning threshold with margin
         start_inclusion_threshold = (
             current_obs_ind_opt_cost
             + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
         ) + penalty  # Pruning inequality does not include added penalty.
 
-        # Introduce a small tolerance to help when 'min_segment_length' > 1:
-        cost_eval_starts = cost_eval_starts[
+        # Update mask - only keep starts that satisfy the pruning inequality
+        valid_start_indices = valid_start_mask.copy()
+        valid_start_mask[valid_start_indices] = (
             candidate_opt_costs + split_cost <= start_inclusion_threshold
-        ]
+        )
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
