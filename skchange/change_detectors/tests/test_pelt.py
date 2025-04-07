@@ -411,16 +411,14 @@ def run_pelt_masked(
 
         # Evaluate costs:
         cost_eval_t0 = time.perf_counter()
-        costs = cost.evaluate(interval_buffer[:n_valid_starts])
-        agg_costs = np.sum(costs, axis=1)
+        agg_costs = np.sum(cost.evaluate(interval_buffer[:n_valid_starts]), axis=1)
         cost_eval_t1 = time.perf_counter()
         cost_eval_time += cost_eval_t1 - cost_eval_t0
 
         # Add the cost and penalty for a new segment (since last changepoint)
-        candidate_opt_costs = np.zeros(n_valid_starts)
-        candidate_opt_costs[:n_valid_starts] = (
-            opt_cost[starts_buffer[:n_valid_starts]] + agg_costs + penalty
-        )
+        # Reusing the agg_costs array to store the candidate optimal costs.
+        agg_costs[:] += penalty + opt_cost[starts_buffer[:n_valid_starts]]
+        candidate_opt_costs = agg_costs
 
         # Find the optimal cost and previous changepoint
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
@@ -443,9 +441,7 @@ def run_pelt_masked(
         )
 
         # Apply pruning by filtering valid starts:
-        valid_starts_mask = (
-            candidate_opt_costs[:n_valid_starts] <= start_inclusion_threshold
-        )
+        valid_starts_mask = candidate_opt_costs <= start_inclusion_threshold
         n_new_valid_starts = np.sum(valid_starts_mask)
         starts_buffer[:n_new_valid_starts] = starts_buffer[:n_valid_starts][
             valid_starts_mask
@@ -507,10 +503,10 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
         results.append(
             {
                 "min_segment_length": min_segment_length,
-                "runtime_speedup": array_pelt_time / masked_pelt_time
+                "runtime_speedup": masked_pelt_time / array_pelt_time
                 if masked_pelt_time > 0
                 else float("inf"),
-                "overhead_speedup": array_based_overhead / masked_overhead
+                "overhead_speedup": masked_overhead / array_based_overhead
                 if masked_overhead > 0
                 else float("inf"),
                 "run_pelt_time": masked_pelt_time,
@@ -526,7 +522,7 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
     print(df.iloc[:, [0, 1, 2]])
 
     # Assert that array-based implementation is generally faster
-    assert all(r["overhead_speedup"] > 1.0 for r in results), (
+    assert all(r["overhead_speedup"] < 1.0 for r in results), (
         "Array-based implementation should be faster for at least some cases"
     )
 

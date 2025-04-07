@@ -148,14 +148,12 @@ def run_pelt(
         interval_buffer[:n_valid_starts, 1] = current_end
 
         # Evaluate costs:
-        costs = cost.evaluate(interval_buffer[:n_valid_starts])
-        agg_costs = np.sum(costs, axis=1)
+        agg_costs = np.sum(cost.evaluate(interval_buffer[:n_valid_starts]), axis=1)
 
         # Add the cost and penalty for a new segment (since last changepoint)
-        candidate_opt_costs = np.zeros(n_valid_starts)
-        candidate_opt_costs[:n_valid_starts] = (
-            opt_cost[starts_buffer[:n_valid_starts]] + agg_costs + penalty
-        )
+        # Reusing the agg_costs array to store the candidate optimal costs.
+        agg_costs[:] += penalty + opt_cost[starts_buffer[:n_valid_starts]]
+        candidate_opt_costs = agg_costs
 
         # Find the optimal cost and previous changepoint:
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
