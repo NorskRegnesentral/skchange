@@ -41,6 +41,9 @@ def run_pelt(
     the algorithm can return a suboptimal partitioning.
     In that case, resort to the 'optimal_partitioning' algorithm.
 
+    # TODO: Grow 'mask' and 'start' arrays dynamically to avoid pre-allocating
+    #       large arrays.
+
     Parameters
     ----------
     X : np.ndarray
@@ -94,47 +97,50 @@ def run_pelt(
     # Used to get the final set of changepoints after the loop.
     prev_cpts = np.repeat(0, n_samples)
 
-    # Pre-allocate array for all possible start positions
+    # Pre-allocate array for all possible start positions:
     all_possible_starts = np.arange(n_samples - min_segment_shift)
+
     # Initialize mask for admissible starts (only position 0 is initially valid)
     valid_start_mask = np.zeros(n_samples - min_segment_shift, dtype=bool)
+
+    # Specify the first start position as valid, indicating no changepoint.
     valid_start_mask[0] = True
 
-    # Precompute all possible intervals (will use masking to select valid ones)
-    # Each row is a potential (start, end) interval
-    max_intervals = n_samples - min_segment_length + 1
-    all_intervals = np.zeros((max_intervals, 2), dtype=np.int64)
+    # Pre-allocate memory for maximum number of intervals to evaluate
+    # the cost over. We then use masking to select the desired starts.
+    # Each row is a potential (start, end) interval.
+    max_num_cost_eval_intervals = n_samples - min_segment_shift
+    all_intervals = np.zeros((max_num_cost_eval_intervals, 2), dtype=np.int64)
 
     observation_indices = np.arange(2 * min_segment_length - 1, n_samples)
 
     for i, current_obs_ind in enumerate(observation_indices):
         latest_start = current_obs_ind - min_segment_shift
 
-        # Add the next valid start position to the admissible set
+        # Add the next start position to the admissible set:
         valid_start_mask[latest_start] = True
 
-        # Get current valid starts using the mask
-        current_valid_starts = all_possible_starts[valid_start_mask]
+        # Get current starts using the mask:
+        current_starts = all_possible_starts[valid_start_mask]
 
         # Set up intervals for cost evaluation
-        n_valid_intervals = len(current_valid_starts)
+        n_cost_eval_intervals = len(current_starts)
         current_end = current_obs_ind + 1
 
-        # Fill interval array with current valid starts and the current end
-        cost_eval_intervals = np.column_stack(
-            (current_valid_starts, np.repeat(current_end, n_valid_intervals))
-        )
+        # Construct the intervals for cost evaluation:
+        all_intervals[:n_cost_eval_intervals, 0] = current_starts
+        all_intervals[:n_cost_eval_intervals, 1] = current_end
 
         # Evaluate costs:
-        costs = cost.evaluate(cost_eval_intervals)
+        costs = cost.evaluate(all_intervals[:n_cost_eval_intervals])
         agg_costs = np.sum(costs, axis=1)
 
         # Add the cost and penalty for a new segment (since last changepoint)
-        candidate_opt_costs = opt_cost[current_valid_starts] + agg_costs + penalty
+        candidate_opt_costs = opt_cost[current_starts] + agg_costs + penalty
 
         # Find the optimal cost and previous changepoint
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        min_start_idx = current_valid_starts[argmin_candidate_cost]
+        min_start_idx = current_starts[argmin_candidate_cost]
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = min_start_idx
 
@@ -144,14 +150,17 @@ def run_pelt(
 
         # Calculate pruning threshold with margin
         start_inclusion_threshold = (
-            current_obs_ind_opt_cost
-            + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-        ) + penalty  # Pruning inequality does not include added penalty.
+            (
+                current_obs_ind_opt_cost
+                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+            )
+            + penalty  # Pruning inequality does not include added penalty.
+            - split_cost  # Remove from right side of inequality.
+        )
 
-        # Update mask - only keep starts that satisfy the pruning inequality
-        valid_start_indices = valid_start_mask.copy()
-        valid_start_mask[valid_start_indices] = (
-            candidate_opt_costs + split_cost <= start_inclusion_threshold
+        # Update mask - only keep starts that satisfy the pruning inequality:
+        valid_start_mask[valid_start_mask] = (
+            candidate_opt_costs <= start_inclusion_threshold
         )
 
     return opt_cost[1:], get_changepoints(prev_cpts)
