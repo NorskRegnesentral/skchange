@@ -250,6 +250,8 @@ def run_pelt_array_based(
     observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
         -1, 1
     )
+    cost_eval_time = 0.0
+    # for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
 
@@ -257,8 +259,11 @@ def run_pelt_array_based(
         cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        cost_eval_t0 = time.perf_counter()
         costs = cost.evaluate(cost_eval_intervals)
         agg_costs = np.sum(costs, axis=1)
+        cost_eval_t1 = time.perf_counter()
+        cost_eval_time += cost_eval_t1 - cost_eval_t0
 
         # Add the penalty for a new segment:
         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
@@ -281,7 +286,173 @@ def run_pelt_array_based(
             candidate_opt_costs + split_cost <= start_inclusion_threshold
         ]
 
-    return opt_cost[1:], get_changepoints(prev_cpts)
+    return opt_cost[1:], get_changepoints(prev_cpts), cost_eval_time
+
+
+def run_pelt_masked(
+    cost: BaseCost,
+    penalty: float,
+    min_segment_length: int,
+    split_cost: float = 0.0,
+    percent_pruning_margin: float = 0.0,
+    initial_capacity: float = 0.1,  # Initial fraction of n_samples
+    growth_factor: float = 1.5,  # Geometric growth factor
+) -> tuple[np.ndarray, list]:
+    """Run the PELT algorithm.
+
+    Currently agrees with the 'changepoint::cpt.mean' implementation of PELT in R.
+    If the 'min_segment_length' is large enough to span more than a single changepoint,
+    the algorithm can return a suboptimal partitioning.
+    In that case, resort to the 'optimal_partitioning' algorithm.
+
+    Parameters
+    ----------
+    cost: BaseCost
+        The cost to use.
+    penalty : float
+        The penalty incurred for adding a changepoint.
+    min_segment_length : int
+        The minimum length of a segment, by default 1.
+    split_cost : float, optional
+        The cost of splitting a segment, to ensure that
+        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
+        for all possible splits, 0 <= t < p < s <= len(X) - 1.
+        By default set to 0.0, which is sufficient for
+        log likelihood cost functions to satisfy the
+        above inequality.
+    percent_pruning_margin : float, optional
+        The percentage of pruning margin to use. By default set to 10.0.
+        This is used to prune the admissible starts set.
+        The pruning margin is used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
+    initial_capacity : float, optional
+        The initial capacity of the arrays as a fraction of n_samples.
+        Default is 0.1 (10% of n_samples).
+    growth_factor : float, optional
+        The factor by which to grow the arrays when they need to be resized.
+        Default is 1.5.
+
+    Returns
+    -------
+    tuple[np.ndarray, list]
+        The optimal costs and the changepoints.
+    """
+    cost.check_is_fitted()
+    n_samples = cost._X.shape[0]
+    min_segment_shift = min_segment_length - 1
+
+    # Explicitly set the first element to 0.
+    # Define "opt_cost[0]"" to start at 0.0, as done in 2014 PELT.
+    opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
+
+    # Cannot compute the cost for the first 'min_segment_shift' elements:
+    opt_cost[1:min_segment_length] = 0.0
+
+    # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
+    non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
+    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
+    non_changepoint_intervals = np.column_stack(
+        (non_changepoint_starts, non_changepoint_ends)
+    )
+    costs = cost.evaluate(non_changepoint_intervals)
+    agg_costs = np.sum(costs, axis=1)
+    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
+
+    # Store the previous changepoint for each latest start added.
+    # Used to get the final set of changepoints after the loop.
+    prev_cpts = np.repeat(0, n_samples)
+
+    # Initialize smaller arrays with a fraction of n_samples capacity
+    initial_size = max(2, int(n_samples * initial_capacity))
+
+    # Pre-allocate arrays with initial capacity
+    start_capacity = initial_size
+    starts_buffer = np.zeros(start_capacity, dtype=np.int64)
+    interval_capacity = initial_size
+    interval_buffer = np.zeros((interval_capacity, 2), dtype=np.int64)
+
+    # Initialize with the first valid start position (position 0)
+    n_valid_starts = 1
+    starts_buffer[0] = 0  # First valid start is at position 0
+    cost_eval_time = 0.0
+
+    for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
+        latest_start = current_obs_ind - min_segment_shift
+
+        # Add the next start position to the admissible set:
+        # First check if we need to grow the arrays
+        if n_valid_starts + 1 > start_capacity:
+            # Grow arrays geometrically
+            new_capacity = int(start_capacity * growth_factor)
+            new_starts_buffer = np.zeros(new_capacity, dtype=np.int64)
+            new_starts_buffer[:n_valid_starts] = starts_buffer[:n_valid_starts]
+            starts_buffer = new_starts_buffer
+            start_capacity = new_capacity
+
+            # Also grow the interval buffer
+            new_interval_capacity = int(interval_capacity * growth_factor)
+            new_interval_buffer = np.zeros((new_interval_capacity, 2), dtype=np.int64)
+            new_interval_buffer[:interval_capacity] = interval_buffer[
+                :interval_capacity
+            ]
+            interval_buffer = new_interval_buffer
+            interval_capacity = new_interval_capacity
+
+        # Add the latest start to the buffer of valid starts
+        starts_buffer[n_valid_starts] = latest_start
+        n_valid_starts += 1
+
+        # Set up intervals for cost evaluation
+        current_end = current_obs_ind + 1
+
+        # Fill the interval buffer with current valid starts and the current end
+        interval_buffer[:n_valid_starts, 0] = starts_buffer[:n_valid_starts]
+        interval_buffer[:n_valid_starts, 1] = current_end
+
+        # Evaluate costs:
+        cost_eval_t0 = time.perf_counter()
+        costs = cost.evaluate(interval_buffer[:n_valid_starts])
+        agg_costs = np.sum(costs, axis=1)
+        cost_eval_t1 = time.perf_counter()
+        cost_eval_time += cost_eval_t1 - cost_eval_t0
+
+        # Add the cost and penalty for a new segment (since last changepoint)
+        candidate_opt_costs = np.zeros(n_valid_starts)
+        candidate_opt_costs[:n_valid_starts] = (
+            opt_cost[starts_buffer[:n_valid_starts]] + agg_costs + penalty
+        )
+
+        # Find the optimal cost and previous changepoint
+        argmin_candidate_cost = np.argmin(candidate_opt_costs)
+        min_start_idx = starts_buffer[argmin_candidate_cost]
+        opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = min_start_idx
+
+        # Pruning: update valid starts to exclude positions that cannot be optimal
+        current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
+        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+
+        # Calculate pruning threshold with margin
+        start_inclusion_threshold = (
+            (
+                current_obs_ind_opt_cost
+                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+            )
+            + penalty  # Pruning inequality does not include added penalty.
+            - split_cost  # Remove from right side of inequality.
+        )
+
+        # Apply pruning by filtering valid starts:
+        valid_starts_mask = (
+            candidate_opt_costs[:n_valid_starts] <= start_inclusion_threshold
+        )
+        n_new_valid_starts = np.sum(valid_starts_mask)
+        starts_buffer[:n_new_valid_starts] = starts_buffer[:n_valid_starts][
+            valid_starts_mask
+        ]
+        n_valid_starts = n_new_valid_starts
+
+    return opt_cost[1:], get_changepoints(prev_cpts), cost_eval_time
 
 
 def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
@@ -289,9 +460,13 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
 
     # Generate a larger dataset for benchmarking: 10_000
     n_segments = 10
-    seg_len = 1000
+    seg_len = 1_000
     benchmark_data = generate_alternating_data(
-        n_segments=n_segments, mean=20, segment_length=seg_len, p=1, random_state=2
+        n_segments=n_segments,
+        mean=20,
+        segment_length=seg_len,
+        p=1,
+        # random_state=2
     ).values.reshape(-1, 1)
 
     cost.fit(benchmark_data)
@@ -299,27 +474,29 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
     # Parameters to test
     min_segment_lengths = [1, 5, 10]
 
-    # Store results
+    # Store results:
     results = []
 
     for min_segment_length in min_segment_lengths:
         # Benchmark run_pelt
-        start_time = time.time()
-        pelt_costs_array_based, array_cpts = run_pelt(
+        start_time = time.perf_counter()
+        pelt_costs_array_based, array_cpts, masked_cost_eval_time = run_pelt_masked(
             cost,
             penalty=penalty,
             min_segment_length=min_segment_length,
         )
-        masked_pelt_time = time.time() - start_time
+        masked_pelt_time = time.perf_counter() - start_time
+        masked_overhead = masked_pelt_time - masked_cost_eval_time
 
         # Benchmark run_pelt_array_based
-        start_time = time.time()
-        pelt_costs_masked, masked_cpts = run_pelt_array_based(
+        start_time = time.perf_counter()
+        pelt_costs_masked, masked_cpts, array_cost_eval_time = run_pelt_array_based(
             cost,
             penalty=penalty,
             min_segment_length=min_segment_length,
         )
-        array_based_time = time.time() - start_time
+        array_pelt_time = time.perf_counter() - start_time
+        array_based_overhead = array_pelt_time - array_cost_eval_time
 
         # Check that the implementations produce the same results
         np.testing.assert_array_equal(array_cpts, masked_cpts)
@@ -330,21 +507,26 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
         results.append(
             {
                 "min_segment_length": min_segment_length,
-                "run_pelt_time": masked_pelt_time,
-                "run_pelt_array_based_time": array_based_time,
-                "speedup": array_based_time / masked_pelt_time
+                "runtime_speedup": array_pelt_time / masked_pelt_time
                 if masked_pelt_time > 0
                 else float("inf"),
+                "overhead_speedup": array_based_overhead / masked_overhead
+                if masked_overhead > 0
+                else float("inf"),
+                "run_pelt_time": masked_pelt_time,
+                "run_pelt_array_based_time": array_pelt_time,
+                "masked_cost_eval_time": masked_cost_eval_time,
+                "array_cost_eval_time": array_pelt_time,
             }
         )
 
     # Print results in a nice table:
     df = pd.DataFrame(results)
     print("\nPELT Implementation Benchmark Results:")
-    print(df)
+    print(df.iloc[:, [0, 1, 2]])
 
     # Assert that array-based implementation is generally faster
-    assert all(r["speedup"] > 1.0 for r in results), (
+    assert all(r["overhead_speedup"] > 1.0 for r in results), (
         "Array-based implementation should be faster for at least some cases"
     )
 

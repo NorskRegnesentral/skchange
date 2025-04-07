@@ -33,6 +33,8 @@ def run_pelt(
     min_segment_length: int,
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
+    initial_capacity: float = 0.1,  # Initial fraction of n_samples
+    growth_factor: float = 1.5,  # Geometric growth factor
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -41,13 +43,8 @@ def run_pelt(
     the algorithm can return a suboptimal partitioning.
     In that case, resort to the 'optimal_partitioning' algorithm.
 
-    # TODO: Grow 'mask' and 'start' arrays dynamically to avoid pre-allocating
-    #       large arrays.
-
     Parameters
     ----------
-    X : np.ndarray
-        The data to find changepoints in.
     cost: BaseCost
         The cost to use.
     penalty : float
@@ -66,6 +63,12 @@ def run_pelt(
         This is used to prune the admissible starts set.
         The pruning margin is used to avoid numerical issues when comparing
         the candidate optimal costs with the current optimal cost.
+    initial_capacity : float, optional
+        The initial capacity of the arrays as a fraction of n_samples.
+        Default is 0.1 (10% of n_samples).
+    growth_factor : float, optional
+        The factor by which to grow the arrays when they need to be resized.
+        Default is 1.5.
 
     Returns
     -------
@@ -97,58 +100,74 @@ def run_pelt(
     # Used to get the final set of changepoints after the loop.
     prev_cpts = np.repeat(0, n_samples)
 
-    # Pre-allocate array for all possible start positions:
-    all_possible_starts = np.arange(n_samples - min_segment_shift)
+    # Initialize smaller arrays with a fraction of n_samples capacity
+    initial_size = max(2, int(n_samples * initial_capacity))
 
-    # Initialize mask for admissible starts (only position 0 is initially valid)
-    valid_start_mask = np.zeros(n_samples - min_segment_shift, dtype=bool)
+    # Pre-allocate arrays with initial capacity
+    start_capacity = initial_size
+    starts_buffer = np.zeros(start_capacity, dtype=np.int64)
+    interval_capacity = initial_size
+    interval_buffer = np.zeros((interval_capacity, 2), dtype=np.int64)
 
-    # Specify the first start position as valid, indicating no changepoint.
-    valid_start_mask[0] = True
+    # Initialize with the first valid start position (position 0)
+    n_valid_starts = 1
+    starts_buffer[0] = 0  # First valid start is at position 0
 
-    # Pre-allocate memory for maximum number of intervals to evaluate
-    # the cost over. We then use masking to select the desired starts.
-    # Each row is a potential (start, end) interval.
-    max_num_cost_eval_intervals = n_samples - min_segment_shift
-    all_intervals = np.zeros((max_num_cost_eval_intervals, 2), dtype=np.int64)
-
-    observation_indices = np.arange(2 * min_segment_length - 1, n_samples)
-
-    for i, current_obs_ind in enumerate(observation_indices):
+    # observation_indices = np.arange(2 * min_segment_length - 1, n_samples)
+    for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
         latest_start = current_obs_ind - min_segment_shift
 
         # Add the next start position to the admissible set:
-        valid_start_mask[latest_start] = True
+        # First check if we need to grow the arrays
+        if n_valid_starts + 1 > start_capacity:
+            # Grow arrays geometrically
+            new_capacity = int(start_capacity * growth_factor)
+            new_starts_buffer = np.zeros(new_capacity, dtype=np.int64)
+            new_starts_buffer[:n_valid_starts] = starts_buffer[:n_valid_starts]
+            starts_buffer = new_starts_buffer
+            start_capacity = new_capacity
 
-        # Get current starts using the mask:
-        current_starts = all_possible_starts[valid_start_mask]
+            # Also grow the interval buffer
+            new_interval_capacity = int(interval_capacity * growth_factor)
+            new_interval_buffer = np.zeros((new_interval_capacity, 2), dtype=np.int64)
+            new_interval_buffer[:interval_capacity] = interval_buffer[
+                :interval_capacity
+            ]
+            interval_buffer = new_interval_buffer
+            interval_capacity = new_interval_capacity
+
+        # Add the latest start to the buffer of valid starts
+        starts_buffer[n_valid_starts] = latest_start
+        n_valid_starts += 1
 
         # Set up intervals for cost evaluation
-        n_cost_eval_intervals = len(current_starts)
         current_end = current_obs_ind + 1
 
-        # Construct the intervals for cost evaluation:
-        all_intervals[:n_cost_eval_intervals, 0] = current_starts
-        all_intervals[:n_cost_eval_intervals, 1] = current_end
+        # Fill the interval buffer with current valid starts and the current end
+        interval_buffer[:n_valid_starts, 0] = starts_buffer[:n_valid_starts]
+        interval_buffer[:n_valid_starts, 1] = current_end
 
         # Evaluate costs:
-        costs = cost.evaluate(all_intervals[:n_cost_eval_intervals])
+        costs = cost.evaluate(interval_buffer[:n_valid_starts])
         agg_costs = np.sum(costs, axis=1)
 
         # Add the cost and penalty for a new segment (since last changepoint)
-        candidate_opt_costs = opt_cost[current_starts] + agg_costs + penalty
+        candidate_opt_costs = np.zeros(n_valid_starts)
+        candidate_opt_costs[:n_valid_starts] = (
+            opt_cost[starts_buffer[:n_valid_starts]] + agg_costs + penalty
+        )
 
-        # Find the optimal cost and previous changepoint
+        # Find the optimal cost and previous changepoint:
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        min_start_idx = current_starts[argmin_candidate_cost]
+        min_start_idx = starts_buffer[argmin_candidate_cost]
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = min_start_idx
 
-        # Pruning: update valid_start_mask to exclude positions that cannot be optimal
+        # Pruning: update valid starts to exclude positions that cannot be optimal
         current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
         abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
 
-        # Calculate pruning threshold with margin
+        # Calculate pruning threshold with margin:
         start_inclusion_threshold = (
             (
                 current_obs_ind_opt_cost
@@ -158,10 +177,15 @@ def run_pelt(
             - split_cost  # Remove from right side of inequality.
         )
 
-        # Update mask - only keep starts that satisfy the pruning inequality:
-        valid_start_mask[valid_start_mask] = (
-            candidate_opt_costs <= start_inclusion_threshold
+        # Apply pruning by filtering valid starts:
+        valid_starts_mask = (
+            candidate_opt_costs[:n_valid_starts] <= start_inclusion_threshold
         )
+        n_new_valid_starts = np.sum(valid_starts_mask)
+        starts_buffer[:n_new_valid_starts] = starts_buffer[:n_valid_starts][
+            valid_starts_mask
+        ]
+        n_valid_starts = n_new_valid_starts
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
