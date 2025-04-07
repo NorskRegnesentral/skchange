@@ -118,8 +118,8 @@ def run_optimal_partitioning(
 
     # If min_segment_length > 1, cannot compute the cost for the first
     # [1, .., min_segment_length - 1] observations.
-    # opt_cost[1:min_segment_length] = np.nan
-    opt_cost[1:min_segment_length] = -penalty
+    # opt_cost[1:min_segment_length] = -penalty
+    opt_cost[1:min_segment_length] = 0.0
 
     # Compute the optimal cost for the first
     # [min_segment_length, .., 2* min_segment_length - 1] observations
@@ -130,11 +130,14 @@ def run_optimal_partitioning(
     non_changepoint_ends = np.arange(min_segment_length - 1, 2 * min_segment_length - 1)
 
     # Shifted by 1 to account for the first element being -penalty:
-    opt_cost[min_segment_length : (2 * min_segment_length)] = np.sum(
-        cost.evaluate(
-            np.column_stack((non_changepoint_starts, non_changepoint_ends + 1))
-        ),
-        axis=1,
+    opt_cost[min_segment_length : (2 * min_segment_length)] = (
+        np.sum(
+            cost.evaluate(
+                np.column_stack((non_changepoint_starts, non_changepoint_ends + 1))
+            ),
+            axis=1,
+        )
+        + penalty
     )
 
     # Store the previous changepoint for each last start added.
@@ -241,7 +244,7 @@ def test_old_pelt_vs_optimal_partitioning_change_points(
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
-    assert pelt_changepoints == opt_part_changepoints
+    assert np.all(pelt_changepoints == opt_part_changepoints)
 
 
 def test_run_old_pelt(cost: BaseCost, penalty: float, min_segment_length: int = 1):
