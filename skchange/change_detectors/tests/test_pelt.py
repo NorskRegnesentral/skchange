@@ -295,8 +295,8 @@ def run_pelt_masked(
     min_segment_length: int,
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
-    initial_capacity: float = 0.1,  # Initial fraction of n_samples
-    growth_factor: float = 1.5,  # Geometric growth factor
+    allocation_multiplier: float = 5.0,  # Initial multiple of log(n_samples)
+    growth_factor: float = 2.0,  # Geometric growth factor
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -326,16 +326,16 @@ def run_pelt_masked(
         The pruning margin is used to avoid numerical issues when comparing
         the candidate optimal costs with the current optimal cost.
     initial_capacity : float, optional
-        The initial capacity of the arrays as a fraction of n_samples.
-        Default is 0.1 (10% of n_samples).
+        The initial capacity of the pre-allocated arrays.
+        This is a multiple of log(n_samples). Default is 5.0.
     growth_factor : float, optional
         The factor by which to grow the arrays when they need to be resized.
-        Default is 1.5.
+        Default is 2.0.
 
     Returns
     -------
-    tuple[np.ndarray, list]
-        The optimal costs and the changepoints.
+    tuple[np.ndarray, list, float]
+        The optimal costs, the changepoints, and cost evaluation time.
     """
     cost.check_is_fitted()
     n_samples = cost._X.shape[0]
@@ -363,7 +363,7 @@ def run_pelt_masked(
     prev_cpts = np.repeat(0, n_samples)
 
     # Initialize smaller arrays with a fraction of n_samples capacity
-    initial_size = max(2, int(n_samples * initial_capacity))
+    initial_size = max(2, int(np.log(n_samples) * allocation_multiplier))
 
     # Pre-allocate arrays with initial capacity
     start_capacity = initial_size
@@ -462,7 +462,8 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
         mean=20,
         segment_length=seg_len,
         p=1,
-        # random_state=2
+        # random_state=2,
+        random_state=10,
     ).values.reshape(-1, 1)
 
     cost.fit(benchmark_data)
@@ -480,6 +481,7 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
             cost,
             penalty=penalty,
             min_segment_length=min_segment_length,
+            allocation_multiplier=5.0,
         )
         masked_pelt_time = time.perf_counter() - start_time
         masked_overhead = masked_pelt_time - masked_cost_eval_time

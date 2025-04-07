@@ -33,8 +33,8 @@ def run_pelt(
     min_segment_length: int,
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
-    initial_capacity: float = 0.1,  # Initial fraction of n_samples
-    growth_factor: float = 1.5,  # Geometric growth factor
+    allocation_multiplier: float = 5.0,  # Initial fraction of n_samples
+    growth_factor: float = 2.0,  # Geometric growth factor
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -68,7 +68,7 @@ def run_pelt(
         Default is 0.1 (10% of n_samples).
     growth_factor : float, optional
         The factor by which to grow the arrays when they need to be resized.
-        Default is 1.5.
+        Default is 2.0.
 
     Returns
     -------
@@ -100,32 +100,31 @@ def run_pelt(
     # Used to get the final set of changepoints after the loop.
     prev_cpts = np.repeat(0, n_samples)
 
-    # Initialize smaller arrays with a fraction of n_samples capacity
-    initial_size = max(2, int(n_samples * initial_capacity))
+    # Initialize smaller arrays with a multiple of log(n_samples) capacity:
+    initial_allocation_size = max(2, int(np.log(n_samples) * allocation_multiplier))
 
     # Pre-allocate arrays with initial capacity
-    start_capacity = initial_size
-    starts_buffer = np.zeros(start_capacity, dtype=np.int64)
-    interval_capacity = initial_size
+    starts_capacity = initial_allocation_size
+    starts_buffer = np.zeros(starts_capacity, dtype=np.int64)
+    interval_capacity = initial_allocation_size
     interval_buffer = np.zeros((interval_capacity, 2), dtype=np.int64)
 
     # Initialize with the first valid start position (position 0)
     n_valid_starts = 1
     starts_buffer[0] = 0  # First valid start is at position 0
 
-    # observation_indices = np.arange(2 * min_segment_length - 1, n_samples)
     for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
         latest_start = current_obs_ind - min_segment_shift
 
         # Add the next start position to the admissible set:
         # First check if we need to grow the arrays
-        if n_valid_starts + 1 > start_capacity:
+        if n_valid_starts + 1 > starts_capacity:
             # Grow arrays geometrically
-            new_capacity = int(start_capacity * growth_factor)
+            new_capacity = int(starts_capacity * growth_factor)
             new_starts_buffer = np.zeros(new_capacity, dtype=np.int64)
             new_starts_buffer[:n_valid_starts] = starts_buffer[:n_valid_starts]
             starts_buffer = new_starts_buffer
-            start_capacity = new_capacity
+            starts_capacity = new_capacity
 
             # Also grow the interval buffer
             new_interval_capacity = int(interval_capacity * growth_factor)
