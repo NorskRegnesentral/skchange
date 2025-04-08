@@ -158,7 +158,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
         data to `fit`.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
-        than or equal to ``2 * min_segment_length``.
+        than or equal to ``2 * change_score.min_size``.
     growth_factor : float, default=1.5
         The growth factor for the seeded intervals. Intervals grow in size according to
         ``interval_len=max(interval_len + 1, np.floor(growth_factor * interval_len))``,
