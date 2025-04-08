@@ -92,7 +92,6 @@ def narrowest_over_threshold_selection(
 def run_seeded_binseg(
     change_score: BaseChangeScore,
     threshold: float,
-    min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
     selection_method: str = "greedy",
@@ -102,7 +101,7 @@ def run_seeded_binseg(
 
     starts, ends = make_seeded_intervals(
         n_samples,
-        2 * min_segment_length,
+        2 * change_score.min_size,
         max_interval_length,
         growth_factor,
     )
@@ -110,7 +109,9 @@ def run_seeded_binseg(
     amoc_scores = np.zeros(starts.size)
     maximizers = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
-        splits = np.arange(start + min_segment_length, end - min_segment_length + 1)
+        splits = np.arange(
+            start + change_score.min_size, end - change_score.min_size + 1
+        )
         intervals = np.column_stack(
             (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
         )
@@ -155,8 +156,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
         penalty with ``n=X.shape[0]`` and
         ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
         data to `fit`.
-    min_segment_length : int, default=5
-        Minimum length between two changepoints. Must be greater than or equal to 1.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to ``2 * min_segment_length``.
@@ -212,14 +211,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
         self,
         change_score: BaseChangeScore | BaseCost | None = None,
         penalty: BasePenalty | float | None = None,
-        min_segment_length: int = 5,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
     ):
         self.change_score = change_score
         self.penalty = penalty
-        self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         self.selection_method = selection_method
@@ -232,10 +229,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
             self.penalty, default=BICPenalty(), require_penalty_type="constant"
         )
 
-        check_larger_than(1.0, self.min_segment_length, "min_segment_length")
-        check_larger_than(
-            2 * self.min_segment_length, self.max_interval_length, "max_interval_length"
-        )
         check_in_interval(
             pd.Interval(1.0, 2.0, closed="right"),
             self.growth_factor,
@@ -278,11 +271,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
         ------------
         Creates fitted model that updates attributes ending in "_".
         """
-        X = check_data(
-            X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="min_interval_length",
-        )
         self.penalty_: BasePenalty = self._penalty.clone()
         self.penalty_.fit(X, self._change_score)
         return self
@@ -301,16 +289,20 @@ class SeededBinarySegmentation(BaseChangeDetector):
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the change points.
         """
+        self._change_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="min_interval_length",
+            min_length=2 * self._change_score.min_size,
+            min_length_name="2 * self._change_score.min_size",
         )
-        self._change_score.fit(X)
+        check_larger_than(
+            2 * self._change_score.min_size,
+            self.max_interval_length,
+            "max_interval_length",
+        )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
             change_score=self._change_score,
             threshold=self.penalty_.values[0],
-            min_segment_length=self.min_segment_length,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
             selection_method=self.selection_method,
@@ -344,19 +336,16 @@ class SeededBinarySegmentation(BaseChangeDetector):
         params = [
             {
                 "change_score": L2Cost(),
-                "min_segment_length": 5,
                 "max_interval_length": 100,
                 "penalty": 30,
             },
             {
                 "change_score": L2Cost(),
-                "min_segment_length": 1,
                 "max_interval_length": 20,
                 "penalty": 10,
             },
             {
                 "change_score": L2Cost(),
-                "min_segment_length": 1,
                 "max_interval_length": 20,
                 "penalty": 10,
                 "selection_method": "narrowest",
