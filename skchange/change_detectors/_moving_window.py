@@ -86,9 +86,7 @@ class MovingWindow(BaseChangeDetector):
     --------
     >>> from skchange.change_detectors import MovingWindow
     >>> from skchange.datasets import generate_alternating_data
-    >>> df = generate_alternating_data(
-            n_segments=4, mean=10, segment_length=100, p=5
-        )
+    >>> df = generate_alternating_data(n_segments=4, mean=10, segment_length=100, p=5)
     >>> detector = MovingWindow()
     >>> detector.fit_predict(df)
         ilocs
