@@ -59,3 +59,18 @@ def test_min_segment_length(min_segment_length):
     changepoints = detector.fit_predict(df)["ilocs"]
     changepoints = np.concatenate([[0], changepoints, [len(df)]])
     assert np.all(np.diff(changepoints) >= min_segment_length)
+
+
+@pytest.mark.parametrize("selection_method", ["greedy", "narrowest"])
+def test_selection_method(selection_method):
+    """Test SeededBinarySegmentation selection method."""
+    n_segments = 2
+    seg_len = 10
+    df = generate_alternating_data(
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=200
+    )
+    detector = SeededBinarySegmentation.create_test_instance()
+    detector.set_params(selection_method=selection_method)
+    changepoints = detector.fit_predict(df)["ilocs"]
+    assert len(changepoints) == n_segments - 1
+    assert changepoints[0] == 10

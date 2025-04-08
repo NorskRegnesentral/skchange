@@ -354,5 +354,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
                 "max_interval_length": 20,
                 "penalty": 10,
             },
+            {
+                "change_score": L2Cost(),
+                "min_segment_length": 1,
+                "max_interval_length": 20,
+                "penalty": 10,
+                "selection_method": "narrowest",
+            },
         ]
         return params
