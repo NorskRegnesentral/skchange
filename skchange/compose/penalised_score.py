@@ -87,6 +87,30 @@ def _penalise_scores_nonlinear(
     return np.array(penalised_scores, dtype=np.float64)
 
 
+def _penalise_esac(scores: np.ndarray, penalty_values: np.ndarray) -> np.ndarray:
+    """Penalise scores with a nonlinear penalty.
+
+    Parameters
+    ----------
+    scores : np.ndarray
+        The scores to penalise. The output of a BaseIntervalScorer.
+    penalty_values : np.ndarray
+        The penalty values. The output of a nonlinear BasePenalty.
+
+    Returns
+    -------
+    penalised_scores : np.ndarray
+        The penalised scores
+    """
+    penalised_scores = []
+    for score in scores:
+        sorted_scores = np.sort(score)[::-1]
+        penalised_score = np.cumsum(sorted_scores) - penalty_values
+        optimal_penalised_score = np.max(penalised_score)
+        penalised_scores.append(optimal_penalised_score)
+    return np.array(penalised_scores, dtype=np.float64)
+
+
 class PenalisedScore(BaseIntervalScorer):
     """Penalised interval scorer.
 
