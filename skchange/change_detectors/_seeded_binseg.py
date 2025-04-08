@@ -129,8 +129,6 @@ def run_seeded_binseg(
         cpts = narrowest_over_threshold_selection(
             amoc_scores, maximizers, starts, ends, threshold
         )
-    else:
-        raise ValueError(f"Invalid selection method: {selection_method}.")
 
     return cpts, amoc_scores, maximizers, starts, ends
 

@@ -38,3 +38,10 @@ def test_selection_method(selection_method):
     changepoints = detector.fit_predict(df)["ilocs"]
     assert len(changepoints) == n_segments - 1
     assert changepoints[0] == 10
+
+
+def test_invalid_selection_method():
+    """Test invalid selection method."""
+    detector = SeededBinarySegmentation.create_test_instance()
+    with pytest.raises(ValueError):
+        detector.set_params(selection_method="greedy2")
