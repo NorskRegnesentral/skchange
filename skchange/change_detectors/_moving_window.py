@@ -91,10 +91,10 @@ class MovingWindow(BaseChangeDetector):
         )
     >>> detector = MovingWindow()
     >>> detector.fit_predict(df)
-    0    100
-    1    200
-    2    300
-    Name: changepoint, dtype: int64
+        ilocs
+    0	100
+    1	200
+    2	300
     """
 
     _tags = {

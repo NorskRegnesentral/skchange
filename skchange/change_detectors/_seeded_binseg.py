@@ -191,15 +191,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
     --------
     >>> from skchange.change_detectors import SeededBinarySegmentation
     >>> from skchange.datasets import generate_alternating_data
-    >>> df = generate_alternating_data(
-            n_segments=4, mean=10, segment_length=100, p=5
-        )
+    >>> df = generate_alternating_data(n_segments=4, mean=10, segment_length=100, p=5)
     >>> detector = SeededBinarySegmentation()
     >>> detector.fit_predict(df)
-    0    100
-    1    200
-    2    300
-    Name: changepoint, dtype: int64
+        ilocs
+    0	100
+    1	200
+    2	300
     """
 
     _tags = {
