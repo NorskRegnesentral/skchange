@@ -89,10 +89,10 @@ class MovingWindow(BaseChangeDetector):
     >>> df = generate_alternating_data(n_segments=4, mean=10, segment_length=100, p=5)
     >>> detector = MovingWindow()
     >>> detector.fit_predict(df)
-        ilocs
-    0	100
-    1	200
-    2	300
+       ilocs
+    0    100
+    1    200
+    2    300
     """
 
     _tags = {
