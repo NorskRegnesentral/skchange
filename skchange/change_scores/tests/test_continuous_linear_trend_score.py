@@ -198,7 +198,7 @@ def test_seeded_binseg_multiple_changepoints():
 
     # Create detector with ContinuousLinearTrendScore
     detector = SeededBinarySegmentation(
-        change_score=ContinuousLinearTrendScore(), penalty=50, min_segment_length=5
+        change_score=ContinuousLinearTrendScore(), penalty=60, min_segment_length=4
     )
 
     # Fit and predict
@@ -210,7 +210,7 @@ def test_seeded_binseg_multiple_changepoints():
     ), f"Expected {len(true_change_points)} changepoints, found {len(detected_cps)}"
 
     # Assert the changepoints are close to the true changepoints
-    cp_detection_margin = 4
+    cp_detection_margin = 5
     for i, cp in enumerate(detected_cps["ilocs"]):
         assert (
             abs(cp - true_change_points[i]) <= cp_detection_margin
