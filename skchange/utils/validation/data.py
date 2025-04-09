@@ -5,17 +5,8 @@ import pandas as pd
 from numpy.typing import ArrayLike
 
 
-def to_data_frame(X: pd.DataFrame | pd.Series | ArrayLike) -> pd.DataFrame:
-    """Convert input data to a pd.DataFrame."""
-    if isinstance(X, np.ndarray):
-        X = pd.DataFrame(X)
-    if X.ndim < 2:
-        X = X.to_frame()
-    return X
-
-
 def check_data(
-    X: pd.DataFrame | pd.Series | np.ndarray,
+    X: pd.DataFrame | pd.Series | ArrayLike,
     min_length: int,
     min_length_name: str = "min_length",
     allow_missing_values: bool = False,
@@ -38,7 +29,7 @@ def check_data(
     X : pd.DataFrame
         Input data in pd.DataFrame format.
     """
-    X = to_data_frame(X)
+    X = pd.DataFrame(X)
 
     if not allow_missing_values and X.isna().any(axis=None):
         raise ValueError(

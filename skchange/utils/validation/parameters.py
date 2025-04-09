@@ -5,6 +5,33 @@ from numbers import Number
 import pandas as pd
 
 
+def check_none(value: Number, name: str, allow_none: bool = False) -> Number:
+    """Check if value is None.
+
+    Parameters
+    ----------
+    value : int, float
+        Value to check.
+    name : str
+        Name of the parameter to be shown in the error message.
+    allow_none : bool, optional (default=False)
+        Whether to allow None values.
+
+    Returns
+    -------
+    value : int, float
+        Input value.
+
+    Raises
+    ------
+    ValueError
+        If value is None and allow_none is False.
+    """
+    if not allow_none and value is None:
+        raise ValueError(f"{name} cannot be None.")
+    return value
+
+
 def check_larger_than(
     min_value: Number, value: Number, name: str, allow_none: bool = False
 ) -> Number:
@@ -31,8 +58,7 @@ def check_larger_than(
     ValueError
         If value is negative.
     """
-    if not allow_none and value is None:
-        raise ValueError(f"{name} cannot be None.")
+    check_none(value, name, allow_none)
     if value is not None and value < min_value:
         raise ValueError(f"{name} must be at least {min_value} ({name}={value}).")
     return value
@@ -64,8 +90,7 @@ def check_smaller_than(
     ValueError
         If value is negative.
     """
-    if not allow_none and value is None:
-        raise ValueError(f"{name} cannot be None.")
+    check_none(value, name, allow_none)
     if value is not None and value > max_value:
         raise ValueError(f"{name} must be at most {max_value} ({name}={value}).")
     return value
@@ -100,8 +125,7 @@ def check_in_interval(
     ValueError
         If value is negative.
     """
-    if not allow_none and value is None:
-        raise ValueError(f"{name} cannot be None.")
+    check_none(value, name, allow_none)
     if value is not None and value not in interval:
         raise ValueError(f"{name} must be in {interval} ({name}={value}).")
     return value
