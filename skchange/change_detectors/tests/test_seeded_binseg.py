@@ -20,12 +20,6 @@ def test_invalid_parameters():
     with pytest.raises(ValueError):
         SeededBinarySegmentation(penalty=-0.1)
     with pytest.raises(ValueError):
-        SeededBinarySegmentation(min_segment_length=0)
-    with pytest.raises(ValueError):
-        SeededBinarySegmentation(min_segment_length=None)
-    with pytest.raises(ValueError):
-        SeededBinarySegmentation(min_segment_length=5, max_interval_length=9)
-    with pytest.raises(ValueError):
         SeededBinarySegmentation(growth_factor=1.0)
     with pytest.raises(ValueError):
         SeededBinarySegmentation(growth_factor=None)
@@ -40,22 +34,29 @@ def test_invalid_data():
     """
     detector = SeededBinarySegmentation()
     with pytest.raises(ValueError):
-        detector.fit(np.array([1.0]))
+        detector.fit_predict(np.array([1.0]))
 
     with pytest.raises(ValueError):
-        detector.fit(pd.Series([1.0, np.nan, 1.0, 1.0]))
+        detector.fit_predict(pd.Series([1.0, np.nan, 1.0, 1.0]))
 
 
-@pytest.mark.parametrize("min_segment_length", range(1, 5))
-def test_min_segment_length(min_segment_length):
-    """Test SeededBinarySegmentation min_segment_length."""
-    n_segments = 1
+@pytest.mark.parametrize("selection_method", ["greedy", "narrowest"])
+def test_selection_method(selection_method):
+    """Test SeededBinarySegmentation selection method."""
+    n_segments = 2
     seg_len = 10
     df = generate_alternating_data(
-        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=4
+        n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=200
     )
     detector = SeededBinarySegmentation.create_test_instance()
-    detector.set_params(min_segment_length=min_segment_length, penalty=0.0)
+    detector.set_params(selection_method=selection_method)
     changepoints = detector.fit_predict(df)["ilocs"]
-    changepoints = np.concatenate([[0], changepoints, [len(df)]])
-    assert np.all(np.diff(changepoints) >= min_segment_length)
+    assert len(changepoints) == n_segments - 1
+    assert changepoints[0] == 10
+
+
+def test_invalid_selection_method():
+    """Test invalid selection method."""
+    detector = SeededBinarySegmentation.create_test_instance()
+    with pytest.raises(ValueError):
+        detector.set_params(selection_method="greedy2")
