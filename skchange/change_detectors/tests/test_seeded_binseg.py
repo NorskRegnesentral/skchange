@@ -1,5 +1,7 @@
 """Tests for MovingWindow and all available scores."""
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from skchange.change_detectors import SeededBinarySegmentation
@@ -23,6 +25,19 @@ def test_invalid_parameters():
         SeededBinarySegmentation(growth_factor=None)
     with pytest.raises(ValueError):
         SeededBinarySegmentation(growth_factor=2.01)
+
+
+def test_invalid_data():
+    """Test invalid input data to SeededBinarySegmentation.
+
+    These tests serve as tests for the input validators.
+    """
+    detector = SeededBinarySegmentation()
+    with pytest.raises(ValueError):
+        detector.fit_predict(np.array([1.0]))
+
+    with pytest.raises(ValueError):
+        detector.fit_predict(pd.Series([1.0, np.nan, 1.0, 1.0]))
 
 
 @pytest.mark.parametrize("selection_method", ["greedy", "narrowest"])
