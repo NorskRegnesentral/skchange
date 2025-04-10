@@ -49,16 +49,16 @@ def test_linear_trend_cost_fit():
     cost = LinearTrendCost(time_column=test_time_column)
     cost.fit(X)
     assert cost.is_fitted
-    assert_allclose(cost._time_stamps, X[:, test_time_column])
+    assert_allclose(cost._time_stamps, X[:, test_time_column] - X[0, test_time_column])
 
-    # With time column as string with DataFrame
+    # With time column as string with DataFrame:
     df = pd.DataFrame(X, columns=["time", "value1", "value2"])
     cost = LinearTrendCost(time_column="time")
     cost.fit(df)
     assert cost.is_fitted
-    assert_allclose(cost._time_stamps, df["time"].values)
+    assert_allclose(cost._time_stamps, df["time"].values - df["time"].values[0])
 
-    # With fixed parameters
+    # With fixed parameters:
     fixed_params = np.array([[1.0, 0.5], [2.0, 1.0], [0.5, 2.0]])
     cost = LinearTrendCost(param=fixed_params)
     cost.fit(X)
