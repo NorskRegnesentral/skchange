@@ -55,3 +55,9 @@ def test_not_implemented_output_dim():
     evaluator.evaluation_type = EvaluationType.CONDITIONAL
     with pytest.raises(NotImplementedError):
         evaluator.output_dim
+
+
+def test_check_is_penalised():
+    evaluator = ConcreteIntervalEvaluator()
+    with pytest.raises(ValueError):
+        evaluator.check_is_penalised()
