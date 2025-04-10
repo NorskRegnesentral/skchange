@@ -247,10 +247,22 @@ class LinearTrendCost(BaseCost):
         in the input data. If None, the optimal parameters (i.e., the best-fit line) are
         calculated for each interval.
     time_column : str or int, optional (default=None)
-        Name or index of the column containing the time steps. If None, the time steps
-        are assumed to be [0, 1, 2, ..., len(X)-1] if fixed parameters are used.
+        By default time steps are assumed to be evenly spaced with unit distance.
+        If a time column is provided, its time steps are used to calculate the
+        linear trends. The time column values must be convertible to `float` datatype.
+        If your time column is of `datetime.datetime` type, you can e.g. 
+        transform your `"datetime"` as
+        ```
+        ## Sane way of creating a numeric time column:
+        df: pd.DataFrame
+        df["time_elapsed"] = df["datetime"] - df.loc[0, "datetime"]
+        df["num_timestamp"] = (
+            df["time_elapsed"].dt.total_seconds() / pd.Timedelta(hours=1).total_seconds()
+        )  # Convert to hours
+        ```
+        and then pass `time_column = "num_timestamp"`.
     shared_linear_trend : bool, optional (default=False)
-        If True, the same linear trend parameters are used for all columns.
+        If True, the same fixed linear trend parameters are used for all columns.
 
     References
     ----------
@@ -296,7 +308,7 @@ class LinearTrendCost(BaseCost):
             self.time_column_idx = None
 
         if self.time_column_idx is not None:
-            self._time_stamps = X[:, self.time_column_idx]
+            self._time_stamps = X[:, self.time_column_idx].astype(float)
         elif self.param is not None and self.time_column_idx is None:
             # If using fixed parameters, we need a time column:
             self._time_stamps = np.arange(X.shape[0])

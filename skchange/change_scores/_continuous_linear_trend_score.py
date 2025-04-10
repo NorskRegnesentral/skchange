@@ -188,7 +188,18 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     kink at the split point. The cost is calculated for each column in the data.
 
     By default time steps are assumed to be evenly spaced. If a time column is
-    provided, its time steps are used to calculate the linear trends.
+    provided, its time steps are used to calculate the linear trends. The time
+    column values must be convertible to `float` datatype. If your time column
+    is of `datetime.datetime` type, you can e.g. transform your `"datetime"` as
+    ```
+    ## Sane way of creating a numeric time column:
+    df: pd.DataFrame
+    df["time_elapsed"] = df["datetime"] - df.loc[0, "datetime"]
+    df["num_timestamp"] = (
+        df["time_elapsed"].dt.total_seconds() / pd.Timedelta(hours=1).total_seconds()
+    )  # Convert to hours
+    ```
+    and then pass `time_column = "num_timestamp"`.
 
     When a time columns is not provided, an analytical solution is used to calculate
     the score for each column in the data, courtesy of [1]_. Otherwise, two linear
@@ -198,9 +209,9 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     Parameters
     ----------
     time_column : str, optional
-            Name of the time column in the data. If provided, the time steps are used to
-            calculate the linear trends. If not provided, the time steps are assumed to
-            be evenly spaced.
+            Name of the time column in the data. If provided, its values are used as
+            time stamps for calculating the piecewise linear trends. If not provided,
+            the time steps are assumed to be evenly spaced.
 
     References
     ----------
@@ -316,9 +327,6 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
         To solve for a linear trend, we need at least 2 points.
 
-        TODO: Possible issue, cannot use analytical solution to calculate the score
-        when start = split - 1. Need at least one point between start and split.
-
         Returns
         -------
         int
@@ -339,8 +347,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         int
             Number of parameters in the cost function.
         """
-        # In each interval we need 2 parameters per column: slope and intercept.
-        # TODO: Consider impact of continuity constraint on number of parameters?
+        # In each interval we need 2 parameters: slope and intercept.
         return 2 * p
 
     @classmethod
