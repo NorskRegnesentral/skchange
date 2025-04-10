@@ -3,6 +3,7 @@
 import copy
 
 import numpy as np
+import pandas as pd
 
 from ..base import BaseIntervalScorer
 from ..penalties.base import BasePenalty
@@ -149,7 +150,10 @@ class PenalisedScore(BaseIntervalScorer):
         data is not compatible with the penalty, a ValueError will be raised.
         """
         self.scorer_: BaseIntervalScorer = self.scorer.clone()
-        self.scorer_.fit(X)
+        # Some scores operate on named columns of X, so the columns must be passed on
+        # to the internal scorer.
+        X_inner = pd.DataFrame(X, columns=self._X_columns, copy=False)
+        self.scorer_.fit(X_inner)
 
         if self.penalty.is_fitted:
             # Need to copy the penalty because a `clone` will not copy the fitted values
