@@ -310,7 +310,11 @@ class LinearTrendCost(BaseCost):
             self.time_column_idx = None
 
         if self.time_column_idx is not None:
+            # If a time column is provided, convert it to float
+            # dtype for numba compatibility:
             self._time_stamps = X[:, self.time_column_idx].astype(float)
+            # Start at time zero for the first data point:
+            self._time_stamps -= self._time_stamps[0]
         elif self.param is not None and self.time_column_idx is None:
             # If using fixed parameters, we need a time column:
             self._time_stamps = np.arange(X.shape[0])
