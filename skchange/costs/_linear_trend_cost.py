@@ -250,14 +250,16 @@ class LinearTrendCost(BaseCost):
         By default time steps are assumed to be evenly spaced with unit distance.
         If a time column is provided, its time steps are used to calculate the
         linear trends. The time column values must be convertible to `float` datatype.
-        If your time column is of `datetime.datetime` type, you can e.g. 
+        If your time column is of `datetime.datetime` type, you can e.g.
         transform your `"datetime"` as
         ```
         ## Sane way of creating a numeric time column:
         df: pd.DataFrame
         df["time_elapsed"] = df["datetime"] - df.loc[0, "datetime"]
         df["num_timestamp"] = (
-            df["time_elapsed"].dt.total_seconds() / pd.Timedelta(hours=1).total_seconds()
+            df["time_elapsed"].dt.total_seconds() /\
+
+            pd.Timedelta(hours=1).total_seconds()
         )  # Convert to hours
         ```
         and then pass `time_column = "num_timestamp"`.
