@@ -2,11 +2,14 @@
 
 import numpy as np
 
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from .base import BaseChangeScore
 
 
-def to_change_score(scorer: BaseCost | BaseChangeScore) -> BaseChangeScore:
+def to_change_score(
+    scorer: BaseCost | BaseChangeScore | PenalisedScore,
+) -> BaseChangeScore:
     """Convert compatible scorers to a change score.
 
     Parameters
@@ -22,12 +25,15 @@ def to_change_score(scorer: BaseCost | BaseChangeScore) -> BaseChangeScore:
     """
     if isinstance(scorer, BaseCost):
         change_score = ChangeScore(scorer)
-    elif isinstance(scorer, BaseChangeScore):
+    elif isinstance(scorer, BaseChangeScore) or (
+        isinstance(scorer, PenalisedScore)
+        and isinstance(scorer.scorer, BaseChangeScore)
+    ):
         change_score = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseChangeScore or BaseCost. "
-            f"Got {type(scorer)}."
+            f"scorer must be an instance of BaseChangeScore, BaseCost or"
+            f" PenalisedScore. Got {type(scorer)}."
         )
     return change_score
 
