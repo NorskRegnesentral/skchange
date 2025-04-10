@@ -21,6 +21,9 @@ def test_penalised_score_init():
     with pytest.raises(ValueError):
         PenalisedScore(scorer, penalty)
 
+    with pytest.raises(ValueError):
+        PenalisedScore(PenalisedScore(scorer, penalty), penalty)
+
 
 def test_penalised_score_fit():
     scorer = CUSUM()
