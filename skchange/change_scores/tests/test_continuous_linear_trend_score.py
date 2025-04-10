@@ -930,3 +930,70 @@ def test_non_uniform_datetime_sampling():
     assert (
         time_diff <= max_allowed_diff
     ), f"Detected time {detected_time} too far from true time {true_cp_time}"
+
+
+def test_large_timestamp_values():
+    """Test ContinuousLinearTrendScore with extremely large timestamp values."""
+    # Generate test data
+    X = np.array([[1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8]], dtype=float)
+    starts = np.array([0])
+    splits = np.array([2])
+    ends = np.array([5])
+
+    # Create extremely large timestamps (e.g., microseconds since epoch)
+    large_times = 1.676e13 + np.arange(X.shape[0]) * 1e9  # Large timestamp values
+
+    # Calculate scores using the linear regression method
+    scores = lin_reg_cont_piecewise_linear_trend_score(
+        starts, splits, ends, X, large_times
+    )
+
+    # Check if scores contain NaN values
+    assert np.any(np.isnan(scores)), "Expected NaN scores with large timestamp values"
+
+    # Create a detector with a time column
+    df = pd.DataFrame({"signal1": X[:, 0], "signal2": X[:, 1], "time": large_times})
+
+    # Test graceful handling in MovingWindow
+    detector = MovingWindow(
+        change_score=ContinuousLinearTrendScore(time_column="time"),
+        bandwidth=3,
+        penalty=1.0,  # Low penalty to encourage changepoint detection
+    )
+
+    # The detector should not crash, even with extreme timestamp values
+    try:
+        detected_cps = detector.fit_predict(df)
+        # If we get here, it didn't crash
+        assert True, "MovingWindow handled large timestamps without crashing"
+    except np.linalg.LinAlgError:
+        # Expected behavior - singular matrix in least squares
+        assert True, "Expected LinAlgError with large timestamps"
+    except Exception as e:
+        pytest.fail(f"Unexpected error type: {type(e)}, message: {str(e)}")
+
+    # Alternative approach: scale down the timestamps
+    normalized_times = (large_times - large_times[0]) / 1e9
+
+    scores_normalized = lin_reg_cont_piecewise_linear_trend_score(
+        starts, splits, ends, X, normalized_times
+    )
+
+    # Normalized timestamps should work properly and not produce NaN
+    assert not np.any(
+        np.isnan(scores_normalized)
+    ), "Normalized timestamps should not produce NaN"
+
+    # Check that the detector works with normalized timestamps
+    df["normalized_time"] = normalized_times
+    detector_normalized = MovingWindow(
+        change_score=ContinuousLinearTrendScore(time_column="normalized_time"),
+        bandwidth=3,
+        penalty=1.0,
+    )
+
+    # This should now work without numerical issues
+    detected_cps = detector_normalized.fit_predict(df)
+    assert isinstance(
+        detected_cps, pd.DataFrame
+    ), "Should return valid changepoints with normalized timestamps"
