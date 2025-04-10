@@ -81,29 +81,6 @@ class BaseDetector(_BaseDetector):
     }
     capability_variable_identification = False
 
-    def _fit(self, X, y=None):
-        """Fit to training data.
-
-        private _fit containing the core logic, called from fit. Default to being empty,
-        as it is not used for most detectors in `skchange`.
-
-        Writes to self:
-            Sets fitted model attributes ending in "_".
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Training data to fit model to time series.
-        y : pd.Series, optional
-            Ground truth labels for training if detector is supervised.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-        """
-        return self
-
     def transform(self, X) -> pd.DataFrame:
         """Create labels on test/deployment data.
 
