@@ -15,14 +15,14 @@ def test_penalised_score_init():
     penalised_score = PenalisedScore(scorer, penalty)
     assert penalised_score.expected_cut_entries == scorer.expected_cut_entries
 
+    with pytest.raises(ValueError, match="penalised"):
+        PenalisedScore(PenalisedScore(scorer, penalty), penalty)
+
     scorer = MultivariateGaussianScore()
     penalty = LinearChiSquarePenalty()
 
     with pytest.raises(ValueError):
         PenalisedScore(scorer, penalty)
-
-    with pytest.raises(ValueError):
-        PenalisedScore(PenalisedScore(scorer, penalty), penalty)
 
 
 def test_penalised_score_fit():
