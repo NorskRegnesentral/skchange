@@ -105,6 +105,7 @@ class PenalisedScore(BaseIntervalScorer):
     """
 
     evaluation_type = EvaluationType.MULTIVARIATE
+    is_penalised_score = True
 
     def __init__(self, scorer: BaseIntervalScorer, penalty: BasePenalty):
         self.scorer = scorer
@@ -113,12 +114,18 @@ class PenalisedScore(BaseIntervalScorer):
 
         self.expected_cut_entries = scorer.expected_cut_entries
 
+        if scorer.is_penalised_score:
+            raise ValueError(
+                "The scorer must not be a penalised score. " f"Got {type(scorer)}."
+            )
+
         if (
             scorer.evaluation_type == EvaluationType.MULTIVARIATE
             and penalty.penalty_type != "constant"
         ):
             raise ValueError(
-                "Multivariate scorers are only compatible with constant penalties."
+                "Multivariate scorers output a single score per cut and are therefore"
+                "only compatible with constant penalties."
             )
 
     def _fit(self, X: np.ndarray, y=None) -> "PenalisedScore":
