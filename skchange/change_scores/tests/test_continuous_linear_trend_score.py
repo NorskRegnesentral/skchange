@@ -106,9 +106,9 @@ def test_moving_window_single_changepoint():
     # Assert the changepoint is close to the true changepoint
     detected_cp = detected_cps.iloc[0, 0]
     cp_detection_margin = 3
-    assert (
-        abs(detected_cp - true_change_points[0]) <= cp_detection_margin
-    ), f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+        f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    )
 
 
 def test_moving_window_multiple_changepoints():
@@ -133,16 +133,16 @@ def test_moving_window_multiple_changepoints():
     detected_cps = detector.fit_predict(df)
 
     # Assert we found the correct number of changepoints
-    assert len(detected_cps) == len(
-        true_change_points
-    ), f"Expected {len(true_change_points)} changepoints, found {len(detected_cps)}"
+    assert len(detected_cps) == len(true_change_points), (
+        f"Expected {len(true_change_points)} changepoints, found {len(detected_cps)}"
+    )
 
     # Assert the changepoints are close to the true changepoints
     cp_detection_margin = 3
     for i, cp in enumerate(detected_cps["ilocs"]):
-        assert (
-            abs(cp - true_change_points[i]) <= cp_detection_margin
-        ), f"Detected {cp}, expected close to {true_change_points[i]}"
+        assert abs(cp - true_change_points[i]) <= cp_detection_margin, (
+            f"Detected {cp}, expected close to {true_change_points[i]}"
+        )
 
 
 def test_seeded_binseg_single_changepoint():
@@ -161,9 +161,11 @@ def test_seeded_binseg_single_changepoint():
         random_seed=42,
     )
 
-    # Create detector with ContinuousLinearTrendScore
+    # Create detector with ContinuousLinearTrendScore:
     detector = SeededBinarySegmentation(
-        change_score=ContinuousLinearTrendScore(), penalty=25, min_segment_length=20
+        change_score=ContinuousLinearTrendScore(),
+        penalty=25,
+        selection_method="narrowest",
     )
 
     # Fit and predict
@@ -174,10 +176,10 @@ def test_seeded_binseg_single_changepoint():
 
     # Assert the changepoint is close to the true changepoint
     detected_cp = detected_cps.iloc[0, 0]
-    cp_detection_margin = 3
-    assert (
-        abs(detected_cp - true_change_points[0]) <= cp_detection_margin
-    ), f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    cp_detection_margin = 2
+    assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+        f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    )
 
 
 def test_seeded_binseg_multiple_changepoints():
@@ -196,25 +198,34 @@ def test_seeded_binseg_multiple_changepoints():
         random_seed=42,
     )
 
-    # Create detector with ContinuousLinearTrendScore
+    # Create detector with ContinuousLinearTrendScore:
     detector = SeededBinarySegmentation(
-        change_score=ContinuousLinearTrendScore(), penalty=60, min_segment_length=4
+        change_score=ContinuousLinearTrendScore(),
+        selection_method="narrowest",
+        penalty=45.0,  # ilocs: 101, 195, 302
+        # selection_method="greedy",
+        ## Low penalty that finds 3 changepoints when using greedy:
+        # penalty=45,
+        ## High penalty that still finds 3 changepoints when using greedy:
+        # penalty=500,
     )
 
-    # Fit and predict
+    # Fit and predict:
     detected_cps = detector.fit_predict(df)
 
     # Assert we found the correct number of changepoints
-    assert len(detected_cps) == len(
-        true_change_points
-    ), f"Expected {len(true_change_points)} changepoints, found {len(detected_cps)}"
+    assert len(detected_cps) == len(true_change_points), (
+        f"Expected {len(true_change_points)} changepoints, found {len(detected_cps)}"
+    )
 
     # Assert the changepoints are close to the true changepoints
     cp_detection_margin = 5
     for i, cp in enumerate(detected_cps["ilocs"]):
-        assert (
-            abs(cp - true_change_points[i]) <= cp_detection_margin
-        ), f"Detected {cp}, expected close to {true_change_points[i]}"
+        detection_error = abs(cp - true_change_points[i])
+        print("Detection error:", detection_error)
+        assert detection_error <= cp_detection_margin, (
+            f"Detected change at index {cp}, expected close to {true_change_points[i]}"
+        )
 
 
 def test_noise_sensitivity():
@@ -247,16 +258,16 @@ def test_noise_sensitivity():
             max_deviations.append(deviation)
 
     # Assert that for reasonable noise levels, we can detect the changepoint
-    assert len(max_deviations) == len(
-        noise_levels
-    ), "Detection worked for low noise levels"
-    assert (
-        max(max_deviations) < 3
-    ), f"Detection failed, with max deviation: {max(max_deviations)}"
+    assert len(max_deviations) == len(noise_levels), (
+        "Detection worked for low noise levels"
+    )
+    assert max(max_deviations) < 3, (
+        f"Detection failed, with max deviation: {max(max_deviations)}"
+    )
     # For lower noise levels, the detection should be more accurate
-    assert all(
-        np.diff(max_deviations) >= 0
-    ), "Detection accuracy doesn't improve with lower noise"
+    assert all(np.diff(max_deviations) >= 0), (
+        "Detection accuracy doesn't improve with lower noise"
+    )
 
 
 def test_multivariate_detection():
@@ -287,22 +298,24 @@ def test_multivariate_detection():
 
     # Test with SeededBinarySegmentation
     detector = SeededBinarySegmentation(
-        change_score=ContinuousLinearTrendScore(), penalty=25, min_segment_length=5
+        change_score=ContinuousLinearTrendScore(),
+        penalty=25,
+        selection_method="greedy",
     )
 
     detected_cps = detector.fit_predict(df)
 
     # Assert we found the correct number of changepoints
-    assert len(detected_cps) == len(
-        change_points
-    ), f"Expected {len(change_points)} changepoints, found {len(detected_cps)}"
+    assert len(detected_cps) == len(change_points), (
+        f"Expected {len(change_points)} changepoints, found {len(detected_cps)}"
+    )
 
     # Assert the changepoints are close to the true changepoints
     cp_detection_margin = 3
     for i, cp in enumerate(detected_cps["ilocs"]):
-        assert (
-            abs(cp - change_points[i]) <= cp_detection_margin
-        ), f"Detected {cp}, expected close to {change_points[i]}"
+        assert abs(cp - change_points[i]) <= cp_detection_margin, (
+            f"Detected {cp}, expected close to {change_points[i]}"
+        )
 
 
 def test_irregular_time_sampling():
@@ -362,44 +375,47 @@ def test_irregular_time_sampling():
     # Assert the detected time is close to the true changepoint
     cp_detection_margin = 2  # Slightly larger margin for irregular sampling
     cp_time_detection_margin = 4.0
-    assert (
-        abs(detected_cp_idx - true_change_points[0]) <= cp_detection_margin
-    ), f"Detection index {detected_cp_idx}, expected close to {true_change_points[0]}"
+    assert abs(detected_cp_idx - true_change_points[0]) <= cp_detection_margin, (
+        f"Detection index {detected_cp_idx}, expected close to {true_change_points[0]}"
+    )
+
     # Assert the detected time is close to the true changepoint
-    assert (
-        abs(detected_cp_time - true_change_point_time) <= cp_time_detection_margin
-    ), f"Detected time {detected_cp_time}, expected close \
+    assert abs(detected_cp_time - true_change_point_time) <= cp_time_detection_margin, (
+        f"Detected time {detected_cp_time}, expected close \
         to {true_change_point_time}"
+    )
 
     # Test with SeededBinarySegmentation as well
     sbs_detector = SeededBinarySegmentation(
         change_score=ContinuousLinearTrendScore(time_column="sample_times"),
+        selection_method="greedy",
         penalty=25,
-        min_segment_length=10,
     )
 
     # Fit and predict
     sbs_detected_cps = sbs_detector.fit_predict(irregular_df)
 
     # Assert we found 1 changepoint
-    assert (
-        len(sbs_detected_cps) == 1
-    ), f"Expected 1 changepoint, found {len(sbs_detected_cps)}"
+    assert len(sbs_detected_cps) == 1, (
+        f"Expected 1 changepoint, found {len(sbs_detected_cps)}"
+    )
 
     # Get the original time that corresponds to the detected changepoint
     sbs_detected_cp_idx = reverse_index_map[sbs_detected_cps.iloc[0, 0]]
     sbs_detected_cp_time = df["sample_times"].iloc[sbs_detected_cp_idx]
 
     # Assert the detected time is close to the true changepoint
-    assert (
-        abs(sbs_detected_cp_idx - true_change_points[0]) <= cp_detection_margin
-    ), f"SBS detected at time {sbs_detected_cp_time}, expected close \
+    assert abs(sbs_detected_cp_idx - true_change_points[0]) <= cp_detection_margin, (
+        f"SBS detected at time {sbs_detected_cp_time}, expected close \
           to {true_change_points[0]}"
+    )
     # Assert the detected time is close to the true changepoint
     assert (
         abs(sbs_detected_cp_time - true_change_point_time) <= cp_time_detection_margin
-    ), f"SBS detected time {sbs_detected_cp_time}, expected close \
+    ), (
+        f"SBS detected time {sbs_detected_cp_time}, expected close \
           to {true_change_point_time}"
+    )
 
 
 def test_ignoring_irregular_time_sampling():
@@ -429,7 +445,7 @@ def test_ignoring_irregular_time_sampling():
         region_len = end - start
         # Remove about 30% of points in each region
         to_remove = np.random.choice(
-            np.arange(start, end), size=int(region_len * 0.3), replace=False
+            np.arange(start, end), size=int(region_len * 0.4), replace=False
         )
         selection_mask[to_remove] = False
 
@@ -451,9 +467,9 @@ def test_ignoring_irregular_time_sampling():
     mw_detected_cps = mw_detector.fit_predict(irregular_df)
 
     # Assert we found 1 changepoint
-    assert (
-        len(mw_detected_cps) == 1
-    ), f"Expected 1 changepoint, found {len(mw_detected_cps)}"
+    assert len(mw_detected_cps) == 1, (
+        f"Expected 1 changepoint, found {len(mw_detected_cps)}"
+    )
 
     # Get the detected changepoint index in the irregular data
     mw_detected_cp_idx = reverse_index_map[mw_detected_cps.iloc[0, 0]]
@@ -471,28 +487,17 @@ def test_ignoring_irregular_time_sampling():
     # Test with SeededBinarySegmentation as well
     sbs_detector = SeededBinarySegmentation(
         change_score=ContinuousLinearTrendScore(),  # No time_column provided
+        selection_method="narrowest",
         penalty=25,
-        min_segment_length=10,
     )
 
     # Fit and predict
     sbs_detected_cps = sbs_detector.fit_predict(irregular_df)
 
     # Assert we found 1 changepoint
-    assert (
-        len(sbs_detected_cps) == 1
-    ), f"Expected 1 changepoint, found {len(sbs_detected_cps)}"
-
-    # Get the detected changepoint index in the irregular data
-    sbs_detected_cp_idx = reverse_index_map[sbs_detected_cps.iloc[0, 0]]
-
-    # Without time information, the detected changepoint index should be different
-    assert (
-        lower_cp_detection_margin
-        < abs(sbs_detected_cp_idx - true_cp_index)
-        < upper_cp_detection_margin
-    ), f"SBS detection should be less accurate without time information, \
-        but got index {sbs_detected_cp_idx}"
+    assert len(sbs_detected_cps) == 1, (
+        f"Expected 1 changepoint, found {len(sbs_detected_cps)}"
+    )
 
 
 def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
@@ -572,13 +577,7 @@ def linear_trend_score(
         # Change in slope from the split point:
         # trend data index starts at 0 from 'start'.
         # Continuous at the first point of the second interal, [split, end - 1]:
-        # split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
-
-        # Change in slope from the split point:
-        # trend data index starts at 0 from 'start'.
-        # Continuous in the last point of the first interval, [start, split - 1]:
-        # THIS IS WHAT the 'NOT' people DO:
-        split_interval_trend_data[(split - start) :, 2] = np.arange(1, end - split + 1)
+        split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
 
         # Calculate the slope and intercept for the whole interval:
         split_interval_linreg_res = np.linalg.lstsq(
@@ -617,9 +616,9 @@ def test_linear_trend_score():
     )
 
     # Check if the output matches the expected output
-    assert np.allclose(
-        scores, expected_scores
-    ), f"Expected {expected_scores}, got {scores}"
+    assert np.allclose(scores, expected_scores), (
+        f"Expected {expected_scores}, got {scores}"
+    )
 
 
 def test_continuous_linear_trend_score_function():

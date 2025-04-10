@@ -33,9 +33,9 @@ def lin_reg_cont_piecewise_linear_trend_score(
         End indices of the second intervals (exclusive).
     X : np.ndarray
         Data to evaluate. Must be a 2D array.
-    times : np.ndarray, optional
+    times : np.ndarray
         Time steps corresponding to the data points. If the data points
-        are evenly spaced, instead call the optimized NOT-score function.
+        are evenly spaced, instead call the analytical score function.
 
     Returns
     -------
@@ -53,25 +53,12 @@ def lin_reg_cont_piecewise_linear_trend_score(
         split_interval_trend_data[:, 0] = 1.0  # Intercept
 
         # Whole interval slope:
-        # split_interval_trend_data[:, 1] = np.arange(end - start)  # Time steps
         split_interval_trend_data[:, 1] = times[start:end]  # Time steps
 
         # Change in slope from the 'split' index:
-        # Continuous at the first point of the second interal, [split, end - 1]:
-        # trend data index starts at 0 from 'start'.
-        # split_interval_trend_data[(split - start) :, 2] = np.arange(end - split)
         split_interval_trend_data[(split - start) :, 2] = (
             times[split:end] - times[split]
         )
-
-        ### THIS IS WHAT the 'NOT' people DO: ###
-        # Change in slope from 'split - 1' index:
-        # Continuous in the last point of the first interval, [start, split - 1]:
-        # trend data index starts at 0 from 'start'.
-        # split_interval_trend_data[(split-start):, 2] = np.arange(1, end-split+1)
-        # split_interval_trend_data[(split - start) :, 2] = (
-        #     times[split:end] - times[split - 1]
-        # )
 
         # Calculate the slope and intercept for the whole interval:
         split_interval_linreg_res = np.linalg.lstsq(
@@ -86,6 +73,7 @@ def lin_reg_cont_piecewise_linear_trend_score(
         )
         joint_interval_squared_residuals = joint_interval_linreg_res[1]
 
+        # Computes scores for all columns at once:
         scores[i, :] = (
             joint_interval_squared_residuals - split_interval_squared_residuals
         )
@@ -107,13 +95,17 @@ def continuous_piecewise_linear_trend_squared_contrast(
         < second_interval_inclusive_start
         < non_inclusive_end
     )
+
     ## Translate named parameters to the NOT-paper sytax.
     ## We are zero-indexing the data, whilst the paper is one-indexing.
     s = first_interval_inclusive_start - 1
-    # Add one to NOT split index to account for their different definition
-    # of where the change in slope starts from.
-    b = second_interval_inclusive_start - 1 + 1
     e = non_inclusive_end - 1
+
+    # Add one to NOT-syntax split index to account for the difference
+    # in definition of where the change in slope starts from. They
+    # let the change in slop take effect after the point before the split.
+    b = second_interval_inclusive_start - 1 + 1
+
     l = e - s
     alpha = np.sqrt(
         6.0 / (l * (l**2 - 1) * (1 + (e - b + 1) * (b - s) + (e - b) * (b - s - 1)))
