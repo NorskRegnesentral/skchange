@@ -1,7 +1,11 @@
 """Test cases for the ContinuousLinearTrendScore class and related functions."""
 
+import datetime
+import re
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from skchange.change_detectors import MovingWindow, SeededBinarySegmentation
 from skchange.change_scores import ContinuousLinearTrendScore
@@ -689,3 +693,296 @@ def test_multiple_segments():
 
     # Check if both methods give the same result
     assert np.allclose(scores_func, scores_with_times)
+
+
+def test_datetime_indices():
+    """Test ContinuousLinearTrendScore with datetime indices."""
+
+    # Generate data with a single changepoint
+    true_change_points = [100]
+    slopes = [0.1, -0.2]
+    n_samples = 200
+
+    df = generate_continuous_piecewise_linear_signal(
+        change_points=true_change_points,
+        slopes=slopes,
+        n_samples=n_samples,
+        noise_std=1.0,
+        random_seed=42,
+    )
+
+    # Create datetime index starting from today
+    start_date = datetime.datetime.now()
+    datetime_index = [start_date + datetime.timedelta(days=i) for i in range(n_samples)]
+    df["datetime"] = datetime_index
+
+    ## Sane way of creating a numeric time column:
+    df["time_elapsed"] = df["datetime"] - df.loc[0, "datetime"]
+    df["num_timestamp"] = (
+        df["time_elapsed"].dt.total_seconds() / 3600.0
+    )  # Convert to hours
+
+    # Create detector with ContinuousLinearTrendScore with datetime column
+    detector = MovingWindow(
+        change_score=ContinuousLinearTrendScore(time_column="num_timestamp"),
+        bandwidth=30,
+        penalty=25,
+    )
+
+    # Fit and predict:
+    detected_cps = detector.fit_predict(df.drop(columns=["datetime", "time_elapsed"]))
+
+    # Assert we found 1 changepoint
+    assert len(detected_cps) == 1, f"Expected 1 changepoint, found {len(detected_cps)}"
+
+    # Assert the changepoint is close to the true changepoint
+    detected_cp = detected_cps.iloc[0, 0]
+    cp_detection_margin = 3
+    assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+        f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    )
+
+
+def test_numpy_datetime64():
+    """Test ContinuousLinearTrendScore with numpy datetime64 type."""
+    # Generate data with a single changepoint
+    true_change_points = [100]
+    slopes = [0.1, -0.2]
+    n_samples = 200
+
+    df = generate_continuous_piecewise_linear_signal(
+        change_points=true_change_points,
+        slopes=slopes,
+        n_samples=n_samples,
+        noise_std=1.0,
+        random_seed=42,
+    )
+
+    # Create numpy datetime64 column
+    start_date = np.datetime64("2023-01-01")
+    dt_array = np.array([start_date + np.timedelta64(i, "h") for i in range(n_samples)])
+    df["np_datetime"] = dt_array
+
+    # Create a numeric timestamp:
+    df["num_timestamp"] = (
+        df["np_datetime"] - df["np_datetime"][0]
+    ).dt.total_seconds() / (60.0 * 60.0)  # Convert to hours
+
+    # Create detector with ContinuousLinearTrendScore with datetime column:
+    detector = SeededBinarySegmentation(
+        change_score=ContinuousLinearTrendScore(time_column="num_timestamp"),
+        penalty=25,
+        selection_method="narrowest",
+    )
+
+    # Fit and predict
+    detected_cps = detector.fit_predict(df.drop(columns=["np_datetime"]))
+
+    # Assert we found 1 changepoint
+    assert len(detected_cps) == 1, f"Expected 1 changepoint, found {len(detected_cps)}"
+
+    # Assert the changepoint is close to the true changepoint
+    detected_cp = detected_cps.iloc[0, 0]
+    cp_detection_margin = 3
+    assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+        f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    )
+
+
+def test_pandas_timestamp():
+    """Test ContinuousLinearTrendScore with pandas Timestamp type."""
+    # Generate data with a single changepoint
+    true_change_points = [100]
+    slopes = [0.1, -0.2]
+    n_samples = 200
+
+    df = generate_continuous_piecewise_linear_signal(
+        change_points=true_change_points,
+        slopes=slopes,
+        n_samples=n_samples,
+        noise_std=1.0,
+        random_seed=42,
+    )
+
+    # Create pandas Timestamp column
+    start_date = pd.Timestamp("2023-01-01")
+    pd_timestamps = [start_date + pd.Timedelta(days=i) for i in range(n_samples)]
+    df["pd_timestamp"] = pd_timestamps
+
+    # Create detector with ContinuousLinearTrendScore with datetime column
+    detector = MovingWindow(
+        change_score=ContinuousLinearTrendScore(time_column="pd_timestamp"),
+        bandwidth=30,
+        penalty=25,
+    )
+
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "float() argument must be a string or a real number, not 'Timestamp'"
+        ),
+    ):
+        # Fit and predict should raise an error:
+        _ = detector.fit_predict(df)
+
+
+def test_date_objects():
+    """Test ContinuousLinearTrendScore with Python date objects."""
+
+    # Generate data with a single changepoint
+    true_change_points = [100]
+    slopes = [0.1, -0.2]
+    n_samples = 200
+
+    df = generate_continuous_piecewise_linear_signal(
+        change_points=true_change_points,
+        slopes=slopes,
+        n_samples=n_samples,
+        noise_std=1.0,
+        random_seed=42,
+    )
+
+    # Create Python date objects
+    start_date = datetime.date(2023, 1, 1)
+    dates = [start_date + datetime.timedelta(days=i) for i in range(n_samples)]
+    df["date"] = dates
+    # Create a numeric timestamp:
+    df["days_since_first"] = (
+        df["date"] - df.iloc[0, "date"]
+    ).dt.total_seconds() / pd.Timedelta(days=1).total_seconds()  # Convert to hours
+
+    # Create detector with ContinuousLinearTrendScore with date column
+    detector = SeededBinarySegmentation(
+        change_score=ContinuousLinearTrendScore(time_column="days_since_first"),
+        penalty=25,
+        selection_method="narrowest",
+    )
+
+    # Fit and predict
+    detected_cps = detector.fit_predict(df)
+
+    # Assert we found 1 changepoint
+    assert len(detected_cps) == 1, f"Expected 1 changepoint, found {len(detected_cps)}"
+
+    # Assert the changepoint is close to the true changepoint
+    detected_cp = detected_cps.iloc[0, 0]
+    cp_detection_margin = 3
+    assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+        f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    )
+
+
+def test_non_uniform_datetime_sampling():
+    """Test ContinuousLinearTrendScore with non-uniform datetime sampling."""
+
+    # Generate data with a single changepoint
+    true_change_points = [100]
+    slopes = [0.1, -0.2]
+    n_samples = 200
+
+    df = generate_continuous_piecewise_linear_signal(
+        change_points=true_change_points,
+        slopes=slopes,
+        n_samples=n_samples,
+        noise_std=1.0,
+        random_seed=42,
+    )
+
+    # Create non-uniform datetime sampling
+    start_date = datetime.datetime(2023, 1, 1)
+    np.random.seed(42)
+    # Add random hours (0-23) to each day
+    random_hours = np.random.randint(0, 24, n_samples)
+    datetimes = [
+        start_date + datetime.timedelta(days=i, hours=h)
+        for i, h in enumerate(random_hours)
+    ]
+    df["datetime"] = datetimes
+
+    # Note the timestamp at the true changepoint for later comparison
+    true_cp_time = df["datetime"].iloc[true_change_points[0]]
+
+    # Create detector with ContinuousLinearTrendScore with datetime column
+    detector = MovingWindow(
+        change_score=ContinuousLinearTrendScore(time_column="datetime"),
+        bandwidth=30,
+        penalty=25,
+    )
+
+    # Fit and predict
+    detected_cps = detector.fit_predict(df)
+
+    # Assert we found 1 changepoint
+    assert len(detected_cps) == 1, f"Expected 1 changepoint, found {len(detected_cps)}"
+
+    # Assert the changepoint is close to the true changepoint
+    detected_cp = detected_cps.iloc[0, 0]
+    cp_detection_margin = 3
+    assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+        f"Detected {detected_cp}, expected close to {true_change_points[0]}"
+    )
+
+    # Also check that the datetime is close
+    detected_time = df["datetime"].iloc[detected_cp]
+    time_diff = abs((detected_time - true_cp_time).total_seconds())
+    max_allowed_diff = 24 * 3600  # One day in seconds
+    assert time_diff <= max_allowed_diff, (
+        f"Detected time {detected_time} too far from true time {true_cp_time}"
+    )
+
+
+def test_mixed_time_types():
+    """Test ContinuousLinearTrendScore with multiple time columns of different types."""
+
+    # Generate data with a single changepoint
+    true_change_points = [100]
+    slopes = [0.1, -0.2]
+    n_samples = 200
+
+    df = generate_continuous_piecewise_linear_signal(
+        change_points=true_change_points,
+        slopes=slopes,
+        n_samples=n_samples,
+        noise_std=1.0,
+        random_seed=42,
+    )
+
+    # Create multiple time columns of different types
+    start_date = datetime.datetime(2023, 1, 1)
+
+    # Python datetime
+    df["py_datetime"] = [
+        start_date + datetime.timedelta(days=i) for i in range(n_samples)
+    ]
+
+    # Numpy datetime64
+    df["np_datetime"] = np.array(
+        [np.datetime64("2023-01-01") + np.timedelta64(i, "D") for i in range(n_samples)]
+    )
+
+    # Pandas timestamp
+    df["pd_timestamp"] = pd.date_range(start="2023-01-01", periods=n_samples, freq="D")
+
+    # Test with each time column type
+    time_columns = ["py_datetime", "np_datetime", "pd_timestamp"]
+
+    for time_col in time_columns:
+        detector = SeededBinarySegmentation(
+            change_score=ContinuousLinearTrendScore(time_column=time_col),
+            penalty=25,
+            selection_method="narrowest",
+        )
+
+        detected_cps = detector.fit_predict(df)
+
+        # Assert we found 1 changepoint
+        assert len(detected_cps) == 1, (
+            f"With {time_col}: Expected 1 changepoint, found {len(detected_cps)}"
+        )
+
+        # Assert the changepoint is close to the true changepoint
+        detected_cp = detected_cps.iloc[0, 0]
+        cp_detection_margin = 3
+        assert abs(detected_cp - true_change_points[0]) <= cp_detection_margin, (
+            f"With {time_col}: Detected {detected_cp}, expected close to {true_change_points[0]}"
+        )

@@ -60,6 +60,7 @@ def lin_reg_cont_piecewise_linear_trend_score(
             times[split:end] - times[split]
         )
 
+        ### Compute scores for all data columns at once:
         # Calculate the slope and intercept for the whole interval:
         split_interval_linreg_res = np.linalg.lstsq(
             split_interval_trend_data, X[start:end, :]
@@ -73,10 +74,15 @@ def lin_reg_cont_piecewise_linear_trend_score(
         )
         joint_interval_squared_residuals = joint_interval_linreg_res[1]
 
-        # Computes scores for all columns at once:
-        scores[i, :] = (
-            joint_interval_squared_residuals - split_interval_squared_residuals
-        )
+        # If either of the linear regression solutions failed, return NaN.
+        if (len(split_interval_squared_residuals) == 0) or (
+            len(joint_interval_squared_residuals) == 0
+        ):
+            scores[i, :] = np.nan
+        else:
+            scores[i, :] = (
+                joint_interval_squared_residuals - split_interval_squared_residuals
+            )
 
     return scores
 
@@ -242,7 +248,10 @@ class ContinuousLinearTrendScore(BaseChangeScore):
             self.time_column_idx = None
 
         if self.time_column_idx is not None:
-            self._time_stamps = X[:, self.time_column_idx]
+            # Need time column as float data for numba compatibility:
+            self._time_stamps = X[:, self.time_column_idx].astype(np.float64)
+            # Start at time zero for first data point:
+            self._time_stamps -= self._time_stamps[0]
         else:
             # No provided time column or fixed parameters, so we assume
             # the time steps are [0, 1, 2, ..., n-1] for each segment.
