@@ -185,7 +185,10 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     This change score calculates the difference in the squared error between
     observed data and a two parameter linear trend accross the whole interval,
     with the squared error between a three parameter linear trend with an added
-    kink at the split point. The cost is calculated for each column in the data.
+    kink at the split point.  It is intended for use with the NOT segment
+    selection method as developed by [1]_, and which is accessible within the
+    `SeededBinarySegmentation` change detector by passing it the argument
+    `selection_method="narrowest"`.
 
     By default time steps are assumed to be evenly spaced. If a time column is
     provided, its time steps are used to calculate the linear trends. The time
