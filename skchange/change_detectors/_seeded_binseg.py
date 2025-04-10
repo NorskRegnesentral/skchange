@@ -141,12 +141,18 @@ class SeededBinarySegmentation(BaseChangeDetector):
     change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
-    penalty : BasePenalty or float, optional, default=`BICPenalty`
-        The penalty to use for the changepoint detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
-        penalty with ``n=X.shape[0]`` and
+    penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
+        The penalty to use for the changepoint detection. If
+        `change_score.is_penalised_score == True` the penalty will be ignored.
+        The conversion of different types of penalties is as follows (see `as_penalty`):
+
+        * ``float``: A constant penalty.
+        * ``np.ndarray``: A penalty array of the same length as the number of columns in
+        the data. It is converted internally to a constant, linear or nonlinear penalty
+        depending on its values.
+        * ``None``, the penalty is set to a BIC penalty with ``n=X.shape[0]`` and
         ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
-        data to `fit`.
+        data to `predict`.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to ``2 * change_score.min_size``.
