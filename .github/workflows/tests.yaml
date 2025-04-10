@@ -59,7 +59,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13"
       - name: Run skchange with and without Numba
       # Both with and without to get full coverage report.
       # Without numba is very fast, so it doesn't hurt to run it twice.
