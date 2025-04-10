@@ -80,7 +80,7 @@ def narrowest_over_threshold_selection(
         cpts.append(int(cpt))
 
         # remove candidates that contain the detected changepoint.
-        cpt_not_in_interval = ~(cpt >= candidate_starts) & (cpt < candidate_ends)
+        cpt_not_in_interval = ~((cpt >= candidate_starts) & (cpt < candidate_ends))
         candidate_starts = candidate_starts[cpt_not_in_interval]
         candidate_ends = candidate_ends[cpt_not_in_interval]
         candidate_maximizers = candidate_maximizers[cpt_not_in_interval]
