@@ -99,6 +99,8 @@ class MyCost(BaseCost):
 
         # todo: write any hyper-parameters and components to self. These should never
         # be overwritten in other methods.
+        # estimators should precede parameters
+        #  if estimators have default values, set None and initialize below
         self.param1 = param1
         self.param2 = param2
 
