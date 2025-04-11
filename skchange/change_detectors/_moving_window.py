@@ -20,9 +20,7 @@ from .base import BaseChangeDetector
 
 
 @njit
-def get_moving_window_changepoints(
-    scores: np.ndarray, min_detection_interval: int
-) -> list:
+def mosum_selection(scores: np.ndarray, min_detection_interval: int) -> list:
     detection_intervals = where(scores > 0)
     changepoints = []
     for interval in detection_intervals:
@@ -177,9 +175,7 @@ class MovingWindow(BaseChangeDetector):
             * ``"ilocs"`` - integer locations of the changepoints.
         """
         self.scores: pd.Series = self.transform_scores(X)
-        changepoints = get_moving_window_changepoints(
-            self.scores.values, self.min_detection_interval
-        )
+        changepoints = mosum_selection(self.scores.values, self.min_detection_interval)
         return self._format_sparse_output(changepoints)
 
     @classmethod
