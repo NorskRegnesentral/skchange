@@ -100,3 +100,23 @@ def test_scorer_invalid_cuts(Scorer: BaseIntervalScorer):
     with pytest.raises(ValueError):
         cut = np.linspace(10, 0, scorer.expected_cut_entries, dtype=int)
         scorer.evaluate(cut)
+
+
+@pytest.mark.parametrize("Scorer", SIMPLE_INTERVAL_SCORERS)
+def test_scorer_min_size(Scorer: BaseIntervalScorer):
+    scorer = Scorer.create_test_instance()
+    assert scorer.min_size is None or scorer.min_size >= 1
+
+    x = generate_anomalous_data()
+    scorer.fit(x)
+    assert scorer.min_size >= 1
+
+
+@pytest.mark.parametrize("Scorer", SIMPLE_INTERVAL_SCORERS)
+def test_scorer_param_size(Scorer: BaseIntervalScorer):
+    scorer = Scorer.create_test_instance()
+    assert scorer.get_param_size(1) is None or scorer.get_param_size(1) >= 1
+
+    x = generate_anomalous_data()
+    scorer.fit(x)
+    assert scorer.get_param_size(1) >= 1
