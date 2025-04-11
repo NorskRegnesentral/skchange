@@ -131,7 +131,7 @@ class PELT(BaseChangeDetector):
         The penalty to use for the changepoint detection. If a float is given, it is
         interpreted as a constant penalty. If `None`, the penalty is set to a BIC
         penalty with ``n=X.shape[0]`` and ``n_params=cost.get_param_size(X.shape[1])``,
-        where ``X`` is the input data to `fit`.
+        where ``X`` is the input data to `predict`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
     split_cost : float, optional, default=0.0
