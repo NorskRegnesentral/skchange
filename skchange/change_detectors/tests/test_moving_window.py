@@ -59,7 +59,7 @@ def test_moving_window_scores(Score):
         n_segments=n_segments, mean=10, segment_length=seg_len, p=1, random_state=3
     )
     score = Score.create_test_instance()
-    detector = MovingWindow(score)
+    detector = MovingWindow(score, penalty=0)
     scores = detector.fit(df).transform_scores(df)
     assert np.all(scores >= 0.0)
     assert len(scores) == len(df)
