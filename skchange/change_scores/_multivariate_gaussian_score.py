@@ -141,7 +141,7 @@ class MultivariateGaussianScore(BaseChangeScore):
     Scores are calculated as the likelihood ratio scores for a change
     in mean and covariance under a multivariate Gaussian distribution[1]_.
 
-    To stabilize the score, the Bartlett correction can be applied,
+    To stabilize the score, the Bartlett correction is applied by default,
     which adjusts the score for the relative sizes of the left and right segments.
 
     Applying the Bartlett correction results in a more stable score,

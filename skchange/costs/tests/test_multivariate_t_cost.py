@@ -851,3 +851,36 @@ def test_solve_for_mle_scale_matrix_throws_value_error_if_max_iter_reached():
             abs_tol=1.0e-3,
             rel_tol=1.0e-3,
         )
+
+
+def test_fixed_params_cost_higher_than_optim_param():
+    """Test that fixed params cost is higher than optim param."""
+    np.random.seed(4125)
+    n_samples = 1000
+    p = 5
+    t_dof = 5.0
+
+    fixed_loc = np.zeros(p)
+    fixed_shape = np.eye(p) + 0.25 * np.random.randn(p, p)
+    fixed_shape = 0.5 * (fixed_shape + fixed_shape.T)
+    mv_t_samples = st.multivariate_t(loc=fixed_loc, shape=fixed_shape, df=t_dof).rvs(
+        n_samples
+    )
+
+    cost_eval_intervals = np.array(
+        [[0, n_samples], [0, n_samples // 2], [n_samples // 2, n_samples]]
+    )
+
+    # Compute the cost with fixed params and estimated dof
+    fixed_params = (fixed_loc, np.eye(p))
+    fixed_cost = MultivariateTCost(param=fixed_params)
+    fixed_cost.fit(mv_t_samples)
+    fixed_cost_evals = fixed_cost.evaluate(cost_eval_intervals)
+
+    # Compute the cost with estimated params and dof:
+    optim_cost = MultivariateTCost()
+    optim_cost.fit(mv_t_samples)
+    optim_cost_evals = optim_cost.evaluate(cost_eval_intervals)
+
+    assert np.all(optim_cost_evals < fixed_cost_evals), "Fixed cost should be higher."
+    assert fixed_cost.dof_ == optim_cost.dof_, "Estimated dof should be identical."
