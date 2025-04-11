@@ -183,7 +183,7 @@ class PELT(BaseChangeDetector):
         )
         self._penalised_cost = (
             _cost.clone()  # need to avoid modifying the input cost
-            if cost.is_penalised_score
+            if _cost.is_penalised_score
             else PenalisedScore(_cost, _penalty)
         )
         check_larger_than(1, min_segment_length, "min_segment_length")
