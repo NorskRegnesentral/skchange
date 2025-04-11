@@ -8,7 +8,7 @@ import pandas as pd
 
 from ..anomaly_scores import L2Saving, to_saving
 from ..anomaly_scores.base import BaseSaving
-from ..compose import PenalisedScore
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from ..penalties import ChiSquarePenalty, as_penalty
 from ..penalties.base import BasePenalty

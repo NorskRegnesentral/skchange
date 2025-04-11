@@ -8,7 +8,7 @@ import pandas as pd
 
 from ..change_scores import CUSUM, to_change_score
 from ..change_scores.base import BaseChangeScore
-from ..compose import PenalisedScore
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
