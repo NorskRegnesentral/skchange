@@ -8,6 +8,7 @@ import pandas as pd
 
 from ..change_scores import CUSUM, to_change_score
 from ..change_scores.base import BaseChangeScore
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
@@ -40,39 +41,36 @@ def make_seeded_intervals(
 
 
 @njit
-def greedy_changepoint_selection(
-    scores: np.ndarray,
-    maximizers: np.ndarray,
+def greedy_selection(
+    max_scores: np.ndarray,
+    argmax_scores: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
-    threshold: float,
 ) -> list[int]:
-    scores = scores.copy()
+    max_scores = max_scores.copy()
     cpts = []
-    while np.any(scores > threshold):
-        argmax = scores.argmax()
-        cpt = maximizers[argmax]
+    while np.any(max_scores > 0):
+        argmax = max_scores.argmax()
+        cpt = argmax_scores[argmax]
         cpts.append(int(cpt))
         # remove intervals that contain the detected changepoint.
-        scores[(cpt >= starts) & (cpt < ends)] = 0.0
+        max_scores[(cpt >= starts) & (cpt < ends)] = 0.0
     cpts.sort()
     return cpts
 
 
 @njit
-def narrowest_over_threshold_selection(
-    scores: np.ndarray,
-    maximizers: np.ndarray,
+def narrowest_selection(
+    max_scores: np.ndarray,
+    argmax_scores: np.ndarray,
     starts: np.ndarray,
     ends: np.ndarray,
-    threshold: float,
 ) -> list[int]:
-    scores = scores.copy()
     cpts = []
-    scores_above_threshold = scores > threshold
+    scores_above_threshold = max_scores > 0
     candidate_starts = starts[scores_above_threshold]
     candidate_ends = ends[scores_above_threshold]
-    candidate_maximizers = maximizers[scores_above_threshold]
+    candidate_maximizers = argmax_scores[scores_above_threshold]
 
     while len(candidate_starts) > 0:
         argmin = np.argmin(candidate_ends - candidate_starts)
@@ -90,47 +88,42 @@ def narrowest_over_threshold_selection(
 
 
 def run_seeded_binseg(
-    change_score: BaseChangeScore,
-    threshold: float,
+    penalised_score: BaseChangeScore,
     max_interval_length: int,
     growth_factor: float,
     selection_method: str = "greedy",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    change_score.check_is_fitted()
-    n_samples = change_score._X.shape[0]
+    penalised_score.check_is_penalised()
+    penalised_score.check_is_fitted()
+    n_samples = penalised_score._X.shape[0]
 
     starts, ends = make_seeded_intervals(
         n_samples,
-        2 * change_score.min_size,
+        2 * penalised_score.min_size,
         max_interval_length,
         growth_factor,
     )
 
-    amoc_scores = np.zeros(starts.size)
-    maximizers = np.zeros(starts.size, dtype=np.int64)
+    max_scores = np.zeros(starts.size)
+    argmax_scores = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
         splits = np.arange(
-            start + change_score.min_size, end - change_score.min_size + 1
+            start + penalised_score.min_size, end - penalised_score.min_size + 1
         )
         intervals = np.column_stack(
             (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
         )
-        scores = change_score.evaluate(intervals)
-        agg_scores = np.sum(scores, axis=1)
-        argmax = np.argmax(agg_scores)
-        amoc_scores[i] = agg_scores[argmax]
-        maximizers[i] = splits[0] + argmax
+        scores = penalised_score.evaluate(intervals)
+        argmax = np.argmax(scores)
+        max_scores[i] = scores[argmax]
+        argmax_scores[i] = splits[0] + argmax
 
     if selection_method == "greedy":
-        cpts = greedy_changepoint_selection(
-            amoc_scores, maximizers, starts, ends, threshold
-        )
+        cpts = greedy_selection(max_scores, argmax_scores, starts, ends)
     elif selection_method == "narrowest":
-        cpts = narrowest_over_threshold_selection(
-            amoc_scores, maximizers, starts, ends, threshold
-        )
+        cpts = narrowest_selection(max_scores, argmax_scores, starts, ends)
 
-    return cpts, amoc_scores, maximizers, starts, ends
+    return cpts, max_scores, argmax_scores, starts, ends
 
 
 class SeededBinarySegmentation(BaseChangeDetector):
@@ -148,12 +141,18 @@ class SeededBinarySegmentation(BaseChangeDetector):
     change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost function is given, it is
         converted to a change score using the `ChangeScore` class.
-    penalty : BasePenalty or float, optional, default=`BICPenalty`
-        The penalty to use for the changepoint detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
-        penalty with ``n=X.shape[0]`` and
+    penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
+        The penalty to use for the changepoint detection. If
+        `change_score.is_penalised_score == True` the penalty will be ignored.
+        The conversion of different types of penalties is as follows (see `as_penalty`):
+
+        * ``float``: A constant penalty.
+        * ``np.ndarray``: A penalty array of the same length as the number of columns in
+        the data. It is converted internally to a constant, linear or nonlinear penalty
+        depending on its values.
+        * ``None``, the penalty is set to a BIC penalty with ``n=X.shape[0]`` and
         ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
-        data to `fit`.
+        data to `predict`.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to ``2 * change_score.min_size``.
@@ -201,12 +200,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": ["Tveten"],
+        "fit_is_empty": True,
     }
 
     def __init__(
         self,
         change_score: BaseChangeScore | BaseCost | None = None,
-        penalty: BasePenalty | float | None = None,
+        penalty: BasePenalty | np.ndarray | float | None = None,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
@@ -219,10 +219,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
         super().__init__()
 
         _change_score = CUSUM() if change_score is None else change_score
-        self._change_score = to_change_score(_change_score)
-
-        self._penalty = as_penalty(
-            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        _change_score = to_change_score(_change_score)
+        _penalty = as_penalty(self.penalty, default=BICPenalty())
+        self._penalised_score = (
+            _change_score.clone()  # need to avoid modifying the input change_score
+            if _change_score.is_penalised_score
+            else PenalisedScore(_change_score, _penalty)
         )
 
         check_in_interval(
@@ -235,41 +237,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
             raise ValueError(
                 f"Invalid selection method. Must be one of {valid_selection_methods}."
             )
-
-    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
-        """Fit to training data.
-
-        Sets the threshold of the detector.
-        If `threshold_scale` is ``None``, the threshold is set to the ``1-level``
-        quantile of the change/anomaly scores on the training data. For this to be
-        correct, the training data must contain no changepoints. If `threshold_scale` is
-        a number, the threshold is set to `threshold_scale` times the default threshold
-        for the detector. The default threshold depends at least on the data's shape,
-        but could also depend on more parameters.
-
-        In the case of the MovingWindow algorithm, the default threshold depends on the
-        sample size, the number of variables, `bandwidth` and `level`.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to fit the threshold to.
-        y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with `sktime`
-            and `scikit-learn`.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        State change
-        ------------
-        Creates fitted model that updates attributes ending in "_".
-        """
-        self.penalty_: BasePenalty = self._penalty.clone()
-        self.penalty_.fit(X, self._change_score)
-        return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -285,26 +252,25 @@ class SeededBinarySegmentation(BaseChangeDetector):
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the change points.
         """
-        self._change_score.fit(X)
+        self._penalised_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self._change_score.min_size,
-            min_length_name="2 * self._change_score.min_size",
+            min_length=2 * self._penalised_score.min_size,
+            min_length_name="2 * change_score.min_size",
         )
         check_larger_than(
-            2 * self._change_score.min_size,
+            2 * self._penalised_score.min_size,
             self.max_interval_length,
             "max_interval_length",
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
-            change_score=self._change_score,
-            threshold=self.penalty_.values[0],
+            penalised_score=self._penalised_score,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
             selection_method=self.selection_method,
         )
         self.scores = pd.DataFrame(
-            {"start": starts, "end": ends, "argmax_cpt": maximizers, "score": scores}
+            {"start": starts, "end": ends, "argmax": maximizers, "max": scores}
         )
         return self._format_sparse_output(cpts)
 

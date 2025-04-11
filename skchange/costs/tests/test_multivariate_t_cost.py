@@ -716,13 +716,15 @@ def test_MultiVariateTCost_with_PELT(
     change_points = change_detector.dense_to_sparse(segmentation)
 
     print(f"Change points: {change_points}")
-    print(f"Estimated dof: {mv_t_cost.dof_}")
+    print(f"Estimated dof: {change_detector._penalised_cost.scorer_.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
     assert (
         change_points.loc[0, "ilocs"] == n_samples
     ), "Change point should be at the end of the first segment."
-    assert np.isfinite(mv_t_cost.dof_), "Fitted dof should be finite."
+    assert np.isfinite(
+        change_detector._penalised_cost.scorer_.dof_
+    ), "Fitted dof should be finite."
 
 
 def test_MultiVariateTCost_with_moving_window(
@@ -753,13 +755,15 @@ def test_MultiVariateTCost_with_moving_window(
     change_points = change_detector.dense_to_sparse(segmentation)
 
     print(f"Change points: {change_points}")
-    print(f"Estimated dof: {t_cost.dof_}")
+    print(f"Estimated dof: {change_detector._penalised_score.scorer_.cost_.dof_}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
     assert (
         change_points.loc[0, "ilocs"] == n_samples
     ), "Change point should be at the end of the first segment."
-    assert np.isfinite(t_cost.dof_), "Fitted dof should be finite."
+    assert np.isfinite(
+        change_detector._penalised_score.scorer_.cost_.dof_
+    ), "Fitted dof should be finite."
 
 
 def test_min_size_not_fitted():

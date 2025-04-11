@@ -51,8 +51,8 @@ def test_saving_fit(CostClass: type[BaseCost]):
     saving = Saving(baseline_cost=cost)
     X = np.random.randn(100, 1)
     saving.fit(X)
-    assert saving.baseline_cost.is_fitted
-    assert saving.optimised_cost.is_fitted
+    assert saving.baseline_cost_.is_fitted
+    assert saving.optimised_cost_.is_fitted
 
 
 @pytest.mark.parametrize("CostClass", COSTS)

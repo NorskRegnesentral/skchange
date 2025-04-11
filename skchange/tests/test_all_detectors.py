@@ -96,8 +96,6 @@ def test_detector_not_implemented_methods():
     detector = BaseDetector()
     x = generate_anomalous_data()
     x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
-    with pytest.raises(NotImplementedError):
-        detector.fit(x)
 
     detector._is_fitted = True  # Required for the following functions to run
     with pytest.raises(NotImplementedError):
