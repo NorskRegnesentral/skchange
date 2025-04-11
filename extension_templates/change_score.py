@@ -91,14 +91,15 @@ class MyChangeScore(BaseChangeScore):
         param1=None,  # Custom parameter 1.
         param2=1.0,  # Custom parameter 2.
     ):
-        super().__init__()
-
         # todo: write any hyper-parameters and components to self. These should never
         # be overwritten in other methods.
         # estimators should precede parameters
         #  if estimators have default values, set None and initialize below
         self.param1 = param1
         self.param2 = param2
+
+        # leave this as is.
+        super().__init__()
 
         # todo: optional, parameter checking logic (if applicable) should happen here
         # if writes derived values to self, should *not* overwrite self.parama etc
