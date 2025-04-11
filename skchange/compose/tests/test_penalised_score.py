@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from skchange.change_scores import CUSUM, MultivariateGaussianScore
-from skchange.compose import PenalisedScore
+from skchange.compose.penalised_score import PenalisedScore
 from skchange.penalties import BICPenalty, LinearChiSquarePenalty
 
 

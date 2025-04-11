@@ -7,7 +7,7 @@ import pytest
 from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_detectors._capa import run_capa
 from skchange.anomaly_scores import SAVINGS, Saving, to_saving
-from skchange.compose import PenalisedScore
+from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination

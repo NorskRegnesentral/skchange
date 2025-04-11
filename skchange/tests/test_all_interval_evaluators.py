@@ -5,7 +5,7 @@ import pytest
 from skchange.anomaly_scores import ANOMALY_SCORES
 from skchange.base import BaseIntervalScorer
 from skchange.change_scores import CHANGE_SCORES
-from skchange.compose import PenalisedScore
+from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, LinearRegressionCost
 from skchange.datasets import generate_alternating_data, generate_anomalous_data
 from skchange.utils.validation.enums import EvaluationType
