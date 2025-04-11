@@ -125,7 +125,7 @@ class MovingWindow(BaseChangeDetector):
         _change_score = to_change_score(_change_score)
         _penalty = as_penalty(self.penalty, default=BICPenalty())
         self._penalised_score = (
-            _change_score
+            _change_score.clone()  # need to avoid modifying the input change_score
             if _change_score.is_penalised_score
             else PenalisedScore(_change_score, _penalty)
         )
