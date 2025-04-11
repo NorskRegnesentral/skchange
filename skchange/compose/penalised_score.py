@@ -3,6 +3,7 @@
 import copy
 
 import numpy as np
+import pandas as pd
 
 from ..base import BaseIntervalScorer
 from ..penalties.base import BasePenalty
@@ -129,6 +130,7 @@ class PenalisedScore(BaseIntervalScorer):
     """
 
     evaluation_type = EvaluationType.MULTIVARIATE
+    is_penalised_score = True
 
     def __init__(self, scorer: BaseIntervalScorer, penalty: BasePenalty):
         self.scorer = scorer
@@ -137,12 +139,18 @@ class PenalisedScore(BaseIntervalScorer):
 
         self.expected_cut_entries = scorer.expected_cut_entries
 
+        if scorer.is_penalised_score:
+            raise ValueError(
+                "The scorer must not be a penalised score. " f"Got {type(scorer)}."
+            )
+
         if (
             scorer.evaluation_type == EvaluationType.MULTIVARIATE
             and penalty.penalty_type != "constant"
         ):
             raise ValueError(
-                "Multivariate scorers are only compatible with constant penalties."
+                "Multivariate scorers output a single score per cut and are therefore"
+                "only compatible with constant penalties."
             )
 
     def _fit(self, X: np.ndarray, y=None) -> "PenalisedScore":
@@ -166,7 +174,10 @@ class PenalisedScore(BaseIntervalScorer):
         data is not compatible with the penalty, a ValueError will be raised.
         """
         self.scorer_: BaseIntervalScorer = self.scorer.clone()
-        self.scorer_.fit(X)
+        # Some scores operate on named columns of X, so the columns must be passed on
+        # to the internal scorer.
+        X_inner = pd.DataFrame(X, columns=self._X_columns, copy=False)
+        self.scorer_.fit(X_inner)
 
         if self.penalty.is_fitted:
             # Need to copy the penalty because a `clone` will not copy the fitted values
