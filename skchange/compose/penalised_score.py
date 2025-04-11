@@ -88,7 +88,7 @@ def _penalise_scores_nonlinear(
 
 
 def _penalise_esac(scores: np.ndarray, penalty_values: np.ndarray) -> np.ndarray:
-    """Penalise scores with a nonlinear penalty.
+    """Penalise scores with an ESAC type penalty.
 
     Parameters
     ----------
