@@ -8,6 +8,7 @@ import pandas as pd
 
 from ..change_scores import CUSUM, to_change_score
 from ..change_scores.base import BaseChangeScore
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
@@ -20,9 +21,9 @@ from .base import BaseChangeDetector
 
 @njit
 def get_moving_window_changepoints(
-    scores: np.ndarray, threshold: float, min_detection_interval: int
+    scores: np.ndarray, min_detection_interval: int
 ) -> list:
-    detection_intervals = where(scores > threshold)
+    detection_intervals = where(scores > 0)
     changepoints = []
     for interval in detection_intervals:
         start = interval[0]
@@ -34,20 +35,20 @@ def get_moving_window_changepoints(
 
 
 def moving_window_transform(
-    change_score: BaseChangeScore,
+    penalised_score: BaseChangeScore,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
-    change_score.check_is_fitted()
+    penalised_score.check_is_penalised()
+    penalised_score.check_is_fitted()
 
-    n_samples = change_score._X.shape[0]
+    n_samples = penalised_score._X.shape[0]
     splits = np.arange(bandwidth, n_samples - bandwidth + 1)
     starts = splits - bandwidth + 1
     ends = splits + bandwidth
-    change_scores = change_score.evaluate(np.column_stack((starts, splits, ends)))
-    agg_change_scores = np.sum(change_scores, axis=1)
+    cuts = np.column_stack((starts, splits, ends))
 
     scores = np.zeros(n_samples)
-    scores[splits] = agg_change_scores
+    scores[splits] = penalised_score.evaluate(cuts)[:, 0]
     return scores
 
 
@@ -104,6 +105,7 @@ class MovingWindow(BaseChangeDetector):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": ["Tveten"],
+        "fit_is_empty": True,
     }
 
     def __init__(
@@ -120,10 +122,12 @@ class MovingWindow(BaseChangeDetector):
         super().__init__()
 
         _change_score = CUSUM() if change_score is None else change_score
-        self._change_score = to_change_score(_change_score)
-
-        self._penalty = as_penalty(
-            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        _change_score = to_change_score(_change_score)
+        _penalty = as_penalty(self.penalty, default=BICPenalty())
+        self._penalised_score = (
+            _change_score
+            if _change_score.is_penalised_score
+            else PenalisedScore(_change_score, _penalty)
         )
 
         check_larger_than(1, self.bandwidth, "bandwidth")
@@ -132,48 +136,6 @@ class MovingWindow(BaseChangeDetector):
             self.min_detection_interval,
             "min_detection_interval",
         )
-
-    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
-        """Fit to training data.
-
-        Sets the threshold of the detector.
-        If `threshold_scale` is ``None``, the threshold is set to the ``1-level``
-        quantile of the change/anomaly scores on the training data. For this to be
-        correct, the training data must contain no changepoints. If `threshold_scale` is
-        a number, the threshold is set to `threshold_scale` times the default threshold
-        for the detector. The default threshold depends at least on the data's shape,
-        but could also depend on more parameters.
-
-        In the case of the MovingWindow algorithm, the default threshold depends on the
-        sample size, the number of variables, `bandwidth` and `level`.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to fit the threshold to.
-        y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with `sktime`
-            and `scikit-learn`.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        State change
-        ------------
-        Creates fitted model that updates attributes ending in "_".
-        """
-        X = check_data(
-            X,
-            min_length=2 * self.bandwidth,
-            min_length_name="2*bandwidth",
-        )
-
-        self.penalty_: BasePenalty = self._penalty.clone()
-        self.penalty_.fit(X, self._change_score)
-
-        return self
 
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
@@ -193,9 +155,9 @@ class MovingWindow(BaseChangeDetector):
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self._change_score.fit(X)
+        self._penalised_score.fit(X)
         scores = moving_window_transform(
-            self._change_score,
+            self._penalised_score,
             self.bandwidth,
         )
         return pd.Series(scores, index=X.index, name="score")
@@ -216,7 +178,7 @@ class MovingWindow(BaseChangeDetector):
         """
         self.scores: pd.Series = self.transform_scores(X)
         changepoints = get_moving_window_changepoints(
-            self.scores.values, self.penalty_.values[0], self.min_detection_interval
+            self.scores.values, self.min_detection_interval
         )
         return self._format_sparse_output(changepoints)
 
