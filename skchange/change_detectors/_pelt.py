@@ -6,6 +6,7 @@ __all__ = ["PELT"]
 import numpy as np
 import pandas as pd
 
+from ..compose.penalised_score import PenalisedScore
 from ..costs import L2Cost
 from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
@@ -160,6 +161,7 @@ class PELT(BaseChangeDetector):
     _tags = {
         "authors": ["Tveten", "johannvk"],
         "maintainers": ["Tveten", "johannvk"],
+        "fit_is_empty": True,
     }
 
     def __init__(
@@ -175,52 +177,16 @@ class PELT(BaseChangeDetector):
         self.split_cost = split_cost
         super().__init__()
 
-        self._cost = L2Cost() if cost is None else cost
-        self._penalty = as_penalty(
+        _cost = L2Cost() if cost is None else cost
+        _penalty = as_penalty(
             self.penalty, default=BICPenalty(), require_penalty_type="constant"
         )
-        check_larger_than(1, min_segment_length, "min_segment_length")
-
-    def _fit(
-        self,
-        X: pd.Series | pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None = None,
-    ):
-        """Fit to training data.
-
-        Sets the penalty of the detector.
-        If `penalty_scale` is ``None``, the penalty is set to the ``1-level`` quantile
-        of the change scores on the training data. For this to be correct,
-        the training data must contain no change points. If `penalty_scale` is a
-        number, the penalty is set to `penalty_scale` times the default penalty
-        for the detector. The default penalty depends at least on the data's shape,
-        but could also depend on more parameters.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to fit the threshold to.
-        y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with `sktime`
-            and `scikit-learn`.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        State change
-        ------------
-        Creates fitted model that updates attributes ending in "_".
-        """
-        X = check_data(
-            X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="2*min_segment_length",
+        self._penalised_cost = (
+            _cost.clone()  # need to avoid modifying the input cost
+            if cost.is_penalised_score
+            else PenalisedScore(_cost, _penalty)
         )
-        self.penalty_: BasePenalty = self._penalty.clone()
-        self.penalty_.fit(X, self._cost)
-        return self
+        check_larger_than(1, min_segment_length, "min_segment_length")
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -241,10 +207,10 @@ class PELT(BaseChangeDetector):
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self._cost.fit(X)
+        self._penalised_cost.fit(X)
         opt_costs, changepoints = run_pelt(
-            cost=self._cost,
-            penalty=self.penalty_.values[0],
+            cost=self._penalised_cost.scorer_,
+            penalty=self._penalised_cost.penalty_.values[0],
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
         )
