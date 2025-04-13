@@ -8,7 +8,7 @@ model. They are used by all detectors in ``skchange``.
 Base
 ----
 
-.. currentmodule:: skchange.penalties
+.. currentmodule:: skchange.penalties.base
 
 .. autosummary::
     :toctree: auto_generated/
@@ -19,6 +19,8 @@ Base
 Constant penalties
 ------------------
 The penalty for each additional change point in the model is constant.
+
+.. currentmodule:: skchange.penalties
 
 .. autosummary::
     :toctree: auto_generated/
@@ -52,8 +54,8 @@ Only relevant for multivariate data and detectors supporting variable identifica
     :toctree: auto_generated/
     :template: class.rst
 
-    NonLinearPenalty
-    NonLinearChiSquarePenalty
+    NonlinearPenalty
+    NonlinearChiSquarePenalty
 
 Composition
 -----------

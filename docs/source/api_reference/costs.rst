@@ -3,27 +3,31 @@
 Costs
 =====
 
-.. currentmodule:: skchange.costs
+Base
+----
+
+.. currentmodule:: skchange.costs.base
 
 .. autosummary::
     :toctree: auto_generated/
     :template: class.rst
 
     BaseCost
-    L2Cost
-    GaussianCost
-    MultivariateGaussianCost
-    MultivariateTCost
 
-Utility functions
------------------
-
-.. currentmodule:: skchange.costs.utils
+Costs
+-----
+.. currentmodule:: skchange.costs
 
 .. autosummary::
     :toctree: auto_generated/
-    :template: functions.rst
+    :template: class.rst
 
-    check_mean
-    check_var
-    check_cov
+    GaussianCost
+    L1Cost
+    L2Cost
+    LaplaceCost
+    LinearRegressionCost
+    LinearTrendCost
+    MultivariateGaussianCost
+    MultivariateTCost
+    PoissonCost
