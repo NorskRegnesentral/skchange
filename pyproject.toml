@@ -79,6 +79,7 @@ docs = [
   "tabulate",
   "nbsphinx",
   "pypandoc",
+  "plotly",
 ]
 
 [build-system]
