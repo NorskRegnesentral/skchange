@@ -15,7 +15,7 @@ Experimental but maturing.
 
 <!-- ## Latest release -->
 
-Check out version the new version: [v0.12.0](https://github.com/NorskRegnesentral/skchange/releases)
+Check out the latest version: [v0.12.0](https://github.com/NorskRegnesentral/skchange/releases)
 
 ## Documentation
 
