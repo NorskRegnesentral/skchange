@@ -79,6 +79,8 @@ docs = [
   "tabulate",
   "nbsphinx",
   "pypandoc",
+  "ipykernel",
+  "nbformat>=4.2.0",
   "plotly",
 ]
 
