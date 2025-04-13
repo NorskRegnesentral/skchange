@@ -10,10 +10,15 @@ Costs
     :template: class.rst
 
     BaseCost
-    L2Cost
     GaussianCost
+    L1Cost
+    L2Cost
+    LaplaceCost
+    LinearRegressionCost
+    LinearTrendCost
     MultivariateGaussianCost
     MultivariateTCost
+    PoissonCost
 
 Utility functions
 -----------------

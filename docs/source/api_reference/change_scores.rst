@@ -10,6 +10,7 @@ Change scores
     :template: class.rst
 
     BaseChangeScore
+    ContinuousLinearTrendScore
     ChangeScore
     CUSUM
     MultivariateGaussianScore
