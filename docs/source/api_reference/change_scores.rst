@@ -24,6 +24,7 @@ Change scores
     :template: class.rst
 
     ChangeScore
+    ContinuousLinearTrendScore
     CUSUM
     MultivariateGaussianScore
 

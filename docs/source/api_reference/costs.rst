@@ -23,10 +23,11 @@ Costs
     :template: class.rst
 
     GaussianCost
-    LaplaceCost
     L1Cost
     L2Cost
+    LaplaceCost
     LinearRegressionCost
-    PoissonCost
+    LinearTrendCost
     MultivariateGaussianCost
     MultivariateTCost
+    PoissonCost
