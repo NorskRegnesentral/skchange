@@ -8,7 +8,7 @@ import pandas as pd
 
 from ..anomaly_scores import L2Saving, to_saving
 from ..anomaly_scores.base import BaseSaving
-from ..compose import PenalisedScore
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from ..penalties import ChiSquarePenalty, as_penalty
 from ..penalties.base import BasePenalty
@@ -43,7 +43,9 @@ def run_capa(
     min_segment_length: int,
     max_segment_length: int,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
+    segment_penalised_saving.check_is_penalised()
     segment_penalised_saving.check_is_fitted()
+    point_penalised_saving.check_is_penalised()
     point_penalised_saving.check_is_fitted()
     n_samples = segment_penalised_saving._X.shape[0]
     if not n_samples == point_penalised_saving._X.shape[0]:
@@ -87,7 +89,7 @@ def run_capa(
             opt_anomaly_starts[t] = t
 
         # Pruning the admissible starts
-        penalty_sum = segment_penalised_saving.penalty.values[-1]
+        penalty_sum = segment_penalised_saving.penalty_.values[-1]
         saving_too_low = candidate_savings + penalty_sum <= opt_savings[t + 1]
         too_long_segment = starts < t - max_segment_length + 2
         prune = saving_too_low | too_long_segment
@@ -122,11 +124,11 @@ class CAPA(BaseSegmentAnomalyDetector):
     segment_penalty : BasePenalty or float, optional, default=`ChiSquarePenalty`
         The penalty to use for segment anomaly detection. If a float is given, it is
         interpreted as a constant penalty. If `None`, the default penalty is fit to the
-        input data to `fit`.
+        input data to `predict`.
     point_penalty : BasePenalty or float, optional, default=`ChiSquarePenalty`
         The penalty to use for point anomaly detection. If a float is given, it is
         interpreted as a constant penalty. If `None`, the default penalty is fit to the
-        input data to `fit`.
+        input data to `predict`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
     max_segment_length : int, optional, default=1000
@@ -157,19 +159,19 @@ class CAPA(BaseSegmentAnomalyDetector):
     Examples
     --------
     >>> from skchange.anomaly_detectors import CAPA
-    >>> from skchange.datasets.generate import generate_alternating_data
+    >>> from skchange.datasets import generate_alternating_data
     >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
     >>> detector = CAPA()
     >>> detector.fit_predict(df)
-    0    [100, 200)
-    1    [300, 400)
-    Name: anomaly_interval, dtype: interval
+            ilocs  labels
+    0  [100, 200)       1
+    1  [300, 400)       2
     """
 
     _tags = {
         "capability:missing_values": False,
         "capability:multivariate": True,
-        "fit_is_empty": False,
+        "fit_is_empty": True,
     }
 
     def __init__(
@@ -192,66 +194,29 @@ class CAPA(BaseSegmentAnomalyDetector):
         super().__init__()
 
         _segment_saving = L2Saving() if segment_saving is None else segment_saving
-        self._segment_saving = to_saving(_segment_saving)
-
-        _point_saving = L2Saving() if point_saving is None else point_saving
-        if _point_saving.min_size != 1:
-            raise ValueError("Point saving must have a minimum size of 1.")
-        self._point_saving = to_saving(_point_saving)
-
-        self._segment_penalty = as_penalty(
+        _segment_saving = to_saving(_segment_saving)
+        _segment_penalty = as_penalty(
             self.segment_penalty,
             default=ChiSquarePenalty(),
             require_penalty_type="constant",
         )
-        self._point_penalty = as_penalty(
+        self._segment_penalised_saving = PenalisedScore(
+            _segment_saving, _segment_penalty
+        )
+
+        _point_saving = L2Saving() if point_saving is None else point_saving
+        if _point_saving.min_size != 1:
+            raise ValueError("Point saving must have a minimum size of 1.")
+        _point_saving = to_saving(_point_saving)
+        _point_penalty = as_penalty(
             self.point_penalty,
             default=ChiSquarePenalty(),
             require_penalty_type="constant",
         )
+        self._point_penalised_saving = PenalisedScore(_point_saving, _point_penalty)
 
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
-
-    def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
-        """Fit to training data.
-
-        Sets the penalty of the detector.
-        If `penalty_scale` is ``None``, the penalty is set to the ``1-level`` quantile
-        of the change/anomaly scores on the training data. For this to be correct,
-        the training data must contain no changepoints. If `penalty_scale` is a
-        number, the penalty is set to `penalty_scale` times the default penalty
-        for the detector. The default penalty depends at least on the data's shape,
-        but could also depend on more parameters.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to fit the threshold to.
-        y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with `sktime`
-            and `scikit-learn`.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        State change
-        ------------
-        Creates fitted model that updates attributes ending in "_".
-        """
-        X = check_data(
-            X,
-            min_length=self.min_segment_length,
-            min_length_name="min_segment_length",
-        )
-        self.segment_penalty_: BasePenalty = self._segment_penalty.clone()
-        self.point_penalty_: BasePenalty = self._point_penalty.clone()
-        self.segment_penalty_.fit(X, self._segment_saving)
-        self.point_penalty_.fit(X, self._point_saving)
-
-        return self
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -274,17 +239,11 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length_name="min_segment_length",
         )
 
-        segment_penalised_saving = PenalisedScore(
-            self._segment_saving, self.segment_penalty_
-        )
-        segment_penalised_saving.fit(X)
-
-        point_penalised_saving = PenalisedScore(self._point_saving, self.point_penalty_)
-        point_penalised_saving.fit(X)
-
+        self._segment_penalised_saving.fit(X)
+        self._point_penalised_saving.fit(X)
         opt_savings, segment_anomalies, point_anomalies = run_capa(
-            segment_penalised_saving=segment_penalised_saving,
-            point_penalised_saving=point_penalised_saving,
+            segment_penalised_saving=self._segment_penalised_saving,
+            point_penalised_saving=self._point_penalised_saving,
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
         )

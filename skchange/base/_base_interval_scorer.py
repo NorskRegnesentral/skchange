@@ -60,6 +60,15 @@ class BaseIntervalScorer(BaseEstimator):
     # For now a class variable to pass sktime conformance test.
     evaluation_type = EvaluationType.UNIVARIATE
 
+    # `is_penalised_score` indicates whether the score is inherently penalised (True) or
+    # not (False).
+    # For example, for change scores or savings:
+    # If `True`, a score > 0 means that a change or anomaly is detected. Penalised
+    # scores can be both positive and negative.
+    # If `False`, the score is not penalised. To test for the existence of a change,
+    # penalisation must be performed externally. Such scores are always non-negative.
+    is_penalised_score = False
+
     def __init__(self):
         self._is_fitted = False
         self._X = None
@@ -248,3 +257,8 @@ class BaseIntervalScorer(BaseEstimator):
             min_size=self.min_size,
             last_dim_size=self.expected_cut_entries,
         )
+
+    def check_is_penalised(self):
+        """Check if the score is inherently performing penalisation."""
+        if not self.is_penalised_score:
+            raise ValueError("The score is not penalised.")

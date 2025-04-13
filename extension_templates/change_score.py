@@ -1,4 +1,4 @@
-"""Extension template for costs as interval scorers.
+"""Extension template for change scores as interval scorers.
 
 Adapted from the sktime extension templates.
 
@@ -11,8 +11,8 @@ How to use this implementation template to implement a new estimator:
 - make a copy of the template in a suitable location, give it a descriptive name.
 - work through all the "todo" comments below
 - fill in code for mandatory methods, and optionally for optional methods
-- you can add more private methods, but do not override BaseCost's private methods
-    an easy way to be safe is to prefix your methods with "_custom"
+- you can add more private methods, but do not override BaseChangeScore's private
+    methods. An easy way to be safe is to prefix your methods with "_custom"
 - change docstrings for functions and the file
 - ensure interface compatibility by sktime.utils.estimator_checks.check_estimator
 - once complete: use as a local library, or contribute to skchange via PR
@@ -21,11 +21,9 @@ How to use this implementation template to implement a new estimator:
 
 Mandatory implements:
     fitting                  - _fit(self, X, y=None)
-    evaluating optimal param - _evaluate_optim_param(self, starts, ends)
+    evaluating optimal param - _evaluate(self, cuts)
 
 Optional implements:
-    evaluating fixed param   - _evaluate_fixed_param(self, starts, ends)
-    checking fixed param     - _check_fixed_param(self, param, X)
     minimum size of interval  - min_size(self)
     number of parameters      - get_param_size(self, p)
 
@@ -35,32 +33,31 @@ Testing - required for sktime test framework and check_estimator usage:
 copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 """
 
-# todo: add any necessary imports
+# todo for internal extensions: copy this file to skchange/change_scores and rename it
+# to _<your_score_name>.py
 
+# todo: add any necessary imports
 import numpy as np
 
-# internal extensions located in skchange.costs:
+# internal extensions in skchange.change_scores
 from ..utils.validation.enums import EvaluationType
-from .base import BaseCost
+from .base import BaseChangeScore
 
-# external extensions:
-# from skchange.costs.base import BaseCost
+# For external extensions, use the following imports:
+# from skchange.change_scores.base import BaseChangeScore
 # from skchange.utils.validation.enums import EvaluationType
 
-# todo: add the cost to the COSTS variable in skchange.costs.__init__.py
+# todo: add the score to the CHANGE_SCORES variable in
+# skchange.change_scores.__init__.py
 
 
-class MyCost(BaseCost):
-    """Custom cost class.
+class MyChangeScore(BaseChangeScore):
+    """Custom score class.
 
-    todo: write docstring, describing your custom cost.
+    todo: write docstring, describing your custom score.
 
     Parameters
     ----------
-    param : any, optional (default=None)
-        If None, the cost is evaluated for an interval-optimised parameter, often the
-        maximum likelihood estimate. If not None, the cost is evaluated for the
-        specified fixed parameter.
     param1 : string, optional, default=None
         descriptive explanation of param1
     param2 : float, optional, default=1.0
@@ -74,30 +71,26 @@ class MyCost(BaseCost):
         "maintainers": "Tveten",
     }
 
-    # Does the cost evaluate univariate or multivariate data?
+    # todo: set class attribute tags.
+    # Does the score evaluate univariate or multivariate data?
     # If the evaluation_type is EvaluationType.UNIVARIATE:
-    #   * the cost is vectorized over columns in `X` input to `fit`.
+    #   * the score is vectorized over columns in `X` input to `fit`.
     #   * the output of `evaluate` is has the same number of columns as `X`.
     # If the evaluation_type is EvaluationType.MULTIVARIATE:
-    #   * the cost is evaluated on each row of `X` input to `fit`.
+    #   * the score is evaluated on each row of `X` input to `fit`.
     #   * the output of `evaluate` is always a single column, one value per `cut`.
     evaluation_type = EvaluationType.UNIVARIATE
-    # Does the cost support fixed parameters? I.e., is `_evaluate_fixed_param`
-    # implemented? Fixed parameter evaluation is required for the cost to be used as a
-    # saving in certain anomaly detectors.
-    supports_fixed_params = False
+    # Is the score inherently penalised? I.e., does it optimise over a penalty function
+    # such that the output of `evaluate` is to be interpreted as `score > 0` means
+    # a change point is detected? If yes, set this to True.
+    is_penalised_score = False
 
     # todo: add any hyper-parameters and components to constructor
-    # todo: if fixed parameters are supported, add type hints to `param`
     def __init__(
         self,
-        param=None,  # Mandatory first parameter (see docs above).
         param1=None,  # Custom parameter 1.
         param2=1.0,  # Custom parameter 2.
     ):
-        # leave this as is.
-        super().__init__(param)
-
         # todo: write any hyper-parameters and components to self. These should never
         # be overwritten in other methods.
         # estimators should precede parameters
@@ -105,15 +98,18 @@ class MyCost(BaseCost):
         self.param1 = param1
         self.param2 = param2
 
+        # leave this as is.
+        super().__init__()
+
         # todo: optional, parameter checking logic (if applicable) should happen here
         # if writes derived values to self, should *not* overwrite self.parama etc
         # instead, write to self._param1, etc.
 
     # todo: implement, mandatory
     def _fit(self, X: np.ndarray, y=None):
-        """Fit the cost.
+        """Fit the score.
 
-        This method precomputes quantities that speed up the cost evaluation.
+        This method precomputes quantities that speed up the score evaluation.
 
         Parameters
         ----------
@@ -122,87 +118,42 @@ class MyCost(BaseCost):
         y: None
             Ignored. Included for API consistency by convention.
         """
-        self._param = self._check_param(self.param, X)
-
         # todo: implement precomputations here
         # IMPORTANT: avoid side effects to X, y.
 
-        # for example for the L2 cost:
+        # for example for CUSUM:
         # self._sums = col_cumsum(X, init_zero=True)
-        # self._sums2 = col_cumsum(X**2, init_zero=True)
 
         return self
 
     # todo: implement, mandatory
-    def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
-        """Evaluate the cost for the optimal parameters.
+    def _evaluate(self, cuts: np.ndarray):
+        """Evaluate the change score for a split within an interval.
 
-        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
+        Evaluates the score for `X[start:split]` vs. `X[split:end]` for each
+        start, split, end in cuts.
 
         Parameters
         ----------
-        starts : np.ndarray
-            Start indices of the intervals (inclusive).
-        ends : np.ndarray
-            End indices of the intervals (exclusive).
+        cuts : np.ndarray
+            A 2D array with three columns of integer locations.
+            The first column is the ``start``, the second is the ``split``, and the
+            third is the ``end`` of the interval to evaluate.
+            The difference between subsets ``X[start:split]`` and ``X[split:end]`` is
+            evaluated for each row in `cuts`.
 
         Returns
         -------
-        costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 if the cost has `evaluation_type = "multivariate"`.
-            The number of columns is equal to the number of columns in the input data if
-            the `evaluation_type = "univariate"`. In this case, each column represents
-            the univariate cost for the corresponding input data column.
+        scores : np.ndarray
+            A 2D array of change scores. One row for each cut. The number of
+            columns is 1 if the change score is inherently multivariate. The number of
+            columns is equal to the number of columns in the input data if the score is
+            univariate. In this case, each column represents the univariate score for
+            the corresponding input data column.
         """
         # todo: implement evaluation logic here. Must have the output format as
         #       described in the docstring.
         # IMPORTANT: avoid side effects to starts, ends.
-
-    # todo: implement, optional. Mandatory if supports_fixed_params = True.
-    def _evaluate_fixed_param(self, starts, ends) -> np.ndarray:
-        """Evaluate the cost for the fixed parameters.
-
-        Evaluates the cost for `X[start:end]` for each each start, end in starts, ends.
-
-        Parameters
-        ----------
-        starts : np.ndarray
-            Start indices of the intervals (inclusive).
-        ends : np.ndarray
-            End indices of the intervals (exclusive).
-
-        Returns
-        -------
-        costs : np.ndarray
-            A 2D array of costs. One row for each interval. The number of
-            columns is 1 if the cost has `evaluation_type = "multivariate"`.
-            The number of columns is equal to the number of columns in the input data if
-            the `evaluation_type = "univariate"`. In this case, each column represents
-            the univariate cost for the corresponding input data column.
-        """
-        # todo: implement evaluation logic here. Must have the output format as
-        #       described in the docstring.
-        # IMPORTANT: avoid side effects to starts, ends.
-
-    # todo: implement, optional, defaults to no checking.
-    # used inside self._check_param in _fit.
-    def _check_fixed_param(self, param, X: np.ndarray) -> np.ndarray:
-        """Check if the fixed parameter is valid relative to the data.
-
-        Parameters
-        ----------
-        param : any
-            Fixed parameter for the cost calculation.
-        X : np.ndarray
-            Input data.
-
-        Returns
-        -------
-        param: any
-            Fixed parameter for the cost calculation.
-        """
-        return param
 
     # todo: implement, optional, defaults to min_size = 1.
     # used for automatic validation of cuts in `evaluate`.
@@ -219,10 +170,10 @@ class MyCost(BaseCost):
             unknown what the minimum size is. E.g., the scorer may need to be fitted
             first to determine the minimum size.
         """
-        # For example for a mean and variance cost:
+        # For example for a mean and variance score:
         # return 2
         #
-        # For example for a covariance matrix cost:
+        # For example for a covariance matrix score:
         # if self.is_fitted:
         #     return self._X.shape[1] + 1
         # else:
@@ -231,7 +182,7 @@ class MyCost(BaseCost):
     # todo: implement, optional, defaults to output p (one parameter per variable).
     # used for setting a decent default penalty in detectors.
     def get_param_size(self, p: int) -> int:
-        """Get the number of parameters in the cost function.
+        """Get the number of parameters estimated by the score in each segment.
 
         Parameters
         ----------
@@ -241,9 +192,9 @@ class MyCost(BaseCost):
         Returns
         -------
         int
-            Number of parameters in the cost function.
+            Number of parameters in the score function.
         """
-        # For example for a covariance matrix cost:
+        # For example for a covariance matrix score:
         # return p * (p + 1) // 2
 
     # todo: return default parameters, so that a test instance can be created.
@@ -257,7 +208,7 @@ class MyCost(BaseCost):
         parameter_set : str, default="default"
             Name of the set of test parameters to return, for use in tests. If no
             special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for costs.
+            There are currently no reserved values for change scores.
 
         Returns
         -------
@@ -267,7 +218,6 @@ class MyCost(BaseCost):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-
         # todo: set the testing parameters for the estimators
         # Testing parameters can be dictionary or list of dictionaries
         # Testing parameter choice should cover internal cases well.
