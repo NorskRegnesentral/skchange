@@ -70,7 +70,10 @@ class Saving(BaseSaving):
     @property
     def min_size(self) -> int:
         """Minimum valid size of the interval to evaluate."""
-        return self.optimised_cost.min_size
+        if self.is_fitted:
+            return self.optimised_cost_.min_size
+        else:
+            return self.optimised_cost.min_size
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters in the saving function.
@@ -84,7 +87,10 @@ class Saving(BaseSaving):
         p : int
             Number of variables in the data.
         """
-        return self.optimised_cost.get_param_size(p)
+        if self.is_fitted:
+            return self.optimised_cost_.get_param_size(p)
+        else:
+            return self.optimised_cost.get_param_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
@@ -101,8 +107,10 @@ class Saving(BaseSaving):
         self :
             Reference to self.
         """
-        self.baseline_cost.fit(X)
-        self.optimised_cost.fit(X)
+        self.baseline_cost_: BaseCost = self.baseline_cost.clone()
+        self.baseline_cost_.fit(X)
+        self.optimised_cost_: BaseCost = self.optimised_cost.clone()
+        self.optimised_cost_.fit(X)
         return self
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
@@ -124,8 +132,8 @@ class Saving(BaseSaving):
             univariate. In this case, each column represents the univariate saving for
             the corresponding input data column.
         """
-        baseline_costs = self.baseline_cost.evaluate(cuts)
-        optimised_costs = self.optimised_cost.evaluate(cuts)
+        baseline_costs = self.baseline_cost_.evaluate(cuts)
+        optimised_costs = self.optimised_cost_.evaluate(cuts)
         savings = baseline_costs - optimised_costs
         return savings
 
@@ -215,13 +223,15 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
-        self._interval_cost = cost
-        self._any_subset_cost: BaseCost = cost.clone()
+        self._subset_cost: BaseCost = cost.clone()
 
     @property
     def min_size(self) -> int:
         """Minimum valid size of the interval to evaluate."""
-        return self.cost.min_size
+        if self.is_fitted:
+            return self.interval_cost_.min_size
+        else:
+            return self.cost.min_size
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
@@ -234,7 +244,10 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         p : int
             Number of variables in the data.
         """
-        return self.cost.get_param_size(p)
+        if self.is_fitted:
+            return self.interval_cost_.get_param_size(p)
+        else:
+            return self.cost.get_param_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
@@ -251,7 +264,8 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         self :
             Reference to self.
         """
-        self._interval_cost.fit(X)
+        self.interval_cost_: BaseCost = self.cost.clone()
+        self.interval_cost_.fit(X)
         return self
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
@@ -278,8 +292,8 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
 
         inner_intervals = cuts[:, 1:3]
         outer_intervals = cuts[:, [0, 3]]
-        inner_costs = self._interval_cost.evaluate(inner_intervals)
-        outer_costs = self._interval_cost.evaluate(outer_intervals)
+        inner_costs = self.interval_cost_.evaluate(inner_intervals)
+        outer_costs = self.interval_cost_.evaluate(outer_intervals)
 
         surrounding_costs = np.zeros_like(outer_costs)
         for i, interval in enumerate(cuts):
@@ -289,8 +303,9 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             before_data = X[before_inner_interval[0] : before_inner_interval[1]]
             after_data = X[after_inner_interval[0] : after_inner_interval[1]]
             surrounding_data = np.concatenate((before_data, after_data))
-            self._any_subset_cost.fit(surrounding_data)
-            surrounding_costs[i] = self._any_subset_cost.evaluate(
+
+            self._subset_cost.fit(surrounding_data)
+            surrounding_costs[i] = self._subset_cost.evaluate(
                 np.array([0, surrounding_data.shape[0]])
             )
 

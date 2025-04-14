@@ -6,7 +6,7 @@ Change detectors
 Base
 ----
 
-.. currentmodule:: skchange.change_detectors
+.. currentmodule:: skchange.change_detectors.base
 
 .. autosummary::
    :toctree: auto_generated/

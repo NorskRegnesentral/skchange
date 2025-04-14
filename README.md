@@ -13,6 +13,10 @@
 
 Experimental but maturing.
 
+<!-- ## Latest release -->
+
+Check out the latest version: [v0.12.0](https://github.com/NorskRegnesentral/skchange/releases)
+
 ## Documentation
 
 * [Documentation](https://skchange.readthedocs.io/)
@@ -34,12 +38,12 @@ pip install skchange
 
 ### Changepoint detection / time series segmentation
 ```python
-from skchange.change_detectors.moving_window import MovingWindow
+from skchange.change_detectors import MovingWindow
 from skchange.datasets import generate_alternating_data
 
 df = generate_alternating_data(n_segments=10, segment_length=50, mean=5, random_state=1)
 
-detector = MovingWindow(bandwidth=10)
+detector = MovingWindow(bandwidth=20)
 detector.fit_predict(df)
 ```
 ```python

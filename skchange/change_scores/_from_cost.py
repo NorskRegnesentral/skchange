@@ -2,11 +2,14 @@
 
 import numpy as np
 
+from ..compose.penalised_score import PenalisedScore
 from ..costs.base import BaseCost
 from .base import BaseChangeScore
 
 
-def to_change_score(scorer: BaseCost | BaseChangeScore) -> BaseChangeScore:
+def to_change_score(
+    scorer: BaseCost | BaseChangeScore | PenalisedScore,
+) -> BaseChangeScore:
     """Convert compatible scorers to a change score.
 
     Parameters
@@ -22,12 +25,15 @@ def to_change_score(scorer: BaseCost | BaseChangeScore) -> BaseChangeScore:
     """
     if isinstance(scorer, BaseCost):
         change_score = ChangeScore(scorer)
-    elif isinstance(scorer, BaseChangeScore):
+    elif isinstance(scorer, BaseChangeScore) or (
+        isinstance(scorer, PenalisedScore)
+        and isinstance(scorer.scorer, BaseChangeScore)
+    ):
         change_score = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseChangeScore or BaseCost. "
-            f"Got {type(scorer)}."
+            f"scorer must be an instance of BaseChangeScore, BaseCost or"
+            f" PenalisedScore. Got {type(scorer)}."
         )
     return change_score
 
@@ -52,7 +58,10 @@ class ChangeScore(BaseChangeScore):
     @property
     def min_size(self) -> int:
         """Minimum valid size of an interval to evaluate."""
-        return self.cost.min_size
+        if self.is_fitted:
+            return self.cost_.min_size
+        else:
+            return self.cost.min_size
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
@@ -65,7 +74,10 @@ class ChangeScore(BaseChangeScore):
         p : int
             Number of variables in the data.
         """
-        return self.cost.get_param_size(p)
+        if self.is_fitted:
+            return self.cost_.get_param_size(p)
+        else:
+            return self.cost.get_param_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score.
@@ -82,7 +94,8 @@ class ChangeScore(BaseChangeScore):
         self :
             Reference to self.
         """
-        self.cost.fit(X)
+        self.cost_: BaseCost = self.cost.clone()
+        self.cost_.fit(X)
         return self
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
@@ -109,9 +122,9 @@ class ChangeScore(BaseChangeScore):
         left_intervals = cuts[:, [0, 1]]
         right_intervals = cuts[:, [1, 2]]
         full_intervals = cuts[:, [0, 2]]
-        left_costs = self.cost.evaluate(left_intervals)
-        right_costs = self.cost.evaluate(right_intervals)
-        no_change_costs = self.cost.evaluate(full_intervals)
+        left_costs = self.cost_.evaluate(left_intervals)
+        right_costs = self.cost_.evaluate(right_intervals)
+        no_change_costs = self.cost_.evaluate(full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
 

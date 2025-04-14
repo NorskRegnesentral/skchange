@@ -1,6 +1,6 @@
 [project]
 name = "skchange"
-version = "0.11.0"
+version = "0.12.0"
 description = "Sktime-compatible change and anomaly detection"
 authors = [
     {name = "Martin Tveten", email = "tveten@nr.no"},
@@ -77,6 +77,11 @@ docs = [
   "sphinx-gallery<0.18.0",
   "sphinx-issues<5.0.0",
   "tabulate",
+  "nbsphinx",
+  "pypandoc",
+  "ipykernel",
+  "nbformat>=4.2.0",
+  "plotly",
 ]
 
 [build-system]

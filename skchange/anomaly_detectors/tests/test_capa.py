@@ -7,7 +7,7 @@ import pytest
 from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_detectors._capa import run_capa
 from skchange.anomaly_scores import SAVINGS, Saving, to_saving
-from skchange.compose import PenalisedScore
+from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
@@ -24,8 +24,11 @@ def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
     if isinstance(saving, BaseCost):
-        fixed_params = find_fixed_param_combination(Saving)
-        saving = saving.set_params(**fixed_params)
+        if not saving.supports_fixed_params:
+            pytest.skip(f"{type(saving).__name__} does not support fixed parameters.")
+        else:
+            fixed_params = find_fixed_param_combination(Saving)
+            saving = saving.set_params(**fixed_params)
 
     if Detector is MVCAPA and saving.evaluation_type != EvaluationType.UNIVARIATE:
         # MVCAPA requires univariate saving.
