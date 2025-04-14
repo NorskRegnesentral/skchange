@@ -13,7 +13,7 @@ from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 from .base import BaseChangeDetector
 
 
@@ -256,7 +256,7 @@ class PELT(BaseChangeDetector):
             if _cost.is_penalised_score
             else PenalisedScore(_cost, _penalty)
         )
-        check_larger_than(1, min_segment_length, "min_segment_length")
+        check_larger_than_or_equal(1, min_segment_length, "min_segment_length")
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

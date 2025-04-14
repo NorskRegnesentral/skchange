@@ -15,7 +15,7 @@ from ..utils.numba.stats import (
     trigamma,
 )
 from ..utils.validation.enums import EvaluationType
-from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
 from ._multivariate_gaussian_cost import (
     gaussian_cost_fixed_params,
     gaussian_cost_mle_params,
@@ -1124,12 +1124,12 @@ class MultivariateTCost(BaseCost):
             name="fixed_dof",
             allow_none=True,
         )
-        check_larger_than(
+        check_larger_than_or_equal(
             min_value=0.0,
             value=self.infinite_dof_threshold,
             name="infinite_dof_threshold",
         )
-        check_larger_than(
+        check_larger_than_or_equal(
             min_value=0,
             value=self.refine_dof_threshold,
             name="refine_dof_threshold",
@@ -1145,7 +1145,7 @@ class MultivariateTCost(BaseCost):
             value=self.mle_scale_rel_tol,
             name="mle_scale_rel_tol",
         )
-        check_larger_than(
+        check_larger_than_or_equal(
             min_value=0, value=self.mle_scale_max_iter, name="mle_scale_max_iter"
         )
 

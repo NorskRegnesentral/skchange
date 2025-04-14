@@ -15,7 +15,7 @@ from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.numba.general import where
 from ..utils.validation.data import check_data
-from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
 from .base import BaseChangeDetector
 
 
@@ -128,7 +128,7 @@ class MovingWindow(BaseChangeDetector):
             else PenalisedScore(_change_score, _penalty)
         )
 
-        check_larger_than(1, self.bandwidth, "bandwidth")
+        check_larger_than_or_equal(1, self.bandwidth, "bandwidth")
         check_in_interval(
             pd.Interval(1, max(1, self.bandwidth / 2 - 1), closed="both"),
             self.min_detection_interval,

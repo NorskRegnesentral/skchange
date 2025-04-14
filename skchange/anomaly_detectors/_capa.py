@@ -14,7 +14,7 @@ from ..penalties import ChiSquarePenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 from .base import BaseSegmentAnomalyDetector
 
 
@@ -215,8 +215,8 @@ class CAPA(BaseSegmentAnomalyDetector):
         )
         self._point_penalised_saving = PenalisedScore(_point_saving, _point_penalty)
 
-        check_larger_than(2, min_segment_length, "min_segment_length")
-        check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
+        check_larger_than_or_equal(2, min_segment_length, "min_segment_length")
+        check_larger_than_or_equal(min_segment_length, max_segment_length, "max_segment_length")
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

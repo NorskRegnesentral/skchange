@@ -14,7 +14,7 @@ from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
-from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
 from .base import BaseChangeDetector
 
 
@@ -258,7 +258,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
             min_length=2 * self._penalised_score.min_size,
             min_length_name="2 * change_score.min_size",
         )
-        check_larger_than(
+        check_larger_than_or_equal(
             2 * self._penalised_score.min_size,
             self.max_interval_length,
             "max_interval_length",

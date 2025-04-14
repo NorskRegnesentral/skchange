@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 from .base import BasePenalty
 
 
@@ -16,8 +16,8 @@ class LinearPenalty(BasePenalty):
         self.slope = slope
         super().__init__(scale)
 
-        check_larger_than(0.0, self.intercept, "intercept")
-        check_larger_than(0.0, self.slope, "slope")
+        check_larger_than_or_equal(0.0, self.intercept, "intercept")
+        check_larger_than_or_equal(0.0, self.slope, "slope")
 
     @property
     def _base_values(self) -> np.ndarray:

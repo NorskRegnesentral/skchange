@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 from .base import BasePenalty
 
 
@@ -15,7 +15,7 @@ class ConstantPenalty(BasePenalty):
         self.base_value = base_value
         super().__init__(scale)
 
-        check_larger_than(0.0, self.base_value, "base_value")
+        check_larger_than_or_equal(0.0, self.base_value, "base_value")
 
     @property
     def _base_values(self) -> np.ndarray:
