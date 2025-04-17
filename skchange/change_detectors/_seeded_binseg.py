@@ -6,10 +6,9 @@ __all__ = ["SeededBinarySegmentation"]
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..change_scores import CUSUM, to_change_score
-from ..change_scores.base import BaseChangeScore
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
@@ -88,7 +87,7 @@ def narrowest_selection(
 
 
 def run_seeded_binseg(
-    penalised_score: BaseChangeScore,
+    penalised_score: BaseIntervalScorer,
     max_interval_length: int,
     growth_factor: float,
     selection_method: str = "greedy",
@@ -138,8 +137,8 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
-        The change score to use in the algorithm. If a cost function is given, it is
+    change_score : BaseIntervalScorer, optional, default=CUSUM()
+        The change score to use in the algorithm. If a cost is given, it is
         converted to a change score using the `ChangeScore` class.
     penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
         The penalty to use for the changepoint detection. If
@@ -205,7 +204,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
     def __init__(
         self,
-        change_score: BaseChangeScore | BaseCost | None = None,
+        change_score: BaseIntervalScorer | None = None,
         penalty: BasePenalty | np.ndarray | float | None = None,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
