@@ -11,7 +11,7 @@ How to use this implementation template to implement a new estimator:
 - make a copy of the template in a suitable location, give it a descriptive name.
 - work through all the "todo" comments below
 - fill in code for mandatory methods, and optionally for optional methods
-- you can add more private methods, but do not override BaseChangeScore's private
+- you can add more private methods, but do not override BaseIntervalScorer's private
     methods. An easy way to be safe is to prefix your methods with "_custom"
 - change docstrings for functions and the file
 - ensure interface compatibility by sktime.utils.estimator_checks.check_estimator
@@ -40,18 +40,18 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 import numpy as np
 
 # internal extensions in skchange.change_scores
+from ..base import BaseIntervalScorer
 from ..utils.validation.enums import EvaluationType
-from .base import BaseChangeScore
 
 # For external extensions, use the following imports:
-# from skchange.change_scores.base import BaseChangeScore
+# from skchange.base import BaseIntervalScorer
 # from skchange.utils.validation.enums import EvaluationType
 
 # todo: add the score to the CHANGE_SCORES variable in
 # skchange.change_scores.__init__.py
 
 
-class MyChangeScore(BaseChangeScore):
+class MyChangeScore(BaseIntervalScorer):
     """Custom score class.
 
     todo: write docstring, describing your custom score.
@@ -69,6 +69,7 @@ class MyChangeScore(BaseChangeScore):
     _tags = {
         "authors": ["Tveten", "johannvk"],
         "maintainers": "Tveten",
+        "task": "change_score",
     }
 
     # todo: set class attribute tags.
