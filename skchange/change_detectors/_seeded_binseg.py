@@ -250,20 +250,26 @@ class SeededBinarySegmentation(BaseChangeDetector):
         y_sparse : pd.DataFrame
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the change points.
+
+        Attributes
+        ----------
+        fitted_penalised_score : BaseIntervalScorer
+            The fitted penalised change score used for the detection.
         """
-        self._penalised_score.fit(X)
+        self.fitted_penalised_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_penalised_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self._penalised_score.min_size,
-            min_length_name="2 * change_score.min_size",
+            min_length=2 * self.fitted_penalised_score.min_size,
+            min_length_name="2 * fitted_change_score.min_size",
         )
         check_larger_than(
-            2 * self._penalised_score.min_size,
+            2 * self.fitted_penalised_score.min_size,
             self.max_interval_length,
             "max_interval_length",
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
-            penalised_score=self._penalised_score,
+            penalised_score=self.fitted_penalised_score,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
             selection_method=self.selection_method,
