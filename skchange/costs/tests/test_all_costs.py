@@ -43,7 +43,7 @@ def test_l2_cost_init(CostClass: type[BaseCost]):
 @pytest.mark.parametrize("CostClass", ALL_COSTS)
 def test_expected_cut_entries(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
-    assert cost.expected_cut_entries == 2
+    assert cost.get_required_cut_size() == 2
 
 
 @pytest.mark.parametrize("CostClass", COSTS)

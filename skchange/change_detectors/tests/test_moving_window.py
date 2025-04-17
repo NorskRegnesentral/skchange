@@ -3,18 +3,17 @@
 import numpy as np
 import pytest
 
+from skchange.base import BaseIntervalScorer
 from skchange.change_detectors import MovingWindow
 from skchange.change_scores import CHANGE_SCORES, ContinuousLinearTrendScore
-from skchange.change_scores.base import BaseChangeScore
 from skchange.costs import COSTS
-from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
 
 SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 
 
 @pytest.mark.parametrize("ScoreType", SCORES_AND_COSTS)
-def test_moving_window_changepoint(ScoreType: type[BaseCost] | type[BaseChangeScore]):
+def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer]):
     """Test MovingWindow changepoints."""
     score = ScoreType.create_test_instance()
     if isinstance(score, ContinuousLinearTrendScore):
