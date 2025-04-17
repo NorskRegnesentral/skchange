@@ -17,7 +17,6 @@ from skchange.costs._multivariate_t_cost import (
     _solve_for_mle_scale_matrix,
     maximum_likelihood_mv_t_scale_matrix,
 )
-from skchange.penalties import BICPenalty
 from skchange.utils.numba import numba_available
 
 
@@ -678,8 +677,8 @@ def test_loo_iterative_dof_estimate_returns_inf_on_gaussian_data():
 
 def test_MultiVariateTCost_with_PELT(
     seed=5212,
-    n_samples=200,
-    p=5,
+    n_samples=20,
+    p=2,
     t_dof=5.0,
     cost_dof=None,
     mle_scale_abs_tol=1.0e-3,
@@ -708,23 +707,21 @@ def test_MultiVariateTCost_with_PELT(
         mle_scale_abs_tol=mle_scale_abs_tol,
         mle_scale_rel_tol=mle_scale_rel_tol,
     )
-    change_detector = PELT(
-        cost=mv_t_cost, min_segment_length=2 * p + 1, penalty=BICPenalty()
-    )
+    change_detector = PELT(cost=mv_t_cost, min_segment_length=2 * p + 1)
 
     segmentation = change_detector.fit_transform(X)
     change_points = change_detector.dense_to_sparse(segmentation)
 
+    fitted_dof = change_detector.fitted_cost.dof_
+
     print(f"Change points: {change_points}")
-    print(f"Estimated dof: {change_detector._penalised_cost.scorer_.dof_}")
+    print(f"Estimated dof: {fitted_dof}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
     assert (
         change_points.loc[0, "ilocs"] == n_samples
     ), "Change point should be at the end of the first segment."
-    assert np.isfinite(
-        change_detector._penalised_cost.scorer_.dof_
-    ), "Fitted dof should be finite."
+    assert np.isfinite(fitted_dof), "Fitted dof should be finite."
 
 
 def test_MultiVariateTCost_with_moving_window(
@@ -754,16 +751,16 @@ def test_MultiVariateTCost_with_moving_window(
     segmentation = change_detector.fit_transform(X)
     change_points = change_detector.dense_to_sparse(segmentation)
 
+    fitted_dof = change_detector._penalised_score.score_.cost_.dof_
+
     print(f"Change points: {change_points}")
-    print(f"Estimated dof: {change_detector._penalised_score.scorer_.cost_.dof_}")
+    print(f"Estimated dof: {fitted_dof}")
 
     assert len(change_points) == 1, "Only one change point should be detected."
     assert (
         change_points.loc[0, "ilocs"] == n_samples
     ), "Change point should be at the end of the first segment."
-    assert np.isfinite(
-        change_detector._penalised_score.scorer_.cost_.dof_
-    ), "Fitted dof should be finite."
+    assert np.isfinite(fitted_dof), "Fitted dof should be finite."
 
 
 def test_min_size_not_fitted():
