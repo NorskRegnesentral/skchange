@@ -7,11 +7,10 @@ import numpy as np
 import pandas as pd
 
 from ..anomaly_scores import to_local_anomaly_score
-from ..anomaly_scores.base import BaseLocalAnomalyScore
+from ..base import BaseIntervalScorer
 from ..change_detectors._seeded_binseg import make_seeded_intervals
 from ..compose.penalised_score import PenalisedScore
 from ..costs import L2Cost
-from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
@@ -60,7 +59,7 @@ def make_anomaly_intervals(
 
 
 def run_circular_binseg(
-    penalised_score: BaseLocalAnomalyScore,
+    penalised_score: BaseIntervalScorer,
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
@@ -119,7 +118,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    anomaly_score : BaseLocalAnomalyScore or BaseCost, optional, default=L2Cost()
+    anomaly_score : BaseIntervalScorer, optional, default=L2Cost()
         The local anomaly score to use for anomaly detection. If a cost is given, it is
         converted to a local anomaly score using the `LocalAnomalyScore` class.
     penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
@@ -181,7 +180,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        anomaly_score: BaseCost | BaseLocalAnomalyScore | None = None,
+        anomaly_score: BaseIntervalScorer | None = None,
         penalty: BasePenalty | np.ndarray | float | None = None,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
