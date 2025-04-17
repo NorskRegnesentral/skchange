@@ -7,9 +7,8 @@ import numpy as np
 import pandas as pd
 
 from ..anomaly_scores import L2Saving, to_saving
-from ..anomaly_scores.base import BaseSaving
+from ..base import BaseIntervalScorer
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
 from ..penalties import ChiSquarePenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
@@ -112,14 +111,14 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    segment_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for segment anomaly detection.
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+    segment_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for segment anomaly detection.
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    point_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for point anomaly detection. Only savings with a
+    point_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for point anomaly detection. Only savings with a
         minimum size of 1 are permitted.
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : BasePenalty or float, optional, default=`ChiSquarePenalty`
         The penalty to use for segment anomaly detection. If a float is given, it is
@@ -176,8 +175,8 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        segment_saving: BaseSaving | BaseCost | None = None,
-        point_saving: BaseSaving | BaseCost | None = None,
+        segment_saving: BaseIntervalScorer | None = None,
+        point_saving: BaseIntervalScorer | None = None,
         segment_penalty: BasePenalty | float | None = None,
         point_penalty: BasePenalty | float | None = None,
         min_segment_length: int = 2,

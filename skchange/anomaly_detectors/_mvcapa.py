@@ -7,9 +7,8 @@ import numpy as np
 import pandas as pd
 
 from ..anomaly_scores import L2Saving, to_saving
-from ..anomaly_scores.base import BaseSaving
+from ..base import BaseIntervalScorer
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
 from ..penalties import (
     ChiSquarePenalty,
     LinearChiSquarePenalty,
@@ -26,14 +25,14 @@ from .base import BaseSegmentAnomalyDetector
 
 
 def find_affected_components(
-    penalised_scorer: BaseSaving,
+    penalised_scorer: PenalisedScore,
     anomalies: list[tuple[int, int]],
 ) -> list[tuple[int, int, np.ndarray]]:
     penalised_scorer.check_is_penalised()
     penalised_scorer.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving_values = penalised_scorer.scorer_.evaluate(np.array([start, end]))[0]
+        saving_values = penalised_scorer.score_.evaluate(np.array([start, end]))[0]
         saving_order = np.argsort(-saving_values)  # Decreasing order.
         penalised_savings = (
             np.cumsum(saving_values[saving_order]) - penalised_scorer.penalty_.values
@@ -75,15 +74,14 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    segment_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for segment anomaly detection.
-        Only univariate savings are permitted (see the `evaluation_type` attribute).
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+    segment_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for segment anomaly detection.
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    point_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for point anomaly detection. Only savings with a
+    point_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for point anomaly detection. Only savings with a
         minimum size of 1 are permitted.
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : BasePenalty, np.ndarray or float, optional, default=`MinimumPenalty([ChiSquarePenalty(), LinearChiSquarePenalty(), NonlinearChiSquarePenalty()])`
         The penalty to use for segment anomaly detection. If a float is given, it is
@@ -132,8 +130,8 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        segment_saving: BaseSaving | BaseCost | None = None,
-        point_saving: BaseSaving | BaseCost | None = None,
+        segment_saving: BaseIntervalScorer | None = None,
+        point_saving: BaseIntervalScorer | None = None,
         segment_penalty: BasePenalty | np.ndarray | float | None = None,
         point_penalty: BasePenalty | np.ndarray | float | None = None,
         min_segment_length: int = 2,
