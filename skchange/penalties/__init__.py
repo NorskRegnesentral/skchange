@@ -5,6 +5,7 @@ from ._constant_penalties import (
     BICPenalty,
     ChiSquarePenalty,
     ConstantPenalty,
+    make_bic_penalty,
 )
 from ._conversion import as_penalty
 from ._linear_penalties import LinearChiSquarePenalty, LinearPenalty
