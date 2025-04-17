@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 
+from skchange.anomaly_scores import L2Saving
 from skchange.change_scores import ChangeScore, to_change_score
 from skchange.costs import ALL_COSTS, COSTS
 from skchange.costs.base import BaseCost
@@ -27,3 +28,5 @@ def test_to_change_score(evaluator: type[BaseCost]):
 def test_to_change_score_invalid():
     with pytest.raises(ValueError):
         to_change_score("invalid_evaluator")
+    with pytest.raises(ValueError):
+        to_change_score(L2Saving())
