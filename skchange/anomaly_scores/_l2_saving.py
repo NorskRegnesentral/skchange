@@ -4,9 +4,9 @@ __author__ = ["Tveten"]
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..utils.numba import njit
 from ..utils.numba.stats import col_cumsum
-from .base import BaseSaving
 
 
 @njit
@@ -37,7 +37,7 @@ def l2_saving(
     return saving
 
 
-class L2Saving(BaseSaving):
+class L2Saving(BaseIntervalScorer):
     """L2 saving for a zero-valued baseline mean.
 
     The L2 saving for a zero-mean can be computed more efficiently directly, rather
@@ -55,6 +55,13 @@ class L2Saving(BaseSaving):
         for the detection of collective and point anomalies. Statistical Analysis and\
         DataMining: The ASA Data Science Journal, 15(4), 494-508.
     """
+
+    _tags = {
+        "object_type": "interval_scorer",
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "saving",
+    }
 
     def __init__(self):
         super().__init__()

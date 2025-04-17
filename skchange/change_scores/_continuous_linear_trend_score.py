@@ -7,10 +7,10 @@ and a best fit linear trend line within each interval.
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_data_column
-from .base import BaseChangeScore
 
 
 @njit
@@ -179,7 +179,7 @@ def analytical_cont_piecewise_linear_trend_score(
     return scores
 
 
-class ContinuousLinearTrendScore(BaseChangeScore):
+class ContinuousLinearTrendScore(BaseIntervalScorer):
     """Continuous linear trend change score.
 
     This change score calculates the difference in the squared error between
@@ -226,8 +226,10 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     """
 
     _tags = {
+        "object_type": "interval_scorer",
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "task": "change_score",
     }
 
     evaluation_type = EvaluationType.UNIVARIATE

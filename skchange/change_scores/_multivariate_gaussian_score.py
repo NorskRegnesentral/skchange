@@ -5,10 +5,10 @@ __all__ = ["MultivariateGaussianScore"]
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..costs._multivariate_gaussian_cost import MultivariateGaussianCost
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
-from .base import BaseChangeScore
 
 
 @njit
@@ -135,7 +135,7 @@ def compute_bartlett_corrections(
     return bartlett_corrections
 
 
-class MultivariateGaussianScore(BaseChangeScore):
+class MultivariateGaussianScore(BaseIntervalScorer):
     """Multivariate Gaussian change score for a change in mean and/or covariance.
 
     Scores are calculated as the likelihood ratio scores for a change
@@ -159,6 +159,13 @@ class MultivariateGaussianScore(BaseChangeScore):
     for Change in Mean Vector and/or Covariance Structure. \
     Journal of Quality Technology, 41(3), 285-303.
     """
+
+    _tags = {
+        "object_type": "interval_scorer",
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
+        "task": "change_score",
+    }
 
     evaluation_type = EvaluationType.MULTIVARIATE
 
