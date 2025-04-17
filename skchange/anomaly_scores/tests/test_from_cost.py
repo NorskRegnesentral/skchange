@@ -7,6 +7,7 @@ from skchange.anomaly_scores import (
     to_local_anomaly_score,
     to_saving,
 )
+from skchange.change_scores import CUSUM
 from skchange.costs import ALL_COSTS, COSTS
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
@@ -98,6 +99,8 @@ def test_to_saving_raises_without_fixed_params_support():
 def test_to_saving_error():
     with pytest.raises(ValueError):
         to_saving("invalid_evaluator")
+    with pytest.raises(ValueError):
+        to_saving(CUSUM())
 
 
 @pytest.mark.parametrize("CostClass", ALL_COSTS)
@@ -142,3 +145,5 @@ def test_local_anomaly_score_evaluate(CostClass: type[BaseCost]):
 def test_to_local_anomaly_score_error():
     with pytest.raises(ValueError):
         to_local_anomaly_score("invalid_evaluator")
+    with pytest.raises(ValueError):
+        to_local_anomaly_score(CUSUM())
