@@ -29,10 +29,10 @@ class BaseCost(BaseIntervalScorer):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": "Tveten",
+        "task": "cost",
     }
 
     supports_fixed_params = False
-    expected_cut_entries = 2
 
     def __init__(self, param=None):
         self.param = param

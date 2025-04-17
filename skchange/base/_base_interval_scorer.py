@@ -45,11 +45,8 @@ class BaseIntervalScorer(BaseEstimator):
         "object_type": "interval_scorer",  # type of object
         "authors": ["Tveten", "johannvk", "fkiraly"],  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
+        "task": None,  # "cost", "change_score", "local_anomaly_score", "saving"
     }  # for unit test cases
-
-    # Number of expected entries in the cuts array of `evaluate`. Must be overridden in
-    # subclasses, like for change scores and costs, before call to `evaluate`.
-    expected_cut_entries = None
 
     # The `evaluation_type` indicates whether the scorer is univariate or multivariate.
     # Univariate scorers are vectorized over variables/columns in the data,
@@ -67,6 +64,7 @@ class BaseIntervalScorer(BaseEstimator):
     # scores can be both positive and negative.
     # If `False`, the score is not penalised. To test for the existence of a change,
     # penalisation must be performed externally. Such scores are always non-negative.
+    # TODO: Implement as tags?
     is_penalised_score = False
 
     def __init__(self):
@@ -233,6 +231,21 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return p
 
+    def get_required_cut_size(self) -> int:
+        task = self.get_tag("task")
+        if task == "cost":
+            cut_size = 2
+        elif task == "change_score":
+            cut_size = 3
+        elif task == "saving":
+            cut_size = 2
+        elif task == "local_anomaly_score":
+            cut_size = 4
+        else:
+            raise RuntimeError("The task of the interval scorer is not set.")
+
+        return cut_size
+
     def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
         """Check cuts for compatibility.
 
@@ -255,7 +268,7 @@ class BaseIntervalScorer(BaseEstimator):
         return check_cuts_array(
             cuts,
             min_size=self.min_size,
-            last_dim_size=self.expected_cut_entries,
+            last_dim_size=self.get_required_cut_size(),
         )
 
     def check_is_penalised(self):
