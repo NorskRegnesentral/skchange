@@ -6,10 +6,9 @@ __all__ = ["MovingWindow"]
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..change_scores import CUSUM, to_change_score
-from ..change_scores.base import BaseChangeScore
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
@@ -33,7 +32,7 @@ def mosum_selection(scores: np.ndarray, min_detection_interval: int) -> list:
 
 
 def moving_window_transform(
-    penalised_score: BaseChangeScore,
+    penalised_score: BaseIntervalScorer,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
     penalised_score.check_is_penalised()
@@ -59,8 +58,8 @@ class MovingWindow(BaseChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
-        The change score to use in the algorithm. If a cost function is given, it is
+    change_score : BaseIntervalScorer, optional, default=CUSUM()
+        The change score to use in the algorithm. If a cost is given, it is
         converted to a change score using the `ChangeScore` class.
     penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
         The penalty to use for the changepoint detection. If
@@ -108,7 +107,7 @@ class MovingWindow(BaseChangeDetector):
 
     def __init__(
         self,
-        change_score: BaseChangeScore | BaseCost | None = None,
+        change_score: BaseIntervalScorer | None = None,
         penalty: BasePenalty | np.ndarray | float | None = None,
         bandwidth: int = 30,
         min_detection_interval: int = 1,
