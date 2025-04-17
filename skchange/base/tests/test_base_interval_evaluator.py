@@ -15,6 +15,15 @@ class ConcreteIntervalEvaluator(BaseIntervalScorer):
         return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
 
 
+class InvalidConcreteIntervalEvaluator(BaseIntervalScorer):
+    _tags = {
+        "object_type": "interval_scorer",
+    }
+
+    def _evaluate(self, cuts):
+        return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
+
+
 def test_fit():
     evaluator = ConcreteIntervalEvaluator()
     X = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
@@ -64,3 +73,9 @@ def test_check_is_penalised():
     evaluator = ConcreteIntervalEvaluator()
     with pytest.raises(ValueError):
         evaluator.check_is_penalised()
+
+
+def test_task_tag_not_set():
+    evaluator = InvalidConcreteIntervalEvaluator()
+    with pytest.raises(RuntimeError):
+        evaluator.get_required_cut_size()
