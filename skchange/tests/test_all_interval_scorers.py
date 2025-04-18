@@ -14,6 +14,13 @@ SIMPLE_INTERVAL_SCORERS = COSTS + CHANGE_SCORES + ANOMALY_SCORES + [PenalisedSco
 
 
 @pytest.mark.parametrize("Scorer", SIMPLE_INTERVAL_SCORERS)
+def test_task_tag_set(Scorer: type[BaseIntervalScorer]):
+    scorer = Scorer.create_test_instance()
+    valid_tasks = ["cost", "change_score", "saving", "local_anomaly_score"]
+    assert scorer.get_tag("task") in valid_tasks
+
+
+@pytest.mark.parametrize("Scorer", SIMPLE_INTERVAL_SCORERS)
 def test_scorer_fit(Scorer: type[BaseIntervalScorer]):
     scorer = Scorer.create_test_instance()
     x = generate_anomalous_data()
