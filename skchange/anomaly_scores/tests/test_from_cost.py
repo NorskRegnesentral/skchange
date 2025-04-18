@@ -11,6 +11,7 @@ from skchange.change_scores import CUSUM
 from skchange.costs import COSTS
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
+from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
@@ -18,7 +19,7 @@ def test_saving_init(CostClass: type[BaseCost]):
     if not CostClass.supports_fixed_params:
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
     param = find_fixed_param_combination(CostClass)
-    baseline_cost = CostClass(**param)
+    baseline_cost = CostClass.create_test_instance().set_params(**param)
 
     saving = Saving(baseline_cost)
     assert saving.baseline_cost == baseline_cost
@@ -31,9 +32,12 @@ def test_saving_min_size(CostClass: type[BaseCost]):
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     param = find_fixed_param_combination(CostClass)
-    cost = CostClass().set_params(**param)
+    cost = CostClass.create_test_instance().set_params(**param)
     saving = Saving(baseline_cost=cost)
 
+    assert saving.min_size == cost.min_size
+
+    skip_if_no_test_data(saving)
     np.random.seed(132)
     X = np.random.randn(100, 1)
     cost.fit(X)
@@ -47,9 +51,10 @@ def test_saving_fit(CostClass: type[BaseCost]):
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     param = find_fixed_param_combination(CostClass)
-    cost = CostClass().set_params(**param)
-
+    cost = CostClass.create_test_instance().set_params(**param)
     saving = Saving(baseline_cost=cost)
+    skip_if_no_test_data(saving)
+
     X = np.random.randn(100, 1)
     saving.fit(X)
     assert saving.baseline_cost_.is_fitted
@@ -62,9 +67,9 @@ def test_saving_evaluate(CostClass: type[BaseCost]):
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     param = find_fixed_param_combination(CostClass)
-    cost = CostClass().set_params(**param)
-
+    cost = CostClass.create_test_instance().set_params(**param)
     saving = Saving(baseline_cost=cost)
+    skip_if_no_test_data(saving)
     X = np.random.randn(100, 1)
     saving.fit(X)
     intervals = np.array([[0, 10], [10, 20], [20, 30]])
@@ -109,7 +114,7 @@ def test_to_local_anomaly_score_with_base_cost(CostClass: type[BaseCost]):
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     param = find_fixed_param_combination(CostClass)
-    cost = CostClass(**param)
+    cost = CostClass.create_test_instance().set_params(**param)
     local_anomaly_score = to_local_anomaly_score(cost)
     assert isinstance(local_anomaly_score, LocalAnomalyScore)
     assert local_anomaly_score.cost == cost
@@ -121,7 +126,7 @@ def test_to_local_anomaly_score_with_local_anomaly_score(CostClass: type[BaseCos
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     param = find_fixed_param_combination(CostClass)
-    cost = CostClass(**param)
+    cost = CostClass.create_test_instance().set_params(**param)
     local_anomaly_score_instance = LocalAnomalyScore(cost=cost)
     result = to_local_anomaly_score(local_anomaly_score_instance)
     assert result is local_anomaly_score_instance
@@ -133,8 +138,10 @@ def test_local_anomaly_score_evaluate(CostClass: type[BaseCost]):
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     param = find_fixed_param_combination(CostClass)
-    cost = CostClass().set_params(**param)
+    cost = CostClass.create_test_instance().set_params(**param)
     local_anomaly_score = LocalAnomalyScore(cost=cost)
+    skip_if_no_test_data(local_anomaly_score)
+
     X = np.random.randn(100, 1)
     local_anomaly_score.fit(X)
     cuts = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])

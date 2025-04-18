@@ -13,6 +13,7 @@ from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets import generate_alternating_data
 from skchange.penalties import ChiSquarePenalty
+from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 from skchange.utils.validation.enums import EvaluationType
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
@@ -23,6 +24,7 @@ COSTS_AND_SAVINGS = COSTS + SAVINGS
 def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
+    skip_if_no_test_data(saving)
     if isinstance(saving, BaseCost):
         if not saving.supports_fixed_params:
             pytest.skip(f"{type(saving).__name__} does not support fixed parameters.")
