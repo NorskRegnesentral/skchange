@@ -78,6 +78,8 @@ class Saving(BaseIntervalScorer):
                 " parameters (`param`) set to use it as a Saving."
             )
 
+        self.set_tags(distribution_type=baseline_cost.get_tag("distribution_type"))
+
     @property
     def min_size(self) -> int:
         """Minimum valid size of the interval to evaluate."""
@@ -243,6 +245,8 @@ class LocalAnomalyScore(BaseIntervalScorer):
         super().__init__()
 
         self._subset_cost: BaseCost = cost.clone()
+
+        self.set_tags(distribution_type=cost.get_tag("distribution_type"))
 
     @property
     def min_size(self) -> int:

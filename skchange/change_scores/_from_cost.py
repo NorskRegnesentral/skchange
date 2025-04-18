@@ -59,6 +59,8 @@ class ChangeScore(BaseIntervalScorer):
         self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
+        self.set_tags(distribution_type=cost.get_tag("distribution_type"))
+
     @property
     def min_size(self) -> int:
         """Minimum valid size of an interval to evaluate."""

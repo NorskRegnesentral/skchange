@@ -49,6 +49,8 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
             +f" than or equal to stat_upper ({self.stat_upper})."
             raise ValueError(message)
 
+        self.set_tags(distribution_type=change_detector.get_tag("distribution_type"))
+
     def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
 

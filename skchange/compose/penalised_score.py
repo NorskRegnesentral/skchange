@@ -140,6 +140,7 @@ class PenalisedScore(BaseIntervalScorer):
             )
 
         self.set_tags(task=score.get_tag("task"))
+        self.set_tags(distribution_type=score.get_tag("distribution_type"))
 
     def _fit(self, X: np.ndarray, y=None) -> "PenalisedScore":
         """Fit the penalised interval scorer to training data.

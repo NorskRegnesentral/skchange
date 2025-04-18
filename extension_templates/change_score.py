@@ -70,6 +70,13 @@ class MyChangeScore(BaseIntervalScorer):
         "authors": ["Tveten", "johannvk"],
         "maintainers": "Tveten",
         "task": "change_score",
+        # distribtuion_type is used to automatically create test cases.
+        # Valid values:
+        # - "None" - No distributional restrictions. Test data: Mostly Gaussian, but
+        #   no guarantee.
+        # - "Poisson" - Integer data. Test data: Poisson distributed.
+        # - "Gaussian" - Real-valued data. Test data: Gaussian distribution.
+        "distribution_type": "None",  # "None", "Poisson", "Gaussian"
     }
 
     # todo: set class attribute tags.

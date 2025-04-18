@@ -134,6 +134,8 @@ class MovingWindow(BaseChangeDetector):
             "min_detection_interval",
         )
 
+        self.set_tags(distribution_type=_change_score.get_tag("distribution_type"))
+
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
 

@@ -46,6 +46,7 @@ class BaseIntervalScorer(BaseEstimator):
         "authors": ["Tveten", "johannvk", "fkiraly"],  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
         "task": None,  # "cost", "change_score", "local_anomaly_score", "saving"
+        "distribution_type": "None",  # "None", "Poisson", "Gaussian"
     }  # for unit test cases
 
     # The `evaluation_type` indicates whether the scorer is univariate or multivariate.
