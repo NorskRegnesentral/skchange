@@ -98,7 +98,7 @@ class PenalisedScore(BaseIntervalScorer):
     Parameters
     ----------
     score : BaseIntervalScorer
-        The score to penalise.
+        The score to penalise. Costs are currently not supported.
     penalty : BasePenalty
         The penalty to apply to the scores. The penalty must be constant for
         multivariate scorers. If the penalty is already fitted, it will not be refitted
@@ -118,6 +118,12 @@ class PenalisedScore(BaseIntervalScorer):
         self.score = score
         self.penalty = penalty
         super().__init__()
+
+        if score.get_tag("task") == "cost":
+            raise ValueError(
+                "PenalisedScore does not support costs. "
+                f"Got {type(score)} with tag 'task' = {score.get_tag('task')}."
+            )
 
         if score.is_penalised_score:
             raise ValueError(
