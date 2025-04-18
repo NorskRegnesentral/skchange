@@ -8,12 +8,12 @@ from skchange.anomaly_scores import (
     to_saving,
 )
 from skchange.change_scores import CUSUM
-from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs import COSTS
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_saving_init(CostClass: type[BaseCost]):
     if not CostClass.supports_fixed_params:
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
@@ -72,7 +72,7 @@ def test_saving_evaluate(CostClass: type[BaseCost]):
     assert savings.shape == (3, 1)
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_to_saving_raises_with_no_param_set(CostClass: type[BaseCost]):
     """Test that to_saving raises ValueError with BaseCost that has no param set."""
     if not CostClass.supports_fixed_params:
@@ -103,7 +103,7 @@ def test_to_saving_error():
         to_saving(CUSUM())
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_to_local_anomaly_score_with_base_cost(CostClass: type[BaseCost]):
     if not CostClass.supports_fixed_params:
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
@@ -115,7 +115,7 @@ def test_to_local_anomaly_score_with_base_cost(CostClass: type[BaseCost]):
     assert local_anomaly_score.cost == cost
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_to_local_anomaly_score_with_local_anomaly_score(CostClass: type[BaseCost]):
     if not CostClass.supports_fixed_params:
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")

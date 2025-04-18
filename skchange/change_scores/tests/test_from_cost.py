@@ -3,7 +3,7 @@ import pytest
 
 from skchange.anomaly_scores import L2Saving
 from skchange.change_scores import ChangeScore, to_change_score
-from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs import COSTS
 from skchange.costs.base import BaseCost
 
 
@@ -18,7 +18,7 @@ def test_change_score_with_costs(cost_class):
     assert scores.shape == (1, 1)
 
 
-@pytest.mark.parametrize("evaluator", ALL_COSTS)
+@pytest.mark.parametrize("evaluator", COSTS)
 def test_to_change_score(evaluator: type[BaseCost]):
     cost_instance = evaluator.create_test_instance()
     change_score = to_change_score(cost_instance)

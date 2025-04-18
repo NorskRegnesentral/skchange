@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs import COSTS
 from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
 
@@ -34,13 +34,13 @@ def test_find_fixed_param_combination_value_error():
         find_fixed_param_combination(MockCost)
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_l2_cost_init(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
     assert cost.param is None
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_expected_cut_entries(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
     assert cost.get_required_cut_size() == 2
