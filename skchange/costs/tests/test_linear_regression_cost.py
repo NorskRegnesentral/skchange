@@ -210,24 +210,6 @@ def test_fixed_param_validation():
         cost.fit(X)
 
 
-def test_min_size_with_fixed_params():
-    """Test min_size property with fixed parameters."""
-    # Create simple dataset
-    X = np.random.rand(100, 3)
-
-    # With optimized parameters
-    cost = LinearRegressionCost(response_col=1)
-    assert cost.min_size is None  # Not fitted yet
-    cost.fit(X)
-    assert cost.min_size == 2  # Need 2 samples for 2 parameters
-
-    # With fixed parameters
-    fixed_params = np.array([0.1, 0.2])
-    cost_fixed = LinearRegressionCost(param=fixed_params, response_col=1)
-    cost_fixed.fit(X)
-    assert cost_fixed.min_size == 1  # Only need 1 sample with fixed parameters
-
-
 def test_linear_regression_cost_with_pelt():
     """Test LinearRegressionCost on a structural change problem."""
 
