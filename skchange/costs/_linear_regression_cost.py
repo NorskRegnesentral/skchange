@@ -330,7 +330,7 @@ class LinearRegressionCost(BaseCost):
         Parameters
         ----------
         p : int
-            Number of variables in the data.
+            Number of covariates.
 
         Returns
         -------
@@ -343,7 +343,8 @@ class LinearRegressionCost(BaseCost):
             return len(self._covariate_col_indices)
         else:
             # Default to all columns except the response variable:
-            return p - 1
+            # p = 1 returns 1 although it's an invalid setting for this cost.
+            return max(1, p - 1)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
