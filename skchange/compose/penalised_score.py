@@ -9,6 +9,7 @@ from ..base import BaseIntervalScorer
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
+from ..utils.validation.interval_scorer import check_interval_scorer
 
 
 @njit
@@ -119,17 +120,13 @@ class PenalisedScore(BaseIntervalScorer):
         self.penalty = penalty
         super().__init__()
 
-        if score.get_tag("task") == "cost":
-            raise ValueError(
-                "PenalisedScore does not support costs. "
-                f"Got {type(score)} with tag 'task' = {score.get_tag('task')}."
-            )
-
-        if score.is_penalised_score:
-            raise ValueError(
-                "The scorer must not be a penalised score. " f"Got {type(score)}."
-            )
-
+        check_interval_scorer(
+            score,
+            "score",
+            "PenalisedScore",
+            required_tasks=["change_score", "anomaly_score", "saving"],
+            allow_penalised=False,
+        )
         if (
             score.evaluation_type == EvaluationType.MULTIVARIATE
             and penalty.penalty_type != "constant"
