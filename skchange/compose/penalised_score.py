@@ -124,7 +124,7 @@ class PenalisedScore(BaseIntervalScorer):
             score,
             "score",
             "PenalisedScore",
-            required_tasks=["change_score", "anomaly_score", "saving"],
+            required_tasks=["change_score", "local_anomaly_score", "saving"],
             allow_penalised=False,
         )
         if (
