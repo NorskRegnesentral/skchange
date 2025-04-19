@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from skchange.anomaly_scores import LocalAnomalyScore
 from skchange.base import BaseIntervalScorer
 from skchange.change_detectors import MovingWindow
 from skchange.change_scores import CHANGE_SCORES, ContinuousLinearTrendScore
@@ -66,3 +67,13 @@ def test_moving_window_scores(Score):
     scores = detector.fit(df).transform_scores(df)
     assert np.all(scores >= 0.0)
     assert len(scores) == len(df)
+
+
+def test_invalid_change_scores():
+    """
+    Test that MovingWindow raises an error when given an invalid cost argument.
+    """
+    with pytest.raises(ValueError, match="change_score"):
+        MovingWindow("l2")
+    with pytest.raises(ValueError, match="change_score"):
+        MovingWindow(LocalAnomalyScore(COSTS[1].create_test_instance()))

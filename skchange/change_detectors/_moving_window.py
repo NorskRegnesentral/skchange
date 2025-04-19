@@ -14,6 +14,7 @@ from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.numba.general import where
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_in_interval, check_larger_than
 from .base import BaseChangeDetector
 
@@ -118,8 +119,15 @@ class MovingWindow(BaseChangeDetector):
         self.min_detection_interval = min_detection_interval
         super().__init__()
 
-        _change_score = CUSUM() if change_score is None else change_score
-        _change_score = to_change_score(_change_score)
+        _score = CUSUM() if change_score is None else change_score
+        check_interval_scorer(
+            _score,
+            "change_score",
+            "MovingWindow",
+            required_tasks=["cost", "change_score"],
+            allow_penalised=True,
+        )
+        _change_score = to_change_score(_score)
         _penalty = as_penalty(self.penalty, default=BICPenalty())
         self._penalised_score = (
             _change_score.clone()  # need to avoid modifying the input change_score
