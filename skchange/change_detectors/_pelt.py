@@ -11,6 +11,7 @@ from ..costs import L2Cost
 from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
 from .base import BaseChangeDetector
 
@@ -175,9 +176,15 @@ class PELT(BaseChangeDetector):
         self.split_cost = split_cost
         super().__init__()
 
-        self._cost = L2Cost() if cost is None else cost.clone()
-        if self._cost.is_penalised_score:
-            raise ValueError("PELT does not support inherently penalised costs.")
+        _cost = L2Cost() if cost is None else cost
+        check_interval_scorer(
+            _cost,
+            arg_name="cost",
+            caller_name="PELT",
+            required_tasks=["cost"],
+            allow_penalised=False,
+        )
+        self._cost = _cost.clone()
 
         check_larger_than(0, penalty, "penalty", allow_none=True)
         check_larger_than(1, min_segment_length, "min_segment_length")
