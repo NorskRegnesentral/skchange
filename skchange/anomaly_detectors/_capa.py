@@ -13,6 +13,7 @@ from ..penalties import ChiSquarePenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
 from .base import BaseSegmentAnomalyDetector
 
@@ -192,8 +193,15 @@ class CAPA(BaseSegmentAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        _segment_saving = L2Saving() if segment_saving is None else segment_saving
-        _segment_saving = to_saving(_segment_saving)
+        _segment_score = L2Saving() if segment_saving is None else segment_saving
+        check_interval_scorer(
+            _segment_score,
+            "segment_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        _segment_saving = to_saving(_segment_score)
         _segment_penalty = as_penalty(
             self.segment_penalty,
             default=ChiSquarePenalty(),
@@ -203,10 +211,17 @@ class CAPA(BaseSegmentAnomalyDetector):
             _segment_saving, _segment_penalty
         )
 
-        _point_saving = L2Saving() if point_saving is None else point_saving
-        if _point_saving.min_size != 1:
+        _point_score = L2Saving() if point_saving is None else point_saving
+        check_interval_scorer(
+            _point_score,
+            "point_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        if _point_score.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
-        _point_saving = to_saving(_point_saving)
+        _point_saving = to_saving(_point_score)
         _point_penalty = as_penalty(
             self.point_penalty,
             default=ChiSquarePenalty(),

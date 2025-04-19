@@ -19,6 +19,7 @@ from ..penalties import (
 from ..penalties.base import BasePenalty
 from ..utils.validation.data import check_data
 from ..utils.validation.enums import EvaluationType
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
 from ._capa import run_capa
 from .base import BaseSegmentAnomalyDetector
@@ -147,10 +148,20 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        _segment_saving = L2Saving() if segment_saving is None else segment_saving
-        if _segment_saving.evaluation_type == EvaluationType.MULTIVARIATE:
-            raise ValueError("Segment saving must be univariate.")
-        _segment_saving = to_saving(_segment_saving)
+        _score = L2Saving() if segment_saving is None else segment_saving
+        check_interval_scorer(
+            _score,
+            "segment_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        if _score.evaluation_type == EvaluationType.MULTIVARIATE:
+            raise ValueError(
+                "MVCAPA requires `segment_saving` to have univariate"
+                " `evaluation_type`."
+            )
+        _segment_saving = to_saving(_score)
         default_segment_penalty = MinimumPenalty(
             [ChiSquarePenalty(), LinearChiSquarePenalty(), NonlinearChiSquarePenalty()]
         )
@@ -162,10 +173,17 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             _segment_saving, _segment_penalty
         )
 
-        _point_saving = L2Saving() if point_saving is None else point_saving
-        if _point_saving.min_size != 1:
+        _point_score = L2Saving() if point_saving is None else point_saving
+        check_interval_scorer(
+            _point_score,
+            "point_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        if _point_score.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
-        _point_saving = to_saving(_point_saving)
+        _point_saving = to_saving(_point_score)
         _point_penalty = as_penalty(
             self.point_penalty,
             default=LinearChiSquarePenalty(),

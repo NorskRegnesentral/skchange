@@ -7,6 +7,7 @@ import pytest
 from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_detectors._capa import run_capa
 from skchange.anomaly_scores import SAVINGS, Saving, to_saving
+from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.base import BaseCost
@@ -184,3 +185,14 @@ def test_capa_different_data_shapes():
             min_segment_length=2,
             max_segment_length=10,
         )
+
+
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+def test_invalid_savings(Detector):
+    """
+    Test that CAPA and MVCAPA raises an error when given an invalid saving argument.
+    """
+    with pytest.raises(ValueError, match="segment_saving"):
+        Detector("l2")
+    with pytest.raises(ValueError, match="segment_saving"):
+        Detector(ChangeScore(COSTS[3].create_test_instance()))
