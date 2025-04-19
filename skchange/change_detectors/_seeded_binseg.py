@@ -218,13 +218,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
         self.selection_method = selection_method
         super().__init__()
 
-        _change_score = CUSUM() if change_score is None else change_score
-        _change_score = to_change_score(_change_score)
-        _penalty = as_penalty(self.penalty, default=BICPenalty())
+        self._change_score = CUSUM() if change_score is None else change_score
+        self._change_score = to_change_score(self._change_score)
+        self._penalty = as_penalty(self.penalty, default=BICPenalty())
         self._penalised_score = (
-            _change_score.clone()  # need to avoid modifying the input change_score
-            if _change_score.is_penalised_score
-            else PenalisedScore(_change_score, _penalty)
+            self._change_score.clone()  # need to avoid modifying the input change_score
+            if self._change_score.is_penalised_score
+            else PenalisedScore(self._change_score, self._penalty)
         )
 
         check_in_interval(
@@ -237,6 +237,22 @@ class SeededBinarySegmentation(BaseChangeDetector):
             raise ValueError(
                 f"Invalid selection method. Must be one of {valid_selection_methods}."
             )
+
+    def update_penalty(self, penalty: float | BasePenalty) -> None:
+        """Update the penalty of the cost function.
+
+        Parameters
+        ----------
+        penalty : float or BasePenalty
+            The new penalty to use.
+        """
+        self.penalty = penalty
+        self._penalty = as_penalty(self.penalty, require_penalty_type="constant")
+        self._penalised_score = (
+            self._change_score.clone()  # need to avoid modifying the input cost
+            if self._change_score.is_penalised_score
+            else PenalisedScore(self._change_score, self._penalty)
+        )
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

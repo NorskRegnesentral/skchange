@@ -1,6 +1,7 @@
 """Cost functions as interval evaluators."""
 
 import numpy as np
+import pandas as pd
 
 from ..base import BaseIntervalScorer
 
@@ -57,10 +58,10 @@ class BaseCost(BaseIntervalScorer):
         """
         return param
 
-    def evaluate_segmentation(self, segmentation: np.ndarray) -> float:
+    def evaluate_segmentation(self, segmentation: np.ndarray | pd.Series) -> float:
         """Evaluate the cost of a segmentation.
 
-        # IDEA: Implement 'CROPS' algoritghm: https://arxiv.org/pdf/1412.3617
+        IDEA: Implement 'CROPS' algoritghm: https://arxiv.org/pdf/1412.3617
 
         Parameters
         ----------
@@ -73,8 +74,16 @@ class BaseCost(BaseIntervalScorer):
         cost : float
             The cost of the segmentation.
         """
+        if isinstance(segmentation, pd.Series):
+            segmentation = segmentation.to_numpy()
         if segmentation.ndim != 1:
-            raise ValueError("The segmentation must be a 1D array.")
+            try:
+                segmentation = segmentation.reshape(-1)
+            except Exception as e:
+                raise ValueError(
+                    "The segmentation must be convertible to a 1D array."
+                ) from e
+
         # Prepend 0 and append the length of the data to the segmentation:
         # This is done to ensure that the first and last segments are included.
         # The segmentation is assumed to be sorted in increasing order.
