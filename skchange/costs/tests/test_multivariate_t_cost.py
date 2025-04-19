@@ -751,7 +751,7 @@ def test_MultiVariateTCost_with_moving_window(
     segmentation = change_detector.fit_transform(X)
     change_points = change_detector.dense_to_sparse(segmentation)
 
-    fitted_dof = change_detector._penalised_score.score_.cost_.dof_
+    fitted_dof = change_detector.fitted_score.score_.cost_.dof_
 
     print(f"Change points: {change_points}")
     print(f"Estimated dof: {fitted_dof}")
