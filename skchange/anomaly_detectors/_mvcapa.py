@@ -231,7 +231,7 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         self.fitted_point_saving: BaseIntervalScorer = (
             self._point_penalised_saving.clone().fit(X)
         )
-        opt_savings, segment_anomalies, point_anomalies = run_capa(
+        opt_savings, segment_anomalies, point_anomalies = run_mvcapa(
             segment_penalised_saving=self.fitted_segment_saving,
             point_penalised_saving=self.fitted_point_saving,
             min_segment_length=self.min_segment_length,
