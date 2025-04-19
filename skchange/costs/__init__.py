@@ -17,15 +17,9 @@ COSTS = [
     LaplaceCost,
     L1Cost,
     L2Cost,
+    LinearRegressionCost,
     LinearTrendCost,
-]
-INTEGER_COSTS = [
     PoissonCost,
 ]
-REGRESSION_COSTS = [
-    LinearRegressionCost,
-]
 
-ALL_COSTS = COSTS + INTEGER_COSTS + REGRESSION_COSTS
-
-__all__ = ALL_COSTS
+__all__ = COSTS

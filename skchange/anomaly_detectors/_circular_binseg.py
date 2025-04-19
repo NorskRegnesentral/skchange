@@ -7,15 +7,15 @@ import numpy as np
 import pandas as pd
 
 from ..anomaly_scores import to_local_anomaly_score
-from ..anomaly_scores.base import BaseLocalAnomalyScore
+from ..base import BaseIntervalScorer
 from ..change_detectors._seeded_binseg import make_seeded_intervals
 from ..compose.penalised_score import PenalisedScore
 from ..costs import L2Cost
-from ..costs.base import BaseCost
 from ..penalties import BICPenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_in_interval, check_larger_than
 from .base import BaseSegmentAnomalyDetector
 
@@ -60,7 +60,7 @@ def make_anomaly_intervals(
 
 
 def run_circular_binseg(
-    penalised_score: BaseLocalAnomalyScore,
+    penalised_score: BaseIntervalScorer,
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
@@ -119,7 +119,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    anomaly_score : BaseLocalAnomalyScore or BaseCost, optional, default=L2Cost()
+    anomaly_score : BaseIntervalScorer, optional, default=L2Cost()
         The local anomaly score to use for anomaly detection. If a cost is given, it is
         converted to a local anomaly score using the `LocalAnomalyScore` class.
     penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
@@ -181,7 +181,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        anomaly_score: BaseCost | BaseLocalAnomalyScore | None = None,
+        anomaly_score: BaseIntervalScorer | None = None,
         penalty: BasePenalty | np.ndarray | float | None = None,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
@@ -194,8 +194,15 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         self.growth_factor = growth_factor
         super().__init__()
 
-        _anomaly_score = L2Cost() if anomaly_score is None else anomaly_score
-        _anomaly_score = to_local_anomaly_score(_anomaly_score)
+        _score = L2Cost() if anomaly_score is None else anomaly_score
+        check_interval_scorer(
+            _score,
+            "anomaly_score",
+            "CircularBinarySegmentation",
+            required_tasks=["cost", "anomaly_score"],
+            allow_penalised=True,
+        )
+        _anomaly_score = to_local_anomaly_score(_score)
         _penalty = as_penalty(self.penalty, default=BICPenalty())
         self._penalised_score = (
             _anomaly_score.clone()  # need to avoid modifying the input change_score
@@ -213,6 +220,8 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             "growth_factor",
         )
 
+        self.set_tags(distribution_type=_anomaly_score.get_tag("distribution_type"))
+
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
 
@@ -227,15 +236,29 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             A `pd.DataFrame` with a range index and two columns:
             * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
             * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised local anomaly score used for the detection.
+        scores : pd.DataFrame
+            A `pd.DataFrame` with the following columns:
+            * ``"interval_start"`` - start of the interval.
+            * ``"interval_end"`` - end of the interval.
+            * ``"argmax_anomaly_start"`` - start of the detected segment anomaly.
+            * ``"argmax_anomaly_end"`` - end of the detected segment anomaly.
+            * ``"score"`` - score for the detected segment anomaly.
         """
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="min_interval_length",
+            min_length=2 * self.fitted_score.min_size,
+            min_length_name="2 * fitted_change_score.min_size",
         )
-        self._penalised_score.fit(X)
+
         anomalies, scores, maximizers, starts, ends = run_circular_binseg(
-            penalised_score=self._penalised_score,
+            penalised_score=self.fitted_score,
             min_segment_length=self.min_segment_length,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,

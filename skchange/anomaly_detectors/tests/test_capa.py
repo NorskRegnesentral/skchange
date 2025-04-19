@@ -7,12 +7,14 @@ import pytest
 from skchange.anomaly_detectors import CAPA, MVCAPA
 from skchange.anomaly_detectors._capa import run_capa
 from skchange.anomaly_scores import SAVINGS, Saving, to_saving
+from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets import generate_alternating_data
 from skchange.penalties import ChiSquarePenalty
+from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 from skchange.utils.validation.enums import EvaluationType
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
@@ -23,6 +25,7 @@ COSTS_AND_SAVINGS = COSTS + SAVINGS
 def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
+    skip_if_no_test_data(saving)
     if isinstance(saving, BaseCost):
         if not saving.supports_fixed_params:
             pytest.skip(f"{type(saving).__name__} does not support fixed parameters.")
@@ -182,3 +185,14 @@ def test_capa_different_data_shapes():
             min_segment_length=2,
             max_segment_length=10,
         )
+
+
+@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+def test_invalid_savings(Detector):
+    """
+    Test that CAPA and MVCAPA raises an error when given an invalid saving argument.
+    """
+    with pytest.raises(ValueError, match="segment_saving"):
+        Detector("l2")
+    with pytest.raises(ValueError, match="segment_saving"):
+        Detector(ChangeScore(COSTS[3].create_test_instance()))

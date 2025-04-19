@@ -6,6 +6,24 @@ from ..utils.validation.parameters import check_larger_than
 from .base import BasePenalty
 
 
+def make_bic_penalty(n_params: int, n: int):
+    """Create a BIC penalty.
+
+    Parameters
+    ----------
+    n_params : int
+        Total number of parameters of the model in each segment.
+    n : int
+        Sample size.
+
+    Returns
+    -------
+    penalty : float
+        The BIC penalty value.
+    """
+    return (n_params + 1) * np.log(n)  # +1 due to the change point parameter
+
+
 class ConstantPenalty(BasePenalty):
     """Constant penalty."""
 

@@ -7,13 +7,13 @@ import numpy as np
 import pandas as pd
 
 from ..anomaly_scores import L2Saving, to_saving
-from ..anomaly_scores.base import BaseSaving
+from ..base import BaseIntervalScorer
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
 from ..penalties import ChiSquarePenalty, as_penalty
 from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
 from .base import BaseSegmentAnomalyDetector
 
@@ -112,14 +112,14 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    segment_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for segment anomaly detection.
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+    segment_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for segment anomaly detection.
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    point_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for point anomaly detection. Only savings with a
+    point_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for point anomaly detection. Only savings with a
         minimum size of 1 are permitted.
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : BasePenalty or float, optional, default=`ChiSquarePenalty`
         The penalty to use for segment anomaly detection. If a float is given, it is
@@ -176,8 +176,8 @@ class CAPA(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        segment_saving: BaseSaving | BaseCost | None = None,
-        point_saving: BaseSaving | BaseCost | None = None,
+        segment_saving: BaseIntervalScorer | None = None,
+        point_saving: BaseIntervalScorer | None = None,
         segment_penalty: BasePenalty | float | None = None,
         point_penalty: BasePenalty | float | None = None,
         min_segment_length: int = 2,
@@ -193,8 +193,15 @@ class CAPA(BaseSegmentAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        _segment_saving = L2Saving() if segment_saving is None else segment_saving
-        _segment_saving = to_saving(_segment_saving)
+        _segment_score = L2Saving() if segment_saving is None else segment_saving
+        check_interval_scorer(
+            _segment_score,
+            "segment_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        _segment_saving = to_saving(_segment_score)
         _segment_penalty = as_penalty(
             self.segment_penalty,
             default=ChiSquarePenalty(),
@@ -204,10 +211,17 @@ class CAPA(BaseSegmentAnomalyDetector):
             _segment_saving, _segment_penalty
         )
 
-        _point_saving = L2Saving() if point_saving is None else point_saving
-        if _point_saving.min_size != 1:
+        _point_score = L2Saving() if point_saving is None else point_saving
+        check_interval_scorer(
+            _point_score,
+            "point_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        if _point_score.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
-        _point_saving = to_saving(_point_saving)
+        _point_saving = to_saving(_point_score)
         _point_penalty = as_penalty(
             self.point_penalty,
             default=ChiSquarePenalty(),
@@ -217,6 +231,8 @@ class CAPA(BaseSegmentAnomalyDetector):
 
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
+
+        self.set_tags(distribution_type=_segment_saving.get_tag("distribution_type"))
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -232,6 +248,15 @@ class CAPA(BaseSegmentAnomalyDetector):
             A `pd.DataFrame` with a range index and two columns:
             * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
             * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
+
+        Attributes
+        ----------
+        fitted_segment_saving : BaseIntervalScorer
+            The fitted penalised segment saving used for the detection.
+        fitted_point_saving : BaseIntervalScorer
+            The fitted penalised point saving used for the detection.
+        scores : pd.Series
+            The cumulative optimal savings for the input data.
         """
         X = check_data(
             X,
@@ -239,11 +264,15 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length_name="min_segment_length",
         )
 
-        self._segment_penalised_saving.fit(X)
-        self._point_penalised_saving.fit(X)
+        self.fitted_segment_saving: BaseIntervalScorer = (
+            self._segment_penalised_saving.clone().fit(X)
+        )
+        self.fitted_point_saving: BaseIntervalScorer = (
+            self._point_penalised_saving.clone().fit(X)
+        )
         opt_savings, segment_anomalies, point_anomalies = run_capa(
-            segment_penalised_saving=self._segment_penalised_saving,
-            point_penalised_saving=self._point_penalised_saving,
+            segment_penalised_saving=self.fitted_segment_saving,
+            point_penalised_saving=self.fitted_point_saving,
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
         )

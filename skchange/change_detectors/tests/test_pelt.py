@@ -4,9 +4,11 @@ import numpy as np
 import pytest
 
 from skchange.change_detectors._pelt import (
+    PELT,
     get_changepoints,
     run_pelt,
 )
+from skchange.change_scores import CUSUM
 from skchange.costs import L2Cost
 from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
@@ -451,3 +453,17 @@ def test_pelt_dense_changepoints_parametrized(cost: BaseCost, min_segment_length
         for i in range(1, len(increasing_data) // min_segment_length)
     ]
     assert np.all(changepoints == expected_changepoints)
+
+
+def test_invalid_costs():
+    """
+    Test that PELT raises an error when given an invalid cost argument.
+    """
+    with pytest.raises(ValueError, match="cost"):
+        PELT(cost="l2")
+    with pytest.raises(ValueError, match="cost"):
+        PELT(cost=CUSUM())
+    with pytest.raises(ValueError, match="cost"):
+        cost = L2Cost()
+        cost.is_penalised_score = True  # Simulate a penalised score
+        PELT(cost=cost)

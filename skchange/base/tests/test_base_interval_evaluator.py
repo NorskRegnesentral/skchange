@@ -6,7 +6,19 @@ from skchange.utils.validation.enums import EvaluationType
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
-    expected_cut_entries = 2
+    _tags = {
+        "object_type": "interval_scorer",
+        "task": "cost",
+    }
+
+    def _evaluate(self, cuts):
+        return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
+
+
+class InvalidConcreteIntervalEvaluator(BaseIntervalScorer):
+    _tags = {
+        "object_type": "interval_scorer",
+    }
 
     def _evaluate(self, cuts):
         return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
@@ -61,3 +73,9 @@ def test_check_is_penalised():
     evaluator = ConcreteIntervalEvaluator()
     with pytest.raises(ValueError):
         evaluator.check_is_penalised()
+
+
+def test_task_tag_not_set():
+    evaluator = InvalidConcreteIntervalEvaluator()
+    with pytest.raises(RuntimeError):
+        evaluator.get_required_cut_size()

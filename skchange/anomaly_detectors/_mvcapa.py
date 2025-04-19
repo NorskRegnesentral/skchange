@@ -7,9 +7,8 @@ import numpy as np
 import pandas as pd
 
 from ..anomaly_scores import L2Saving, to_saving
-from ..anomaly_scores.base import BaseSaving
+from ..base import BaseIntervalScorer
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
 from ..penalties import (
     ChiSquarePenalty,
     LinearChiSquarePenalty,
@@ -19,21 +18,21 @@ from ..penalties import (
 )
 from ..penalties.base import BasePenalty
 from ..utils.validation.data import check_data
-from ..utils.validation.enums import EvaluationType
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
 from ._capa import run_capa
 from .base import BaseSegmentAnomalyDetector
 
 
 def find_affected_components(
-    penalised_scorer: BaseSaving,
+    penalised_scorer: PenalisedScore,
     anomalies: list[tuple[int, int]],
 ) -> list[tuple[int, int, np.ndarray]]:
     penalised_scorer.check_is_penalised()
     penalised_scorer.check_is_fitted()
     new_anomalies = []
     for start, end in anomalies:
-        saving_values = penalised_scorer.scorer_.evaluate(np.array([start, end]))[0]
+        saving_values = penalised_scorer.score_.evaluate(np.array([start, end]))[0]
         saving_order = np.argsort(-saving_values)  # Decreasing order.
         penalised_savings = (
             np.cumsum(saving_values[saving_order]) - penalised_scorer.penalty_.values
@@ -75,15 +74,14 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
     Parameters
     ----------
-    segment_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for segment anomaly detection.
-        Only univariate savings are permitted (see the `evaluation_type` attribute).
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+    segment_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for segment anomaly detection.
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    point_saving : BaseSaving or BaseCost, optional, default=L2Saving()
-        The saving function to use for point anomaly detection. Only savings with a
+    point_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for point anomaly detection. Only savings with a
         minimum size of 1 are permitted.
-        If a `BaseCost` is given, the saving function is constructed from the cost. The
+        If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : BasePenalty, np.ndarray or float, optional, default=`MinimumPenalty([ChiSquarePenalty(), LinearChiSquarePenalty(), NonlinearChiSquarePenalty()])`
         The penalty to use for segment anomaly detection. If a float is given, it is
@@ -132,8 +130,8 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
     def __init__(
         self,
-        segment_saving: BaseSaving | BaseCost | None = None,
-        point_saving: BaseSaving | BaseCost | None = None,
+        segment_saving: BaseIntervalScorer | None = None,
+        point_saving: BaseIntervalScorer | None = None,
         segment_penalty: BasePenalty | np.ndarray | float | None = None,
         point_penalty: BasePenalty | np.ndarray | float | None = None,
         min_segment_length: int = 2,
@@ -149,10 +147,16 @@ class MVCAPA(BaseSegmentAnomalyDetector):
         self.ignore_point_anomalies = ignore_point_anomalies
         super().__init__()
 
-        _segment_saving = L2Saving() if segment_saving is None else segment_saving
-        if _segment_saving.evaluation_type == EvaluationType.MULTIVARIATE:
-            raise ValueError("Segment saving must be univariate.")
-        _segment_saving = to_saving(_segment_saving)
+        _score = L2Saving() if segment_saving is None else segment_saving
+        check_interval_scorer(
+            _score,
+            "segment_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+            require_evaluation_type="univariate",
+        )
+        _segment_saving = to_saving(_score)
         default_segment_penalty = MinimumPenalty(
             [ChiSquarePenalty(), LinearChiSquarePenalty(), NonlinearChiSquarePenalty()]
         )
@@ -164,10 +168,17 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             _segment_saving, _segment_penalty
         )
 
-        _point_saving = L2Saving() if point_saving is None else point_saving
-        if _point_saving.min_size != 1:
+        _point_score = L2Saving() if point_saving is None else point_saving
+        check_interval_scorer(
+            _point_score,
+            "point_saving",
+            "CAPA",
+            required_tasks=["cost", "saving"],
+            allow_penalised=False,
+        )
+        if _point_score.min_size != 1:
             raise ValueError("Point saving must have a minimum size of 1.")
-        _point_saving = to_saving(_point_saving)
+        _point_saving = to_saving(_point_score)
         _point_penalty = as_penalty(
             self.point_penalty,
             default=LinearChiSquarePenalty(),
@@ -176,6 +187,8 @@ class MVCAPA(BaseSegmentAnomalyDetector):
 
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
+
+        self.set_tags(distribution_type=_segment_saving.get_tag("distribution_type"))
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -191,6 +204,15 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             A `pd.DataFrame` with a range index and two columns:
             * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
             * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
+
+        Attributes
+        ----------
+        fitted_segment_saving : BaseIntervalScorer
+            The fitted penalised segment saving used for the detection.
+        fitted_point_saving : BaseIntervalScorer
+            The fitted penalised point saving used for the detection.
+        scores : pd.Series
+            The cumulative optimal savings for the input data.
         """
         X = check_data(
             X,
@@ -198,11 +220,15 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             min_length_name="min_segment_length",
         )
 
-        self._segment_penalised_saving.fit(X)
-        self._point_penalised_saving.fit(X)
+        self.fitted_segment_saving: BaseIntervalScorer = (
+            self._segment_penalised_saving.clone().fit(X)
+        )
+        self.fitted_point_saving: BaseIntervalScorer = (
+            self._point_penalised_saving.clone().fit(X)
+        )
         opt_savings, segment_anomalies, point_anomalies = run_mvcapa(
-            segment_penalised_saving=self._segment_penalised_saving,
-            point_penalised_saving=self._point_penalised_saving,
+            segment_penalised_saving=self.fitted_segment_saving,
+            point_penalised_saving=self.fitted_point_saving,
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
         )
