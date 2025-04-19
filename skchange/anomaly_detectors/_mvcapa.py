@@ -18,7 +18,6 @@ from ..penalties import (
 )
 from ..penalties.base import BasePenalty
 from ..utils.validation.data import check_data
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
 from ._capa import run_capa
@@ -155,12 +154,8 @@ class MVCAPA(BaseSegmentAnomalyDetector):
             "CAPA",
             required_tasks=["cost", "saving"],
             allow_penalised=False,
+            require_evaluation_type="univariate",
         )
-        if _score.evaluation_type == EvaluationType.MULTIVARIATE:
-            raise ValueError(
-                "MVCAPA requires `segment_saving` to have univariate"
-                " `evaluation_type`."
-            )
         _segment_saving = to_saving(_score)
         default_segment_penalty = MinimumPenalty(
             [ChiSquarePenalty(), LinearChiSquarePenalty(), NonlinearChiSquarePenalty()]

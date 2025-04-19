@@ -1,6 +1,7 @@
 """Validation functions for interval scorers."""
 
 from ...base import BaseIntervalScorer
+from .enums import EvaluationType
 
 
 def check_interval_scorer(
@@ -9,6 +10,7 @@ def check_interval_scorer(
     caller_name: str,
     required_tasks: list | None = None,
     allow_penalised: bool = True,
+    require_evaluation_type: str | None = None,
 ) -> None:
     """Check if the given scorer is a valid interval scorer."""
     if not isinstance(scorer, BaseIntervalScorer):
@@ -30,3 +32,22 @@ def check_interval_scorer(
         )
     if not allow_penalised and scorer.is_penalised_score:
         raise ValueError(f"`{arg_name}` cannot be a penalised score.")
+
+    if (
+        (
+            require_evaluation_type == "univariate"
+            and scorer.evaluation_type != EvaluationType.UNIVARIATE
+        )
+        or (
+            require_evaluation_type == "multivariate"
+            and scorer.evaluation_type != EvaluationType.MULTIVARIATE
+        )
+        or (
+            require_evaluation_type == "conditional"
+            and scorer.evaluation_type != EvaluationType.CONDITIONAL
+        )
+    ):
+        raise ValueError(
+            f"`{caller_name}` requires `{arg_name}` to have {require_evaluation_type} "
+            f"{arg_name}.evaluation_type. Got {scorer.evaluation_type}."
+        )
