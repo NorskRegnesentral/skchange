@@ -210,7 +210,7 @@ class PELT(BaseChangeDetector):
         fitted_cost : BaseIntervalScorer
             The fitted cost function.
         fitted_penalty : float
-            The fitted penalty value. Either the user-specified value or the used BIC
+            The fitted penalty value. Either the user-specified value or the fitted BIC
             penalty.
         """
         X = check_data(

@@ -248,6 +248,15 @@ class CAPA(BaseSegmentAnomalyDetector):
             A `pd.DataFrame` with a range index and two columns:
             * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
             * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
+
+        Attributes
+        ----------
+        fitted_segment_saving : BaseIntervalScorer
+            The fitted penalised segment saving used for the detection.
+        fitted_point_saving : BaseIntervalScorer
+            The fitted penalised point saving used for the detection.
+        scores : pd.Series
+            The cumulative optimal savings for the input data.
         """
         X = check_data(
             X,
@@ -255,11 +264,15 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_length_name="min_segment_length",
         )
 
-        self._segment_penalised_saving.fit(X)
-        self._point_penalised_saving.fit(X)
+        self.fitted_segment_saving: BaseIntervalScorer = (
+            self._segment_penalised_saving.clone().fit(X)
+        )
+        self.fitted_point_saving: BaseIntervalScorer = (
+            self._point_penalised_saving.clone().fit(X)
+        )
         opt_savings, segment_anomalies, point_anomalies = run_capa(
-            segment_penalised_saving=self._segment_penalised_saving,
-            point_penalised_saving=self._point_penalised_saving,
+            segment_penalised_saving=self.fitted_segment_saving,
+            point_penalised_saving=self.fitted_point_saving,
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
         )

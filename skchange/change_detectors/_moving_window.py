@@ -156,15 +156,21 @@ class MovingWindow(BaseChangeDetector):
         -------
         scores : pd.DataFrame with same index as X
             Scores for sequence `X`.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised change score used for the detection.
         """
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
         X = check_data(
             X,
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self._penalised_score.fit(X)
         scores = moving_window_transform(
-            self._penalised_score,
+            self.fitted_score,
             self.bandwidth,
         )
         return pd.Series(scores, index=X.index, name="score")
@@ -182,6 +188,13 @@ class MovingWindow(BaseChangeDetector):
         y_sparse : pd.DataFrame
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the changepoints.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised change score used for the detection.
+        scores : pd.Series
+            The detection scores obtained by the `transform_scores` method.
         """
         self.scores: pd.Series = self.transform_scores(X)
         changepoints = mosum_selection(self.scores.values, self.min_detection_interval)

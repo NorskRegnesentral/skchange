@@ -236,15 +236,29 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             A `pd.DataFrame` with a range index and two columns:
             * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
             * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised local anomaly score used for the detection.
+        scores : pd.DataFrame
+            A `pd.DataFrame` with the following columns:
+            * ``"interval_start"`` - start of the interval.
+            * ``"interval_end"`` - end of the interval.
+            * ``"argmax_anomaly_start"`` - start of the detected segment anomaly.
+            * ``"argmax_anomaly_end"`` - end of the detected segment anomaly.
+            * ``"score"`` - score for the detected segment anomaly.
         """
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="min_interval_length",
+            min_length=2 * self.fitted_score.min_size,
+            min_length_name="2 * fitted_change_score.min_size",
         )
-        self._penalised_score.fit(X)
+
         anomalies, scores, maximizers, starts, ends = run_circular_binseg(
-            penalised_score=self._penalised_score,
+            penalised_score=self.fitted_score,
             min_segment_length=self.min_segment_length,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,

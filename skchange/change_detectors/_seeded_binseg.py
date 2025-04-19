@@ -263,23 +263,29 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
         Attributes
         ----------
-        fitted_penalised_score : BaseIntervalScorer
+        fitted_score : BaseIntervalScorer
             The fitted penalised change score used for the detection.
+        scores: pd.DataFrame
+            A `pd.DataFrame` with the following columns:
+            * ``"start"`` - start of the interval.
+            * ``"end"`` - end of the interval.
+            * ``"argmax"`` - index of the maximum score in the interval.
+            * ``"max"`` - maximum score in the interval.
         """
-        self.fitted_penalised_score: BaseIntervalScorer = self._penalised_score.clone()
-        self.fitted_penalised_score.fit(X)
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self.fitted_penalised_score.min_size,
+            min_length=2 * self.fitted_score.min_size,
             min_length_name="2 * fitted_change_score.min_size",
         )
         check_larger_than(
-            2 * self.fitted_penalised_score.min_size,
+            2 * self.fitted_score.min_size,
             self.max_interval_length,
             "max_interval_length",
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
-            penalised_score=self.fitted_penalised_score,
+            penalised_score=self.fitted_score,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
             selection_method=self.selection_method,
