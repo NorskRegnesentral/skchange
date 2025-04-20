@@ -27,30 +27,28 @@ def make_nonlinear_chi2_penalty_from_score(
     return make_nonlinear_chi2_penalty(score.get_param_size(p), n, p)
 
 
-COSTS_AND_SAVINGS = (
-    COSTS
-    + SAVINGS
-    + [
-        PenalisedScore(
-            L2Saving(),
-            make_default_penalty=make_nonlinear_chi2_penalty_from_score,
-        ),
-    ]
-)
+COSTS_AND_SAVINGS = COSTS + SAVINGS
+COSTS_AND_SAVING_INSTANCES = [
+    score.create_test_instance() for score in COSTS_AND_SAVINGS
+] + [
+    PenalisedScore(
+        L2Saving(),
+        make_default_penalty=make_nonlinear_chi2_penalty_from_score,
+    ),
+]
 DETECTORS = [CAPA]
 
 
-@pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
+@pytest.mark.parametrize("saving", COSTS_AND_SAVING_INSTANCES)
 @pytest.mark.parametrize("Detector", DETECTORS)
-def test_capa_anomalies(Detector, Saving):
+def test_capa_anomalies(Detector, saving):
     """Test CAPA anomalies."""
-    saving = Saving.create_test_instance()
     skip_if_no_test_data(saving)
     if isinstance(saving, BaseCost):
         if not saving.supports_fixed_params:
             pytest.skip(f"{type(saving).__name__} does not support fixed parameters.")
         else:
-            fixed_params = find_fixed_param_combination(Saving)
+            fixed_params = find_fixed_param_combination(saving)
             saving = saving.set_params(**fixed_params)
 
     if isinstance(saving, BaseCost) and not saving.supports_fixed_params:
