@@ -1,30 +1,32 @@
 """Penalties and penalty functions for change and anomaly detection."""
 
-from ._compose import MinimumPenalty
 from ._constant_penalties import (
-    BICPenalty,
-    ChiSquarePenalty,
-    ConstantPenalty,
     make_bic_penalty,
+    make_chi2_penalty,
 )
-from ._conversion import as_penalty
-from ._linear_penalties import LinearChiSquarePenalty, LinearPenalty
+from ._linear_penalties import (
+    make_linear_chi2_penalty,
+    make_linear_penalty,
+)
 from ._nonlinear_penalties import (
-    NonlinearChiSquarePenalty,
-    NonlinearPenalty,
+    make_nonlinear_chi2_penalty,
 )
 
-PENALTIES = [
-    BICPenalty,
-    ChiSquarePenalty,
-    ConstantPenalty,
-    LinearChiSquarePenalty,
-    LinearPenalty,
-    NonlinearChiSquarePenalty,
-    NonlinearPenalty,
-    MinimumPenalty,
+CONSTANT_PENALTY_MAKERS = [
+    make_bic_penalty,
+    make_chi2_penalty,
+]
+LINEAR_PENALTY_MAKERS = [
+    make_linear_penalty,
+    make_linear_chi2_penalty,
+]
+NONLINEAR_PENALTY_MAKERS = [
+    make_nonlinear_chi2_penalty,
+]
+PENALTY_MAKERS = [
+    *CONSTANT_PENALTY_MAKERS,
+    *LINEAR_PENALTY_MAKERS,
+    *NONLINEAR_PENALTY_MAKERS,
 ]
 
-__all__ = PENALTIES + [
-    "as_penalty",
-]
+__all__ = PENALTY_MAKERS
