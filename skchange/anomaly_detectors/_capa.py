@@ -234,7 +234,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             "segment_saving",
             "CAPA",
             required_tasks=["cost", "saving"],
-            allow_penalised=False,
+            allow_penalised=True,
         )
         _segment_saving = to_saving(_segment_score)
 
@@ -255,7 +255,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             "point_saving",
             "CAPA",
             required_tasks=["cost", "saving"],
-            allow_penalised=False,
+            allow_penalised=True,
         )
         if _point_score.min_size != 1:
             raise ValueError("`point_saving` must have `min_size == 1`.")
@@ -370,7 +370,19 @@ class CAPA(BaseSegmentAnomalyDetector):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        from skchange.anomaly_scores import L2Saving
+        from skchange.base import BaseIntervalScorer
+        from skchange.compose.penalised_score import PenalisedScore
         from skchange.costs import L2Cost
+        from skchange.penalties import make_nonlinear_chi2_penalty
+
+        def _make_nonlinear_chi2_penalty_from_score(
+            score: BaseIntervalScorer,
+        ) -> np.ndarray:
+            score.check_is_fitted()
+            n = score._X.shape[0]
+            p = score._X.shape[1]
+            return make_nonlinear_chi2_penalty(score.get_param_size(p), n, p)
 
         params = [
             {
@@ -384,6 +396,12 @@ class CAPA(BaseSegmentAnomalyDetector):
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 2,
                 "max_segment_length": 20,
+            },
+            {
+                "segment_saving": PenalisedScore(
+                    L2Saving(),
+                    make_default_penalty=_make_nonlinear_chi2_penalty_from_score,
+                ),
             },
         ]
         return params

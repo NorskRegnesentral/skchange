@@ -6,16 +6,37 @@ import pytest
 
 from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_detectors._capa import run_capa
-from skchange.anomaly_scores import SAVINGS, to_saving
+from skchange.anomaly_scores import SAVINGS, L2Saving, to_saving
+from skchange.base import BaseIntervalScorer
 from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets import generate_alternating_data
+from skchange.penalties import make_nonlinear_chi2_penalty
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
-COSTS_AND_SAVINGS = COSTS + SAVINGS
+
+def make_nonlinear_chi2_penalty_from_score(
+    score: BaseIntervalScorer,
+) -> np.ndarray:
+    score.check_is_fitted()
+    n = score._X.shape[0]
+    p = score._X.shape[1]
+    return make_nonlinear_chi2_penalty(score.get_param_size(p), n, p)
+
+
+COSTS_AND_SAVINGS = (
+    COSTS
+    + SAVINGS
+    + [
+        PenalisedScore(
+            L2Saving(),
+            make_default_penalty=make_nonlinear_chi2_penalty_from_score,
+        ),
+    ]
+)
 DETECTORS = [CAPA]
 
 
