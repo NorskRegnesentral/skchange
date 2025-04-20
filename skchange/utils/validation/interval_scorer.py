@@ -18,7 +18,7 @@ def check_interval_scorer(
             f"`{arg_name}` must be a BaseIntervalScorer. " f"Got {type(scorer)}."
         )
     task = scorer.get_tag("task")
-    if task not in required_tasks:
+    if required_tasks and task not in required_tasks:
         _required_tasks = [f'"{task}"' for task in required_tasks]
         tasks_str = (
             ", ".join(_required_tasks[:-1]) + " or " + _required_tasks[-1]
