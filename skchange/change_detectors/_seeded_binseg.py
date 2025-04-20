@@ -140,18 +140,20 @@ class SeededBinarySegmentation(BaseChangeDetector):
     change_score : BaseIntervalScorer, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost is given, it is
         converted to a change score using the `ChangeScore` class.
-    penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
-        The penalty to use for the changepoint detection. If
+    penalty : np.ndarray or float, optional, default=None
+        The penalty to use for change detection. If
         `change_score.is_penalised_score == True` the penalty will be ignored.
-        The conversion of different types of penalties is as follows (see `as_penalty`):
+        The different types of penalties are as follows:
 
-        * ``float``: A constant penalty.
-        * ``np.ndarray``: A penalty array of the same length as the number of columns in
-        the data. It is converted internally to a constant, linear or nonlinear penalty
-        depending on its values.
-        * ``None``, the penalty is set to a BIC penalty with ``n=X.shape[0]`` and
-        ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
-        data to `predict`.
+            * ``float``: A constant penalty applied to the sum of scores across all
+            variables in the data.
+            * ``np.ndarray``: A penalty array of the same length as the number of
+            columns in the data, where element ``i`` of the array is the penalty for
+            ``i+1`` variables being affected by a change. The penalty array
+            must be positive and increasing (not strictly). A penalised score with a
+            linear penalty array is faster to evaluate than a nonlinear penalty array.
+            * ``None``: A default penalty is created in `predict` based on the fitted
+            score using the `make_bic_penalty` function.
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to ``2 * change_score.min_size``.
