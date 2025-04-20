@@ -9,13 +9,12 @@ import pandas as pd
 from ..base import BaseIntervalScorer
 from ..change_scores import CUSUM, to_change_score
 from ..compose.penalised_score import PenalisedScore
-from ..penalties import BICPenalty, as_penalty
-from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.numba.general import where
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
@@ -45,7 +44,7 @@ def moving_window_transform(
     ends = splits + bandwidth
     cuts = np.column_stack((starts, splits, ends))
 
-    scores = np.repeat(-penalised_score.penalty_.values[-1], n_samples)
+    scores = np.repeat(-np.max(penalised_score.penalty_), n_samples)
     scores[splits] = penalised_score.evaluate(cuts)[:, 0]
     return scores
 
@@ -109,7 +108,7 @@ class MovingWindow(BaseChangeDetector):
     def __init__(
         self,
         change_score: BaseIntervalScorer | None = None,
-        penalty: BasePenalty | np.ndarray | float | None = None,
+        penalty: np.ndarray | float | None = None,
         bandwidth: int = 30,
         min_detection_interval: int = 1,
     ):
@@ -128,11 +127,12 @@ class MovingWindow(BaseChangeDetector):
             allow_penalised=True,
         )
         _change_score = to_change_score(_score)
-        _penalty = as_penalty(self.penalty, default=BICPenalty())
+
+        check_penalty(penalty, "penalty", "MovingWindow")
         self._penalised_score = (
             _change_score.clone()  # need to avoid modifying the input change_score
             if _change_score.is_penalised_score
-            else PenalisedScore(_change_score, _penalty)
+            else PenalisedScore(_change_score, penalty)
         )
 
         check_larger_than(1, self.bandwidth, "bandwidth")

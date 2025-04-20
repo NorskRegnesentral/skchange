@@ -13,6 +13,7 @@ from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
@@ -186,7 +187,13 @@ class PELT(BaseChangeDetector):
         )
         self._cost = _cost.clone()
 
-        check_larger_than(0, penalty, "penalty", allow_none=True)
+        check_penalty(
+            penalty,
+            "penalty",
+            "PELT",
+            require_constant_penalty=True,
+            allow_none=True,
+        )
         check_larger_than(1, min_segment_length, "min_segment_length")
 
         self.set_tags(distribution_type=self._cost.get_tag("distribution_type"))
