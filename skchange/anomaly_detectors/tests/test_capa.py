@@ -77,6 +77,7 @@ def test_capa_anomalies(Detector, saving):
         point_saving=point_saving,
         min_segment_length=20,
         ignore_point_anomalies=True,  # To get test coverage.
+        find_affected_components=True,  # To get test coverage.
     )
     anomalies = detector.fit_predict(df)
     if isinstance(anomalies, pd.DataFrame):
