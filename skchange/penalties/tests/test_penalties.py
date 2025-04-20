@@ -86,3 +86,6 @@ def test_make_nonlinear_chi2_penalty():
         make_linear_chi2_penalty(1, 0, 1)
     with pytest.raises(ValueError):
         make_linear_chi2_penalty(1, 1, 0)
+
+    penalty_p1 = make_nonlinear_chi2_penalty(10, 200, 1)
+    assert penalty_p1.size == 1
