@@ -170,7 +170,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             variables in the data.
             * ``np.ndarray``: A penalty array of the same length as the number of
             columns in the data, where element ``i`` of the array is the penalty for
-            ``i+1`` variables being affected by a change or anomaly. The penalty array
+            ``i+1`` variables being affected by an anomaly. The penalty array
             must be positive and increasing (not strictly). A penalised score with a
             linear penalty array is faster to evaluate than a nonlinear penalty array.
             * ``None``: A default constant penalty is created in `predict` based on the
