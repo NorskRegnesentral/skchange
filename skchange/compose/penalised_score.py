@@ -1,21 +1,21 @@
 """Penalised interval scorer."""
 
 import copy
+from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
 
 from ..base import BaseIntervalScorer
-from ..penalties.base import BasePenalty
+from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.enums import EvaluationType
 from ..utils.validation.interval_scorer import check_interval_scorer
+from ..utils.validation.penalties import check_penalty, check_penalty_against_data
 
 
 @njit
-def _penalise_scores_constant(
-    scores: np.ndarray, penalty_values: np.ndarray
-) -> np.ndarray:
+def _penalise_scores_constant(scores: np.ndarray, penalty: float) -> np.ndarray:
     """Penalise scores with a constant penalty.
 
     Parameters
@@ -30,7 +30,7 @@ def _penalise_scores_constant(
     penalised_scores : np.ndarray
         The penalised scores.
     """
-    penalised_scores = scores.sum(axis=1) - penalty_values
+    penalised_scores = scores.sum(axis=1) - penalty
     return penalised_scores
 
 
@@ -89,6 +89,13 @@ def _penalise_scores_nonlinear(
     return np.array(penalised_scores, dtype=np.float64)
 
 
+def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
+    score.check_is_fitted()
+    n = score._X.shape[0]
+    p = score._X.shape[1]
+    return make_bic_penalty(score.get_param_size(p), n)
+
+
 class PenalisedScore(BaseIntervalScorer):
     """Penalised interval scorer.
 
@@ -115,9 +122,15 @@ class PenalisedScore(BaseIntervalScorer):
     evaluation_type = EvaluationType.MULTIVARIATE
     is_penalised_score = True
 
-    def __init__(self, score: BaseIntervalScorer, penalty: BasePenalty):
+    def __init__(
+        self,
+        score: BaseIntervalScorer,
+        penalty: np.ndarray | float | None = None,
+        make_default_penalty: Optional[Callable] = None,
+    ):
         self.score = score
         self.penalty = penalty
+        self.make_default_penalty = make_default_penalty
         super().__init__()
 
         check_interval_scorer(
@@ -127,14 +140,23 @@ class PenalisedScore(BaseIntervalScorer):
             required_tasks=["change_score", "local_anomaly_score", "saving"],
             allow_penalised=False,
         )
+        check_penalty(penalty, "penalty", "PenalisedScore")
+
         if (
             score.evaluation_type == EvaluationType.MULTIVARIATE
-            and penalty.penalty_type != "constant"
+            and isinstance(penalty, np.ndarray)
+            and penalty.size > 1
         ):
             raise ValueError(
-                "Multivariate scores output a single score per cut and are therefore"
-                "only compatible with constant penalties."
+                "`penalty` must be a constant penalty (a single value) for multivariate"
+                "scores."
             )
+
+        self._make_default_penalty = (
+            _make_bic_penalty_from_score
+            if make_default_penalty is None
+            else make_default_penalty
+        )
 
         self.set_tags(task=score.get_tag("task"))
         self.set_tags(distribution_type=score.get_tag("distribution_type"))
@@ -165,24 +187,17 @@ class PenalisedScore(BaseIntervalScorer):
         X_inner = pd.DataFrame(X, columns=self._X_columns, copy=False)
         self.score_.fit(X_inner)
 
-        if self.penalty.is_fitted:
-            # Need to copy the penalty because a `clone` will not copy the fitted values
-            self.penalty_ = copy.deepcopy(self.penalty)
-            if X.shape[1] != self.penalty_.p_:
-                raise ValueError(
-                    "The number of variables in the data must match the number of"
-                    " variables in the penalty."
-                    f" 'X.shape[1]' = {X.shape[1]} and 'penalty.p' = {self.penalty.p_}."
-                    " This error is most likely due to the penalty being fitted to a "
-                    " different data set than the score."
-                )
+        if self.penalty is None:
+            self.penalty_ = self._make_default_penalty(self.score_)
         else:
-            self.penalty_: BasePenalty = self.penalty.clone()
-            self.penalty_.fit(X, self.score_)
+            self.penalty_ = copy.deepcopy(self.penalty)
+            check_penalty_against_data(self.penalty_, X, "PenalisedScore")
 
-        if self.penalty.penalty_type == "constant" or X.shape[1] == 1:
+        penalty_array = np.asarray(self.penalty_).flatten()
+        penalty_diff = np.diff(penalty_array)
+        if X.shape[1] == 1 or penalty_array.size == 1:
             self.penalise_scores = _penalise_scores_constant
-        elif self.penalty.penalty_type == "linear":
+        elif np.allclose(penalty_diff, penalty_diff[0]):
             self.penalise_scores = _penalise_scores_linear
         else:
             self.penalise_scores = _penalise_scores_nonlinear
@@ -204,7 +219,7 @@ class PenalisedScore(BaseIntervalScorer):
             A 2D array of scores. One row for each row in cuts.
         """
         scores = self.score_.evaluate(cuts)
-        return self.penalise_scores(scores, self.penalty_.values).reshape(-1, 1)
+        return self.penalise_scores(scores, self.penalty_).reshape(-1, 1)
 
     @property
     def min_size(self) -> int:
@@ -264,11 +279,10 @@ class PenalisedScore(BaseIntervalScorer):
         """
         from skchange.anomaly_scores import L2Saving
         from skchange.change_scores import MultivariateGaussianScore
-        from skchange.penalties import BICPenalty, LinearChiSquarePenalty
 
         params = [
-            {"score": L2Saving(), "penalty": LinearChiSquarePenalty()},
-            {"score": MultivariateGaussianScore(), "penalty": BICPenalty()},
+            {"score": L2Saving(), "penalty": 20},
+            {"score": MultivariateGaussianScore()},
         ]
 
         return params
