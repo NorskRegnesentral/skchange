@@ -99,19 +99,51 @@ def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
 class PenalisedScore(BaseIntervalScorer):
     """Penalised interval scorer.
 
-    Penalises the scores of an interval scorer and aggregates them into a single value
-    for each cut. For non-constant penalties, the penalised score is optimised over the
-    number of affected components.
+    A wrapper for interval scorers that penalises the scores according to a penalty
+    function over the set of affected variables as described in [1]_ and [2]_.
+    Depending on the type of penalty input, the penalised score is calculated as
+    follows:
+
+    * A constant penalty: The penalised score is simply the sum of the scores
+    across all variables in the data minus the penalty.
+    * A penalty array where element ``i`` of the array is the penalty for ``i+1``
+    variables being affected by a change or anomaly: The penalised score is the optimal
+    penalised score over the number of affected components. This is suitable for data
+    where it is unknown how many variables are affected by a change or anomaly, and to
+    obtain strong detection power against both sparse and dense changes or anomalies.
 
     Parameters
     ----------
     score : BaseIntervalScorer
         The score to penalise. Costs are currently not supported.
-    penalty : BasePenalty
-        The penalty to apply to the scores. The penalty must be constant for
-        multivariate scorers. If the penalty is already fitted, it will not be refitted
-        to the data in the `fit` method.
-    """
+    penalty : np.ndarray | float, optional, default=None
+        The penalty to use for the penalised score. There are three options:
+
+            * ``float``: A constant penalty applied to the sum of scores across all
+            variables in the data.
+            * ``np.ndarray``: A penalty array of the same length as the number of
+            columns in the data, where element ``i`` of the array is the penalty for
+            ``i+1`` variables being affected by a change or anomaly. The penalty array
+            must be positive and increasing (not strictly). A penalised score with a
+            linear penalty array is faster to evaluate than a nonlinear penalty array.
+            * ``None``: A default penalty is created in `fit` based on the fitted
+            `score` using the `make_default_penalty` function.
+    make_default_penalty : Callable, optional, default=None
+        A function to create a default penalty from the fitted `score`. The function
+        must take a fitted `BaseIntervalScorer` and return a penalty value or
+        array. If `None`, the default penalty is created using
+        ``make_bic_penalty(score.get_param_size(score._X.shape[1]), score._X.shape[0])``.
+
+    References
+    ----------
+    .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
+       segment and point anomaly detection. Journal of Computational and Graphical
+       Statistics, 31(2), 574-585.
+    .. [2] Tickle, S. O., Eckley, I. A., & Fearnhead, P. (2021). A computationally
+       efficient, high-dimensional multiple changepoint procedure with application to
+       global terrorism incidence. Journal of the Royal Statistical Society Series A:
+       Statistics in Society, 184(4), 1303-1325.
+    """  # noqa: E501
 
     _tags = {
         "object_type": "interval_scorer",
@@ -175,11 +207,6 @@ class PenalisedScore(BaseIntervalScorer):
         -------
         self :
             Reference to self.
-
-        Notes
-        -----
-        If the penalty is already fitted, it will not be refitted to the data. If the
-        data is not compatible with the penalty, a ValueError will be raised.
         """
         self.score_: BaseIntervalScorer = self.score.clone()
         # Some scores operate on named columns of X, so the columns must be passed on
