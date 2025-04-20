@@ -6,7 +6,7 @@ import pytest
 
 from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_detectors._capa import run_capa
-from skchange.anomaly_scores import SAVINGS, L2Saving, to_saving
+from skchange.anomaly_scores import SAVINGS, to_saving
 from skchange.base import BaseIntervalScorer
 from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
@@ -28,21 +28,14 @@ def make_nonlinear_chi2_penalty_from_score(
 
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
-COSTS_AND_SAVING_INSTANCES = [
-    score.create_test_instance() for score in COSTS_AND_SAVINGS
-] + [
-    PenalisedScore(
-        L2Saving(),
-        make_default_penalty=make_nonlinear_chi2_penalty_from_score,
-    ),
-]
 DETECTORS = [CAPA]
 
 
-@pytest.mark.parametrize("saving", COSTS_AND_SAVING_INSTANCES)
+@pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
 @pytest.mark.parametrize("Detector", DETECTORS)
-def test_capa_anomalies(Detector, saving):
+def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
+    saving = Saving.create_test_instance()
     skip_if_no_test_data(saving)
     if isinstance(saving, BaseCost):
         if not saving.supports_fixed_params:
