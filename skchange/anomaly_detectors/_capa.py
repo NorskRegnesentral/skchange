@@ -394,6 +394,7 @@ class CAPA(BaseSegmentAnomalyDetector):
                 ),
                 "min_segment_length": 5,
                 "max_segment_length": 100,
+                "find_affected_components": True,
             },
             {
                 "segment_saving": L2Cost(param=0.0),
