@@ -9,12 +9,12 @@ import pandas as pd
 from ..anomaly_scores import L2Saving, to_saving
 from ..base import BaseIntervalScorer
 from ..compose.penalised_score import PenalisedScore
-from ..penalties import ChiSquarePenalty, as_penalty
-from ..penalties.base import BasePenalty
+from ..penalties import make_chi2_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
 
@@ -37,11 +37,30 @@ def get_anomalies(
     return segment_anomalies, point_anomalies
 
 
+def get_affected_components(
+    penalised_scorer: PenalisedScore,
+    anomalies: list[tuple[int, int]],
+) -> list[tuple[int, int, np.ndarray]]:
+    penalised_scorer.check_is_penalised()
+    penalised_scorer.check_is_fitted()
+    new_anomalies = []
+    for start, end in anomalies:
+        saving_values = penalised_scorer.score_.evaluate(np.array([start, end]))[0]
+        saving_order = np.argsort(-saving_values)  # Decreasing order.
+        penalised_savings = (
+            np.cumsum(saving_values[saving_order]) - penalised_scorer.penalty_
+        )
+        argmax = np.argmax(penalised_savings)
+        new_anomalies.append((start, end, saving_order[: argmax + 1]))
+    return new_anomalies
+
+
 def run_capa(
     segment_penalised_saving: PenalisedScore,
     point_penalised_saving: PenalisedScore,
     min_segment_length: int,
     max_segment_length: int,
+    find_affected_components: bool = False,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
     segment_penalised_saving.check_is_penalised()
     segment_penalised_saving.check_is_fitted()
@@ -59,6 +78,7 @@ def run_capa(
     # Used to get the final set of anomalies after the loop.
     opt_anomaly_starts = np.repeat(np.nan, n_samples)
     starts = np.array([], dtype=int)
+    max_segment_penalty = np.max(segment_penalised_saving.penalty_)
 
     ts = np.arange(min_segment_length - 1, n_samples)
     for t in ts:
@@ -89,14 +109,29 @@ def run_capa(
             opt_anomaly_starts[t] = t
 
         # Pruning the admissible starts
-        penalty_sum = segment_penalised_saving.penalty_.values[-1]
-        saving_too_low = candidate_savings + penalty_sum <= opt_savings[t + 1]
+        saving_too_low = candidate_savings + max_segment_penalty <= opt_savings[t + 1]
         too_long_segment = starts < t - max_segment_length + 2
         prune = saving_too_low | too_long_segment
         starts = starts[~prune]
 
     segment_anomalies, point_anomalies = get_anomalies(opt_anomaly_starts)
+
+    if find_affected_components:
+        segment_anomalies = get_affected_components(
+            segment_penalised_saving, segment_anomalies
+        )
+        point_anomalies = get_affected_components(
+            point_penalised_saving,
+            point_anomalies,
+        )
     return opt_savings[1:], segment_anomalies, point_anomalies
+
+
+def _make_chi2_penalty_from_score(score: BaseIntervalScorer) -> float:
+    score.check_is_fitted()
+    n = score._X.shape[0]
+    p = score._X.shape[1]
+    return make_chi2_penalty(score.get_param_size(p), n)
 
 
 class CAPA(BaseSegmentAnomalyDetector):
@@ -137,6 +172,11 @@ class CAPA(BaseSegmentAnomalyDetector):
         If ``True``, detected point anomalies are not returned by `predict`. I.e., only
         segment anomalies are returned. If ``False``, point anomalies are included in
         the output as segment anomalies of length 1.
+    find_affected_components : bool, optional, default=False
+        If ``True``, the affected components for each segment anomaly are returned in
+        the `predict` output. This is only relevant for multivariate data in combination
+        with a penalty array.
+
 
     See Also
     --------
@@ -178,11 +218,12 @@ class CAPA(BaseSegmentAnomalyDetector):
         self,
         segment_saving: BaseIntervalScorer | None = None,
         point_saving: BaseIntervalScorer | None = None,
-        segment_penalty: BasePenalty | float | None = None,
-        point_penalty: BasePenalty | float | None = None,
+        segment_penalty: np.ndarray | float | None = None,
+        point_penalty: np.ndarray | float | None = None,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
+        find_affected_components: bool = False,
     ):
         self.segment_saving = segment_saving
         self.point_saving = point_saving
@@ -191,6 +232,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
+        self.find_affected_components = find_affected_components
         super().__init__()
 
         _segment_score = L2Saving() if segment_saving is None else segment_saving
@@ -202,13 +244,16 @@ class CAPA(BaseSegmentAnomalyDetector):
             allow_penalised=False,
         )
         _segment_saving = to_saving(_segment_score)
-        _segment_penalty = as_penalty(
-            self.segment_penalty,
-            default=ChiSquarePenalty(),
-            require_penalty_type="constant",
-        )
-        self._segment_penalised_saving = PenalisedScore(
-            _segment_saving, _segment_penalty
+
+        check_penalty(segment_penalty, "segment_penalty", "CAPA")
+        self._segment_penalised_saving = (
+            _segment_saving.clone()  # need to avoid modifying the input change_score
+            if _segment_saving.is_penalised_score
+            else PenalisedScore(
+                _segment_saving,
+                segment_penalty,
+                make_default_penalty=_make_chi2_penalty_from_score,
+            )
         )
 
         _point_score = L2Saving() if point_saving is None else point_saving
@@ -220,19 +265,25 @@ class CAPA(BaseSegmentAnomalyDetector):
             allow_penalised=False,
         )
         if _point_score.min_size != 1:
-            raise ValueError("Point saving must have a minimum size of 1.")
+            raise ValueError("`point_saving` must have `min_size == 1`.")
         _point_saving = to_saving(_point_score)
-        _point_penalty = as_penalty(
-            self.point_penalty,
-            default=ChiSquarePenalty(),
-            require_penalty_type="constant",
+
+        check_penalty(point_penalty, "point_penalty", "CAPA")
+        self._point_penalised_saving = (
+            _point_saving.clone()  # need to avoid modifying the input change_score
+            if _point_saving.is_penalised_score
+            else PenalisedScore(
+                _point_saving,
+                point_penalty,
+                make_default_penalty=_make_chi2_penalty_from_score,
+            )
         )
-        self._point_penalised_saving = PenalisedScore(_point_saving, _point_penalty)
 
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
         self.set_tags(distribution_type=_segment_saving.get_tag("distribution_type"))
+        self.capability_variable_identification = self.find_affected_components
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -275,6 +326,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             point_penalised_saving=self.fitted_point_saving,
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
+            find_affected_components=self.find_affected_components,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 
