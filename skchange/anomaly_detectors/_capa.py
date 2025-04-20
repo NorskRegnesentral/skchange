@@ -161,14 +161,24 @@ class CAPA(BaseSegmentAnomalyDetector):
         minimum size of 1 are permitted.
         If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    segment_penalty : BasePenalty or float, optional, default=`ChiSquarePenalty`
-        The penalty to use for segment anomaly detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the default penalty is fit to the
-        input data to `predict`.
-    point_penalty : BasePenalty or float, optional, default=`ChiSquarePenalty`
-        The penalty to use for point anomaly detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the default penalty is fit to the
-        input data to `predict`.
+    segment_penalty : np.ndarray or float, optional, default=None
+        The penalty to use for segment anomaly detection. If
+        `segment_penalty.is_penalised_score == True` the penalty will be ignored.
+        The different types of penalties are as follows:
+
+            * ``float``: A constant penalty applied to the sum of scores across all
+            variables in the data.
+            * ``np.ndarray``: A penalty array of the same length as the number of
+            columns in the data, where element ``i`` of the array is the penalty for
+            ``i+1`` variables being affected by a change or anomaly. The penalty array
+            must be positive and increasing (not strictly). A penalised score with a
+            linear penalty array is faster to evaluate than a nonlinear penalty array.
+            * ``None``: A default constant penalty is created in `predict` based on the
+            fitted score using the `make_chi2_penalty` function.
+    point_penalty : np.ndarray or float, optional, default=None
+        The penalty to use for point anomaly detection. See the documentation for
+        `segment_penalty` for details. For ``None`` input, the default is set using the
+        `make_linear_chi2_penalty` function.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
     max_segment_length : int, optional, default=1000
