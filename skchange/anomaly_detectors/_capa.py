@@ -292,6 +292,8 @@ class CAPA(BaseSegmentAnomalyDetector):
             A `pd.DataFrame` with a range index and two columns:
             * ``"ilocs"`` - left-closed ``pd.Interval``s of iloc based segments.
             * ``"labels"`` - integer labels ``1, ..., K`` for each segment anomaly.
+            * ``"icolumns"`` - list of affected columns for each segment anomaly. Only
+              included if `find_affected_components` is ``True``.
 
         Attributes
         ----------
