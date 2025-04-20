@@ -4,24 +4,23 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors import CAPA, MVCAPA
+from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_detectors._capa import run_capa
-from skchange.anomaly_scores import SAVINGS, Saving, to_saving
+from skchange.anomaly_scores import SAVINGS, to_saving
 from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS, L1Cost, L2Cost, MultivariateGaussianCost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
 from skchange.datasets import generate_alternating_data
-from skchange.penalties import ChiSquarePenalty
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
-from skchange.utils.validation.enums import EvaluationType
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
+DETECTORS = [CAPA]
 
 
 @pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
-@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+@pytest.mark.parametrize("Detector", DETECTORS)
 def test_capa_anomalies(Detector, Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
@@ -32,10 +31,6 @@ def test_capa_anomalies(Detector, Saving):
         else:
             fixed_params = find_fixed_param_combination(Saving)
             saving = saving.set_params(**fixed_params)
-
-    if Detector is MVCAPA and saving.evaluation_type != EvaluationType.UNIVARIATE:
-        # MVCAPA requires univariate saving.
-        pytest.skip("Skipping test for MVCAPA with non-univariate saving.")
 
     if isinstance(saving, BaseCost) and not saving.supports_fixed_params:
         pytest.skip("Skipping test for Cost without support for fixed params.")
@@ -75,7 +70,7 @@ def test_capa_anomalies(Detector, Saving):
     )
 
 
-@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+@pytest.mark.parametrize("Detector", DETECTORS)
 def test_capa_anomalies_segment_length(Detector):
     detector = Detector.create_test_instance()
     min_segment_length = 5
@@ -92,7 +87,7 @@ def test_capa_anomalies_segment_length(Detector):
     assert np.all(anomaly_lengths == 5)
 
 
-@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+@pytest.mark.parametrize("Detector", DETECTORS)
 def test_capa_point_anomalies(Detector):
     detector = Detector.create_test_instance()
     n_segments = 2
@@ -112,29 +107,6 @@ def test_capa_point_anomalies(Detector):
     estimated_point_anomaly_iloc = anomalies["ilocs"].iloc[0]
 
     assert point_anomaly_iloc == estimated_point_anomaly_iloc.left
-
-
-def test_mvcapa_errors():
-    """Test MVCAPA error cases."""
-    cov_mat = np.eye(2)
-    cost = MultivariateGaussianCost([0.0, cov_mat])
-    saving = Saving(cost)
-
-    # Test segment saving must be univariate
-    with pytest.raises(ValueError):
-        MVCAPA(segment_saving=saving)
-
-    # Test point saving must have a minimum size of 1
-    with pytest.raises(ValueError):
-        MVCAPA(point_saving=saving)
-
-    # Test min_segment_length must be greater than 2
-    with pytest.raises(ValueError):
-        MVCAPA(min_segment_length=1)
-
-    # Test max_segment_length must be greater than min_segment_length
-    with pytest.raises(ValueError):
-        MVCAPA(min_segment_length=5, max_segment_length=4)
 
 
 def test_capa_errors():
@@ -165,14 +137,11 @@ def test_capa_different_data_shapes():
     segment_saving = to_saving(L2Cost(param=0.0))
     point_saving = to_saving(L2Cost(param=0.0))
 
-    segment_penalty = ChiSquarePenalty()
-    point_penalty = ChiSquarePenalty()
-
     segment_data = pd.DataFrame(np.random.randn(20, 2))
     point_data = pd.DataFrame(np.random.randn(30, 2))  # Different number of samples
 
-    segment_penalised_saving = PenalisedScore(segment_saving, segment_penalty)
-    point_penalised_saving = PenalisedScore(point_saving, point_penalty)
+    segment_penalised_saving = PenalisedScore(segment_saving)
+    point_penalised_saving = PenalisedScore(point_saving)
 
     segment_penalised_saving.fit(segment_data)
     point_penalised_saving.fit(point_data)
@@ -187,7 +156,7 @@ def test_capa_different_data_shapes():
         )
 
 
-@pytest.mark.parametrize("Detector", [CAPA, MVCAPA])
+@pytest.mark.parametrize("Detector", DETECTORS)
 def test_invalid_savings(Detector):
     """
     Test that CAPA and MVCAPA raises an error when given an invalid saving argument.
