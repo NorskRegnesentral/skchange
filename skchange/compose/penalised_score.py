@@ -189,6 +189,7 @@ class PenalisedScore(BaseIntervalScorer):
 
         if self.penalty is None:
             self.penalty_ = self._make_default_penalty(self.score_)
+            check_penalty(self.penalty_, "penalty_", "PenalisedScore", allow_none=False)
         else:
             self.penalty_ = copy.deepcopy(self.penalty)
             check_penalty_against_data(self.penalty_, X, "PenalisedScore")
