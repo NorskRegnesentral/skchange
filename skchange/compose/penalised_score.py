@@ -22,8 +22,8 @@ def _penalise_scores_constant(scores: np.ndarray, penalty: float) -> np.ndarray:
     ----------
     scores : np.ndarray
         The scores to penalise. The output of a BaseIntervalScorer.
-    penalty_values : np.ndarray
-        The penalty values. The output of a constant BasePenalty.
+    penalty: float
+        The penalty value.
 
     Returns
     -------
@@ -45,7 +45,7 @@ def _penalise_scores_linear(
     scores : np.ndarray
         The scores to penalise. The output of a BaseIntervalScorer.
     penalty_values : np.ndarray
-        The penalty values. The output of a linear BasePenalty.
+        The penalty values.
 
     Returns
     -------
@@ -73,7 +73,7 @@ def _penalise_scores_nonlinear(
     scores : np.ndarray
         The scores to penalise. The output of a BaseIntervalScorer.
     penalty_values : np.ndarray
-        The penalty values. The output of a nonlinear BasePenalty.
+        The penalty values.
 
     Returns
     -------

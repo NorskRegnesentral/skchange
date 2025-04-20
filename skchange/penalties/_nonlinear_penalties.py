@@ -45,7 +45,7 @@ def make_nonlinear_chi2_penalty(
 
     if p == 1:
         # This penalty is not defined for p = 1, so we return a penalty value equal
-        # to the constant ChiSquarePenalty.
+        # to the constant chi square penalty.
         return np.array([make_chi2_penalty(n_params_per_variable, n)])
 
     def penalty_func(j: int) -> float:
