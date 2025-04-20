@@ -137,13 +137,11 @@ def _make_chi2_penalty_from_score(score: BaseIntervalScorer) -> float:
 class CAPA(BaseSegmentAnomalyDetector):
     """The collective and point anomaly (CAPA) detection algorithm.
 
-    An efficient implementation of the CAPA algorithm [1]_ for anomaly detection.
-    It is implemented using the 'savings' formulation of the problem given in [2]_ and
-    [3]_.
-
-    `CAPA` can be applied to both univariate and multivariate data, but does not infer
-    the subset of affected components for each anomaly in the multivariate case. See
-    `MVCAPA` if such inference is desired.
+    An efficient implementation of the CAPA family of algorithms for anomaly detection.
+    Supports both univariate data [1]_ (CAPA) and multivariate data [2]_ (MVCAPA) and
+    [3]_ (CAPA-CC, not implemented yet). For multivariat data, the algorithm can also
+    be used to infer the affected components for each anomaly given a suitable penalty
+    array.
 
     Parameters
     ----------
@@ -176,11 +174,6 @@ class CAPA(BaseSegmentAnomalyDetector):
         If ``True``, the affected components for each segment anomaly are returned in
         the `predict` output. This is only relevant for multivariate data in combination
         with a penalty array.
-
-
-    See Also
-    --------
-    MVCAPA : Multivariate CAPA with affected variable inference.
 
     References
     ----------
