@@ -9,7 +9,7 @@ import pandas as pd
 from ..anomaly_scores import L2Saving, to_saving
 from ..base import BaseIntervalScorer
 from ..compose.penalised_score import PenalisedScore
-from ..penalties import make_chi2_penalty
+from ..penalties import make_chi2_penalty, make_linear_chi2_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
@@ -132,6 +132,13 @@ def _make_chi2_penalty_from_score(score: BaseIntervalScorer) -> float:
     n = score._X.shape[0]
     p = score._X.shape[1]
     return make_chi2_penalty(score.get_param_size(p), n)
+
+
+def _make_linear_chi2_penalty_from_score(score: BaseIntervalScorer) -> np.ndarray:
+    score.check_is_fitted()
+    n = score._X.shape[0]
+    p = score._X.shape[1]
+    return make_linear_chi2_penalty(score.get_param_size(p), n, p)
 
 
 class CAPA(BaseSegmentAnomalyDetector):
@@ -268,7 +275,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             else PenalisedScore(
                 _point_saving,
                 point_penalty,
-                make_default_penalty=_make_chi2_penalty_from_score,
+                make_default_penalty=_make_linear_chi2_penalty_from_score,
             )
         )
 
