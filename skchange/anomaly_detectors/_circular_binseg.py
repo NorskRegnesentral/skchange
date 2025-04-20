@@ -11,6 +11,7 @@ from ..base import BaseIntervalScorer
 from ..change_detectors._seeded_binseg import make_seeded_intervals
 from ..compose.penalised_score import PenalisedScore
 from ..costs import L2Cost
+from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
@@ -102,6 +103,13 @@ def run_circular_binseg(
         anomaly_scores, anomaly_starts, anomaly_ends, starts, ends
     )
     return anomalies, anomaly_scores, maximizers, starts, ends
+
+
+def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
+    score.check_is_fitted()
+    n = score._X.shape[0]
+    p = score._X.shape[1]
+    return make_bic_penalty(score.get_param_size(p), n, additional_cpts=2)
 
 
 class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
@@ -207,7 +215,11 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         self._penalised_score = (
             _anomaly_score.clone()  # need to avoid modifying the input change_score
             if _anomaly_score.is_penalised_score
-            else PenalisedScore(_anomaly_score, penalty)
+            else PenalisedScore(
+                _anomaly_score,
+                penalty,
+                make_default_penalty=_make_bic_penalty_from_score,
+            )
         )
 
         check_larger_than(1.0, self.min_segment_length, "min_segment_length")
