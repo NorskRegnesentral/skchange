@@ -388,6 +388,14 @@ class CAPA(BaseSegmentAnomalyDetector):
 
         params = [
             {
+                "segment_saving": PenalisedScore(
+                    L2Saving(),
+                    make_default_penalty=_make_nonlinear_chi2_penalty_from_score,
+                ),
+                "min_segment_length": 5,
+                "max_segment_length": 100,
+            },
+            {
                 "segment_saving": L2Cost(param=0.0),
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 5,
@@ -398,12 +406,6 @@ class CAPA(BaseSegmentAnomalyDetector):
                 "point_saving": L2Cost(param=0.0),
                 "min_segment_length": 2,
                 "max_segment_length": 20,
-            },
-            {
-                "segment_saving": PenalisedScore(
-                    L2Saving(),
-                    make_default_penalty=_make_nonlinear_chi2_penalty_from_score,
-                ),
             },
         ]
         return params
