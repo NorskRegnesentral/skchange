@@ -250,15 +250,15 @@ def test_noise_sensitivity():
             random_seed=42,
         )
 
-        # Test MovingWindow
-        mw_detector = MovingWindow(
-            change_score=ContinuousLinearTrendScore(), bandwidth=30, penalty=25
+        # Test Narrowest over threshold
+        detector = SeededBinarySegmentation(
+            ContinuousLinearTrendScore(), penalty=25, selection_method="narrowest"
         )
 
-        mw_cps = mw_detector.fit_predict(df)
+        cps = detector.fit_predict(df)
 
-        if len(mw_cps) == 1:
-            deviation = abs(mw_cps.iloc[0, 0] - true_cps[0])
+        if len(cps) == 1:
+            deviation = abs(cps.iloc[0, 0] - true_cps[0])
             max_deviations.append(deviation)
 
     # Assert that for reasonable noise levels, we can detect the changepoint
