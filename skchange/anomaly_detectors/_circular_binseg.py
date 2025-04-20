@@ -11,12 +11,11 @@ from ..base import BaseIntervalScorer
 from ..change_detectors._seeded_binseg import make_seeded_intervals
 from ..compose.penalised_score import PenalisedScore
 from ..costs import L2Cost
-from ..penalties import BICPenalty, as_penalty
-from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
 
@@ -182,7 +181,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
     def __init__(
         self,
         anomaly_score: BaseIntervalScorer | None = None,
-        penalty: BasePenalty | np.ndarray | float | None = None,
+        penalty: float | np.ndarray | None = None,
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
         growth_factor: float = 1.5,
@@ -203,11 +202,12 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             allow_penalised=True,
         )
         _anomaly_score = to_local_anomaly_score(_score)
-        _penalty = as_penalty(self.penalty, default=BICPenalty())
+
+        check_penalty(penalty, "penalty", "CircularBinarySegmentation")
         self._penalised_score = (
             _anomaly_score.clone()  # need to avoid modifying the input change_score
             if _anomaly_score.is_penalised_score
-            else PenalisedScore(_anomaly_score, _penalty)
+            else PenalisedScore(_anomaly_score, penalty)
         )
 
         check_larger_than(1.0, self.min_segment_length, "min_segment_length")
