@@ -7,7 +7,9 @@ from skchange.datasets import generate_alternating_data
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
 
-def find_fixed_param_combination(cost_class: type[BaseCost]):
+def find_fixed_param_combination(
+    cost_class: type[BaseCost] | BaseCost,
+) -> dict[str, float]:
     """Find the first fixed parameter combination in the test parameters of a cost."""
     test_param_sets = cost_class.get_test_params()
     fixed_test_param_set = None
@@ -17,9 +19,14 @@ def find_fixed_param_combination(cost_class: type[BaseCost]):
             break
 
     if fixed_test_param_set is None:
+        class_name = (
+            cost_class.__name__
+            if isinstance(cost_class, type)
+            else cost_class.__class__.__name__
+        )
         raise ValueError(
             f"No fixed `param` argument found in `get_test_params()` of"
-            f" the cost class {cost_class.__name__}"
+            f" the cost class {class_name}"
         )
 
     return fixed_test_param_set
