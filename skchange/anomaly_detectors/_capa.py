@@ -156,11 +156,6 @@ class CAPA(BaseSegmentAnomalyDetector):
         The saving to use for segment anomaly detection.
         If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
-    point_saving : BaseIntervalScorer, optional, default=L2Saving()
-        The saving to use for point anomaly detection. Only savings with a
-        minimum size of 1 are permitted.
-        If a cost is given, the saving is constructed from the cost. The
-        cost must have a fixed parameter that represents the baseline cost.
     segment_penalty : np.ndarray or float, optional, default=None
         The penalty to use for segment anomaly detection. If
         `segment_penalty.is_penalised_score == True` the penalty will be ignored.
@@ -175,6 +170,11 @@ class CAPA(BaseSegmentAnomalyDetector):
             linear penalty array is faster to evaluate than a nonlinear penalty array.
             * ``None``: A default constant penalty is created in `predict` based on the
             fitted score using the `make_chi2_penalty` function.
+    point_saving : BaseIntervalScorer, optional, default=L2Saving()
+        The saving to use for point anomaly detection. Only savings with a
+        minimum size of 1 are permitted.
+        If a cost is given, the saving is constructed from the cost. The
+        cost must have a fixed parameter that represents the baseline cost.
     point_penalty : np.ndarray or float, optional, default=None
         The penalty to use for point anomaly detection. See the documentation for
         `segment_penalty` for details. For ``None`` input, the default is set using the
@@ -227,8 +227,8 @@ class CAPA(BaseSegmentAnomalyDetector):
     def __init__(
         self,
         segment_saving: BaseIntervalScorer | None = None,
-        point_saving: BaseIntervalScorer | None = None,
         segment_penalty: np.ndarray | float | None = None,
+        point_saving: BaseIntervalScorer | None = None,
         point_penalty: np.ndarray | float | None = None,
         min_segment_length: int = 2,
         max_segment_length: int = 1000,
@@ -236,8 +236,8 @@ class CAPA(BaseSegmentAnomalyDetector):
         find_affected_components: bool = False,
     ):
         self.segment_saving = segment_saving
-        self.point_saving = point_saving
         self.segment_penalty = segment_penalty
+        self.point_saving = point_saving
         self.point_penalty = point_penalty
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
