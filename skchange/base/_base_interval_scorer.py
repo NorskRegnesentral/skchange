@@ -232,7 +232,7 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return p
 
-    def get_required_cut_size(self) -> int:
+    def _get_required_cut_size(self) -> int:
         """Get the required cut size for the scorer.
 
         The cut size is the number of columns in the cuts array. The cut size is
@@ -276,7 +276,7 @@ class BaseIntervalScorer(BaseEstimator):
         return check_cuts_array(
             cuts,
             min_size=self.min_size,
-            last_dim_size=self.get_required_cut_size(),
+            last_dim_size=self._get_required_cut_size(),
         )
 
     def check_is_penalised(self):

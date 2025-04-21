@@ -78,4 +78,4 @@ def test_check_is_penalised():
 def test_task_tag_not_set():
     evaluator = InvalidConcreteIntervalEvaluator()
     with pytest.raises(RuntimeError):
-        evaluator.get_required_cut_size()
+        evaluator._get_required_cut_size()

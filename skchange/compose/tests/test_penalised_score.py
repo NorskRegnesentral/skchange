@@ -11,7 +11,7 @@ from skchange.compose.penalised_score import PenalisedScore
 def test_penalised_score_init():
     scorer = CUSUM()
     penalised_score = PenalisedScore(scorer)
-    assert penalised_score.get_required_cut_size() == scorer.get_required_cut_size()
+    assert penalised_score._get_required_cut_size() == scorer._get_required_cut_size()
 
     with pytest.raises(ValueError, match="penalised"):
         PenalisedScore(PenalisedScore(scorer))
