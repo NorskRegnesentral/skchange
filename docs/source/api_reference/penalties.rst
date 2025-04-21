@@ -15,7 +15,7 @@ The penalty for each additional change point in the model is constant.
 
 .. autosummary::
     :toctree: auto_generated/
-    :template: class.rst
+    :template: functions.rst
 
     make_bic_penalty
     make_chi2_penalty
@@ -30,7 +30,7 @@ Penalised scores using linear penalties are faster to compute than non-linear pe
 
 .. autosummary::
     :toctree: auto_generated/
-    :template: class.rst
+    :template: functions.rst
 
     make_linear_penalty
     make_linear_chi2_penalty
@@ -42,6 +42,6 @@ variables affected by the change. Only relevant for multivariate data. Some dete
 use such penalties to identify the variables responsible for the change or anomaly.
 .. autosummary::
     :toctree: auto_generated/
-    :template: class.rst
+    :template: functions.rst
 
     make_nonlinear_chi2_penalty
