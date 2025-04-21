@@ -65,7 +65,7 @@ def test_moving_window_scores(Score):
     )
     detector = MovingWindow(score, penalty=0)
     scores = detector.fit(df).transform_scores(df)
-    assert np.all(scores >= 0.0)
+    assert np.all(np.logical_or(scores >= 0.0, np.isnan(scores)))
     assert len(scores) == len(df)
 
 

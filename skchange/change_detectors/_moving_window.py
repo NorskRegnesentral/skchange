@@ -45,7 +45,7 @@ def moving_window_transform(
     cuts = np.column_stack((starts, splits, ends))
 
     # astype(float) since penalty_ might be int, which causes all scores to be int.
-    scores = np.repeat(-np.max(penalised_score.penalty_), n_samples).astype(np.float64)
+    scores = np.repeat(np.nan, n_samples)
     scores[splits] = penalised_score.evaluate(cuts)[:, 0]
     return scores
 
