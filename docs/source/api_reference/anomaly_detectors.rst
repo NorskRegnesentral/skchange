@@ -33,4 +33,4 @@ Segment anomaly detectors with variable identification
     :toctree: auto_generated/
     :template: class.rst
 
-    MVCAPA
+    CAPA
