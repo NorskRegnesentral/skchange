@@ -6,9 +6,13 @@ Scitype defining methods:
     fitting                         - fit(self, X, y=None)
     evaluating                      - evaluate(self, cuts)
 
-Needs to be implemented for a concrete detector:
+Needs to be implemented for a concrete interval scorer:
     _fit(self, X, y=None)
     _evaluate(self, cuts)
+
+Recommended but optional to implement for a concrete detector:
+    min_size(self)
+    get_param_size(self, p)
 """
 
 __author__ = ["Tveten", "johannvk", "fkiraly"]
