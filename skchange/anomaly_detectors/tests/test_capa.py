@@ -172,7 +172,7 @@ def test_capa_different_data_shapes():
 @pytest.mark.parametrize("Detector", DETECTORS)
 def test_invalid_savings(Detector):
     """
-    Test that CAPA and MVCAPA raises an error when given an invalid saving argument.
+    Test that CAPA raises an error when given an invalid saving argument.
     """
     with pytest.raises(ValueError, match="segment_saving"):
         Detector("l2")
