@@ -233,6 +233,13 @@ class BaseIntervalScorer(BaseEstimator):
         return p
 
     def get_required_cut_size(self) -> int:
+        """Get the required cut size for the scorer.
+
+        The cut size is the number of columns in the cuts array. The cut size is
+        determined by the task of the scorer. For example, a cost and a saving has a cut
+        size of 2, a change score has a cut size of 3, and a local anomaly score has a
+        cut size of 4. The cut size is used to check the cuts array for compatibility.
+        """
         task = self.get_tag("task")
         if task == "cost":
             cut_size = 2
