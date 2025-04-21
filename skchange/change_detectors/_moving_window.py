@@ -67,15 +67,16 @@ class MovingWindow(BaseChangeDetector):
         `change_score.is_penalised_score == True` the penalty will be ignored.
         The different types of penalties are as follows:
 
-            * ``float``: A constant penalty applied to the sum of scores across all
-            variables in the data.
-            * ``np.ndarray``: A penalty array of the same length as the number of
-            columns in the data, where element ``i`` of the array is the penalty for
-            ``i+1`` variables being affected by a change. The penalty array
-            must be positive and increasing (not strictly). A penalised score with a
-            linear penalty array is faster to evaluate than a nonlinear penalty array.
-            * ``None``: A default penalty is created in `predict` based on the fitted
-            score using the `make_bic_penalty` function.
+        * ``float``: A constant penalty applied to the sum of scores across all
+          variables in the data.
+        * ``np.ndarray``: A penalty array of the same length as the number of
+          columns in the data, where element ``i`` of the array is the penalty for
+        ``i+1`` variables being affected by a change. The penalty array
+          must be positive and increasing (not strictly). A penalised score with a
+          linear penalty array is faster to evaluate than a nonlinear penalty array.
+        * ``None``: A default penalty is created in `predict` based on the fitted
+          score using the `make_bic_penalty` function.
+
     bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the

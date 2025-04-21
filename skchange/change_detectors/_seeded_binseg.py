@@ -145,15 +145,16 @@ class SeededBinarySegmentation(BaseChangeDetector):
         `change_score.is_penalised_score == True` the penalty will be ignored.
         The different types of penalties are as follows:
 
-            * ``float``: A constant penalty applied to the sum of scores across all
-            variables in the data.
-            * ``np.ndarray``: A penalty array of the same length as the number of
-            columns in the data, where element ``i`` of the array is the penalty for
-            ``i+1`` variables being affected by a change. The penalty array
-            must be positive and increasing (not strictly). A penalised score with a
-            linear penalty array is faster to evaluate than a nonlinear penalty array.
-            * ``None``: A default penalty is created in `predict` based on the fitted
-            score using the `make_bic_penalty` function.
+        * ``float``: A constant penalty applied to the sum of scores across all
+          variables in the data.
+        * ``np.ndarray``: A penalty array of the same length as the number of
+          columns in the data, where element ``i`` of the array is the penalty for
+        ``i+1`` variables being affected by a change. The penalty array
+          must be positive and increasing (not strictly). A penalised score with a
+          linear penalty array is faster to evaluate than a nonlinear penalty array.
+        * ``None``: A default penalty is created in `predict` based on the fitted
+          score using the `make_bic_penalty` function.
+
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to ``2 * change_score.min_size``.
@@ -178,12 +179,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
     References
     ----------
     .. [1] Kovács, S., Bühlmann, P., Li, H., & Munk, A. (2023). Seeded binary
-    segmentation: a general methodology for fast and optimal changepoint detection.
-    Biometrika, 110(1), 249-256.
-    .. [2] Rafal Baranowski, Yining Chen, Piotr Fryzlewicz, Narrowest-Over-Threshold
-    Detection of Multiple Change Points and Change-Point-Like Features, Journal of the
-    Royal Statistical Society Series B: Statistical Methodology, Volume 81, Issue 3,
-    July 2019, Pages 649-672.
+        segmentation: a general methodology for fast and optimal changepoint detection.
+        Biometrika, 110(1), 249-256.
+
+    .. [2] Baranowski, R., Chen, Y., & Fryzlewicz, P. (2019). Narrowest-over-threshold
+        detection of multiple change points and change-point-like features. Journal of
+        the Royal Statistical Society Series B: Statistical Methodology, 81(3), 649-672.
 
     Examples
     --------
