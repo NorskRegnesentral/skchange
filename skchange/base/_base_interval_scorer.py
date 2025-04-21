@@ -284,6 +284,6 @@ class BaseIntervalScorer(BaseEstimator):
         )
 
     def check_is_penalised(self):
-        """Check if the score is inherently performing penalisation."""
+        """Check if the scorer is inherently performing penalisation."""
         if not self.is_penalised_score:
-            raise ValueError("The score is not penalised.")
+            raise RuntimeError("The interval scorer is not penalised.")

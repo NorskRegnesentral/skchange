@@ -71,7 +71,7 @@ def test_not_implemented_output_dim():
 
 def test_check_is_penalised():
     evaluator = ConcreteIntervalEvaluator()
-    with pytest.raises(ValueError):
+    with pytest.raises(RuntimeError):
         evaluator.check_is_penalised()
 
 
