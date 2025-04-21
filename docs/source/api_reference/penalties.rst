@@ -40,6 +40,7 @@ Nonlinear penalties
 The penalty for each additional change point in the model is non-linear in the number of
 variables affected by the change. Only relevant for multivariate data. Some detectors
 use such penalties to identify the variables responsible for the change or anomaly.
+
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
