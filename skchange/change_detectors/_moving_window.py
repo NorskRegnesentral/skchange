@@ -44,7 +44,8 @@ def moving_window_transform(
     ends = splits + bandwidth
     cuts = np.column_stack((starts, splits, ends))
 
-    scores = np.repeat(-np.max(penalised_score.penalty_), n_samples)
+    # astype(float) since penalty_ might be int, which causes all scores to be int.
+    scores = np.repeat(-np.max(penalised_score.penalty_), n_samples).astype(np.float64)
     scores[splits] = penalised_score.evaluate(cuts)[:, 0]
     return scores
 
