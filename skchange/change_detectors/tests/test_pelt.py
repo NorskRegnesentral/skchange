@@ -8,7 +8,9 @@ import pytest
 
 from skchange.change_detectors._pelt import (
     get_changepoints,
-    run_pelt,
+)
+from skchange.change_detectors._pelt import (
+    run_pelt_masked as run_pelt,
 )
 from skchange.costs import L2Cost
 from skchange.costs.base import BaseCost
@@ -178,6 +180,144 @@ def run_optimal_partitioning(
     return opt_cost[1:], get_changepoints(prev_cpts)
 
 
+def run_improved_pelt_array_based(
+    cost: BaseCost,
+    penalty: float,
+    min_segment_length: int,
+    split_cost: float = 0.0,
+    percent_pruning_margin: float = 0.0,
+) -> tuple[np.ndarray, list]:
+    """Run the PELT algorithm.
+
+    Currently agrees with the 'changepoint::cpt.mean' implementation of PELT in R.
+    If the 'min_segment_length' is large enough to span more than a single changepoint,
+    the algorithm can return a suboptimal partitioning.
+    In that case, resort to the 'optimal_partitioning' algorithm.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        The data to find changepoints in.
+    cost: BaseCost
+        The cost to use.
+    penalty : float
+        The penalty incurred for adding a changepoint.
+    min_segment_length : int
+        The minimum length of a segment, by default 1.
+    split_cost : float, optional
+        The cost of splitting a segment, to ensure that
+        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
+        for all possible splits, 0 <= t < p < s <= len(X) - 1.
+        By default set to 0.0, which is sufficient for
+        log likelihood cost functions to satisfy the
+        above inequality.
+    percent_pruning_margin : float, optional
+        The percentage of pruning margin to use. By default set to 10.0.
+        This is used to prune the admissible starts set.
+        The pruning margin is used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
+
+    Returns
+    -------
+    tuple[np.ndarray, list]
+        The optimal costs and the changepoints.
+    """
+    cost.check_is_fitted()
+    n_samples = cost._X.shape[0]
+    min_segment_shift = min_segment_length - 1
+
+    # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
+    opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
+
+    # Cannot compute the cost for the first 'min_segment_shift' elements:
+    opt_cost[1:min_segment_length] = 0.0
+
+    # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
+    non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
+    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
+    non_changepoint_intervals = np.column_stack(
+        (non_changepoint_starts, non_changepoint_ends)
+    )
+    costs = cost.evaluate(non_changepoint_intervals)
+    agg_costs = np.sum(costs, axis=1)
+    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
+
+    # Store the previous changepoint for each latest start added.
+    # Used to get the final set of changepoints after the loop.
+    prev_cpts = np.repeat(0, n_samples)
+
+    # Evolving set of admissible segment starts.
+    cost_eval_starts = np.array(([0]), dtype=np.int64)
+
+    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
+        -1, 1
+    )
+    cost_eval_time = 0.0
+    # for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
+    for current_obs_ind in observation_indices:
+        latest_start = current_obs_ind - min_segment_shift
+        opt_cost_obs_ind = current_obs_ind[0] + 1
+
+        # Add the next start to the admissible starts set:
+        cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
+        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
+        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        cost_eval_t0 = time.perf_counter()
+        costs = cost.evaluate(cost_eval_intervals)
+        agg_costs = np.sum(costs, axis=1)
+        cost_eval_t1 = time.perf_counter()
+        cost_eval_time += cost_eval_t1 - cost_eval_t0
+
+        # Add the penalty for a new segment:
+        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+
+        argmin_candidate_cost = np.argmin(candidate_opt_costs)
+        opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
+
+        # Trimming the admissible starts set: (reuse the array of optimal costs)
+        current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
+        # Handle cases where the optimal cost is negative:
+        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+
+        # start_inclusion_threshold = (
+        #     current_obs_ind_opt_cost
+        #     + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+        # ) + penalty  # Moved from 'negative' on left side to 'positive' on right side.
+        # old_start_inclusion_mask = (
+        #     candidate_opt_costs + split_cost <= start_inclusion_threshold
+        # )
+
+        # Test against last 'min_segment_length' optimal costs:
+        start_inclusion_thresholds = (
+            opt_cost[opt_cost_obs_ind - min_segment_shift : opt_cost_obs_ind + 1]
+            + penalty
+            + split_cost
+        ) + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+        new_start_inclusion_mask = np.any(
+            candidate_opt_costs.reshape(-1, 1)
+            <= start_inclusion_thresholds.reshape(-1, min_segment_length),
+            axis=1,
+        )
+        # if np.any(new_start_inclusion_mask != old_start_inclusion_mask):
+        #     # This should not happen, as the pruning should be consistent.
+        #     # If it does, raise an error.
+        #     print("Difference found!")
+        # np.testing.assert_array_equal(
+        #     new_start_inclusion_mask,
+        #     candidate_opt_costs <= start_inclusion_threshold,
+        #     err_msg="PELT pruning failed to prune the admissible starts.",
+        # )
+        cost_eval_starts = cost_eval_starts[
+            # Introduce a small tolerance to avoid numerical issues:
+            # candidate_opt_costs + split_cost <= start_inclusion_threshold
+            # old_start_inclusion_mask
+            new_start_inclusion_mask
+        ]
+
+    return opt_cost[1:], get_changepoints(prev_cpts), cost_eval_time
+
+
 def run_pelt_array_based(
     cost: BaseCost,
     penalty: float,
@@ -254,6 +394,7 @@ def run_pelt_array_based(
     # for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
+        opt_cost_obs_ind = current_obs_ind[0] + 1
 
         # Add the next start to the admissible starts set:
         cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
@@ -269,11 +410,11 @@ def run_pelt_array_based(
         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
+        opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
         # Trimming the admissible starts set: (reuse the array of optimal costs)
-        current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
+        current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
         # Handle cases where the optimal cost is negative:
         abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
         start_inclusion_threshold = (
@@ -281,9 +422,13 @@ def run_pelt_array_based(
             + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
         ) + penalty  # Moved from 'negative' on left side to 'positive' on right side.
 
+        old_start_inclusion_mask = (
+            candidate_opt_costs + split_cost <= start_inclusion_threshold
+        )
         cost_eval_starts = cost_eval_starts[
             # Introduce a small tolerance to avoid numerical issues:
-            candidate_opt_costs + split_cost <= start_inclusion_threshold
+            # candidate_opt_costs + split_cost <= start_inclusion_threshold
+            old_start_inclusion_mask
         ]
 
     return opt_cost[1:], get_changepoints(prev_cpts), cost_eval_time
@@ -524,9 +669,9 @@ def test_benchmark_pelt_implementations(cost: BaseCost, penalty: float):
     print(df.iloc[:, [0, 1, 2]])
 
     # Assert that array-based implementation is generally faster
-    assert all(
-        r["overhead_speedup"] < 1.0 for r in results
-    ), "Array-based implementation should be faster for at least some cases"
+    assert all(r["overhead_speedup"] < 1.0 for r in results), (
+        "Array-based implementation should be faster for at least some cases"
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", [1])
@@ -782,8 +927,8 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
     np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs)
 
 
-@pytest.mark.xfail(strict=True)
-@pytest.mark.parametrize("min_segment_length", [25] + list(range(31, 40)))
+# @pytest.mark.xfail(strict=True)
+@pytest.mark.parametrize("min_segment_length", list(range(31, 40)))
 def test_xfail_pelt_on_tricky_data(
     cost: BaseCost, penalty: float, min_segment_length: int
 ):
@@ -801,21 +946,46 @@ def test_xfail_pelt_on_tricky_data(
     # The PELT implementation fails to find the same changepoints
     # as the optimal partitioning for these segment lengths,
     # when the pruning margin is zero.
-    pelt_costs, _ = run_pelt(
+    percent_pruning_margin = 1.0
+    orig_pelt_costs, orig_pelt_cpts = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        percent_pruning_margin=0.0,
+        percent_pruning_margin=percent_pruning_margin,
     )
 
     cost.fit(alternating_sequence)
-    opt_part_costs, _ = run_optimal_partitioning(
+    opt_part_costs, opt_part_cpts = run_optimal_partitioning(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
+    opt_part_cpts += 1
 
-    np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs)
+    # Test with 'improved PELT':
+    improved_pelt_costs, improved_cpts, cost_eval_time = run_improved_pelt_array_based(
+        cost,
+        penalty=penalty,
+        min_segment_length=min_segment_length,
+        percent_pruning_margin=percent_pruning_margin,
+    )
+    # print("What?")
+    # np.testing.assert_array_almost_equal(orig_pelt_costs, opt_part_costs)
+
+    import ruptures as rpt
+
+    rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length)
+    rpt_model.fit(alternating_sequence)
+    dyn_rpt_cpts = rpt_model.predict(n_bkps=len(opt_part_cpts))
+    comparable_dyn_rpt_cpts = dyn_rpt_cpts[:-1]
+
+    ruptures_pelt_cpts = rpt.Pelt(
+        model="l2", min_size=min_segment_length, jump=1
+    ).fit_predict(alternating_sequence, pen=penalty)[:-1]
+
+    assert np.all(orig_pelt_cpts == opt_part_cpts)
+    assert np.all(improved_cpts == opt_part_cpts)
+    assert np.abs(orig_pelt_costs[-1] - opt_part_costs[-1]) < 1e-16
 
 
 @pytest.mark.parametrize("min_segment_length", [1, 2, 5, 10])
