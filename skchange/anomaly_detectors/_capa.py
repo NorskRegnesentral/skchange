@@ -141,14 +141,23 @@ def _make_linear_chi2_penalty_from_score(score: BaseIntervalScorer) -> np.ndarra
     return make_linear_chi2_penalty(score.get_param_size(p), n, p)
 
 
+def _check_capa_penalised_score(score: BaseIntervalScorer, name: str, caller_name: str):
+    if score.is_penalised_score and not isinstance(score, PenalisedScore):
+        raise ValueError(
+            f"{caller_name} only supports a penalised `{name}` constructed"
+            " by `PenalisedScore`."
+        )
+
+
 class CAPA(BaseSegmentAnomalyDetector):
     """The collective and point anomaly (CAPA) detection algorithm.
 
     An efficient implementation of the CAPA family of algorithms for anomaly detection.
-    Supports both univariate data [1]_ (CAPA) and multivariate data [2]_ (MVCAPA) and
-    [3]_ (CAPA-CC, not implemented yet). For multivariat data, the algorithm can also
-    be used to infer the affected components for each anomaly given a suitable penalty
-    array.
+    Supports both univariate data [1]_ (CAPA) and multivariate data with subset
+    anomalies [2]_ (MVCAPA) by using the penalised saving formulation of the collective
+    anomaly detection problem found in [2]_ and [3]_. For multivariat data, the
+    algorithm can also be used to infer the affected components for each anomaly given
+    a suitable penalty array.
 
     Parameters
     ----------
@@ -156,6 +165,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         The saving to use for segment anomaly detection.
         If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
+        If a penalised saving is given, it must be constructed from `PenalisedScore`.
     segment_penalty : np.ndarray or float, optional, default=None
         The penalty to use for segment anomaly detection. If
         `segment_penalty.is_penalised_score == True` the penalty will be ignored.
@@ -176,6 +186,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         minimum size of 1 are permitted.
         If a cost is given, the saving is constructed from the cost. The
         cost must have a fixed parameter that represents the baseline cost.
+        If a penalised saving is given, it must be constructed from `PenalisedScore`.
     point_penalty : np.ndarray or float, optional, default=None
         The penalty to use for point anomaly detection. See the documentation for
         `segment_penalty` for details. For ``None`` input, the default is set using the
@@ -257,16 +268,15 @@ class CAPA(BaseSegmentAnomalyDetector):
         _segment_saving = to_saving(_segment_score)
 
         check_penalty(segment_penalty, "segment_penalty", "CAPA")
-        self._segment_penalised_saving = (
-            _segment_saving.clone()  # need to avoid modifying the input change_score
-            if _segment_saving.is_penalised_score
-            else PenalisedScore(
+        if _segment_saving.is_penalised_score:
+            _check_capa_penalised_score(_segment_saving, "segment_saving", "CAPA")
+            self._segment_penalised_saving = _segment_saving.clone()
+        else:
+            self._segment_penalised_saving = PenalisedScore(
                 _segment_saving,
                 segment_penalty,
                 make_default_penalty=_make_chi2_penalty_from_score,
             )
-        )
-
         _point_score = L2Saving() if point_saving is None else point_saving
         check_interval_scorer(
             _point_score,
@@ -280,15 +290,15 @@ class CAPA(BaseSegmentAnomalyDetector):
         _point_saving = to_saving(_point_score)
 
         check_penalty(point_penalty, "point_penalty", "CAPA")
-        self._point_penalised_saving = (
-            _point_saving.clone()  # need to avoid modifying the input change_score
-            if _point_saving.is_penalised_score
-            else PenalisedScore(
+        if _point_saving.is_penalised_score:
+            _check_capa_penalised_score(_point_saving, "point_saving", "CAPA")
+            self._point_penalised_saving = _point_saving.clone()
+        else:
+            self._point_penalised_saving = PenalisedScore(
                 _point_saving,
                 point_penalty,
                 make_default_penalty=_make_linear_chi2_penalty_from_score,
             )
-        )
 
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")

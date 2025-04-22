@@ -6,7 +6,7 @@ import pytest
 
 from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_detectors._capa import run_capa
-from skchange.anomaly_scores import SAVINGS, to_saving
+from skchange.anomaly_scores import SAVINGS, L2Saving, to_saving
 from skchange.base import BaseIntervalScorer
 from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
@@ -178,3 +178,8 @@ def test_invalid_savings(Detector):
         Detector("l2")
     with pytest.raises(ValueError, match="segment_saving"):
         Detector(ChangeScore(COSTS[3].create_test_instance()))
+    with pytest.raises(ValueError, match="penalised"):
+        score = L2Saving()
+        # Simulate a penalised score not constructed by PenalisedScore
+        score.is_penalised_score = True
+        Detector(score)
