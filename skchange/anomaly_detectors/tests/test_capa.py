@@ -178,8 +178,11 @@ def test_invalid_savings(Detector):
         Detector("l2")
     with pytest.raises(ValueError, match="segment_saving"):
         Detector(ChangeScore(COSTS[3].create_test_instance()))
+
+    score = L2Saving()
+    # Simulate a penalised score not constructed by PenalisedScore
+    score.is_penalised_score = True
     with pytest.raises(ValueError, match="penalised"):
-        score = L2Saving()
-        # Simulate a penalised score not constructed by PenalisedScore
-        score.is_penalised_score = True
-        Detector(score)
+        Detector(segment_saving=score)
+    with pytest.raises(ValueError, match="penalised"):
+        Detector(point_saving=score)
