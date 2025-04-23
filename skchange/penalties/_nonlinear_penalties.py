@@ -5,6 +5,7 @@ from scipy.stats import chi2
 
 from ..utils.validation.parameters import check_larger_than
 from ._constant_penalties import make_chi2_penalty
+from ._linear_penalties import make_linear_chi2_penalty
 
 
 def make_nonlinear_chi2_penalty(
@@ -68,3 +69,43 @@ def make_nonlinear_chi2_penalty(
     # The penalty function is not defined for j = p, so the last value is duplicated
     penalties[-1] = penalties[-2]
     return penalties
+
+
+def make_mvcapa_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
+    """Create the default penalty for the MVCAPA algorithm.
+
+    The penalty is the pointwise minimum of the constant, linear, and nonlinear
+    chi-square penalties: `make_chi2_penalty`, `make_linear_chi2_penalty`, and
+    `make_nonlinear_chi2_penalty`. It is the recommended penalty for the MVCAPA
+    algorithm [1]_.
+
+    Parameters
+    ----------
+    n_params_per_variable: int
+        Number of model parameters per variable and segment.
+    n : int
+        Sample size.
+    p : int
+        Number of variables/columns in the data being analysed.
+
+    Returns
+    -------
+    np.ndarray
+        The pointwise minimum penalty values. The shape is ``(p,)``. Element ``i`` of
+        the array is the penalty value for ``i+1`` variables being affected by a change
+        or anomaly.
+
+    References
+    ----------
+    .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
+       segment and point anomaly detection. Journal of Computational and Graphical
+       Statistics, 31(2), 574-585.
+    """
+    n_params_total = n_params_per_variable * p
+    constant_part = make_chi2_penalty(n_params_total, n)
+    linear_part = make_linear_chi2_penalty(n_params_per_variable, n, p)
+    nonlinear_part = make_nonlinear_chi2_penalty(n_params_per_variable, n, p)
+    pointwise_minimum_penalty = np.fmin(
+        constant_part, np.fmin(linear_part, nonlinear_part)
+    )
+    return pointwise_minimum_penalty

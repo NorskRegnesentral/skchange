@@ -8,6 +8,7 @@ from skchange.penalties import (
     make_chi2_penalty,
     make_linear_chi2_penalty,
     make_linear_penalty,
+    make_mvcapa_penalty,
     make_nonlinear_chi2_penalty,
 )
 
@@ -89,3 +90,19 @@ def test_make_nonlinear_chi2_penalty():
 
     penalty_p1 = make_nonlinear_chi2_penalty(10, 200, 1)
     assert penalty_p1.size == 1
+
+
+def test_make_mvcapa_penalty():
+    p = 100
+    penalty = make_mvcapa_penalty(10, 200, p)
+    assert isinstance(penalty, np.ndarray)
+    assert penalty.shape == (p,)
+    assert np.all(penalty >= 0)
+    assert np.all(np.diff(penalty) >= 0)
+
+    with pytest.raises(ValueError):
+        make_mvcapa_penalty(0, 1, 1)
+    with pytest.raises(ValueError):
+        make_mvcapa_penalty(1, 0, 1)
+    with pytest.raises(ValueError):
+        make_mvcapa_penalty(1, 1, 0)
