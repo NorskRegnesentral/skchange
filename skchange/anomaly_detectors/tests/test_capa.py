@@ -28,12 +28,10 @@ def make_nonlinear_chi2_penalty_from_score(
 
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS
-DETECTORS = [CAPA]
 
 
 @pytest.mark.parametrize("Saving", COSTS_AND_SAVINGS)
-@pytest.mark.parametrize("Detector", DETECTORS)
-def test_capa_anomalies(Detector, Saving):
+def test_capa_anomalies(Saving):
     """Test CAPA anomalies."""
     saving = Saving.create_test_instance()
     skip_if_no_test_data(saving)
@@ -65,7 +63,7 @@ def test_capa_anomalies(Detector, Saving):
     else:
         point_saving = saving
 
-    detector = Detector(
+    detector = CAPA(
         segment_saving=saving,
         point_saving=point_saving,
         min_segment_length=20,
@@ -83,9 +81,8 @@ def test_capa_anomalies(Detector, Saving):
     )
 
 
-@pytest.mark.parametrize("Detector", DETECTORS)
-def test_capa_anomalies_segment_length(Detector):
-    detector = Detector.create_test_instance()
+def test_capa_anomalies_segment_length():
+    detector = CAPA.create_test_instance()
     min_segment_length = 5
     detector.set_params(
         segment_penalty=0.0,
@@ -100,9 +97,8 @@ def test_capa_anomalies_segment_length(Detector):
     assert np.all(anomaly_lengths == 5)
 
 
-@pytest.mark.parametrize("Detector", DETECTORS)
-def test_capa_point_anomalies(Detector):
-    detector = Detector.create_test_instance()
+def test_capa_point_anomalies():
+    detector = CAPA.create_test_instance()
     n_segments = 2
     seg_len = 50
     p = 3
@@ -169,20 +165,25 @@ def test_capa_different_data_shapes():
         )
 
 
-@pytest.mark.parametrize("Detector", DETECTORS)
-def test_invalid_savings(Detector):
+def test_invalid_savings():
     """
     Test that CAPA raises an error when given an invalid saving argument.
     """
     with pytest.raises(ValueError, match="segment_saving"):
-        Detector("l2")
+        CAPA("l2")
     with pytest.raises(ValueError, match="segment_saving"):
-        Detector(ChangeScore(COSTS[3].create_test_instance()))
+        CAPA(ChangeScore(COSTS[3].create_test_instance()))
 
     score = L2Saving()
     # Simulate a penalised score not constructed by PenalisedScore
     score.is_penalised_score = True
     with pytest.raises(ValueError, match="penalised"):
-        Detector(segment_saving=score)
+        CAPA(segment_saving=score)
     with pytest.raises(ValueError, match="penalised"):
-        Detector(point_saving=score)
+        CAPA(point_saving=score)
+
+
+def test_valid_point_savings():
+    score = L2Saving()
+    penalised_score = PenalisedScore(score)
+    CAPA(point_saving=penalised_score)
