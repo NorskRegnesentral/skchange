@@ -3,7 +3,11 @@
 import numpy as np
 import pandas as pd
 
-from ..change_detectors._pelt import run_pelt_masked
+from ..change_detectors._pelt import (
+    run_improved_pelt_array_based,
+    run_pelt_array_based,
+    run_pelt_masked,
+)
 from ..costs.base import BaseCost
 from ..penalties import ConstantPenalty
 from . import PELT
@@ -73,6 +77,14 @@ def format_crops_results(
 class CROPS_PELT(BaseChangeDetector):
     """CROPS algorithm for path solutions to penalized CPD.
 
+    The algorithm can fail when the penalty is low, and the number of
+    change points is high. In such cases, it can help to increase the
+    `percent_pruning_margin` parameter, increasing the `min_penalty`,
+    or increasing the `min_segment_length`.
+    If these changes do not help, one can set `drop_pruning` to True,
+    which will revert to the optimal partitioning algorithm.
+    This will be slower, but can be useful for debugging and testing.
+
     Reference: https://arxiv.org/pdf/1412.3617
 
     Parameters
@@ -96,6 +108,9 @@ class CROPS_PELT(BaseChangeDetector):
     middle_penalty_nudge : float, optional, default=1.0e-4
         Size of multiplicative nudge to apply to the middle penalty
         value to avoid numerical instability. By default set to 1.0e-4.
+    drop_pruning: bool, optional
+        If True, drop the pruning step. Reverts to optimal partitioning.
+        Can be useful for debugging and testing.  By default set to False.
     """
 
     _tags = {
@@ -111,8 +126,9 @@ class CROPS_PELT(BaseChangeDetector):
         max_penalty: float,
         min_segment_length: int = 1,
         split_cost: float = 0.0,
-        percent_pruning_margin: float = 0.1,
+        percent_pruning_margin: float = 0.0,
         middle_penalty_nudge: float = 1.0e-4,
+        drop_pruning: bool = False,
     ):
         super().__init__()
         self.cost = cost
@@ -122,6 +138,7 @@ class CROPS_PELT(BaseChangeDetector):
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
+        self.drop_pruning = drop_pruning
 
         # Storage for the CROPS results:
         self.change_points_metadata_ = None
@@ -141,12 +158,13 @@ class CROPS_PELT(BaseChangeDetector):
             Dictionary with penalty values as keys and tuples of change points and cost
             as values.
         """
-        opt_cost, change_points = run_pelt_masked(
+        opt_cost, change_points = run_improved_pelt_array_based(
             self.cost,
             penalty=penalty,
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
             percent_pruning_margin=self.percent_pruning_margin,
+            drop_pruning=self.drop_pruning,
         )
 
         return change_points
@@ -215,6 +233,11 @@ class CROPS_PELT(BaseChangeDetector):
                 middle_penalty_segmentation_cost = self.cost.evaluate_segmentation(
                     middle_penalty_change_points
                 )
+                penalty_to_solution_dict[middle_penalty] = (
+                    middle_penalty_change_points,
+                    middle_penalty_segmentation_cost,
+                )
+
                 middle_penalty_matches_high_penalty = len(
                     middle_penalty_change_points
                 ) == len(high_penalty_change_points)
@@ -225,13 +248,9 @@ class CROPS_PELT(BaseChangeDetector):
                     # The same number of change points for penalties in the interval
                     # [middle_penalty, high_penalty].
                     # Don't need to subdivide penalty intervals further.
-                    penalty_to_solution_dict[middle_penalty] = (
-                        middle_penalty_change_points,
-                        middle_penalty_segmentation_cost,
-                    )
                     continue
                 elif middle_penalty_matches_low_penalty:
-                    raise ValueError("This should not happen!")
+                    # raise ValueError("This should not happen!")
                     # In this case, PELT has failed to solve the penalized
                     # optimization problem exactly. Need to increase the penalty
                     # until we get at least one more change point than for
@@ -250,20 +269,39 @@ class CROPS_PELT(BaseChangeDetector):
                     # Until we fnd a penalty that gives us the same number of
                     # change points as for for high_penalty, or at least a penalty
                     # that gives fewer change points than for low_penalty.
-                    nudged_middle_penalty = middle_penalty * (1 + 1.0e-4)
-                    nudged_middle_penalty_change_points = self.run_pelt(
-                        penalty=nudged_middle_penalty
-                    )
-                    nudged_middle_penalty_segmentation_cost = (
-                        self.cost.evaluate_segmentation(
-                            nudged_middle_penalty_change_points
-                        )
-                    )
+                    # nudged_middle_penalty = middle_penalty * (1 + 1.0e-4)
+                    # nudged_middle_penalty_change_points = self.run_pelt(
+                    #     penalty=nudged_middle_penalty
+                    # )
+                    # nudged_middle_penalty_segmentation_cost = (
+                    #     self.cost.evaluate_segmentation(
+                    #         nudged_middle_penalty_change_points
+                    #     )
+                    # )
+                    # penalty_to_solution_dict[nudged_middle_penalty] = (
+                    #     nudged_middle_penalty_change_points,
+                    #     nudged_middle_penalty_segmentation_cost,
+                    # )
 
-                    penalty_to_solution_dict[nudged_middle_penalty] = (
-                        nudged_middle_penalty_change_points,
-                        nudged_middle_penalty_segmentation_cost,
+                    # Only add [middle_penalty, high_penalty] to the search intervals:
+                    # penalty_search_intervals.append((middle_penalty, high_penalty))
+                    # penalty_search_intervals.sort(key=lambda x: x[0])
+                    ## Indicates that the 'improved_pelt_array_based' method has failed
+                    ## to solve the penalized optimization problem exactly. Need to
+                    ## increase the pruning margin... Not good...
+                    raise ValueError(
+                        "This should not happen! Number of change points should be"
+                        " greater for the middle penalty than for the low penalty."
                     )
+                    print("Warning: This should not happen!")
+                    self.percent_pruning_margin = max(
+                        2.0 * self.percent_pruning_margin, 0.1
+                    )
+                    print(
+                        "Setting percent_pruning_margin to: ",
+                        self.percent_pruning_margin,
+                    )
+                    return self.run_crops(X=X)
                 else:
                     # Number of change points for middle penalty is different from both
                     # low_penalty and high_penalty. Need to explore the penalty
@@ -274,11 +312,6 @@ class CROPS_PELT(BaseChangeDetector):
 
                     # Sort the intervals by lower penalty:
                     penalty_search_intervals.sort(key=lambda x: x[0])
-
-                    penalty_to_solution_dict[middle_penalty] = (
-                        middle_penalty_change_points,
-                        middle_penalty_segmentation_cost,
-                    )
 
         # # Convert the dict lookup results to a list of tuples:
         # list_cpd_results = [
