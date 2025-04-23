@@ -7,7 +7,6 @@ from skchange.utils.validation.enums import EvaluationType
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
     _tags = {
-        "object_type": "interval_scorer",
         "task": "cost",
     }
 
@@ -16,10 +15,6 @@ class ConcreteIntervalEvaluator(BaseIntervalScorer):
 
 
 class InvalidConcreteIntervalEvaluator(BaseIntervalScorer):
-    _tags = {
-        "object_type": "interval_scorer",
-    }
-
     def _evaluate(self, cuts):
         return np.array([np.sum(self._X[cut[0] : cut[-1]]) for cut in cuts])
 
