@@ -56,7 +56,7 @@ Example
     p = df.shape[1]
 
     score = L2Saving()
-    penalty = make_linear_chi2_penalty(score.get_param_size(1), n, p)
+    penalty = make_linear_chi2_penalty(score.get_model_size(1), n, p)
     penalised_score = PenalisedScore(score, penalty)
     detector = CAPA(penalised_score, find_affected_components=True)
     detector.fit_predict(df)

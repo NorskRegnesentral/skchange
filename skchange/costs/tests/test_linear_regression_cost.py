@@ -112,11 +112,11 @@ def test_min_size_property():
     assert cost.min_size == 2  # 2 features
 
 
-def test_get_param_size():
-    """Test get_param_size method."""
+def test_get_model_size():
+    """Test get_model_size method."""
     cost = LinearRegressionCost(response_col="log_house_price")
     # Number of parameters is equal to number of variables
-    assert cost.get_param_size(5) == 4
+    assert cost.get_model_size(5) == 4
 
 
 def test_simple_linear_regression_cost_fixed_params():
@@ -133,7 +133,7 @@ def test_simple_linear_regression_cost_fixed_params():
     cost.fit(np.hstack((y.reshape(-1, 1), X)))
 
     # Test that number of parameters is equal to number of columns:
-    assert cost.get_param_size(3) == 2
+    assert cost.get_model_size(3) == 2
 
     # Evaluate on the entire interval
     starts = np.array([0])

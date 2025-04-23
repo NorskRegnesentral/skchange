@@ -87,7 +87,7 @@ class Saving(BaseIntervalScorer):
         else:
             return self.optimised_cost.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the saving function.
 
         Defaults to 1 parameter per variable in the data. This method should be
@@ -100,9 +100,9 @@ class Saving(BaseIntervalScorer):
             Number of variables in the data.
         """
         if self.is_fitted:
-            return self.optimised_cost_.get_param_size(p)
+            return self.optimised_cost_.get_model_size(p)
         else:
-            return self.optimised_cost.get_param_size(p)
+            return self.optimised_cost.get_model_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
@@ -254,7 +254,7 @@ class LocalAnomalyScore(BaseIntervalScorer):
         else:
             return self.cost.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty
@@ -266,9 +266,9 @@ class LocalAnomalyScore(BaseIntervalScorer):
             Number of variables in the data.
         """
         if self.is_fitted:
-            return self.interval_cost_.get_param_size(p)
+            return self.interval_cost_.get_model_size(p)
         else:
-            return self.cost.get_param_size(p)
+            return self.cost.get_model_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.

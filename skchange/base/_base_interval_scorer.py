@@ -12,7 +12,7 @@ Needs to be implemented for a concrete interval scorer:
 
 Recommended but optional to implement for a concrete detector:
     min_size(self)
-    get_param_size(self, p)
+    get_model_size(self, p)
 """
 
 __author__ = ["Tveten", "johannvk", "fkiraly"]
@@ -220,8 +220,8 @@ class BaseIntervalScorer(BaseEstimator):
         """
         raise NotImplementedError("abstract method")
 
-    def get_param_size(self, p: int) -> int:
-        """Get the number of parameters to estimate over each interval.
+    def get_model_size(self, p: int) -> int:
+        """Get the number of model parameters to estimate for each interval.
 
         The primary use of this method is to determine an appropriate default penalty
         value in detectors. For example, a scorer for a change in mean has one

@@ -338,7 +338,7 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
         """
         return 2  # Need at least 2 points to define a line
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

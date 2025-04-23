@@ -262,7 +262,7 @@ class PoissonCost(BaseCost):
         # Need at least 1 sample to estimate the rate parameter
         return 1
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

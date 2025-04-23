@@ -165,7 +165,7 @@ class GaussianCost(BaseCost):
         """
         return 2
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

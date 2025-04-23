@@ -24,7 +24,7 @@ def make_nonlinear_chi2_penalty_from_score(
     score.check_is_fitted()
     n = score._X.shape[0]
     p = score._X.shape[1]
-    return make_nonlinear_chi2_penalty(score.get_param_size(p), n, p)
+    return make_nonlinear_chi2_penalty(score.get_model_size(p), n, p)
 
 
 COSTS_AND_SAVINGS = COSTS + SAVINGS

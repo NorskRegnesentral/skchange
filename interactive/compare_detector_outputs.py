@@ -41,7 +41,7 @@ print(anomaly_labels)
 # Subset segment anomaly detector
 score = L2Saving()
 p = df.shape[1]
-penalty = make_linear_chi2_penalty(score.get_param_size(p), n, p)
+penalty = make_linear_chi2_penalty(score.get_model_size(p), n, p)
 subset_anomaly_detector = CAPA(score, penalty, find_affected_components=True)
 subset_anomalies = subset_anomaly_detector.fit_predict(df)
 subset_anomaly_labels = subset_anomaly_detector.transform(df)

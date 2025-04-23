@@ -131,14 +131,14 @@ def _make_chi2_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
     n = score._X.shape[0]
     p = score._X.shape[1]
-    return make_chi2_penalty(score.get_param_size(p), n)
+    return make_chi2_penalty(score.get_model_size(p), n)
 
 
 def _make_linear_chi2_penalty_from_score(score: BaseIntervalScorer) -> np.ndarray:
     score.check_is_fitted()
     n = score._X.shape[0]
     p = score._X.shape[1]
-    return make_linear_chi2_penalty(score.get_param_size(p), n, p)
+    return make_linear_chi2_penalty(score.get_model_size(p), n, p)
 
 
 def _check_capa_penalised_score(score: BaseIntervalScorer, name: str, caller_name: str):
@@ -412,7 +412,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             score.check_is_fitted()
             n = score._X.shape[0]
             p = score._X.shape[1]
-            return make_nonlinear_chi2_penalty(score.get_param_size(p), n, p)
+            return make_nonlinear_chi2_penalty(score.get_model_size(p), n, p)
 
         params = [
             {
