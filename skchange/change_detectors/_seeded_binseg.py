@@ -114,7 +114,7 @@ def run_seeded_binseg(
         )
         scores = penalised_score.evaluate(intervals)
         argmax = np.argmax(scores)
-        max_scores[i] = scores[argmax]
+        max_scores[i] = scores[argmax, 0]  # index 0 to get a scalar value
         argmax_scores[i] = splits[0] + argmax
 
     if selection_method == "greedy":
