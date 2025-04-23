@@ -151,6 +151,7 @@ class PoissonCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "distribution_type": "Poisson",
     }
 
     evaluation_type = EvaluationType.UNIVARIATE

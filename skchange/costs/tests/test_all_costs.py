@@ -1,12 +1,15 @@
 import numpy as np
 import pytest
 
-from skchange.costs import ALL_COSTS, COSTS
+from skchange.costs import COSTS
 from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
+from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
 
-def find_fixed_param_combination(cost_class: type[BaseCost]):
+def find_fixed_param_combination(
+    cost_class: type[BaseCost] | BaseCost,
+) -> dict[str, float]:
     """Find the first fixed parameter combination in the test parameters of a cost."""
     test_param_sets = cost_class.get_test_params()
     fixed_test_param_set = None
@@ -16,9 +19,14 @@ def find_fixed_param_combination(cost_class: type[BaseCost]):
             break
 
     if fixed_test_param_set is None:
+        class_name = (
+            cost_class.__name__
+            if isinstance(cost_class, type)
+            else cost_class.__class__.__name__
+        )
         raise ValueError(
             f"No fixed `param` argument found in `get_test_params()` of"
-            f" the cost class {cost_class.__name__}"
+            f" the cost class {class_name}"
         )
 
     return fixed_test_param_set
@@ -34,16 +42,16 @@ def test_find_fixed_param_combination_value_error():
         find_fixed_param_combination(MockCost)
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_l2_cost_init(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
     assert cost.param is None
 
 
-@pytest.mark.parametrize("CostClass", ALL_COSTS)
+@pytest.mark.parametrize("CostClass", COSTS)
 def test_expected_cut_entries(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
-    assert cost.expected_cut_entries == 2
+    assert cost._get_required_cut_size() == 2
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
@@ -51,9 +59,10 @@ def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
     if not CostClass.supports_fixed_params:
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
-    optim_cost = CostClass()
+    optim_cost = CostClass.create_test_instance()
+    skip_if_no_test_data(optim_cost)
     fixed_params = find_fixed_param_combination(CostClass)
-    fixed_cost = CostClass().set_params(**fixed_params)
+    fixed_cost = CostClass.create_test_instance().set_params(**fixed_params)
     np.random.seed(1001)
     X = np.random.multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=20)
     optim_cost.fit(X)
@@ -67,6 +76,7 @@ def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
 @pytest.mark.parametrize("CostClass", COSTS)
 def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
+    skip_if_no_test_data(cost)
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
     cost.fit(df)

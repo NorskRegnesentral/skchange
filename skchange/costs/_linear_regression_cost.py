@@ -301,10 +301,6 @@ class LinearRegressionCost(BaseCost):
         int
             The minimum valid size of an interval to evaluate.
         """
-        # For fixed parameter evaluation, we only need a single sample:
-        if self.param is not None:
-            return 1
-
         if self.is_fitted:
             # Need at least as many samples as covariates:
             return len(self._covariate_col_indices)

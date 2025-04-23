@@ -3,15 +3,17 @@
 import numpy as np
 import plotly.express as px
 
-from skchange.anomaly_detectors import CAPA, MVCAPA
+from skchange.anomaly_detectors import CAPA
+from skchange.anomaly_scores import L2Saving
 from skchange.change_detectors import MovingWindow
 from skchange.datasets import generate_anomalous_data
+from skchange.penalties import make_linear_chi2_penalty
 
 # Generate data
 n = 300
 means = [np.array([8.0, 0.0, 0.0]), np.array([2.0, 3.0, 5.0])]
 df = generate_anomalous_data(
-    n, anomalies=[(100, 119), (250, 299)], means=means, random_state=3
+    n, anomalies=[(100, 120), (250, 300)], means=means, random_state=3
 )
 df.columns += 1
 plot_df = (
@@ -37,7 +39,10 @@ print(anomalies)
 print(anomaly_labels)
 
 # Subset segment anomaly detector
-subset_anomaly_detector = MVCAPA()
+score = L2Saving()
+p = df.shape[1]
+penalty = make_linear_chi2_penalty(score.get_param_size(p), n, p)
+subset_anomaly_detector = CAPA(score, penalty, find_affected_components=True)
 subset_anomalies = subset_anomaly_detector.fit_predict(df)
 subset_anomaly_labels = subset_anomaly_detector.transform(df)
 print(subset_anomalies)

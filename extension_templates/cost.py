@@ -72,6 +72,13 @@ class MyCost(BaseCost):
     _tags = {
         "authors": ["Tveten", "johannvk"],
         "maintainers": "Tveten",
+        # distribution_type is used to automatically create test cases.
+        # Valid values:
+        # - "None" - No distributional restrictions. Test data: Mostly Gaussian, but
+        #   no guarantee.
+        # - "Poisson" - Integer data. Test data: Poisson distributed.
+        # - "Gaussian" - Real-valued data. Test data: Gaussian distribution.
+        "distribution_type": "None",  # "None", "Poisson", "Gaussian"
     }
 
     # Does the cost evaluate univariate or multivariate data?

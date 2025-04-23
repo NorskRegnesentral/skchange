@@ -2,39 +2,43 @@
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..costs import L2Cost
 from ..costs.base import BaseCost
 from ..utils.validation.cuts import check_cuts_array
 from ..utils.validation.data import as_2d_array
-from .base import BaseLocalAnomalyScore, BaseSaving
 
 
-def to_saving(scorer: BaseCost | BaseSaving) -> BaseSaving:
+def to_saving(scorer: BaseIntervalScorer) -> BaseIntervalScorer:
     """Convert compatible scorers to a saving.
 
     Parameters
     ----------
-    scorer : BaseCost or BaseSaving
+    scorer : BaseIntervalScorer
         The scorer to convert to a saving. If a cost, it must be a cost with a fixed
         parameter. If a saving is provided, it is returned as is.
 
     Returns
     -------
-    saving : BaseSaving
+    saving : BaseIntervalScorer
         The saving based on the cost function.
     """
-    if isinstance(scorer, BaseCost):
+    if not isinstance(scorer, BaseIntervalScorer):
+        raise ValueError(f"scorer must be a BaseIntervalScorer. Got {type(scorer)}.")
+    task = scorer.get_tag("task")
+    if task == "cost":
         saving = Saving(scorer)
-    elif isinstance(scorer, BaseSaving):
+    elif task == "saving":
         saving = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseSaving or BaseCost. Got {type(scorer)}."
+            f"scorer must have tag 'task' equal to 'cost' or 'change_score'."
+            f" Got scorer.get_tag('task') = {task}."
         )
     return saving
 
 
-class Saving(BaseSaving):
+class Saving(BaseIntervalScorer):
     """Saving based on a cost class.
 
     Savings are the difference between a cost based on a fixed baseline parameter
@@ -49,6 +53,12 @@ class Saving(BaseSaving):
         The baseline cost with a fixed parameter. The optimised cost is
         constructed by copying the baseline cost and setting the parameter to ``None``.
     """
+
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "saving",
+    }
 
     def __init__(self, baseline_cost: BaseCost):
         self.baseline_cost = baseline_cost
@@ -66,6 +76,8 @@ class Saving(BaseSaving):
                 "The baseline cost must have fixed"
                 " parameters (`param`) set to use it as a Saving."
             )
+
+        self.set_tags(distribution_type=baseline_cost.get_tag("distribution_type"))
 
     @property
     def min_size(self) -> int:
@@ -165,35 +177,36 @@ class Saving(BaseSaving):
         return params
 
 
-def to_local_anomaly_score(
-    scorer: BaseCost | BaseLocalAnomalyScore,
-) -> BaseLocalAnomalyScore:
+def to_local_anomaly_score(scorer: BaseIntervalScorer) -> BaseIntervalScorer:
     """Convert compatible scorers to a saving.
 
     Parameters
     ----------
-    scorer : BaseCost or BaseLocalAnomalyScore
+    scorer : BaseIntervalScorer
         The scorer to convert to a local anomaly score. If a local anomaly score is
         provided, it is returned as is.
 
     Returns
     -------
-    local_anomaly_score : BaseLocalAnomalyScore
+    local_anomaly_score : BaseIntervalScorer
         The local anomaly score based on the cost function.
     """
-    if isinstance(scorer, BaseCost):
+    if not isinstance(scorer, BaseIntervalScorer):
+        raise ValueError(f"scorer must be a BaseIntervalScorer. Got {type(scorer)}.")
+    task = scorer.get_tag("task")
+    if task == "cost":
         local_anomaly_score = LocalAnomalyScore(scorer)
-    elif isinstance(scorer, BaseLocalAnomalyScore):
+    elif task == "local_anomaly_score":
         local_anomaly_score = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseLocalAnomalyScore or BaseCost. "
-            f"Got {type(scorer)}."
+            f"scorer must have tag 'task' equal to 'cost' or 'change_score'."
+            f" Got scorer.get_tag('task') = {task}."
         )
     return local_anomaly_score
 
 
-class LocalAnomalyScore(BaseLocalAnomalyScore):
+class LocalAnomalyScore(BaseIntervalScorer):
     """Local anomaly scores based on costs.
 
     Local anomaly scores compare the data behaviour of an inner interval with the
@@ -218,12 +231,20 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     expensive.
     """
 
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "local_anomaly_score",
+    }
+
     def __init__(self, cost: BaseCost):
         self.cost = cost
         self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
         self._subset_cost: BaseCost = cost.clone()
+
+        self.set_tags(distribution_type=cost.get_tag("distribution_type"))
 
     @property
     def min_size(self) -> int:
@@ -333,7 +354,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         """
         cuts = check_cuts_array(
             cuts,
-            last_dim_size=self.expected_cut_entries,
+            last_dim_size=self._get_required_cut_size(),
         )
 
         inner_intervals_sizes = np.diff(cuts[:, [1, 2]], axis=1)

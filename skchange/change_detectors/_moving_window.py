@@ -6,16 +6,15 @@ __all__ = ["MovingWindow"]
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..change_scores import CUSUM, to_change_score
-from ..change_scores.base import BaseChangeScore
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
-from ..penalties import BICPenalty, as_penalty
-from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.numba.general import where
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
@@ -33,7 +32,7 @@ def mosum_selection(scores: np.ndarray, min_detection_interval: int) -> list:
 
 
 def moving_window_transform(
-    penalised_score: BaseChangeScore,
+    penalised_score: BaseIntervalScorer,
     bandwidth: int,
 ) -> tuple[list, np.ndarray]:
     penalised_score.check_is_penalised()
@@ -45,7 +44,8 @@ def moving_window_transform(
     ends = splits + bandwidth
     cuts = np.column_stack((starts, splits, ends))
 
-    scores = np.repeat(-penalised_score.penalty_.values[-1], n_samples)
+    # astype(float) since penalty_ might be int, which causes all scores to be int.
+    scores = np.repeat(np.nan, n_samples)
     scores[splits] = penalised_score.evaluate(cuts)[:, 0]
     return scores
 
@@ -59,21 +59,24 @@ class MovingWindow(BaseChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
-        The change score to use in the algorithm. If a cost function is given, it is
+    change_score : BaseIntervalScorer, optional, default=CUSUM()
+        The change score to use in the algorithm. If a cost is given, it is
         converted to a change score using the `ChangeScore` class.
-    penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
-        The penalty to use for the changepoint detection. If
+    penalty : np.ndarray or float, optional, default=None
+        The penalty to use for change detection. If
         `change_score.is_penalised_score == True` the penalty will be ignored.
-        The conversion of different types of penalties is as follows (see `as_penalty`):
+        The different types of penalties are as follows:
 
-        * ``float``: A constant penalty.
-        * ``np.ndarray``: A penalty array of the same length as the number of columns in
-        the data. It is converted internally to a constant, linear or nonlinear penalty
-        depending on its values.
-        * ``None``, the penalty is set to a BIC penalty with ``n=X.shape[0]`` and
-        ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
-        data to `predict`.
+        * ``float``: A constant penalty applied to the sum of scores across all
+          variables in the data.
+        * ``np.ndarray``: A penalty array of the same length as the number of
+          columns in the data, where element ``i`` of the array is the penalty for
+          ``i+1`` variables being affected by a change. The penalty array
+          must be positive and increasing (not strictly). A penalised score with a
+          linear penalty array is faster to evaluate than a nonlinear penalty array.
+        * ``None``: A default penalty is created in `predict` based on the fitted
+          score using the `make_bic_penalty` function.
+
     bandwidth : int, default=30
         The bandwidth is the number of samples on either side of a candidate
         changepoint. The minimum bandwidth depends on the
@@ -108,8 +111,8 @@ class MovingWindow(BaseChangeDetector):
 
     def __init__(
         self,
-        change_score: BaseChangeScore | BaseCost | None = None,
-        penalty: BasePenalty | np.ndarray | float | None = None,
+        change_score: BaseIntervalScorer | None = None,
+        penalty: np.ndarray | float | None = None,
         bandwidth: int = 30,
         min_detection_interval: int = 1,
     ):
@@ -119,13 +122,21 @@ class MovingWindow(BaseChangeDetector):
         self.min_detection_interval = min_detection_interval
         super().__init__()
 
-        _change_score = CUSUM() if change_score is None else change_score
-        _change_score = to_change_score(_change_score)
-        _penalty = as_penalty(self.penalty, default=BICPenalty())
+        _score = CUSUM() if change_score is None else change_score
+        check_interval_scorer(
+            _score,
+            "change_score",
+            "MovingWindow",
+            required_tasks=["cost", "change_score"],
+            allow_penalised=True,
+        )
+        _change_score = to_change_score(_score)
+
+        check_penalty(penalty, "penalty", "MovingWindow")
         self._penalised_score = (
             _change_score.clone()  # need to avoid modifying the input change_score
             if _change_score.is_penalised_score
-            else PenalisedScore(_change_score, _penalty)
+            else PenalisedScore(_change_score, penalty)
         )
 
         check_larger_than(1, self.bandwidth, "bandwidth")
@@ -134,6 +145,8 @@ class MovingWindow(BaseChangeDetector):
             self.min_detection_interval,
             "min_detection_interval",
         )
+
+        self.set_tags(distribution_type=_change_score.get_tag("distribution_type"))
 
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Return scores for predicted labels on test/deployment data.
@@ -147,15 +160,21 @@ class MovingWindow(BaseChangeDetector):
         -------
         scores : pd.DataFrame with same index as X
             Scores for sequence `X`.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised change score used for the detection.
         """
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
         X = check_data(
             X,
             min_length=2 * self.bandwidth,
             min_length_name="2*bandwidth",
         )
-        self._penalised_score.fit(X)
         scores = moving_window_transform(
-            self._penalised_score,
+            self.fitted_score,
             self.bandwidth,
         )
         return pd.Series(scores, index=X.index, name="score")
@@ -173,6 +192,13 @@ class MovingWindow(BaseChangeDetector):
         y_sparse : pd.DataFrame
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the changepoints.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised change score used for the detection.
+        scores : pd.Series
+            The detection scores obtained by the `transform_scores` method.
         """
         self.scores: pd.Series = self.transform_scores(X)
         changepoints = mosum_selection(self.scores.values, self.min_detection_interval)

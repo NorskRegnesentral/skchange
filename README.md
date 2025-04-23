@@ -59,18 +59,24 @@ detector.fit_predict(df)
 8    450
 ```
 
-### Multivariate anomaly detection
+### Multivariate anomaly detection with variable identification
 ```python
-import numpy as np
-from skchange.anomaly_detectors import MVCAPA
+from skchange.anomaly_detectors import CAPA
+from skchange.anomaly_scores import L2Saving
+from skchange.compose.penalised_score import PenalisedScore
 from skchange.datasets import generate_anomalous_data
+from skchange.penalties import make_linear_chi2_penalty
 
 n = 300
 anomalies = [(100, 120), (250, 300)]
 means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
 df = generate_anomalous_data(n, anomalies, means, random_state=3)
+p = df.shape[1]
 
-detector = MVCAPA()
+score = L2Saving()
+penalty = make_linear_chi2_penalty(score.get_param_size(1), n, p)
+penalised_score = PenalisedScore(score, penalty)
+detector = CAPA(penalised_score, find_affected_components=True)
 detector.fit_predict(df)
 ```
 ```python
