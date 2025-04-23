@@ -270,7 +270,7 @@ class PenalisedScore(BaseIntervalScorer):
         if self.is_fitted:
             return self.score_.min_size
         else:
-            return None
+            return self.score.min_size
 
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
