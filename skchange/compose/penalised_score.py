@@ -93,7 +93,7 @@ def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
     n = score._X.shape[0]
     p = score._X.shape[1]
-    return make_bic_penalty(score.get_param_size(p), n)
+    return make_bic_penalty(score.get_model_size(p), n)
 
 
 class PenalisedScore(BaseIntervalScorer):
@@ -133,7 +133,7 @@ class PenalisedScore(BaseIntervalScorer):
         A function to create a default penalty from the fitted `score`. The function
         must take a fitted `BaseIntervalScorer` and return a penalty value or
         array. If `None`, the default penalty is created using
-        ``make_bic_penalty(score.get_param_size(score._X.shape[1]), score._X.shape[0])``.
+        ``make_bic_penalty(score.get_model_size(score._X.shape[1]), score._X.shape[0])``.
 
     References
     ----------
@@ -271,7 +271,7 @@ class PenalisedScore(BaseIntervalScorer):
         else:
             return self.score.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty
@@ -285,7 +285,7 @@ class PenalisedScore(BaseIntervalScorer):
         p : int
             Number of variables in the data.
         """
-        return self.score.get_param_size(p)
+        return self.score.get_model_size(p)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

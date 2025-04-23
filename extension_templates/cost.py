@@ -27,7 +27,7 @@ Optional implements:
     evaluating fixed param   - _evaluate_fixed_param(self, starts, ends)
     checking fixed param     - _check_fixed_param(self, param, X)
     minimum size of interval  - min_size(self)
-    number of parameters      - get_param_size(self, p)
+    number of parameters      - get_model_size(self, p)
 
 Testing - required for sktime test framework and check_estimator usage:
     get default parameters for test instance(s) - get_test_params()
@@ -237,7 +237,7 @@ class MyCost(BaseCost):
 
     # todo: implement, optional, defaults to output p (one parameter per variable).
     # used for setting a decent default penalty in detectors.
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

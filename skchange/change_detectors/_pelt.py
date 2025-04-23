@@ -130,7 +130,7 @@ class PELT(BaseChangeDetector):
     penalty : float, optional
         The penalty to use for the changepoint detection. It must be non-negative. If
         `None`, the penalty is set to
-        `make_bic_penalty(n=X.shape[0], n_params=cost.get_param_size(X.shape[1]))`,
+        `make_bic_penalty(n=X.shape[0], n_params=cost.get_model_size(X.shape[1]))`,
         where ``X`` is the input data to `predict`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
@@ -232,7 +232,7 @@ class PELT(BaseChangeDetector):
         if self.penalty is None:
             self.fitted_penalty = make_bic_penalty(
                 n=X.shape[0],
-                n_params=self.fitted_cost.get_param_size(X.shape[1]),
+                n_params=self.fitted_cost.get_model_size(X.shape[1]),
             )
         else:
             self.fitted_penalty = self.penalty

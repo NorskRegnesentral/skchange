@@ -137,9 +137,9 @@ def test_scorer_min_size(Scorer: BaseIntervalScorer):
 @pytest.mark.parametrize("Scorer", INTERVAL_SCORERS)
 def test_scorer_param_size(Scorer: BaseIntervalScorer):
     scorer = Scorer.create_test_instance()
-    assert scorer.get_param_size(1) >= 0
+    assert scorer.get_model_size(1) >= 0
 
     skip_if_no_test_data(scorer)
     x = generate_anomalous_data()
     scorer.fit(x)
-    assert scorer.get_param_size(1) >= 0
+    assert scorer.get_model_size(1) >= 0

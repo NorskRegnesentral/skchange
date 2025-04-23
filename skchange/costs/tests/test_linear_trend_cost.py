@@ -311,12 +311,12 @@ def test_linear_trend_cost_default_time():
     ), "Costs should be lower when split into segments"
 
 
-def test_get_param_size():
-    """Test get_param_size method."""
+def test_get_model_size():
+    """Test get_model_size method."""
     cost = LinearTrendCost()
     # For each column we need 2 parameters (slope and intercept)
-    assert cost.get_param_size(3) == 6  # 3 columns * 2 params
-    assert cost.get_param_size(1) == 2  # 1 column * 2 params
+    assert cost.get_model_size(3) == 6  # 3 columns * 2 params
+    assert cost.get_model_size(1) == 2  # 1 column * 2 params
 
 
 def test_indexed_trend_vs_explicit_time():
@@ -384,7 +384,7 @@ def test_linear_trend_cost_as_saving():
     # Create MVCAPA detector with LinearTrendCost as Saving
     n = df.shape[0]
     p = df.shape[1]
-    penalty = make_linear_chi2_penalty(trend_saving.get_param_size(p), n, p)
+    penalty = make_linear_chi2_penalty(trend_saving.get_model_size(p), n, p)
     detector = CAPA(
         segment_saving=trend_saving,
         segment_penalty=penalty,

@@ -181,7 +181,7 @@ class MultivariateGaussianScore(BaseIntervalScorer):
         else:
             return None
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty

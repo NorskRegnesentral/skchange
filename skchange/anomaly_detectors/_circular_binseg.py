@@ -109,7 +109,7 @@ def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
     n = score._X.shape[0]
     p = score._X.shape[1]
-    return make_bic_penalty(score.get_param_size(p), n, additional_cpts=2)
+    return make_bic_penalty(score.get_model_size(p), n, additional_cpts=2)
 
 
 class CircularBinarySegmentation(BaseSegmentAnomalyDetector):

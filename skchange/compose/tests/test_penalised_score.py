@@ -37,8 +37,8 @@ def test_penalised_score_fit():
         penalised_score.fit(df3)
 
 
-def test_penalised_score_get_param_size():
+def test_penalised_score_get_model_size():
     scorer = CUSUM()
     penalised_score = PenalisedScore(scorer)
-    assert penalised_score.get_param_size(1) == scorer.get_param_size(1)
-    assert penalised_score.get_param_size(5) == scorer.get_param_size(5)
+    assert penalised_score.get_model_size(1) == scorer.get_model_size(1)
+    assert penalised_score.get_model_size(5) == scorer.get_model_size(5)

@@ -256,7 +256,7 @@ class LaplaceCost(BaseCost):
         # Need at least 2 samples to estimate the location and scale.
         return 2
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters
