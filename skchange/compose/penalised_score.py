@@ -148,7 +148,6 @@ class PenalisedScore(BaseIntervalScorer):
     """  # noqa: E501
 
     _tags = {
-        "object_type": "interval_scorer",
         "authors": ["Tveten"],
         "maintainers": "Tveten",
     }

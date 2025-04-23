@@ -57,7 +57,6 @@ class L2Saving(BaseIntervalScorer):
     """
 
     _tags = {
-        "object_type": "interval_scorer",
         "authors": ["Tveten"],
         "maintainers": "Tveten",
         "task": "saving",

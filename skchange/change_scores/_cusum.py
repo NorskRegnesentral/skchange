@@ -66,7 +66,6 @@ class CUSUM(BaseIntervalScorer):
     """
 
     _tags = {
-        "object_type": "interval_scorer",
         "authors": ["Tveten"],
         "maintainers": "Tveten",
         "task": "change_score",

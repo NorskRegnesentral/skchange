@@ -55,7 +55,6 @@ class Saving(BaseIntervalScorer):
     """
 
     _tags = {
-        "object_type": "interval_scorer",
         "authors": ["Tveten"],
         "maintainers": "Tveten",
         "task": "saving",
@@ -233,7 +232,6 @@ class LocalAnomalyScore(BaseIntervalScorer):
     """
 
     _tags = {
-        "object_type": "interval_scorer",
         "authors": ["Tveten"],
         "maintainers": "Tveten",
         "task": "local_anomaly_score",

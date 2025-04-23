@@ -226,7 +226,6 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
     """
 
     _tags = {
-        "object_type": "interval_scorer",
         "authors": ["johannvk"],
         "maintainers": "johannvk",
         "task": "change_score",
