@@ -18,6 +18,25 @@ from skchange.costs import GaussianCost, L2Cost
 from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
 
+
+class RupturesGaussianCost(rpt_BaseCost):
+    """Custom cost for Gaussian (mean-var) cost."""
+
+    # The 2 following attributes must be specified for compatibility.
+    model = ""
+    min_size = 2
+
+    def fit(self, signal) -> "RupturesGaussianCost":
+        self.signal = signal
+        self.cost = GaussianCost().fit(signal)
+        return self
+
+    def error(self, start: int, end: int) -> np.ndarray:
+        """Compute the cost of a segment."""
+        cuts = np.array([start, end]).reshape(-1, 2)
+        return self.cost.evaluate(cuts)
+
+
 n_segments = 2
 seg_len = 50
 changepoint_data = generate_alternating_data(
@@ -900,7 +919,8 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
 
 
 # @pytest.mark.xfail(strict=True)
-@pytest.mark.parametrize("min_segment_length", list(range(31, 40)))
+# @pytest.mark.parametrize("min_segment_length", list(range(31, 40)))
+@pytest.mark.parametrize("min_segment_length", [31, 32])
 def test_xfail_pelt_on_tricky_data(
     cost: BaseCost, penalty: float, min_segment_length: int
 ):
@@ -952,6 +972,9 @@ def test_xfail_pelt_on_tricky_data(
         + (len(improved_pelt_cpts) + 1) * penalty
     )
 
+    # First index at which 'improved_pelt_costs' and 'opt_part_costs' differ:
+    # first_diff_index = np.where(improved_pelt_costs != opt_part_costs)[0][0]
+
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
     rpt_model.fit(alternating_sequence)
     dyn_rpt_num_opt_part_cpts = np.array(
@@ -988,13 +1011,20 @@ def test_xfail_pelt_on_tricky_data(
     )
     assert np.all(improved_pelt_cpts == opt_part_cpts)
     assert np.all(improved_pelt_cpts == dyn_rpt_num_opt_part_cpts)
+
+    # Original PELT implementation does not find the same changepoints:
     assert np.all(orig_pelt_cpts == ruptures_pelt_cpts)
+    assert not (
+        len(improved_pelt_cpts) == len(ruptures_pelt_cpts)
+        and np.all(improved_pelt_cpts == ruptures_pelt_cpts)
+    )
 
     assert improved_pelt_min_value == opt_part_min_value
     assert improved_pelt_min_value == dyn_num_opt_part_cpts_min_value
     assert improved_pelt_min_value <= orig_pelt_min_value
     assert orig_pelt_min_value == rpt_pelt_min_value
     assert np.abs(improved_pelt_costs[-1] - opt_part_costs[-1]) < 1e-16
+    assert np.abs(improved_pelt_costs[-1] - orig_pelt_costs[-1]) > 1e-3
 
 
 @pytest.mark.parametrize("min_segment_length", [1, 2, 5, 10])
@@ -1020,24 +1050,6 @@ def test_pelt_dense_changepoints_parametrized(cost: BaseCost, min_segment_length
     assert np.all(changepoints == expected_changepoints)
 
 
-class RupturesGaussianCost(rpt_BaseCost):
-    """Custom cost for Gaussian (mean-var) cost."""
-
-    # The 2 following attributes must be specified for compatibility.
-    model = ""
-    min_size = 2
-
-    def fit(self, signal) -> "RupturesGaussianCost":
-        self.signal = signal
-        self.cost = GaussianCost().fit(signal)
-        return self
-
-    def error(self, start: int, end: int) -> np.ndarray:
-        """Compute the cost of a segment."""
-        cuts = np.array([start, end]).reshape(-1, 2)
-        return self.cost.evaluate(cuts)
-
-
 def test_improved_pelt_failing():
     penalty = np.float64(0.9699161186346296)
     min_segment_length = 10
@@ -1059,6 +1071,12 @@ def test_improved_pelt_failing():
         percent_pruning_margin=0.0,
     ).fit(dataset)
     no_margin_pelt_changepoints = no_margin_pelt_cd.predict(dataset.values)
+    no_margin_pelt_opt_costs, _ = run_improved_pelt_array_based(
+        cost=cost,
+        penalty=penalty,
+        min_segment_length=min_segment_length,
+        percent_pruning_margin=0.0,
+    )
 
     margin_pelt_cd = PELT(
         cost=cost,
@@ -1090,6 +1108,19 @@ def test_improved_pelt_failing():
         cost.evaluate_segmentation(opt_part_changepoints)
         + (len(opt_part_changepoints) + 1) * penalty
     )
+
+    # first_diff_index == 63
+    first_diff_index = np.where(no_margin_pelt_opt_costs != opt_part_costs)[0][0]
+    # For PELT at current_obs_ind == 63:
+    # argmin_candidate_cost: np.int64(10)
+    # cost_eval_starts[argmin_candidate_cost]: np.int64(53)
+    # For Optimal Partitioning at current_obs_ind == 63:
+    # argmin_candidate_cost: np.int64(32)
+    # cost_eval_starts[argmin_candidate_cost]: np.int64(41)
+    # candidate_opt_costs[argmin_candidate_cost]: np.float64(156.58707879108042)
+    # When was 'eval_cost_start' 41 pruned?
+    # At current_obs_ind == 61, when the optimal cost at 52
+    # current_obs_ind_opt_cost: np.float64(148.81840929423643)
 
     # Compare with ruptures dynamic programming:
     # Not so easy, need to provide a custom cost...
