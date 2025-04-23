@@ -74,7 +74,7 @@ df = generate_anomalous_data(n, anomalies, means, random_state=3)
 p = df.shape[1]
 
 score = L2Saving()
-penalty = make_linear_chi2_penalty(score.get_param_size(p), n, p)
+penalty = make_linear_chi2_penalty(score.get_param_size(1), n, p)
 penalised_score = PenalisedScore(score, penalty)
 detector = CAPA(penalised_score, find_affected_components=True)
 detector.fit_predict(df)
