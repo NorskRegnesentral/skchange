@@ -139,9 +139,9 @@ def run_improved_pelt_array_based(
         # Only prune starts at least 2*min_segment_length before current observation:
         new_start_inclusion_mask = (
             candidate_opt_costs <= start_inclusion_threshold
-            # ) | (cost_eval_starts >= latest_start - min_segment_length)
-            # Two 'off by one' cases?
-        ) | (cost_eval_starts >= latest_start - min_segment_length - 2)
+        ) | (cost_eval_starts >= latest_start - min_segment_length)
+        # Two 'off by one' cases?
+        # ) | (cost_eval_starts >= latest_start - min_segment_length - 2)
 
         if not drop_pruning:
             cost_eval_starts = cost_eval_starts[

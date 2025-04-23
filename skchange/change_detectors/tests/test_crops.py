@@ -68,67 +68,67 @@ def test_generic_crops_on_SeededBinarySegmentation():
 
 
 # %% Testin out the "automatic" elbow detection method:
-cost = L2Cost()
-# cost = GaussianCost()
-# # cost = L1Cost()
-min_penalty = 1.0e-2
-max_penalty = 5.0e3
-min_segment_length = 1
+# cost = L2Cost()
+# # cost = GaussianCost()
+# # # cost = L1Cost()
+# min_penalty = 1.0e-2
+# max_penalty = 5.0e3
+# min_segment_length = 1
 
-# Fails with 'min_segment_length=10' and 'percent_pruning_margin=0.0'
-# Perhaps due to numerical issues, it's a bit unclear.
-percent_pruning_margin = 0.0
+# # Fails with 'min_segment_length=10' and 'percent_pruning_margin=0.0'
+# # Perhaps due to numerical issues, it's a bit unclear.
+# percent_pruning_margin = 0.0
 
-change_point_detector = CROPS_PELT(
-    cost=cost,
-    min_penalty=min_penalty,
-    max_penalty=max_penalty,
-    min_segment_length=min_segment_length,
-    # min_segment_length=cost.min_size,
-    percent_pruning_margin=percent_pruning_margin,
-    drop_pruning=False,
-)
+# change_point_detector = CROPS_PELT(
+#     cost=cost,
+#     min_penalty=min_penalty,
+#     max_penalty=max_penalty,
+#     min_segment_length=min_segment_length,
+#     # min_segment_length=cost.min_size,
+#     percent_pruning_margin=percent_pruning_margin,
+#     drop_pruning=False,
+# )
 
-# Generate test data:
-dataset = generate_alternating_data(
-    n_segments=5,
-    segment_length=100,
-    p=1,
-    mean=3.0,
-    variance=4.0,
-    random_state=42,
-)
+# # Generate test data:
+# dataset = generate_alternating_data(
+#     n_segments=5,
+#     segment_length=100,
+#     p=1,
+#     mean=3.0,
+#     variance=4.0,
+#     random_state=42,
+# )
 
-# Fit the change point detector:
-change_point_detector.fit(dataset)
-margin_results = change_point_detector.run_crops(dataset.values)
-margin_results["optimal_value"] = margin_results["segmentation_cost"] + margin_results[
-    "penalty"
-] * (margin_results["num_change_points"] + 1)
+# # Fit the change point detector:
+# change_point_detector.fit(dataset)
+# margin_results = change_point_detector.run_crops(dataset.values)
+# margin_results["optimal_value"] = margin_results["segmentation_cost"] + margin_results[
+#     "penalty"
+# ] * (margin_results["num_change_points"] + 1)
 
-no_prune_cpd = CROPS_PELT(
-    cost=cost,
-    min_penalty=min_penalty,
-    max_penalty=max_penalty,
-    min_segment_length=min_segment_length,
-    # min_segment_length=cost.min_size,
-    drop_pruning=True,
-)
-no_prune_cpd.fit(dataset)
-no_prune_results = no_prune_cpd.run_crops(dataset.values)
-no_prune_results["optimal_value"] = no_prune_results[
-    "segmentation_cost"
-] + no_prune_results["penalty"] * (no_prune_results["num_change_points"] + 1)
+# no_prune_cpd = CROPS_PELT(
+#     cost=cost,
+#     min_penalty=min_penalty,
+#     max_penalty=max_penalty,
+#     min_segment_length=min_segment_length,
+#     # min_segment_length=cost.min_size,
+#     drop_pruning=True,
+# )
+# no_prune_cpd.fit(dataset)
+# no_prune_results = no_prune_cpd.run_crops(dataset.values)
+# no_prune_results["optimal_value"] = no_prune_results[
+#     "segmentation_cost"
+# ] + no_prune_results["penalty"] * (no_prune_results["num_change_points"] + 1)
 
-# Check that the results are as expected:
-if len(margin_results) != len(no_prune_results):
-    print(
-        f"Length of margin results ({len(margin_results)}) does not match"
-        f" length of no prune results ({len(no_prune_results)})"
-    )
-else:
-    print("Len(margin_results):", len(margin_results))
-    print((margin_results == no_prune_results).all())
+# # Check that the results are as expected:
+# if len(margin_results) != len(no_prune_results):
+#     print(
+#         f"Length of margin results ({len(margin_results)}) does not match"
+#         f" length of no prune results ({len(no_prune_results)})"
+#     )
+# else:
+#     print("Len(margin_results):", len(margin_results))
+#     print((margin_results == no_prune_results).all())
 
 # %%
 # import matplotlib.pyplot as plt
