@@ -112,11 +112,11 @@ def test_min_size_property():
     assert cost.min_size == 2  # 2 features
 
 
-def test_get_param_size():
-    """Test get_param_size method."""
+def test_get_model_size():
+    """Test get_model_size method."""
     cost = LinearRegressionCost(response_col="log_house_price")
     # Number of parameters is equal to number of variables
-    assert cost.get_param_size(5) == 4
+    assert cost.get_model_size(5) == 4
 
 
 def test_simple_linear_regression_cost_fixed_params():
@@ -133,7 +133,7 @@ def test_simple_linear_regression_cost_fixed_params():
     cost.fit(np.hstack((y.reshape(-1, 1), X)))
 
     # Test that number of parameters is equal to number of columns:
-    assert cost.get_param_size(3) == 2
+    assert cost.get_model_size(3) == 2
 
     # Evaluate on the entire interval
     starts = np.array([0])
@@ -208,24 +208,6 @@ def test_fixed_param_validation():
     with pytest.raises(ValueError):
         cost = LinearRegressionCost(param=invalid_params_length, response_col=0)
         cost.fit(X)
-
-
-def test_min_size_with_fixed_params():
-    """Test min_size property with fixed parameters."""
-    # Create simple dataset
-    X = np.random.rand(100, 3)
-
-    # With optimized parameters
-    cost = LinearRegressionCost(response_col=1)
-    assert cost.min_size is None  # Not fitted yet
-    cost.fit(X)
-    assert cost.min_size == 2  # Need 2 samples for 2 parameters
-
-    # With fixed parameters
-    fixed_params = np.array([0.1, 0.2])
-    cost_fixed = LinearRegressionCost(param=fixed_params, response_col=1)
-    cost_fixed.fit(X)
-    assert cost_fixed.min_size == 1  # Only need 1 sample with fixed parameters
 
 
 def test_linear_regression_cost_with_pelt():

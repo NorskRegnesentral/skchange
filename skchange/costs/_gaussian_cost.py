@@ -128,9 +128,8 @@ class GaussianCost(BaseCost):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": "Tveten",
+        "supports_fixed_param": True,
     }
-
-    supports_fixed_params = True
 
     def __init__(self, param: tuple[MeanType, VarType] | None = None):
         super().__init__(param)
@@ -165,7 +164,7 @@ class GaussianCost(BaseCost):
         """
         return 2
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

@@ -12,7 +12,6 @@ Savings
     :toctree: auto_generated/
     :template: class.rst
 
-    BaseSaving
     Saving
     L2Saving
 
@@ -23,7 +22,6 @@ Local anomaly scores
     :toctree: auto_generated/
     :template: class.rst
 
-    BaseLocalAnomalyScore
     LocalAnomalyScore
 
 Utility functions

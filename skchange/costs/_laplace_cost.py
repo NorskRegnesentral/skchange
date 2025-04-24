@@ -15,7 +15,6 @@ from ..costs._utils import (
 )
 from ..utils.numba import njit
 from ..utils.numba.stats import col_median
-from ..utils.validation.enums import EvaluationType
 from .base import BaseCost
 
 
@@ -138,10 +137,8 @@ class LaplaceCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = True
 
     def __init__(
         self,
@@ -256,7 +253,7 @@ class LaplaceCost(BaseCost):
         # Need at least 2 samples to estimate the location and scale.
         return 2
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

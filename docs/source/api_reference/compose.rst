@@ -3,7 +3,7 @@
 Composition
 ===========
 
-.. currentmodule:: skchange.compose
+.. currentmodule:: skchange.compose.penalised_score
 
 .. autosummary::
     :toctree: auto_generated/

@@ -9,8 +9,8 @@ Change scores
     :toctree: auto_generated/
     :template: class.rst
 
-    BaseChangeScore
     ChangeScore
+    ContinuousLinearTrendScore
     CUSUM
     MultivariateGaussianScore
 

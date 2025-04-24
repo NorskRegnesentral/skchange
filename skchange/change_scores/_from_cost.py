@@ -2,43 +2,40 @@
 
 import numpy as np
 
-from ..compose.penalised_score import PenalisedScore
+from ..base import BaseIntervalScorer
 from ..costs.base import BaseCost
-from .base import BaseChangeScore
 
 
-def to_change_score(
-    scorer: BaseCost | BaseChangeScore | PenalisedScore,
-) -> BaseChangeScore:
+def to_change_score(scorer: BaseIntervalScorer) -> BaseIntervalScorer:
     """Convert compatible scorers to a change score.
 
     Parameters
     ----------
-    scorer : BaseCost or BaseChangeScore
+    scorer : BaseIntervalScorer
         The scorer to convert to a change score. If a change score is provided, it is
         returned as is.
 
     Returns
     -------
-    change_score : BaseChangeScore
-        The change score based on the cost function.
+    BaseIntervalScorer
+        The change score.
     """
-    if isinstance(scorer, BaseCost):
+    if not isinstance(scorer, BaseIntervalScorer):
+        raise ValueError(f"scorer must be a BaseIntervalScorer. Got {type(scorer)}.")
+    task = scorer.get_tag("task")
+    if task == "cost":
         change_score = ChangeScore(scorer)
-    elif isinstance(scorer, BaseChangeScore) or (
-        isinstance(scorer, PenalisedScore)
-        and isinstance(scorer.scorer, BaseChangeScore)
-    ):
+    elif task == "change_score":
         change_score = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseChangeScore, BaseCost or"
-            f" PenalisedScore. Got {type(scorer)}."
+            f"scorer must have tag 'task' set to 'cost' or 'change_score'."
+            f" Got scorer.get_tag('task') = {task}."
         )
     return change_score
 
 
-class ChangeScore(BaseChangeScore):
+class ChangeScore(BaseIntervalScorer):
     """Change score based on a cost class.
 
     The change score is calculated as cost difference under a no-change hypothesis
@@ -50,17 +47,30 @@ class ChangeScore(BaseChangeScore):
         The cost function.
     """
 
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "change_score",
+    }
+
     def __init__(self, cost: BaseCost):
         self.cost = cost
-        self.evaluation_type = self.cost.evaluation_type
         super().__init__()
+
+        self.clone_tags(
+            cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:
         """Minimum valid size of an interval to evaluate."""
-        return self.cost.min_size
+        if self.is_fitted:
+            return self.cost_.min_size
+        else:
+            return self.cost.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty
@@ -71,7 +81,10 @@ class ChangeScore(BaseChangeScore):
         p : int
             Number of variables in the data.
         """
-        return self.cost.get_param_size(p)
+        if self.is_fitted:
+            return self.cost_.get_model_size(p)
+        else:
+            return self.cost.get_model_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score.
@@ -88,7 +101,8 @@ class ChangeScore(BaseChangeScore):
         self :
             Reference to self.
         """
-        self.cost.fit(X)
+        self.cost_: BaseCost = self.cost.clone()
+        self.cost_.fit(X)
         return self
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
@@ -115,9 +129,9 @@ class ChangeScore(BaseChangeScore):
         left_intervals = cuts[:, [0, 1]]
         right_intervals = cuts[:, [1, 2]]
         full_intervals = cuts[:, [0, 2]]
-        left_costs = self.cost.evaluate(left_intervals)
-        right_costs = self.cost.evaluate(right_intervals)
-        no_change_costs = self.cost.evaluate(full_intervals)
+        left_costs = self.cost_.evaluate(left_intervals)
+        right_costs = self.cost_.evaluate(right_intervals)
+        no_change_costs = self.cost_.evaluate(full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
 

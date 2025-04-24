@@ -6,13 +6,14 @@ __all__ = ["PELT"]
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..costs import L2Cost
-from ..costs.base import BaseCost
-from ..penalties import BICPenalty, as_penalty
-from ..penalties.base import BasePenalty
+from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
@@ -28,7 +29,7 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
 
 
 def run_pelt(
-    cost: BaseCost,
+    cost: BaseIntervalScorer,
     penalty: float,
     min_segment_length: int,
     split_cost: float = 0.0,
@@ -124,13 +125,13 @@ class PELT(BaseChangeDetector):
 
     Parameters
     ----------
-    cost : BaseCost, optional, default=`L2Cost`
-        The cost function to use for the changepoint detection.
-    penalty : BasePenalty or float, optional, default=`BICPenalty`
-        The penalty to use for the changepoint detection. If a float is given, it is
-        interpreted as a constant penalty. If `None`, the penalty is set to a BIC
-        penalty with ``n=X.shape[0]`` and ``n_params=cost.get_param_size(X.shape[1])``,
-        where ``X`` is the input data to `fit`.
+    cost : BaseIntervalScorer, optional, default=`L2Cost`
+        The cost to use for the changepoint detection.
+    penalty : float, optional
+        The penalty to use for the changepoint detection. It must be non-negative. If
+        `None`, the penalty is set to
+        `make_bic_penalty(n=X.shape[0], n_params=cost.get_model_size(X.shape[1]))`,
+        where ``X`` is the input data to `predict`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
     split_cost : float, optional, default=0.0
@@ -160,12 +161,13 @@ class PELT(BaseChangeDetector):
     _tags = {
         "authors": ["Tveten", "johannvk"],
         "maintainers": ["Tveten", "johannvk"],
+        "fit_is_empty": True,
     }
 
     def __init__(
         self,
-        cost: BaseCost = None,
-        penalty: BasePenalty | float | None = None,
+        cost: BaseIntervalScorer = None,
+        penalty: float | None = None,
         min_segment_length: int = 2,
         split_cost: float = 0.0,
     ):
@@ -175,52 +177,26 @@ class PELT(BaseChangeDetector):
         self.split_cost = split_cost
         super().__init__()
 
-        self._cost = L2Cost() if cost is None else cost
-        self._penalty = as_penalty(
-            self.penalty, default=BICPenalty(), require_penalty_type="constant"
+        _cost = L2Cost() if cost is None else cost
+        check_interval_scorer(
+            _cost,
+            arg_name="cost",
+            caller_name="PELT",
+            required_tasks=["cost"],
+            allow_penalised=False,
+        )
+        self._cost = _cost.clone()
+
+        check_penalty(
+            penalty,
+            "penalty",
+            "PELT",
+            require_constant_penalty=True,
+            allow_none=True,
         )
         check_larger_than(1, min_segment_length, "min_segment_length")
 
-    def _fit(
-        self,
-        X: pd.Series | pd.DataFrame,
-        y: pd.Series | pd.DataFrame | None = None,
-    ):
-        """Fit to training data.
-
-        Sets the penalty of the detector.
-        If `penalty_scale` is ``None``, the penalty is set to the ``1-level`` quantile
-        of the change scores on the training data. For this to be correct,
-        the training data must contain no change points. If `penalty_scale` is a
-        number, the penalty is set to `penalty_scale` times the default penalty
-        for the detector. The default penalty depends at least on the data's shape,
-        but could also depend on more parameters.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            training data to fit the threshold to.
-        y : pd.Series, optional
-            Does nothing. Only here to make the fit method compatible with `sktime`
-            and `scikit-learn`.
-
-        Returns
-        -------
-        self :
-            Reference to self.
-
-        State change
-        ------------
-        Creates fitted model that updates attributes ending in "_".
-        """
-        X = check_data(
-            X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="2*min_segment_length",
-        )
-        self.penalty_: BasePenalty = self._penalty.clone()
-        self.penalty_.fit(X, self._cost)
-        return self
+        self.clone_tags(self._cost, ["distribution_type"])
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -235,16 +211,35 @@ class PELT(BaseChangeDetector):
         y_sparse : pd.DataFrame
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the changepoints.
+
+        Attributes
+        ----------
+        fitted_cost : BaseIntervalScorer
+            The fitted cost function.
+        fitted_penalty : float
+            The fitted penalty value. Either the user-specified value or the fitted BIC
+            penalty.
         """
         X = check_data(
             X,
             min_length=2 * self.min_segment_length,
             min_length_name="2*min_segment_length",
         )
-        self._cost.fit(X)
+
+        self.fitted_cost: BaseIntervalScorer = self._cost.clone()
+        self.fitted_cost.fit(X)
+
+        if self.penalty is None:
+            self.fitted_penalty = make_bic_penalty(
+                n=X.shape[0],
+                n_params=self.fitted_cost.get_model_size(X.shape[1]),
+            )
+        else:
+            self.fitted_penalty = self.penalty
+
         opt_costs, changepoints = run_pelt(
-            cost=self._cost,
-            penalty=self.penalty_.values[0],
+            cost=self.fitted_cost,
+            penalty=self.fitted_penalty,
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
         )

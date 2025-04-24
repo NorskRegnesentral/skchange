@@ -6,7 +6,7 @@ Anomaly detectors
 Base
 ----
 
-.. currentmodule:: skchange.anomaly_detectors
+.. currentmodule:: skchange.anomaly_detectors.base
 .. autosummary::
     :toctree: auto_generated/
     :template: class.rst
@@ -24,13 +24,3 @@ Segment anomaly detectors
     CAPA
     CircularBinarySegmentation
     StatThresholdAnomaliser
-
-Segment anomaly detectors with variable identification
----------------------------------------------------------
-.. currentmodule:: skchange.anomaly_detectors
-
-.. autosummary::
-    :toctree: auto_generated/
-    :template: class.rst
-
-    MVCAPA

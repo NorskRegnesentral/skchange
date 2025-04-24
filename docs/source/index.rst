@@ -8,10 +8,6 @@ A python library for fast change point and segment anomaly detection.
 The library is designed to be compatible with `sktime <https://www.sktime.net>`_.
 `Numba <https://numba.readthedocs.io>`_ is used for computational speed.
 
-!New!
------
-`Notebook tutorial <https://github.com/sktime/sktime-tutorial-pydata-global-2024>`_ from `PyData Global 2024 <https://pydata.org/global2024>`_ available in the :ref:`user_guide`.
-
 Installation
 ------------
 The library can be installed via pip:
@@ -47,16 +43,22 @@ Example
 -------
 .. code-block:: python
 
-    import numpy as np
-    from skchange.anomaly_detectors import MVCAPA
-    from skchange.datasets.generate import generate_anomalous_data
+    from skchange.anomaly_detectors import CAPA
+    from skchange.anomaly_scores import L2Saving
+    from skchange.compose.penalised_score import PenalisedScore
+    from skchange.datasets import generate_anomalous_data
+    from skchange.penalties import make_linear_chi2_penalty
 
     n = 300
     anomalies = [(100, 120), (250, 300)]
     means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
     df = generate_anomalous_data(n, anomalies, means, random_state=3)
+    p = df.shape[1]
 
-    detector = MVCAPA()
+    score = L2Saving()
+    penalty = make_linear_chi2_penalty(score.get_model_size(1), n, p)
+    penalised_score = PenalisedScore(score, penalty)
+    detector = CAPA(penalised_score, find_affected_components=True)
     detector.fit_predict(df)
 
 .. code-block:: python
@@ -75,7 +77,7 @@ This project is a free and open-source software licensed under the
     :maxdepth: 2
     :hidden:
 
-    user_guide
-    api_reference
-    developer_guide
+    user_guide/index
+    api_reference/index
+    developer_guide/index
     releases

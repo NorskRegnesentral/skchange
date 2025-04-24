@@ -8,7 +8,6 @@ residuals from fitting a linear regression model within each segment.
 import numpy as np
 
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_data_column
 from .base import BaseCost
 
@@ -151,10 +150,10 @@ class LinearRegressionCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
+        "is_conditional": True,  # The cost uses covariates.
+        "is_aggregated": True,  # Only a single response column is supported.
     }
-
-    evaluation_type = EvaluationType.CONDITIONAL
-    supports_fixed_params = True
 
     def __init__(
         self,
@@ -301,30 +300,13 @@ class LinearRegressionCost(BaseCost):
         int
             The minimum valid size of an interval to evaluate.
         """
-        # For fixed parameter evaluation, we only need a single sample:
-        if self.param is not None:
-            return 1
-
         if self.is_fitted:
             # Need at least as many samples as covariates:
             return len(self._covariate_col_indices)
         else:
             return None
 
-    def _output_dim(self):
-        """Get the output dimension of the cost function.
-
-        A cost column is returned for each `response_col` passed to the cost.
-        Currently only a single response column is supported.
-
-        Returns
-        -------
-        int
-            Number of columns in the output of the cost function.
-        """
-        return 1
-
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

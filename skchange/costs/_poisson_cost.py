@@ -8,7 +8,6 @@ twice the negative log likelihood of the Poisson distribution.
 import numpy as np
 
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ._utils import MeanType, check_non_negative_parameter
 from .base import BaseCost
 
@@ -151,10 +150,9 @@ class PoissonCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "distribution_type": "Poisson",
+        "supports_fixed_param": True,
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = True
 
     def __init__(
         self,
@@ -261,7 +259,7 @@ class PoissonCost(BaseCost):
         # Need at least 1 sample to estimate the rate parameter
         return 1
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

@@ -12,7 +12,7 @@ class BaseCost(BaseIntervalScorer):
     function on a set of intervals
 
     If the cost supports fixed parameters, that is indicated by the
-    `supports_fixed_params` class attribute. By default, this is set to `False`.
+    `supports_fixed_param` tag. By default, this is set to `False`.
     If the cost supports fixed parameters, the `param` attribute can be set
     in the constructor, and the fixed `param` paramaters will then used when
     evaluating the cost. The type of `param` is specific to each concrete cost.
@@ -29,16 +29,18 @@ class BaseCost(BaseIntervalScorer):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": "Tveten",
+        "task": "cost",
+        "supports_fixed_param": False,
     }
-
-    supports_fixed_params = False
-    expected_cut_entries = 2
 
     def __init__(self, param=None):
         self.param = param
         super().__init__()
-        if self.param is not None and not self.supports_fixed_params:
-            raise ValueError("This cost does not support fixed parameters.")
+        if self.param is not None and not self.get_tag("supports_fixed_param"):
+            raise ValueError(
+                "This cost does not support fixed parameters."
+                f" Got {type(self).__name__} with param={self.param}."
+            )
 
     def _check_param(self, param, X):
         """Check the parameter with respect to the input data.

@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 
-from skchange.anomaly_detectors import MVCAPA
+from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_scores import to_saving
 from skchange.change_detectors import PELT
 from skchange.costs import LinearTrendCost
@@ -13,6 +13,7 @@ from skchange.costs._linear_trend_cost import (
     fit_indexed_linear_trend,
     fit_linear_trend,
 )
+from skchange.penalties import make_linear_chi2_penalty
 
 
 def test_linear_trend_cost_init():
@@ -310,12 +311,12 @@ def test_linear_trend_cost_default_time():
     ), "Costs should be lower when split into segments"
 
 
-def test_get_param_size():
-    """Test get_param_size method."""
+def test_get_model_size():
+    """Test get_model_size method."""
     cost = LinearTrendCost()
     # For each column we need 2 parameters (slope and intercept)
-    assert cost.get_param_size(3) == 6  # 3 columns * 2 params
-    assert cost.get_param_size(1) == 2  # 1 column * 2 params
+    assert cost.get_model_size(3) == 6  # 3 columns * 2 params
+    assert cost.get_model_size(1) == 2  # 1 column * 2 params
 
 
 def test_indexed_trend_vs_explicit_time():
@@ -381,10 +382,15 @@ def test_linear_trend_cost_as_saving():
     trend_saving = to_saving(baseline_cost)
 
     # Create MVCAPA detector with LinearTrendCost as Saving
-    detector = MVCAPA(
+    n = df.shape[0]
+    p = df.shape[1]
+    penalty = make_linear_chi2_penalty(trend_saving.get_model_size(p), n, p)
+    detector = CAPA(
         segment_saving=trend_saving,
+        segment_penalty=penalty,
         min_segment_length=5,
         max_segment_length=50,
+        find_affected_components=True,
     )
 
     # Detect anomalies

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from skchange.anomaly_scores import LocalAnomalyScore
 from skchange.change_detectors import SeededBinarySegmentation
 from skchange.change_scores import CHANGE_SCORES
 from skchange.costs import COSTS
@@ -60,3 +61,13 @@ def test_invalid_selection_method():
     detector = SeededBinarySegmentation.create_test_instance()
     with pytest.raises(ValueError):
         detector.set_params(selection_method="greedy2")
+
+
+def test_invalid_change_scores():
+    """
+    Test that SeededBinarySegmentation raises an error when given an invalid cost.
+    """
+    with pytest.raises(ValueError, match="change_score"):
+        SeededBinarySegmentation("l2")
+    with pytest.raises(ValueError, match="change_score"):
+        SeededBinarySegmentation(LocalAnomalyScore(COSTS[0].create_test_instance()))

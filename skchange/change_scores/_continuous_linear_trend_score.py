@@ -7,10 +7,9 @@ and a best fit linear trend line within each interval.
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_data_column
-from .base import BaseChangeScore
 
 
 @njit
@@ -179,7 +178,7 @@ def analytical_cont_piecewise_linear_trend_score(
     return scores
 
 
-class ContinuousLinearTrendScore(BaseChangeScore):
+class ContinuousLinearTrendScore(BaseIntervalScorer):
     """Continuous linear trend change score.
 
     This change score calculates the difference in the squared error between
@@ -228,10 +227,8 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "task": "change_score",
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = False
 
     def __init__(
         self,
@@ -337,7 +334,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         """
         return 2  # Need at least 2 points to define a line
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

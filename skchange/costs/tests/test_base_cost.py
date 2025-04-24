@@ -7,7 +7,9 @@ from skchange.costs.base import BaseCost
 class DummyCost(BaseCost):
     """Dummy cost function for testing."""
 
-    supports_fixed_params = True
+    _tags = {
+        "supports_fixed_param": True,
+    }
 
     def _evaluate_optim_param(self, starts, ends):
         return np.array([[1] * len(starts)])
@@ -82,8 +84,8 @@ def test_init_with_param_not_supported():
         NonFixedParamCost(param=42)
 
 
-def test_supports_fixed_params_property():
-    """Test the supports_fixed_params property."""
-    assert BaseCost.supports_fixed_params is False
-    assert DummyCost.supports_fixed_params is True
-    assert NonFixedParamCost.supports_fixed_params is False
+def test_supports_fixed_param_tag():
+    """Test the supports_fixed_param tag."""
+    assert BaseCost.get_class_tag("supports_fixed_param") is False
+    assert DummyCost.get_class_tag("supports_fixed_param") is True
+    assert NonFixedParamCost.get_class_tag("supports_fixed_param") is False
