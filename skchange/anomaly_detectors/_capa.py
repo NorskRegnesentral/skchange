@@ -142,7 +142,7 @@ def _make_linear_chi2_penalty_from_score(score: BaseIntervalScorer) -> np.ndarra
 
 
 def _check_capa_penalised_score(score: BaseIntervalScorer, name: str, caller_name: str):
-    if score.is_penalised_score and not isinstance(score, PenalisedScore):
+    if score.get_tag("is_penalised") and not isinstance(score, PenalisedScore):
         raise ValueError(
             f"{caller_name} only supports a penalised `{name}` constructed"
             " by `PenalisedScore`."
@@ -167,9 +167,9 @@ class CAPA(BaseSegmentAnomalyDetector):
         cost must have a fixed parameter that represents the baseline cost.
         If a penalised saving is given, it must be constructed from `PenalisedScore`.
     segment_penalty : np.ndarray or float, optional, default=None
-        The penalty to use for segment anomaly detection. If
-        `segment_penalty.is_penalised_score == True` the penalty will be ignored.
-        The different types of penalties are as follows:
+        The penalty to use for segment anomaly detection. If the segment penalty is
+        penalised (`segment_penalty.get_tag("is_penalised")`) the penalty will
+        be ignored. The different types of penalties are as follows:
 
         * ``float``: A constant penalty applied to the sum of scores across all
           variables in the data.
@@ -268,7 +268,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         _segment_saving = to_saving(_segment_score)
 
         check_penalty(segment_penalty, "segment_penalty", "CAPA")
-        if _segment_saving.is_penalised_score:
+        if _segment_saving.get_tag("is_penalised"):
             _check_capa_penalised_score(_segment_saving, "segment_saving", "CAPA")
             self._segment_penalised_saving = _segment_saving.clone()
         else:
@@ -290,7 +290,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         _point_saving = to_saving(_point_score)
 
         check_penalty(point_penalty, "point_penalty", "CAPA")
-        if _point_saving.is_penalised_score:
+        if _point_saving.get_tag("is_penalised"):
             _check_capa_penalised_score(_point_saving, "point_saving", "CAPA")
             self._point_penalised_saving = _point_saving.clone()
         else:
@@ -304,7 +304,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
         self.set_tags(distribution_type=_segment_saving.get_tag("distribution_type"))
-        self.capability_variable_identification = self.find_affected_components
+        self.set_tags(**{"capability:identify_variables": find_affected_components})
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

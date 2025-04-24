@@ -7,7 +7,6 @@ import numpy as np
 
 from ..utils.numba import njit, prange
 from ..utils.numba.stats import log_det_covariance
-from ..utils.validation.enums import EvaluationType
 from ._utils import CovType, MeanType, check_cov, check_mean
 from .base import BaseCost
 
@@ -183,10 +182,9 @@ class MultivariateGaussianCost(BaseCost):
     _tags = {
         "authors": ["johannvk", "Tveten"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
+        "is_aggregated": True,
     }
-
-    supports_fixed_params = True
-    evaluation_type = EvaluationType.MULTIVARIATE
 
     def __init__(self, param: tuple[MeanType, CovType] | None = None):
         super().__init__(param)

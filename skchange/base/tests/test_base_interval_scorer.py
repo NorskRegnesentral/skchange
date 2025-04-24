@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from skchange.base import BaseIntervalScorer
-from skchange.utils.validation.enums import EvaluationType
 
 
 class ConcreteIntervalEvaluator(BaseIntervalScorer):
@@ -29,10 +28,8 @@ def test_fit():
 
 def test_evaluate():
     evaluator = ConcreteIntervalEvaluator()
-    assert evaluator.output_dim is None
     X = np.array([1, 2, 3, 4, 5])
     evaluator.fit(X)
-    assert evaluator.output_dim == 1
     cuts = np.array([[0, 2], [2, 5]])
     values = evaluator.evaluate(cuts)
     expected_values = np.array([3, 12])
@@ -55,13 +52,6 @@ def test_not_implemented_evaluate():
     evaluator = BaseIntervalScorer()
     with pytest.raises(NotImplementedError):
         evaluator._evaluate(np.array([[0, 2]]))
-
-
-def test_not_implemented_output_dim():
-    evaluator = BaseIntervalScorer()
-    evaluator.evaluation_type = EvaluationType.CONDITIONAL
-    with pytest.raises(NotImplementedError):
-        evaluator.output_dim
 
 
 def test_check_is_penalised():

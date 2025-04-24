@@ -465,5 +465,5 @@ def test_invalid_costs():
         PELT(cost=CUSUM())
     with pytest.raises(ValueError, match="cost"):
         cost = L2Cost()
-        cost.is_penalised_score = True  # Simulate a penalised score
+        cost.set_tags(is_penalised=True)  # Simulate a penalised score
         PELT(cost=cost)

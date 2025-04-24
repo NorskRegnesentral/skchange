@@ -128,9 +128,8 @@ class GaussianCost(BaseCost):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": "Tveten",
+        "supports_fixed_param": True,
     }
-
-    supports_fixed_params = True
 
     def __init__(self, param: tuple[MeanType, VarType] | None = None):
         super().__init__(param)

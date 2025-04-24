@@ -55,10 +55,12 @@ class ChangeScore(BaseIntervalScorer):
 
     def __init__(self, cost: BaseCost):
         self.cost = cost
-        self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
         self.set_tags(distribution_type=cost.get_tag("distribution_type"))
+        self.set_tags(is_conditional=cost.get_tag("is_conditional"))
+        self.set_tags(is_aggregated=cost.get_tag("is_aggregated"))
+        self.set_tags(is_penalised=cost.get_tag("is_penalised"))
 
     @property
     def min_size(self) -> int:

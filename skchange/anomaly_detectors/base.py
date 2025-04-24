@@ -144,7 +144,7 @@ class BaseSegmentAnomalyDetector(BaseDetector):
         respectively.
         """
         # Cannot extract this from segment_anomalies as it may be an empty list.
-        if self.capability_variable_identification:
+        if self.get_tag("capability:identify_variables"):
             return self._format_sparse_output_icolumns(segment_anomalies, closed)
         else:
             return self._format_sparse_output_ilocs(segment_anomalies, closed)

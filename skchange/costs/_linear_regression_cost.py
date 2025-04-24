@@ -8,7 +8,6 @@ residuals from fitting a linear regression model within each segment.
 import numpy as np
 
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_data_column
 from .base import BaseCost
 
@@ -151,10 +150,10 @@ class LinearRegressionCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
+        "is_conditional": True,  # The cost uses covariates.
+        "is_aggregated": True,  # Only a single response column is supported.
     }
-
-    evaluation_type = EvaluationType.CONDITIONAL
-    supports_fixed_params = True
 
     def __init__(
         self,
