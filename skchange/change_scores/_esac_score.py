@@ -40,6 +40,7 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 import numpy as np
 from scipy.stats import norm
 
+from ..utils.numba import njit
 from ..utils.numba.stats import col_cumsum
 
 # internal extensions in skchange.change_scores
@@ -53,6 +54,27 @@ from .change_scores._cusum import cusum_score
 
 # todo: add the score to the CHANGE_SCORES variable in
 # skchange.change_scores.__init__.py
+
+
+# TODO: document this
+@njit
+def ESAC_Threshold(cusum_scores, a_s, nu_s, t_s, threshold):
+    num_levels = len(threshold)
+    num_cusum_scores = len(cusum_scores)
+    output_scores = np.zeros(num_cusum_scores, dtype=np.float64)
+
+    for i in range(num_cusum_scores):
+        temp_max = -np.inf
+        for j in range(num_levels):
+            temp_vec = (cusum_scores[i])[np.abs(cusum_scores[i]) > a_s[j]]
+            if len(temp_vec) > 0:
+                temp = np.sum(temp_vec ^ 2 - nu_s[j]) - threshold[j]
+                if temp > temp_max:
+                    temp_max = temp
+
+        output_scores[i] = temp_max
+
+    return output_scores
 
 
 class ESACScore(BaseChangeScore):
@@ -153,15 +175,12 @@ class ESACScore(BaseChangeScore):
 
             # Initialize as array
             self.a_s = np.zeros_like(ss, dtype=float)
-            self.a_s[1:] = np.sqrt(
-                2 * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
-            )
+            self.a_s[1:] = np.sqrt(2 * np.log(np.exp(1) * p * np.log(n) / ss[1:] ** 2))
 
             # Calculate nu_as
             # nu_as = 1 + as * exp(dnorm(as, log=TRUE) - pnorm(as, lower.tail=FALSE,
             #   log.p=TRUE))
-            # Log of standard normal PDF: log(1/sqrt(2pi)) - as^2/2
-            log_dnorm = -0.5 * np.log(2 * np.pi) - 0.5 * self.a_s**2
+            log_dnorm = norm.logpdf(self.a_s)
 
             # Log of upper tail probability: log(1 - \Phi(as))
             log_pnorm_upper = norm.logsf(self.a_s)
@@ -172,7 +191,7 @@ class ESACScore(BaseChangeScore):
             self.threshold[0] = self.threshold_dense * (
                 np.sqrt(p * np.log(n)) + np.log(n)
             )
-            self.thresholds[1:] = self.threshold_sparse * (
+            self.threshold[1:] = self.threshold_sparse * (
                 ss[1:] * np.log(np.exp(1) * p * np.log(n) / ss[1:] ** 2) + np.log(n)
             )
 
@@ -209,7 +228,10 @@ class ESACScore(BaseChangeScore):
         starts = cuts[:, 0]
         splits = cuts[:, 1]
         ends = cuts[:, 2]
-        return cusum_score(starts, ends, splits, self._sums)
+        cusum_scores = cusum_score(starts, ends, splits, self._sums)
+        return ESAC_Threshold(
+            cusum_scores, self.a_s, self.nu_s, self.t_s, self.threshold
+        )
 
     # todo: implement, optional, defaults to min_size = 1.
     # used for automatic validation of cuts in `evaluate`.
