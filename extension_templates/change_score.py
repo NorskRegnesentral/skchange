@@ -41,11 +41,9 @@ import numpy as np
 
 # internal extensions in skchange.change_scores
 from ..base import BaseIntervalScorer
-from ..utils.validation.enums import EvaluationType
 
 # For external extensions, use the following imports:
 # from skchange.base import BaseIntervalScorer
-# from skchange.utils.validation.enums import EvaluationType
 
 # todo: add the score to the CHANGE_SCORES variable in
 # skchange.change_scores.__init__.py
@@ -65,33 +63,37 @@ class MyChangeScore(BaseIntervalScorer):
     and so on
     """
 
-    # todo: add authors and maintaners Github user name
+    # todo: set tags
     _tags = {
         "authors": ["Tveten", "johannvk"],
         "maintainers": "Tveten",
         "task": "change_score",
-        # distribtuion_type is used to automatically create test cases.
+        # distribution_type is used to automatically create test cases.
         # Valid values:
         # - "None" - No distributional restrictions. Test data: Mostly Gaussian, but
         #   no guarantee.
         # - "Poisson" - Integer data. Test data: Poisson distributed.
         # - "Gaussian" - Real-valued data. Test data: Gaussian distribution.
         "distribution_type": "None",  # "None", "Poisson", "Gaussian"
+        # is_conditional: whether the scorer uses some of the input variables as
+        # covariates in a regression model or similar. If `True`, the scorer requires
+        # at least two input variables. If `False`, all p input variables/columns are
+        # used to evaluate the score, such that the output has either 1 or p columns.
+        "is_conditional": False,
+        # is_aggregated: whether the scorer always returns a single value per cut or
+        # not, irrespective of the input data shape.
+        # Many scorers will not be aggregated, for example all scorers that evaluate
+        # each input variable separately and return a score vector with one score for
+        # each variable.
+        "is_aggregated": False,
+        # is_penalised: indicates whether the score is inherently penalised (True) or
+        # not (False). If `True`, a score > 0 means that a change or anomaly is
+        # detected. Penalised scores can be both positive and negative.
+        # If `False`, the score is not penalised. To test for the existence of a change,
+        # penalisation must be performed externally. Such scores are always
+        # non-negative.
+        "is_penalised": False,
     }
-
-    # todo: set class attribute tags.
-    # Does the score evaluate univariate or multivariate data?
-    # If the evaluation_type is EvaluationType.UNIVARIATE:
-    #   * the score is vectorized over columns in `X` input to `fit`.
-    #   * the output of `evaluate` is has the same number of columns as `X`.
-    # If the evaluation_type is EvaluationType.MULTIVARIATE:
-    #   * the score is evaluated on each row of `X` input to `fit`.
-    #   * the output of `evaluate` is always a single column, one value per `cut`.
-    evaluation_type = EvaluationType.UNIVARIATE
-    # Is the score inherently penalised? I.e., does it optimise over a penalty function
-    # such that the output of `evaluate` is to be interpreted as `score > 0` means
-    # a change point is detected? If yes, set this to True.
-    is_penalised_score = False
 
     # todo: add any hyper-parameters and components to constructor
     def __init__(
@@ -112,6 +114,23 @@ class MyChangeScore(BaseIntervalScorer):
         # todo: optional, parameter checking logic (if applicable) should happen here
         # if writes derived values to self, should *not* overwrite self.parama etc
         # instead, write to self._param1, etc.
+        if self.param2 is None:
+            from skchange.somewhere import MyOtherScorer
+
+            self._param2 = MyOtherScorer(foo=42)
+        else:
+            # estimators should be cloned to avoid side effects
+            self._param2 = param2.clone()
+
+        # todo: if tags of estimator depend on component tags, set these here
+        #  only needed if estimator is a composite
+        #  tags set in the constructor apply to the object and override the class
+        #
+        # example 1: conditional setting of a tag
+        # if est.foo == 42:
+        #   self.set_tags(handles-missing-data=True)
+        # example 2: cloning tags from component
+        #   self.clone_tags(est2, ["enforce_index_type", "handles-missing-data"])
 
     # todo: implement, mandatory
     def _fit(self, X: np.ndarray, y=None):
