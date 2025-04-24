@@ -68,8 +68,8 @@ class MyCost(BaseCost):
 
     # todo: add authors and maintaners Github user name
     _tags = {
-        "authors": ["Tveten", "johannvk"],
-        "maintainers": "Tveten",
+        "authors": ["Tveten", "johannvk"],  # Use Github username
+        "maintainers": "Tveten",  # Use Github username
         # distribution_type is used to automatically create test cases.
         # Valid values:
         # - "None" - No distributional restrictions. Test data: Mostly Gaussian, but

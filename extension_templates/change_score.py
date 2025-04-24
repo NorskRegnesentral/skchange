@@ -65,8 +65,8 @@ class MyChangeScore(BaseIntervalScorer):
 
     # todo: set tags
     _tags = {
-        "authors": ["Tveten", "johannvk"],
-        "maintainers": "Tveten",
+        "authors": ["Tveten", "johannvk"],  # Use Github username
+        "maintainers": "Tveten",  # Use Github username
         "task": "change_score",
         # distribution_type is used to automatically create test cases.
         # Valid values:
