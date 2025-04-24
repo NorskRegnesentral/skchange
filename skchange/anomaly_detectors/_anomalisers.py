@@ -49,7 +49,7 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
             +f" than or equal to stat_upper ({self.stat_upper})."
             raise ValueError(message)
 
-        self.clone_tags(change_detector, ["distribtion_type"])
+        self.clone_tags(change_detector, ["distribution_type"])
 
     def _fit(self, X: pd.DataFrame, y: pd.DataFrame | None = None):
         """Fit to training data.
