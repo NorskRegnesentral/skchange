@@ -306,19 +306,6 @@ class LinearRegressionCost(BaseCost):
         else:
             return None
 
-    def _output_dim(self):
-        """Get the output dimension of the cost function.
-
-        A cost column is returned for each `response_col` passed to the cost.
-        Currently only a single response column is supported.
-
-        Returns
-        -------
-        int
-            Number of columns in the output of the cost function.
-        """
-        return 1
-
     def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
