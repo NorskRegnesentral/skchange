@@ -130,9 +130,9 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         The local anomaly score to use for anomaly detection. If a cost is given, it is
         converted to a local anomaly score using the `LocalAnomalyScore` class.
     penalty : np.ndarray or float, optional, default=None
-        The penalty to use for anomaly detection. If
-        `anomaly_score.is_penalised_score == True` the penalty will be ignored.
-        The different types of penalties are as follows:
+        The penalty to use for anomaly detection. If the penalty is
+        penalised (`anomaly_score.get_tag("is_penalised")`) the penalty will
+        be ignored. The different types of penalties are as follows:
 
         * ``float``: A constant penalty applied to the sum of scores across all
             variables in the data.
@@ -217,7 +217,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         check_penalty(penalty, "penalty", "CircularBinarySegmentation")
         self._penalised_score = (
             _anomaly_score.clone()  # need to avoid modifying the input change_score
-            if _anomaly_score.is_penalised_score
+            if _anomaly_score.get_tag("is_penalised")
             else PenalisedScore(
                 _anomaly_score,
                 penalty,
@@ -235,7 +235,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             "growth_factor",
         )
 
-        self.set_tags(distribution_type=_anomaly_score.get_tag("distribution_type"))
+        self.clone_tags(_anomaly_score, ["distribution_type"])
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

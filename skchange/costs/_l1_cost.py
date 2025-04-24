@@ -8,7 +8,6 @@ import numpy as np
 
 from ..utils.numba import njit
 from ..utils.numba.stats import col_median
-from ..utils.validation.enums import EvaluationType
 from ._utils import MeanType, check_mean
 from .base import BaseCost
 
@@ -93,10 +92,8 @@ class L1Cost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = True
 
     def __init__(self, param: MeanType | None = None):
         super().__init__(param)

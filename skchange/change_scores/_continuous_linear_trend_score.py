@@ -9,7 +9,6 @@ import numpy as np
 
 from ..base import BaseIntervalScorer
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_data_column
 
 
@@ -230,9 +229,6 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
         "maintainers": "johannvk",
         "task": "change_score",
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = False
 
     def __init__(
         self,

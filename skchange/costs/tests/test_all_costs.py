@@ -56,7 +56,7 @@ def test_expected_cut_entries(CostClass: type[BaseCost]):
 
 @pytest.mark.parametrize("CostClass", COSTS)
 def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
-    if not CostClass.supports_fixed_params:
+    if not CostClass.get_class_tag("supports_fixed_param"):
         pytest.skip(f"{CostClass.__name__} does not support fixed parameters.")
 
     optim_cost = CostClass.create_test_instance()

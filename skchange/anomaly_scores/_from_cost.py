@@ -51,7 +51,7 @@ class Saving(BaseIntervalScorer):
     ----------
     baseline_cost : BaseCost
         The baseline cost with a fixed parameter. The optimised cost is
-        constructed by copying the baseline cost and setting the parameter to ``None``.
+        constructed by copying the baseline cost and setting `param` to ``None``.
     """
 
     _tags = {
@@ -63,21 +63,23 @@ class Saving(BaseIntervalScorer):
     def __init__(self, baseline_cost: BaseCost):
         self.baseline_cost = baseline_cost
         self.optimised_cost: BaseCost = baseline_cost.clone().set_params(param=None)
-        self.evaluation_type = self.baseline_cost.evaluation_type
         super().__init__()
 
-        if not baseline_cost.supports_fixed_params:
+        if not baseline_cost.get_tag("supports_fixed_param"):
             raise ValueError(
-                "The baseline cost must support fixed"
-                " parameter(s) to use it as a Saving."
+                "The baseline cost must support fixed parameter(s) to use it as a "
+                " saving. The support is indicated by the tag 'supports_fixed_param'."
             )
-        elif baseline_cost.param is None:
+        if baseline_cost.param is None:
             raise ValueError(
-                "The baseline cost must have fixed"
-                " parameters (`param`) set to use it as a Saving."
+                "The baseline cost must have set a fixed parameter to use it as a"
+                " saving (`param` of `baseline_cost` not set to None)."
             )
 
-        self.set_tags(distribution_type=baseline_cost.get_tag("distribution_type"))
+        self.clone_tags(
+            baseline_cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:
@@ -239,12 +241,14 @@ class LocalAnomalyScore(BaseIntervalScorer):
 
     def __init__(self, cost: BaseCost):
         self.cost = cost
-        self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
         self._subset_cost: BaseCost = cost.clone()
 
-        self.set_tags(distribution_type=cost.get_tag("distribution_type"))
+        self.clone_tags(
+            cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:

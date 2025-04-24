@@ -26,7 +26,6 @@ from sktime.utils.validation.series import check_series
 
 from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
-from skchange.utils.validation.enums import EvaluationType
 
 
 class BaseIntervalScorer(BaseEstimator):
@@ -51,26 +50,28 @@ class BaseIntervalScorer(BaseEstimator):
         "maintainers": "Tveten",  # current maintainer(s) of the object
         "task": None,  # "cost", "change_score", "local_anomaly_score", "saving"
         "distribution_type": "None",  # "None", "Poisson", "Gaussian"
-    }  # for unit test cases
-
-    # The `evaluation_type` indicates whether the scorer is univariate or multivariate.
-    # Univariate scorers are vectorized over variables/columns in the data,
-    # such that output is one column per variable.
-    # Multivariate scorers take the entire data as input and output a single
-    # value, such that the output is a single column no matter how many variables.
-    # TODO: Implement as tags?
-    # For now a class variable to pass sktime conformance test.
-    evaluation_type = EvaluationType.UNIVARIATE
-
-    # `is_penalised_score` indicates whether the score is inherently penalised (True) or
-    # not (False).
-    # For example, for change scores or savings:
-    # If `True`, a score > 0 means that a change or anomaly is detected. Penalised
-    # scores can be both positive and negative.
-    # If `False`, the score is not penalised. To test for the existence of a change,
-    # penalisation must be performed externally. Such scores are always non-negative.
-    # TODO: Implement as tags?
-    is_penalised_score = False
+        # is_conditional: whether the scorer uses some of the input variables as
+        # covariates in a regression model or similar. If `True`, the scorer requires
+        # at least two input variables. If `False`, all p input variables/columns are
+        # used to evaluate the score, such that the output has either 1 or p columns.
+        "is_conditional": False,
+        # is_aggregated: whether the scorer always returns a single value per cut or
+        # not, irrespective of the input data shape.
+        # Many scorers will not be aggregated, for example all scorers that evaluate
+        # each input variable separately and return a score vector with one score for
+        # each variable.
+        "is_aggregated": False,
+        # is_penalised: indicates whether the score is inherently penalised (True) or
+        # not (False). If `True`, a score > 0 means that a change or anomaly is
+        # detected. Penalised scores can be both positive and negative.
+        # If `False`, the score is not penalised. To test for the existence of a change,
+        # penalisation must be performed externally. Such scores are always
+        # non-negative.
+        "is_penalised": False,
+        "capability:multivariate": True,
+        "capability:missing_values": False,
+        "capability:update": False,
+    }
 
     def __init__(self):
         self._is_fitted = False
@@ -196,30 +197,6 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return 1
 
-    @property
-    def output_dim(self) -> int:
-        """Get the output dimension of the scorer.
-
-        Returns the number of columns in the output of the scorer. For univariate
-        scorers, this is the number of variables in the data. For multivariate scorers,
-        this is 1. Subclasses should override this method accordingly.
-        """
-        if self.evaluation_type == EvaluationType.UNIVARIATE:
-            return self._X.shape[1] if self._X is not None else None
-        elif self.evaluation_type == EvaluationType.MULTIVARIATE:
-            return 1
-        elif self.evaluation_type == EvaluationType.CONDITIONAL:
-            return self._output_dim()
-
-    def _output_dim(self) -> int:
-        """Get the output dimension of the scorer.
-
-        In the case of a scorer with 'evaluation_type' as 'CONDITIONAL', this method
-        should be overridden to return the number of columns in the scorer output.
-        Subclasses should override this method accordingly.
-        """
-        raise NotImplementedError("abstract method")
-
     def get_model_size(self, p: int) -> int:
         """Get the number of model parameters to estimate for each interval.
 
@@ -285,5 +262,5 @@ class BaseIntervalScorer(BaseEstimator):
 
     def check_is_penalised(self):
         """Check if the scorer is inherently performing penalisation."""
-        if not self.is_penalised_score:
+        if not self.get_tag("is_penalised"):
             raise RuntimeError("The interval scorer is not penalised.")

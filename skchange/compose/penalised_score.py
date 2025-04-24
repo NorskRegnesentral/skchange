@@ -9,7 +9,6 @@ import pandas as pd
 from ..base import BaseIntervalScorer
 from ..penalties import make_bic_penalty
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.penalties import check_penalty, check_penalty_against_data
 
@@ -150,10 +149,9 @@ class PenalisedScore(BaseIntervalScorer):
     _tags = {
         "authors": ["Tveten"],
         "maintainers": "Tveten",
+        "is_aggregated": True,
+        "is_penalised": True,
     }
-
-    evaluation_type = EvaluationType.MULTIVARIATE
-    is_penalised_score = True
 
     def __init__(
         self,
@@ -176,13 +174,13 @@ class PenalisedScore(BaseIntervalScorer):
         check_penalty(penalty, "penalty", "PenalisedScore")
 
         if (
-            score.evaluation_type == EvaluationType.MULTIVARIATE
+            score.get_tag("is_aggregated")
             and isinstance(penalty, np.ndarray)
             and penalty.size > 1
         ):
             raise ValueError(
-                "`penalty` must be a constant penalty (a single value) for multivariate"
-                "scores."
+                "`penalty` must be a constant penalty (a single value) for aggregated"
+                f" scores. Got `score={score.__class__.__name__}`."
             )
 
         self._make_default_penalty = (
@@ -191,8 +189,7 @@ class PenalisedScore(BaseIntervalScorer):
             else make_default_penalty
         )
 
-        self.set_tags(task=score.get_tag("task"))
-        self.set_tags(distribution_type=score.get_tag("distribution_type"))
+        self.clone_tags(score, ["task", "distribution_type", "is_conditional"])
 
     def _fit(self, X: np.ndarray, y=None) -> "PenalisedScore":
         """Fit the penalised interval scorer to training data.

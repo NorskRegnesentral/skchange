@@ -8,7 +8,6 @@ import numpy as np
 from ..base import BaseIntervalScorer
 from ..costs._multivariate_gaussian_cost import MultivariateGaussianCost
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 
 
 @njit
@@ -164,9 +163,8 @@ class MultivariateGaussianScore(BaseIntervalScorer):
         "authors": ["johannvk"],
         "maintainers": "johannvk",
         "task": "change_score",
+        "is_aggregated": True,
     }
-
-    evaluation_type = EvaluationType.MULTIVARIATE
 
     def __init__(self, apply_bartlett_correction: bool = True):
         super().__init__()

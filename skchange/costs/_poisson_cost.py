@@ -8,7 +8,6 @@ twice the negative log likelihood of the Poisson distribution.
 import numpy as np
 
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ._utils import MeanType, check_non_negative_parameter
 from .base import BaseCost
 
@@ -152,10 +151,8 @@ class PoissonCost(BaseCost):
         "authors": ["johannvk"],
         "maintainers": "johannvk",
         "distribution_type": "Poisson",
+        "supports_fixed_param": True,
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = True
 
     def __init__(
         self,

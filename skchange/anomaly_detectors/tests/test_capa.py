@@ -36,13 +36,13 @@ def test_capa_anomalies(Saving):
     saving = Saving.create_test_instance()
     skip_if_no_test_data(saving)
     if isinstance(saving, BaseCost):
-        if not saving.supports_fixed_params:
+        if not saving.get_tag("supports_fixed_param"):
             pytest.skip(f"{type(saving).__name__} does not support fixed parameters.")
         else:
             fixed_params = find_fixed_param_combination(saving)
             saving = saving.set_params(**fixed_params)
 
-    if isinstance(saving, BaseCost) and not saving.supports_fixed_params:
+    if isinstance(saving, BaseCost) and not saving.get_tag("supports_fixed_param"):
         pytest.skip("Skipping test for Cost without support for fixed params.")
 
     n_segments = 2
@@ -176,7 +176,7 @@ def test_invalid_savings():
 
     score = L2Saving()
     # Simulate a penalised score not constructed by PenalisedScore
-    score.is_penalised_score = True
+    score.set_tags(is_penalised=True)
     with pytest.raises(ValueError, match="penalised"):
         CAPA(segment_saving=score)
     with pytest.raises(ValueError, match="penalised"):

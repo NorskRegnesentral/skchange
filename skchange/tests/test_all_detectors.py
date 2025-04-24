@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sktime.tests.test_all_estimators import VALID_ESTIMATOR_TAGS
 
 from skchange.anomaly_detectors import ANOMALY_DETECTORS
 from skchange.base import BaseDetector
@@ -10,6 +11,11 @@ from skchange.change_detectors import CHANGE_DETECTORS
 from skchange.datasets import generate_anomalous_data
 
 ALL_DETECTORS = ANOMALY_DETECTORS + CHANGE_DETECTORS
+VALID_DETECTOR_TAGS = list(VALID_ESTIMATOR_TAGS) + [
+    "task",
+    "learning_type",
+    "capability:identify_variables",
+]
 
 
 @pytest.mark.parametrize("Detector", ALL_DETECTORS)
@@ -147,3 +153,19 @@ def test_change_points_to_segments(Detector: BaseDetector):
     change_points = pd.DataFrame({"ilocs": pd.Series([5, 2, 8], dtype="int64")})
     with pytest.raises(ValueError):
         detector.change_points_to_segments(change_points, start=0, end=10)
+
+
+@pytest.mark.parametrize("Detector", ALL_DETECTORS)
+def test_valid_detector_class_tags(Detector: type[BaseDetector]):
+    """Check that Detector class tags are in VALID_DETECTOR_TAGS."""
+    for tag in Detector.get_class_tags().keys():
+        msg = "Found invalid tag: %s" % tag
+        assert tag in VALID_DETECTOR_TAGS, msg
+
+
+@pytest.mark.parametrize("Detector", ALL_DETECTORS)
+def test_valid_detector_tags(Detector: type[BaseDetector]):
+    """Check that Detector class tags are in VALID_DETECTOR_TAGS."""
+    for tag in Detector.get_class_tags().keys():
+        msg = "Found invalid tag: %s" % tag
+        assert tag in VALID_DETECTOR_TAGS, msg
