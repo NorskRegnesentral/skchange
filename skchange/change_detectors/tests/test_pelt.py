@@ -1127,3 +1127,150 @@ def test_improved_pelt_failing():
     print("Direct PELT optimal value:", no_margin_pelt_optimal_value)
     print("Margin PELT optimal value:", margin_pelt_optimal_value)
     print("Optimal partitioning optimal value:", opt_part_optimal_value)
+
+
+def test_improved_pelt_failing_2():
+    high_penalty = np.float64(1.1526058891884958)
+    middle_penalty = np.float64(0.9699161186346296)
+    low_penalty = np.float64(0.9466104165725925)
+
+    # len(low_penalty_change_points) == 39
+    # len(middle_penalty_change_points) == 39 ### ISSUE!
+    # len(high_penalty_change_points) == 37
+
+    # Solved with optimal partitioning:
+    # len(low_penalty_opt_part_change_points) == 37
+    # len(middle_penalty_opt_part_change_points) == 36
+    # len(high_penalty_opt_part_change_points) == 36
+
+    ## Even with '2 * min_segment_length' pruning lag, we fail
+    # on penalties:
+    # high_penalty:   np.float64(2.082703691003103)
+    # middle_penalty: np.float64(1.6355598545091408)
+    # low_penalty:    np.float64(1.4030206223610522)
+
+    min_segment_length = 10
+    percent_pruning_margin = 0.0
+
+    dataset = generate_alternating_data(
+        n_segments=5,
+        segment_length=100,
+        p=1,
+        mean=3.0,
+        variance=4.0,
+        random_state=42,
+    )
+
+    cost = GaussianCost().fit(dataset.values)
+    low_penalty_pelt_cpts = (
+        PELT(
+            cost=cost,
+            min_segment_length=min_segment_length,
+            penalty=low_penalty,
+            percent_pruning_margin=percent_pruning_margin,
+            verbose=1,
+        )
+        .fit(dataset)
+        .predict(dataset.values)["ilocs"]
+        .to_numpy()
+    )
+    low_penalty_pelt_optimal_value = (
+        cost.evaluate_segmentation(low_penalty_pelt_cpts)
+        + (len(low_penalty_pelt_cpts) + 1) * low_penalty
+    )
+
+    middle_penalty_pelt_cpts = (
+        PELT(
+            cost=cost,
+            min_segment_length=min_segment_length,
+            penalty=middle_penalty,
+            percent_pruning_margin=percent_pruning_margin,
+            verbose=1,
+        )
+        .fit(dataset)
+        .predict(dataset.values)["ilocs"]
+        .to_numpy()
+    )
+    middle_penalty_pelt_optimal_value = (
+        cost.evaluate_segmentation(middle_penalty_pelt_cpts)
+        + (len(middle_penalty_pelt_cpts) + 1) * middle_penalty
+    )
+
+    high_penalty_pelt_cpts = (
+        PELT(
+            cost=cost,
+            min_segment_length=min_segment_length,
+            penalty=high_penalty,
+            percent_pruning_margin=percent_pruning_margin,
+            verbose=1,
+        )
+        .fit(dataset)
+        .predict(dataset.values)["ilocs"]
+        .to_numpy()
+    )
+    high_penalty_pelt_optimal_value = (
+        cost.evaluate_segmentation(high_penalty_pelt_cpts)
+        + (len(high_penalty_pelt_cpts) + 1) * high_penalty
+    )
+
+    # Run optimal partitioning for comparison:
+    low_penalty_opt_part_costs, low_penalty_opt_part_changepoints = (
+        run_improved_pelt_array_based(
+            cost=cost,
+            penalty=low_penalty,
+            min_segment_length=min_segment_length,
+            drop_pruning=True,
+            verbose=1,
+        )
+    )
+    low_penalty_opt_part_optimal_value = (
+        cost.evaluate_segmentation(low_penalty_opt_part_changepoints)
+        + (len(low_penalty_opt_part_changepoints) + 1) * low_penalty
+    )
+
+    middle_penalty_opt_part_costs, middle_penalty_opt_part_changepoints = (
+        run_improved_pelt_array_based(
+            cost=cost,
+            penalty=middle_penalty,
+            min_segment_length=min_segment_length,
+            drop_pruning=True,
+            verbose=1,
+        )
+    )
+    middle_penalty_opt_part_optimal_value = (
+        cost.evaluate_segmentation(middle_penalty_opt_part_changepoints)
+        + (len(middle_penalty_opt_part_changepoints) + 1) * middle_penalty
+    )
+
+    high_penalty_opt_part_costs, high_penalty_opt_part_changepoints = (
+        run_improved_pelt_array_based(
+            cost=cost,
+            penalty=high_penalty,
+            min_segment_length=min_segment_length,
+            drop_pruning=True,
+            verbose=1,
+        )
+    )
+    high_penalty_opt_part_optimal_value = (
+        cost.evaluate_segmentation(high_penalty_opt_part_changepoints)
+        + (len(high_penalty_opt_part_changepoints) + 1) * high_penalty
+    )
+
+    # Compare with ruptures dynamic programming:
+    rpt_GaussianCost = RupturesGaussianCost()
+    rpt_model = rpt.Dynp(
+        custom_cost=rpt_GaussianCost, min_size=min_segment_length, jump=1
+    ).fit(dataset.values)
+
+    low_penalty_rpt_changepoints = np.array(
+        rpt_model.predict(n_bkps=len(low_penalty_pelt_cpts))[:-1]
+    )
+    middle_penalty_rpt_changepoints = np.array(
+        rpt_model.predict(n_bkps=len(middle_penalty_pelt_cpts))[:-1]
+    )
+    high_penalty_rpt_changepoints = np.array(
+        rpt_model.predict(n_bkps=len(high_penalty_pelt_cpts))[:-1]
+    )
+    print("Low penalty changepoints:", low_penalty_rpt_changepoints)
+    print("Middle penalty changepoints:", middle_penalty_rpt_changepoints)
+    print("High penalty changepoints:", high_penalty_rpt_changepoints)

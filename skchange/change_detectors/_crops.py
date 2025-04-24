@@ -266,7 +266,7 @@ class CROPS_PELT(BaseChangeDetector):
                     # For change detectors that only solve the penalised optimization
                     # problem approximately, we'll need to perform a linear search
                     # from the 'middle_penalty' penalty to the 'high_penalty' penalty.
-                    # Until we fnd a penalty that gives us the same number of
+                    # Until we find a penalty that gives us the same number of
                     # change points as for for high_penalty, or at least a penalty
                     # that gives fewer change points than for low_penalty.
                     # nudged_middle_penalty = middle_penalty * (1 + 1.0e-4)

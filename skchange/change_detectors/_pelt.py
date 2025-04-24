@@ -35,6 +35,7 @@ def run_improved_pelt_array_based(
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
     drop_pruning: bool = False,
+    verbose: int = 0,
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -68,6 +69,9 @@ def run_improved_pelt_array_based(
     drop_pruning: bool, optional
         If True, drop the pruning step. Reverts to optimal partitioning.
         Can be useful for debugging and testing.  By default set to False.
+    verbose : int, optional
+        Verbosity level. 0 = no output, 1 = some output, 2 = more output.
+        By default set to 0.
 
     Returns
     -------
@@ -105,6 +109,9 @@ def run_improved_pelt_array_based(
         -1, 1
     )
 
+    # Keep track of the number of cost evaluations:
+    num_cost_evaluations = len(non_changepoint_starts)
+
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
         opt_cost_obs_ind = current_obs_ind[0] + 1
@@ -115,6 +122,8 @@ def run_improved_pelt_array_based(
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
         costs = cost.evaluate(cost_eval_intervals)
         agg_costs = np.sum(costs, axis=1)
+
+        num_cost_evaluations += len(cost_eval_starts)
 
         # Add the penalty for a new segment:
         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
@@ -150,6 +159,168 @@ def run_improved_pelt_array_based(
                 # old_start_inclusion_mask
                 new_start_inclusion_mask
             ]
+
+    opt_part_cost_evaluations = len(non_changepoint_starts) + (
+        len(observation_indices) * (len(observation_indices) + 1) / 2
+    )
+    fraction_cost_evaluations_vs_opt_part = (
+        num_cost_evaluations / opt_part_cost_evaluations
+    )
+    if verbose > 0:
+        print(
+            "Fraction of cost evaluations vs. opt. part:"
+            f" {fraction_cost_evaluations_vs_opt_part:.2%}"
+        )
+
+    return opt_cost[1:], get_changepoints(prev_cpts)
+
+
+def run_improved_pelt_array_based_v2(
+    cost: BaseCost,
+    penalty: float,
+    min_segment_length: int,
+    split_cost: float = 0.0,
+    percent_pruning_margin: float = 0.0,
+    drop_pruning: bool = False,
+    verbose: int = 0,
+) -> tuple[np.ndarray, list]:
+    """Run the PELT algorithm.
+
+    V2: Tighten pruning margin to avoid numerical issues.
+
+    Currently agrees with the 'changepoint::cpt.mean' implementation of PELT in R.
+    If the 'min_segment_length' is large enough to span more than a single changepoint,
+    the algorithm can return a suboptimal partitioning.
+    In that case, resort to the 'optimal_partitioning' algorithm.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        The data to find changepoints in.
+    cost: BaseCost
+        The cost to use.
+    penalty : float
+        The penalty incurred for adding a changepoint.
+    min_segment_length : int
+        The minimum length of a segment, by default 1.
+    split_cost : float, optional
+        The cost of splitting a segment, to ensure that
+        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
+        for all possible splits, 0 <= t < p < s <= len(X) - 1.
+        By default set to 0.0, which is sufficient for
+        log likelihood cost functions to satisfy the
+        above inequality.
+    percent_pruning_margin : float, optional
+        The percentage of pruning margin to use. By default set to 10.0.
+        This is used to prune the admissible starts set.
+        The pruning margin is used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
+    drop_pruning: bool, optional
+        If True, drop the pruning step. Reverts to optimal partitioning.
+        Can be useful for debugging and testing.  By default set to False.
+    verbose : int, optional
+        Verbosity level. 0 = no output, 1 = some output, 2 = more output.
+        By default set to 0.
+
+    Returns
+    -------
+    tuple[np.ndarray, list]
+        The optimal costs and the changepoints.
+    """
+    cost.check_is_fitted()
+    n_samples = cost._X.shape[0]
+    min_segment_shift = min_segment_length - 1
+
+    # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
+    opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
+
+    # Cannot compute the cost for the first 'min_segment_shift' elements:
+    opt_cost[1:min_segment_length] = np.inf
+
+    # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
+    non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
+    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
+    non_changepoint_intervals = np.column_stack(
+        (non_changepoint_starts, non_changepoint_ends)
+    )
+    costs = cost.evaluate(non_changepoint_intervals)
+    agg_costs = np.sum(costs, axis=1)
+    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
+
+    # Store the previous changepoint for each latest start added.
+    # Used to get the final set of changepoints after the loop.
+    prev_cpts = np.repeat(0, n_samples)
+
+    # Evolving set of admissible segment starts.
+    cost_eval_starts = np.array(([0]), dtype=np.int64)
+
+    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
+        -1, 1
+    )
+
+    # Keep track of the number of cost evaluations:
+    num_cost_evaluations = len(non_changepoint_starts)
+
+    for current_obs_ind in observation_indices:
+        latest_start = current_obs_ind - min_segment_shift
+        opt_cost_obs_ind = current_obs_ind[0] + 1
+
+        # Add the next start to the admissible starts set:
+        cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
+        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
+        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        costs = cost.evaluate(cost_eval_intervals)
+        agg_costs = np.sum(costs, axis=1)
+
+        num_cost_evaluations += len(cost_eval_starts)
+
+        # Add the penalty for a new segment:
+        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+
+        argmin_candidate_cost = np.argmin(candidate_opt_costs)
+        opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
+
+        # Trimming the admissible starts set: (reuse the array of optimal costs)
+        current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
+
+        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+        start_inclusion_thresholds = (
+            opt_cost[opt_cost_obs_ind - min_segment_shift : opt_cost_obs_ind + 1]
+            + penalty
+            - split_cost
+        ) + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+
+        # Only prune starts at least 2*min_segment_length before current observation:
+        new_start_inclusion_mask = (
+            np.any(
+                candidate_opt_costs.reshape(-1, 1)
+                <= start_inclusion_thresholds.reshape(-1, min_segment_length),
+                axis=1,
+            )
+        ) | (cost_eval_starts >= latest_start - min_segment_length)
+        # Two 'off by one' cases?
+        # ) | (cost_eval_starts >= latest_start - min_segment_length - 2)
+
+        if not drop_pruning:
+            cost_eval_starts = cost_eval_starts[
+                # Introduce a small tolerance to avoid numerical issues:
+                # candidate_opt_costs + split_cost <= start_inclusion_threshold
+                # old_start_inclusion_mask
+                new_start_inclusion_mask
+            ]
+
+    opt_part_cost_evaluations = len(non_changepoint_starts) + (
+        len(observation_indices) * (len(observation_indices) + 1) / 2
+    )
+    fraction_cost_evaluations_vs_opt_part = (
+        num_cost_evaluations / opt_part_cost_evaluations
+    )
+    if verbose > 0:
+        print(
+            "Fraction of cost evaluations vs. opt. part:"
+            f" {fraction_cost_evaluations_vs_opt_part:.2%}"
+        )
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
@@ -455,6 +626,11 @@ class PELT(BaseChangeDetector):
         log likelihood cost functions to satisfy the above inequality.
     percent_pruning_margin : float, optional, default=0.0
         The percentage of pruning margin to use. By default set to 0.0.
+    drop_pruning : bool, optional, default=False
+        If True, drop the pruning step. Reverts to optimal partitioning.
+        Can be useful for debugging and testing. By default set to False.
+    verbose : int, optional, default=0
+        Verbosity level. 0 = no output, 1 = some output, 2 = more output.
 
     References
     ----------
@@ -486,12 +662,16 @@ class PELT(BaseChangeDetector):
         min_segment_length: int = 1,
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
+        drop_pruning: bool = False,
+        verbose: int = 0,
     ):
         self.cost = cost
         self.penalty = penalty
         self.min_segment_length = min_segment_length
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
+        self.drop_pruning = drop_pruning
+        self.verbose = verbose
         super().__init__()
 
         self._cost = L2Cost() if cost is None else cost
@@ -541,13 +721,15 @@ class PELT(BaseChangeDetector):
             min_length_name="2*min_segment_length",
         )
         self._penalised_cost.fit(X)
-        # opt_costs, changepoints = run_pelt_array_based(
         opt_costs, changepoints = run_improved_pelt_array_based(
+            # opt_costs, changepoints = run_improved_pelt_array_based_v2(
             cost=self._penalised_cost.scorer_,
             penalty=self._penalised_cost.penalty_.values[0],
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
             percent_pruning_margin=self.percent_pruning_margin,
+            drop_pruning=self.drop_pruning,
+            verbose=self.verbose,
         )
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
