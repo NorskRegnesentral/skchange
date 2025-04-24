@@ -248,7 +248,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
                 f"Invalid selection method. Must be one of {valid_selection_methods}."
             )
 
-        self.set_tags(distribution_type=_change_score.get_tag("distribution_type"))
+        self.clone_tags(_change_score, ["distribution_type"])
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

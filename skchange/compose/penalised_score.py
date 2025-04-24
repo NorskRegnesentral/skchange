@@ -189,9 +189,7 @@ class PenalisedScore(BaseIntervalScorer):
             else make_default_penalty
         )
 
-        self.set_tags(task=score.get_tag("task"))
-        self.set_tags(distribution_type=score.get_tag("distribution_type"))
-        self.set_tags(is_conditional=score.get_tag("is_conditional"))
+        self.clone_tags(score, ["task", "distribution_type", "is_conditional"])
 
     def _fit(self, X: np.ndarray, y=None) -> "PenalisedScore":
         """Fit the penalised interval scorer to training data.

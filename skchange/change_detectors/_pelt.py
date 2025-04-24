@@ -196,7 +196,7 @@ class PELT(BaseChangeDetector):
         )
         check_larger_than(1, min_segment_length, "min_segment_length")
 
-        self.set_tags(distribution_type=self._cost.get_tag("distribution_type"))
+        self.clone_tags(self._cost, ["distribution_type"])
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

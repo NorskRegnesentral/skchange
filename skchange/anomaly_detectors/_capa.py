@@ -303,7 +303,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         check_larger_than(2, min_segment_length, "min_segment_length")
         check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
 
-        self.set_tags(distribution_type=_segment_saving.get_tag("distribution_type"))
+        self.clone_tags(_segment_saving, ["distribtion_type"])
         self.set_tags(**{"capability:identify_variables": find_affected_components})
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:

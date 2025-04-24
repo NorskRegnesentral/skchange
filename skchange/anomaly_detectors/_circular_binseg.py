@@ -235,7 +235,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             "growth_factor",
         )
 
-        self.set_tags(distribution_type=_anomaly_score.get_tag("distribution_type"))
+        self.clone_tags(_anomaly_score, ["distribtion_type"])
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

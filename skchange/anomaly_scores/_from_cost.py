@@ -76,10 +76,10 @@ class Saving(BaseIntervalScorer):
                 " saving (`param` of `baseline_cost` not set to None)."
             )
 
-        self.set_tags(distribution_type=baseline_cost.get_tag("distribution_type"))
-        self.set_tags(is_conditional=baseline_cost.get_tag("is_conditional"))
-        self.set_tags(is_aggregated=baseline_cost.get_tag("is_aggregated"))
-        self.set_tags(is_penalised=baseline_cost.get_tag("is_penalised"))
+        self.clone_tags(
+            baseline_cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:
@@ -245,10 +245,10 @@ class LocalAnomalyScore(BaseIntervalScorer):
 
         self._subset_cost: BaseCost = cost.clone()
 
-        self.set_tags(distribution_type=cost.get_tag("distribution_type"))
-        self.set_tags(is_conditional=cost.get_tag("is_conditional"))
-        self.set_tags(is_aggregated=cost.get_tag("is_aggregated"))
-        self.set_tags(is_penalised=cost.get_tag("is_penalised"))
+        self.clone_tags(
+            cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:
