@@ -27,12 +27,46 @@ def test_sktime_compatible_estimators(obj, test_name):
         raise_exceptions=True,
         # The excluded tests fail in skchange due to the use of some custom tags
         # that are not in the VALID_ESTIMATOR_TAGS in sktime.
+        #
+        # test_estimator_tags is adjusted an implemented in this file.
+        # test_valid_estimator_tags and test_valid_estimator_class_tags is implemented
+        # in test_all_detectors.py and test_all_interval_scorers.py.
         tests_to_exclude=[
             "test_estimator_tags",
             "test_valid_estimator_tags",
             "test_valid_estimator_class_tags",
         ],
     )
+
+
+@pytest.mark.parametrize("estimator_class", ESTIMATORS)
+def test_estimator_tags(estimator_class: type[BaseEstimator]):
+    """Check conventions on estimator tags.
+
+    Adapted from sktime.test_all_estimators.TestAllObjects.test_estimator_tags.
+    """
+    Estimator = estimator_class
+
+    assert hasattr(Estimator, "get_class_tags")
+    all_tags = Estimator.get_class_tags()
+    assert isinstance(all_tags, dict)
+    assert all(isinstance(key, str) for key in all_tags.keys())
+    if hasattr(Estimator, "_tags"):
+        tags = Estimator._tags
+        msg = (
+            f"_tags attribute of {estimator_class} must be dict, "
+            f"but found {type(tags)}"
+        )
+        assert isinstance(tags, dict), msg
+        assert len(tags) > 0, f"_tags dict of class {estimator_class} is empty"
+
+    # Avoid ambiguous class attributes
+    ambiguous_attrs = ("tags", "tags_")
+    for attr in ambiguous_attrs:
+        assert not hasattr(Estimator, attr), (
+            f"Please avoid using the {attr} attribute to disambiguate it from "
+            f"estimator tags."
+        )
 
 
 @pytest.mark.parametrize("Estimator", ESTIMATORS)

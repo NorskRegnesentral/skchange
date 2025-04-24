@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sktime.tests.test_all_estimators import VALID_ESTIMATOR_TAGS
 
 from skchange.anomaly_scores import ANOMALY_SCORES
 from skchange.base import BaseIntervalScorer
@@ -10,6 +11,14 @@ from skchange.costs import COSTS
 from skchange.datasets import generate_alternating_data, generate_anomalous_data
 
 INTERVAL_SCORERS = COSTS + CHANGE_SCORES + ANOMALY_SCORES + [PenalisedScore]
+VALID_SCORER_TAGS = list(VALID_ESTIMATOR_TAGS) + [
+    "task",
+    "distribution_type",
+    "is_conditional",
+    "is_aggregated",
+    "is_penalised",
+    "supports_fixed_param",
+]
 
 
 def skip_if_no_test_data(scorer: BaseIntervalScorer):
@@ -134,3 +143,20 @@ def test_scorer_param_size(Scorer: BaseIntervalScorer):
     x = generate_anomalous_data()
     scorer.fit(x)
     assert scorer.get_model_size(1) >= 0
+
+
+@pytest.mark.parametrize("Scorer", INTERVAL_SCORERS)
+def test_valid_interval_scorer_class_tags(Scorer: type[BaseIntervalScorer]):
+    """Check that Scorer class tags are in VALID_SCORER_TAGS."""
+    for tag in Scorer.get_class_tags().keys():
+        msg = "Found invalid tag: %s" % tag
+        assert tag in VALID_SCORER_TAGS, msg
+
+
+@pytest.mark.parametrize("Scorer", INTERVAL_SCORERS)
+def test_valid_interval_scorer_tags(Scorer: type[BaseIntervalScorer]):
+    """Check that Scorer tags are in VALID_SCORER_TAGS."""
+    scorer = Scorer.create_test_instance()
+    for tag in scorer.get_tags().keys():
+        msg = "Found invalid tag: %s" % tag
+        assert tag in VALID_SCORER_TAGS, msg
