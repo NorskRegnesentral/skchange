@@ -45,8 +45,8 @@ from ..utils.numba.stats import col_cumsum
 
 # internal extensions in skchange.change_scores
 from ..utils.validation.enums import EvaluationType
+from ._cusum import cusum_score
 from .base import BaseChangeScore
-from .change_scores._cusum import cusum_score
 
 # For external extensions, use the following imports:
 # from skchange.change_scores.base import BaseChangeScore
@@ -58,23 +58,31 @@ from .change_scores._cusum import cusum_score
 
 # TODO: document this
 @njit
-def ESAC_Threshold(cusum_scores, a_s, nu_s, t_s, threshold):
+def ESAC_Threshold(
+    cusum_scores: np.ndarray,
+    a_s: np.ndarray,
+    nu_s: np.ndarray,
+    t_s: np.ndarray,
+    threshold: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
     num_levels = len(threshold)
     num_cusum_scores = len(cusum_scores)
     output_scores = np.zeros(num_cusum_scores, dtype=np.float64)
+    sargmax = np.zeros(num_cusum_scores, dtype=np.int64)
 
     for i in range(num_cusum_scores):
         temp_max = -np.inf
         for j in range(num_levels):
             temp_vec = (cusum_scores[i])[np.abs(cusum_scores[i]) > a_s[j]]
             if len(temp_vec) > 0:
-                temp = np.sum(temp_vec ^ 2 - nu_s[j]) - threshold[j]
+                temp = np.sum(temp_vec**2 - nu_s[j]) - threshold[j]
                 if temp > temp_max:
                     temp_max = temp
+                    sargmax[i] = t_s[j]
 
         output_scores[i] = temp_max
 
-    return output_scores
+    return output_scores, sargmax
 
 
 class ESACScore(BaseChangeScore):
@@ -97,18 +105,7 @@ class ESACScore(BaseChangeScore):
         "maintainers": ["peraugustmoen", "Tveten"],
     }
 
-    # todo: set class attribute tags.
-    # Does the score evaluate univariate or multivariate data?
-    # If the evaluation_type is EvaluationType.UNIVARIATE:
-    #   * the score is vectorized over columns in `X` input to `fit`.
-    #   * the output of `evaluate` is has the same number of columns as `X`.
-    # If the evaluation_type is EvaluationType.MULTIVARIATE:
-    #   * the score is evaluated on each row of `X` input to `fit`.
-    #   * the output of `evaluate` is always a single column, one value per `cut`.
     evaluation_type = EvaluationType.MULTIVARIATE
-    # Is the score inherently penalised? I.e., does it optimise over a penalty function
-    # such that the output of `evaluate` is to be interpreted as `score > 0` means
-    # a change point is detected? If yes, set this to True.
     is_penalised_score = True
 
     # todo: add any hyper-parameters and components to constructor
@@ -123,6 +120,7 @@ class ESACScore(BaseChangeScore):
         # be overwritten in other methods.
         self.threshold_dense = threshold_dense
         self.threshold_sparse = threshold_sparse
+        self.sargmaxes = None
 
         # todo: optional, parameter checking logic (if applicable) should happen here
         # if writes derived values to self, should *not* overwrite self.parama etc
@@ -149,10 +147,7 @@ class ESACScore(BaseChangeScore):
         self.p = X.shape[1]
         n = self.n
         p = self.p
-        self.a_s = []
-        self.nu_s = []
-        self.t_s = []
-        self.threshold = []
+
         if self.p == 1:
             self.a_s = np.array([0.0])
             self.nu_s = np.array([1.0])
@@ -171,11 +166,14 @@ class ESACScore(BaseChangeScore):
 
             # add p as candidate sparsity and reverse order
             ss = np.concatenate(([p], ss[::-1]))
-            self.ts = ss[:]
+            self.t_s = np.array(ss, dtype=float)
+            ss = np.array(ss, dtype=float)
 
             # Initialize as array
             self.a_s = np.zeros_like(ss, dtype=float)
-            self.a_s[1:] = np.sqrt(2 * np.log(np.exp(1) * p * np.log(n) / ss[1:] ** 2))
+            self.a_s[1:] = np.sqrt(
+                2 * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
+            )
 
             # Calculate nu_as
             # nu_as = 1 + as * exp(dnorm(as, log=TRUE) - pnorm(as, lower.tail=FALSE,
@@ -189,10 +187,11 @@ class ESACScore(BaseChangeScore):
 
             self.threshold = np.zeros_like(ss, dtype=float)
             self.threshold[0] = self.threshold_dense * (
-                np.sqrt(p * np.log(n)) + np.log(n)
+                np.sqrt(4 * p * np.log(n)) + 4 * np.log(n)
             )
             self.threshold[1:] = self.threshold_sparse * (
-                ss[1:] * np.log(np.exp(1) * p * np.log(n) / ss[1:] ** 2) + np.log(n)
+                ss[1:] * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
+                + 4 * np.log(n)
             )
 
         return self
@@ -229,9 +228,11 @@ class ESACScore(BaseChangeScore):
         splits = cuts[:, 1]
         ends = cuts[:, 2]
         cusum_scores = cusum_score(starts, ends, splits, self._sums)
-        return ESAC_Threshold(
+        thresholded_cusum_scores, sargmaxes = ESAC_Threshold(
             cusum_scores, self.a_s, self.nu_s, self.t_s, self.threshold
         )
+        self.sargmaxes = sargmaxes
+        return thresholded_cusum_scores
 
     # todo: implement, optional, defaults to min_size = 1.
     # used for automatic validation of cuts in `evaluate`.

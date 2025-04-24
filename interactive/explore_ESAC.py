@@ -1,25 +1,57 @@
-"""Interactive exploration of Seeded Binary Segmentation."""
+"""Interactive exploration of Seeded Binary Segmentation with ESAC penalty."""
 
 import plotly.express as px
 
 from skchange.change_detectors import SeededBinarySegmentation
+from skchange.change_scores import ESACScore
 from skchange.datasets import generate_alternating_data
 from skchange.utils.benchmarking.profiler import Profiler
 
 df = generate_alternating_data(
-    n_segments=2, mean=10, segment_length=20, p=1, random_state=7
+    n_segments=2, mean=10, segment_length=20, p=2, random_state=7
 )
-detector = SeededBinarySegmentation(growth_factor=2)
-detector.fit_predict(df)
+detector = SeededBinarySegmentation(growth_factor=2, change_score=ESACScore())
+print(detector.fit_predict(df))
+print("")
+print("a_s: ", detector.change_score.a_s)
+print("nu_s: ", detector.change_score.nu_s)
+print("t_s: ", detector.change_score.t_s)
+print("threshold: ", detector.change_score.threshold)
+print("armaxes sparsity: ", detector.change_score.sargmaxes)
+
 
 px.line(df)
-px.scatter(detector.scores, x="argmax_cpt", y="score", hover_data=["start", "end"])
+px.scatter(detector.scores, x="argmax", y="max", hover_data=["start", "end"])
+
+
+## check sparsity
+df = generate_alternating_data(
+    n_segments=10,
+    mean=10,
+    segment_length=20,
+    p=1000,
+    random_state=7,
+    affected_proportion=0.001,
+)
+detector = SeededBinarySegmentation(growth_factor=2, change_score=ESACScore())
+print(detector.fit_predict(df))
+print("")
+print("a_s: ", detector.change_score.a_s)
+print("nu_s: ", detector.change_score.nu_s)
+print("t_s: ", detector.change_score.t_s)
+print("threshold: ", detector.change_score.threshold)
+print("armaxes sparsity: ", detector.change_score.sargmaxes)
+print("n : ", detector.change_score.n)
+print("p : ", detector.change_score.p)
+
+px.line(df)
+px.scatter(detector.scores, x="argmax", y="max", hover_data=["start", "end"])
 
 
 # Profiling
-n = int(1e6)
-df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=1)
-detector = SeededBinarySegmentation(growth_factor=1.5, min_segment_length=10)
+n = int(1e4)
+df = generate_alternating_data(n_segments=1, mean=0, segment_length=n, p=100)
+detector = SeededBinarySegmentation(growth_factor=2, change_score=ESACScore())
 profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
