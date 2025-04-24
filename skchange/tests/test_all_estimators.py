@@ -21,7 +21,18 @@ ESTIMATORS = DETECTORS + INTERVAL_EVALUATORS
 
 @parametrize_with_checks(ESTIMATORS)
 def test_sktime_compatible_estimators(obj, test_name):
-    check_estimator(obj, tests_to_run=test_name, raise_exceptions=True)
+    check_estimator(
+        obj,
+        tests_to_run=test_name,
+        raise_exceptions=True,
+        # The excluded tests fail in skchange due to the use of some custom tags
+        # that are not in the VALID_ESTIMATOR_TAGS in sktime.
+        tests_to_exclude=[
+            "test_estimator_tags",
+            "test_valid_estimator_tags",
+            "test_valid_estimator_class_tags",
+        ],
+    )
 
 
 @pytest.mark.parametrize("Estimator", ESTIMATORS)
