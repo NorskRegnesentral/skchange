@@ -40,13 +40,12 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 import numpy as np
 from scipy.stats import norm
 
+from ..base import BaseIntervalScorer
 from ..utils.numba import njit
 from ..utils.numba.stats import col_cumsum
 
 # internal extensions in skchange.change_scores
-from ..utils.validation.enums import EvaluationType
 from ._cusum import cusum_score
-from .base import BaseChangeScore
 
 # For external extensions, use the following imports:
 # from skchange.change_scores.base import BaseChangeScore
@@ -82,10 +81,10 @@ def ESAC_Threshold(
 
         output_scores[i] = temp_max
 
-    return output_scores, sargmax
+    return output_scores.reshape(-1, 1), sargmax
 
 
-class ESACScore(BaseChangeScore):
+class ESACScore(BaseIntervalScorer):
     """Custom score class.
 
     todo: write docstring, describing your custom score.
@@ -102,11 +101,13 @@ class ESACScore(BaseChangeScore):
     # todo: add authors and maintaners Github user name
     _tags = {
         "authors": ["peraugustmoen", "Tveten"],
-        "maintainers": ["peraugustmoen", "Tveten"],
+        "maintainers": ["Tveten"],
+        "task": "change_score",
+        "distribution_type": "Gaussian",
+        "is_conditional": False,
+        "is_aggregated": True,
+        "is_penalised": True,
     }
-
-    evaluation_type = EvaluationType.MULTIVARIATE
-    is_penalised_score = True
 
     # todo: add any hyper-parameters and components to constructor
     def __init__(
@@ -120,7 +121,6 @@ class ESACScore(BaseChangeScore):
         # be overwritten in other methods.
         self.threshold_dense = threshold_dense
         self.threshold_sparse = threshold_sparse
-        self.sargmaxes = None
 
         # todo: optional, parameter checking logic (if applicable) should happen here
         # if writes derived values to self, should *not* overwrite self.parama etc
@@ -148,7 +148,7 @@ class ESACScore(BaseChangeScore):
         n = self.n
         p = self.p
 
-        if self.p == 1:
+        if p == 1:
             self.a_s = np.array([0.0])
             self.nu_s = np.array([1.0])
             self.t_s = np.array([1])
@@ -274,6 +274,7 @@ class ESACScore(BaseChangeScore):
         int
             Number of parameters in the score function.
         """
+        return p
         # For example for a covariance matrix score:
         # return p * (p + 1) // 2
 
