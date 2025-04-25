@@ -358,5 +358,8 @@ class ESACScore(BaseIntervalScorer):
         # # "default" params - always returned except for "special_param_set" value
         # params = {"est": value3, "parama": value4}
         # return params
-        params = [{}]
+        params = [
+            {"threshold_dense": 1.5, "threshold_sparse": 1.0},
+            {"threshold_dense": 2.0, "threshold_sparse": 2.0},
+        ]
         return params
