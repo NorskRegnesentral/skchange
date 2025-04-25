@@ -33,26 +33,13 @@ Testing - required for sktime test framework and check_estimator usage:
 copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 """
 
-# todo for internal extensions: copy this file to skchange/change_scores and rename it
-# to _<your_score_name>.py
-
-# todo: add any necessary imports
 import numpy as np
 from scipy.stats import norm
 
 from ..base import BaseIntervalScorer
 from ..utils.numba import njit
 from ..utils.numba.stats import col_cumsum
-
-# internal extensions in skchange.change_scores
 from ._cusum import cusum_score
-
-# For external extensions, use the following imports:
-# from skchange.change_scores.base import BaseChangeScore
-# from skchange.utils.validation.enums import EvaluationType
-
-# todo: add the score to the CHANGE_SCORES variable in
-# skchange.change_scores.__init__.py
 
 
 # TODO: document this
@@ -64,6 +51,34 @@ def ESAC_Threshold(
     t_s: np.ndarray,
     threshold: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
+    r"""
+    Compute ESAC scores from CUSUM scores.
+
+    This function calculates the penalised score for the ESAC algorithm,
+    as defined in Equation (6) in [1]. The outputs are penalised CUSUM
+    scores computed from the input CUSUM scores.
+
+    Parameters
+    ----------
+        cusum_scores (np.ndarray): A 2D array where each row represents the
+            CUSUM scores for a specific time step.
+        a_s (np.ndarray): A 1D array of hard threshold values. Correspond to
+            a(t) as defined in Equation (4) in [1] for each t specified in t_s.
+        nu_s (np.ndarray): A 1D array of mean-centering terms. Correspond to
+            nu(t) as defined after Equation (4) in [1] for each t specified in t_s.
+        t_s (np.ndarray): A 1D array of candidate sparsity values corresponding
+            to the element in a_s and nu_s.
+        threshold (np.ndarray): A 1D array of penalty values, corresponding to \gamma(t)
+            in Equation (4) in [1], where t is as defined in t_s.
+
+    Returns
+    -------
+        tuple[np.ndarray, np.ndarray]: A tuple containing:
+            - output_scores (np.ndarray): A 2D array of computed ESAC scores. The array
+                has one column.
+            - sargmax (np.ndarray): A 1D array of indices or labels corresponding
+                to the sparisty level at which the maximum score was achieved.
+    """
     num_levels = len(threshold)
     num_cusum_scores = len(cusum_scores)
     output_scores = np.zeros(num_cusum_scores, dtype=np.float64)
@@ -343,3 +358,5 @@ class ESACScore(BaseIntervalScorer):
         # # "default" params - always returned except for "special_param_set" value
         # params = {"est": value3, "parama": value4}
         # return params
+        params = [{}]
+        return params
