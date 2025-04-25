@@ -55,7 +55,7 @@ def ESAC_Threshold(
     Compute ESAC scores from CUSUM scores.
 
     This function calculates the penalised score for the ESAC algorithm,
-    as defined in Equation (6) in [1]. The outputs are penalised CUSUM
+    as defined in Equation (6) in [1]_. The outputs are penalised CUSUM
     scores computed from the input CUSUM scores.
 
     Parameters
@@ -63,13 +63,13 @@ def ESAC_Threshold(
         cusum_scores (np.ndarray): A 2D array where each row represents the
             CUSUM scores for a specific time step.
         a_s (np.ndarray): A 1D array of hard threshold values. Correspond to
-            a(t) as defined in Equation (4) in [1] for each t specified in t_s.
+            a(t) as defined in Equation (4) in [1]_ for each t specified in t_s.
         nu_s (np.ndarray): A 1D array of mean-centering terms. Correspond to
-            nu(t) as defined after Equation (4) in [1] for each t specified in t_s.
+            nu(t) as defined after Equation (4) in [1]_ for each t specified in t_s.
         t_s (np.ndarray): A 1D array of candidate sparsity values corresponding
             to the element in a_s and nu_s.
         threshold (np.ndarray): A 1D array of penalty values, corresponding to \gamma(t)
-            in Equation (4) in [1], where t is as defined in t_s.
+            in Equation (4) in [1]_, where t is as defined in t_s.
 
     Returns
     -------
@@ -78,6 +78,12 @@ def ESAC_Threshold(
                 has one column.
             - sargmax (np.ndarray): A 1D array of indices or labels corresponding
                 to the sparisty level at which the maximum score was achieved.
+
+    References
+    ----------
+    ..  [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
+        sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
+        3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
     """
     num_levels = len(threshold)
     num_cusum_scores = len(cusum_scores)
@@ -102,21 +108,31 @@ def ESAC_Threshold(
 class ESACScore(BaseIntervalScorer):
     """Custom score class.
 
-    todo: write docstring, describing your custom score.
+    This is the sparsity adaptive penalised CUSUM score for a change in the mean.
+    The ESAC score is a penalised version of the CUSUM score, where the CUSUM of
+    each time series is thresholded, mean-centered and penalised by a sparsity
+    dependant penalty. The score is defined in Equation (6) in [1]_.
 
     Parameters
     ----------
-    param1 : string, optional, default=None
-        descriptive explanation of param1
-    param2 : float, optional, default=1.0
-        descriptive explanation of param2
-    and so on
+    threshold_dense : float, optional, default=1.5
+        The leading constant in the penalty function taken as in (8) in [1]_ in the
+        dense case where the candidate sparisity level t is greater than or equal to
+        sqrt(p * log(n)).
+    threshold_sparse : float, optional, default=1.0
+        The leading constant in the penalty function taken as in (8) in [1]_ in the
+        sparse case where the candidate sparisity level t is less than sqrt(p * log(n)).
+
+    References
+    ----------
+    ..  [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
+        sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
+        3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
     """
 
-    # todo: add authors and maintaners Github user name
     _tags = {
         "authors": ["peraugustmoen", "Tveten"],
-        "maintainers": ["Tveten"],
+        "maintainers": ["peraugustmoen", "Tveten"],
         "task": "change_score",
         "distribution_type": "Gaussian",
         "is_conditional": False,
@@ -124,24 +140,15 @@ class ESACScore(BaseIntervalScorer):
         "is_penalised": True,
     }
 
-    # todo: add any hyper-parameters and components to constructor
     def __init__(
         self,
-        threshold_dense=1.5,  # Custom parameter 1.
-        threshold_sparse=1.0,  # Custom parameter 2.
+        threshold_dense=1.5,
+        threshold_sparse=1.0,
     ):
         super().__init__()
-
-        # todo: write any hyper-parameters and components to self. These should never
-        # be overwritten in other methods.
         self.threshold_dense = threshold_dense
         self.threshold_sparse = threshold_sparse
 
-        # todo: optional, parameter checking logic (if applicable) should happen here
-        # if writes derived values to self, should *not* overwrite self.parama etc
-        # instead, write to self._param1, etc.
-
-    # todo: implement, mandatory
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score evaluator.
 
@@ -211,7 +218,6 @@ class ESACScore(BaseIntervalScorer):
 
         return self
 
-    # todo: implement, mandatory
     def _evaluate(self, cuts: np.ndarray):
         """Evaluate the change score for a split within an interval.
 
@@ -236,9 +242,6 @@ class ESACScore(BaseIntervalScorer):
             univariate. In this case, each column represents the univariate score for
             the corresponding input data column.
         """
-        # todo: implement evaluation logic here. Must have the output format as
-        #       described in the docstring.
-        # IMPORTANT: avoid side effects to starts, ends.
         starts = cuts[:, 0]
         splits = cuts[:, 1]
         ends = cuts[:, 2]
@@ -249,8 +252,6 @@ class ESACScore(BaseIntervalScorer):
         self.sargmaxes = sargmaxes
         return thresholded_cusum_scores
 
-    # todo: implement, optional, defaults to min_size = 1.
-    # used for automatic validation of cuts in `evaluate`.
     @property
     def min_size(self) -> int | None:
         """Minimum size of the interval to evaluate.
@@ -264,18 +265,8 @@ class ESACScore(BaseIntervalScorer):
             unknown what the minimum size is. E.g., the scorer may need to be fitted
             first to determine the minimum size.
         """
-        # For example for a mean and variance score:
-        # return 2
-        #
-        # For example for a covariance matrix score:
-        # if self.is_fitted:
-        #     return self._X.shape[1] + 1
-        # else:
-        #     return None
         return 1
 
-    # todo: implement, optional, defaults to output p (one parameter per variable).
-    # used for setting a decent default penalty in detectors.
     def get_param_size(self, p: int) -> int:
         """Get the number of parameters estimated by the score in each segment.
 
@@ -290,11 +281,7 @@ class ESACScore(BaseIntervalScorer):
             Number of parameters in the score function.
         """
         return p
-        # For example for a covariance matrix score:
-        # return p * (p + 1) // 2
 
-    # todo: return default parameters, so that a test instance can be created.
-    #       required for automated unit and integration testing of estimator.
     @classmethod
     def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
@@ -314,50 +301,6 @@ class ESACScore(BaseIntervalScorer):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
-        # todo: set the testing parameters for the estimators
-        # Testing parameters can be dictionary or list of dictionaries
-        # Testing parameter choice should cover internal cases well.
-        #
-        # this method can, if required, use:
-        #   class properties (e.g., inherited); parent class test case
-        #   imported objects such as estimators from sktime or sklearn
-        # important: all such imports should be *inside get_test_params*, not at the top
-        #            since imports are used only at testing time
-        #
-        # The parameter_set argument is not used for automated, module level tests.
-        #   It can be used in custom, estimator specific tests, for "special" settings.
-        # A parameter dictionary must be returned *for all values* of parameter_set,
-        #   i.e., "parameter_set not available" errors should never be raised.
-        #
-        # A good parameter set should primarily satisfy two criteria,
-        #   1. Chosen set of parameters should have a low testing time,
-        #      ideally in the magnitude of few seconds for the entire test suite.
-        #       This is vital for the cases where default values result in
-        #       "big" models which not only increases test time but also
-        #       run into the risk of test workers crashing.
-        #   2. There should be a minimum two such parameter sets with different
-        #      sets of values to ensure a wide range of code coverage is provided.
-        #
-        # example 1: specify params as dictionary
-        # any number of params can be specified
-        # params = {"est": value0, "parama": value1, "paramb": value2}
-        # return params
-        #
-        # example 2: specify params as list of dictionary
-        # note: Only first dictionary will be used by create_test_instance
-        # params = [{"est": value1, "parama": value2},
-        #           {"est": value3, "parama": value4}]
-        # return params
-        #
-        # example 3: parameter set depending on param_set value
-        #   note: only needed if a separate parameter set is needed in tests
-        # if parameter_set == "special_param_set":
-        #     params = {"est": value1, "parama": value2}
-        #     return params
-        #
-        # # "default" params - always returned except for "special_param_set" value
-        # params = {"est": value3, "parama": value4}
-        # return params
         params = [
             {"threshold_dense": 1.5, "threshold_sparse": 1.0},
             {"threshold_dense": 2.0, "threshold_sparse": 2.0},
