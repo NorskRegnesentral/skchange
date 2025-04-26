@@ -31,6 +31,28 @@ def mosum_selection(scores: np.ndarray, min_detection_interval: int) -> list:
     return changepoints
 
 
+@njit
+def make_extended_moving_window_cuts(
+    n_samples: int,
+    bandwidth: int,
+    min_size: int,
+) -> np.ndarray:
+    splits = np.arange(min_size, n_samples - min_size + 1)
+
+    starts = splits - bandwidth
+    starts[starts < 0] = 0
+    max_start = n_samples - 2 * bandwidth
+    starts[starts > max_start] = max_start
+
+    ends = splits + bandwidth
+    ends[ends > n_samples] = n_samples
+    min_end = 2 * bandwidth
+    ends[ends < min_end] = min_end
+
+    cuts = np.column_stack((starts, splits, ends))
+    return cuts
+
+
 def moving_window_transform(
     penalised_score: BaseIntervalScorer,
     bandwidth: int,
@@ -39,14 +61,12 @@ def moving_window_transform(
     penalised_score.check_is_fitted()
 
     n_samples = penalised_score._X.shape[0]
-    splits = np.arange(bandwidth, n_samples - bandwidth + 1)
-    starts = splits - bandwidth + 1
-    ends = splits + bandwidth
-    cuts = np.column_stack((starts, splits, ends))
+    cuts = make_extended_moving_window_cuts(
+        n_samples, bandwidth, penalised_score.min_size
+    )
 
-    # astype(float) since penalty_ might be int, which causes all scores to be int.
     scores = np.repeat(np.nan, n_samples)
-    scores[splits] = penalised_score.evaluate(cuts)[:, 0]
+    scores[cuts[:, 1]] = penalised_score.evaluate(cuts).reshape(-1)
     return scores
 
 
@@ -113,7 +133,7 @@ class MovingWindow(BaseChangeDetector):
         self,
         change_score: BaseIntervalScorer | None = None,
         penalty: np.ndarray | float | None = None,
-        bandwidth: int = 30,
+        bandwidth: int | list | None = 30,
         min_detection_interval: int = 1,
     ):
         self.change_score = change_score
