@@ -2,18 +2,29 @@ import numpy as np
 import pytest
 
 from skchange.anomaly_scores import SAVINGS, to_saving
+from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import COSTS
+from skchange.costs.tests.test_all_costs import create_fixed_cost_test_instance
 from skchange.datasets import generate_alternating_data
+from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
-SCORES_AND_COSTS = SAVINGS + COSTS
+COST_INSTANCES = [to_saving(create_fixed_cost_test_instance(cost)) for cost in COSTS]
+SAVING_INSTANCES = [saving.create_test_instance() for saving in SAVINGS]
+PENALISED_SAVING_INSTANCES = [
+    PenalisedScore(saving)
+    for saving in COST_INSTANCES + SAVING_INSTANCES
+    if not saving.get_tag("is_penalised")
+]
+ALL_SAVING_INSTANCES = COST_INSTANCES + SAVING_INSTANCES + PENALISED_SAVING_INSTANCES
 
 
-@pytest.mark.parametrize("Saving", SAVINGS)
-def test_savings_positive(Saving):
+@pytest.mark.parametrize("saving", ALL_SAVING_INSTANCES)
+def test_saving_values(saving):
     """Test all available savings."""
+    skip_if_no_test_data(saving)
+
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
-    saving = to_saving(Saving.create_test_instance())
     saving.fit(df)
 
     starts = np.arange(n - 10)
@@ -21,4 +32,6 @@ def test_savings_positive(Saving):
     intervals = np.column_stack((starts, ends))
     saving_values = saving.evaluate(intervals)
 
-    assert np.all(saving_values >= 0.0)
+    saving_is_penalised = saving.get_tag("is_penalised")
+    min_value = 0.0 if not saving_is_penalised else -np.inf
+    assert np.all(saving_values >= min_value)

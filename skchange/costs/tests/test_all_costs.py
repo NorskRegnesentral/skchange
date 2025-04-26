@@ -32,6 +32,12 @@ def find_fixed_param_combination(
     return fixed_test_param_set
 
 
+def create_fixed_cost_test_instance(cost_class: type[BaseCost]) -> BaseCost:
+    """Create a fixed instance of the cost class."""
+    fixed_param = find_fixed_param_combination(cost_class)
+    return cost_class.create_test_instance().set_params(**fixed_param)
+
+
 def test_find_fixed_param_combination_value_error():
     class MockCost:
         @staticmethod
@@ -61,8 +67,7 @@ def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
 
     optim_cost = CostClass.create_test_instance()
     skip_if_no_test_data(optim_cost)
-    fixed_params = find_fixed_param_combination(CostClass)
-    fixed_cost = CostClass.create_test_instance().set_params(**fixed_params)
+    fixed_cost = create_fixed_cost_test_instance(CostClass)
     np.random.seed(1001)
     X = np.random.multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=20)
     optim_cost.fit(X)
