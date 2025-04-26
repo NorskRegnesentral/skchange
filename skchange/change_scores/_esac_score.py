@@ -267,21 +267,6 @@ class ESACScore(BaseIntervalScorer):
         """
         return 1
 
-    def get_param_size(self, p: int) -> int:
-        """Get the number of parameters estimated by the score in each segment.
-
-        Parameters
-        ----------
-        p : int
-            Number of variables in the data.
-
-        Returns
-        -------
-        int
-            Number of parameters in the score function.
-        """
-        return p
-
     @classmethod
     def get_test_params(cls, parameter_set="default"):
         """Return testing parameter settings for the estimator.
