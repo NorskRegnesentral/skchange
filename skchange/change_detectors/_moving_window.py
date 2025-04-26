@@ -71,12 +71,12 @@ def moving_window_transform(
 
 def multiple_moving_window_transform(
     penalised_score: BaseIntervalScorer,
-    bandwidth: list,
+    bandwidths: list,
 ) -> np.ndarray:
     n_samples = penalised_score._X.shape[0]
     n_variables = penalised_score._X.shape[1]
     scores = np.full((n_samples, n_variables), np.nan)
-    for i, bw in enumerate(bandwidth):
+    for i, bw in enumerate(bandwidths):
         scores[:, i] = moving_window_transform(penalised_score, bw)
     return scores
 
