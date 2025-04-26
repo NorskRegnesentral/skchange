@@ -56,7 +56,7 @@ def make_extended_moving_window_cuts(
 def moving_window_transform(
     penalised_score: BaseIntervalScorer,
     bandwidth: int,
-) -> tuple[list, np.ndarray]:
+) -> np.ndarray:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
 
@@ -64,9 +64,20 @@ def moving_window_transform(
     cuts = make_extended_moving_window_cuts(
         n_samples, bandwidth, penalised_score.min_size
     )
-
     scores = np.repeat(np.nan, n_samples)
     scores[cuts[:, 1]] = penalised_score.evaluate(cuts).reshape(-1)
+    return scores
+
+
+def multiple_moving_window_transform(
+    penalised_score: BaseIntervalScorer,
+    bandwidth: list,
+) -> np.ndarray:
+    n_samples = penalised_score._X.shape[0]
+    n_variables = penalised_score._X.shape[1]
+    scores = np.full((n_samples, n_variables), np.nan)
+    for i, bw in enumerate(bandwidth):
+        scores[:, i] = moving_window_transform(penalised_score, bw)
     return scores
 
 
