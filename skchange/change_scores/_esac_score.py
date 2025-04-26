@@ -77,7 +77,7 @@ def ESAC_Threshold(
             - output_scores (np.ndarray): A 2D array of computed ESAC scores. The array
                 has one column.
             - sargmax (np.ndarray): A 1D array of indices or labels corresponding
-                to the sparisty level at which the maximum score was achieved.
+                to the sparsity level at which the maximum score was achieved.
 
     References
     ----------
