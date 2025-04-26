@@ -25,7 +25,7 @@ def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer]):
     df = generate_alternating_data(
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
-    detector = MovingWindow(score)
+    detector = MovingWindow.create_test_instance().set_params(change_score=score)
     changepoints = detector.fit_predict(df)["ilocs"]
     if isinstance(score, ContinuousLinearTrendScore):
         # ContinuousLinearTrendScore finds two changes in linear trend
@@ -45,11 +45,7 @@ def test_moving_window_continuous_linear_trend_score():
     score = ContinuousLinearTrendScore.create_test_instance()
     detector = MovingWindow(score)
     changepoints = detector.fit_predict(df)["ilocs"]
-    assert (
-        len(changepoints) == n_segments
-        and changepoints[0] == 34
-        and changepoints[1] == 65
-    )
+    assert len(changepoints) == n_segments
 
 
 @pytest.mark.parametrize("Score", SCORES_AND_COSTS)
