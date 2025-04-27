@@ -6,13 +6,18 @@ with various cost functions, focusing on comparison between different pruning
 strategies and performance evaluation.
 """
 
+from functools import reduce
+
 import numpy as np
 import ruptures as rpt
 from ruptures.base import BaseCost as rpt_BaseCost
 
 from skchange.change_detectors import PELT, SeededBinarySegmentation
 from skchange.change_detectors._crops import CROPS_PELT, GenericCROPS
-from skchange.change_detectors._pelt import run_improved_pelt_array_based
+from skchange.change_detectors._pelt import (
+    run_improved_pelt_array_based,
+    run_restricted_optimal_partitioning,
+)
 from skchange.change_scores._from_cost import to_change_score
 from skchange.costs import GaussianCost, L1Cost, L2Cost
 from skchange.datasets import generate_alternating_data
@@ -29,16 +34,6 @@ max_penalty = 5.0e3
 min_segment_length = 10
 percent_pruning_margin = 0.0
 
-change_point_detector = CROPS_PELT(
-    cost=cost,
-    min_penalty=min_penalty,
-    max_penalty=max_penalty,
-    min_segment_length=min_segment_length,
-    # min_segment_length=cost.min_size,
-    percent_pruning_margin=percent_pruning_margin,
-    drop_pruning=False,
-)
-
 # Generate test data:
 dataset = generate_alternating_data(
     n_segments=5,
@@ -50,8 +45,6 @@ dataset = generate_alternating_data(
 )
 
 fitted_cost = cost.fit(dataset.values)
-# Fit the change point detector:
-change_point_detector.fit(dataset)
 
 
 # %%
@@ -121,6 +114,19 @@ assert np.array_equal(jump_PELT_change_points, jump_rpt_pelt_cpts), (
 # on a restricted set of 'start' points, around the 'JUMP' change points?
 # I.e. [change_point - min_segment_length, change_point + min_segment_length]
 # for each 'JUMP' change point?
+change_point_detector = CROPS_PELT(
+    cost=cost,
+    min_penalty=min_penalty,
+    max_penalty=max_penalty,
+    min_segment_length=min_segment_length,
+    # min_segment_length=cost.min_size,
+    percent_pruning_margin=percent_pruning_margin,
+    drop_pruning=False,
+    refine_change_points=True,
+)
+
+# Fit the change point detector:
+change_point_detector.fit(dataset)
 
 margin_results = change_point_detector.run_crops(dataset.values)
 margin_results["optimal_value"] = margin_results["segmentation_cost"] + margin_results[
@@ -146,6 +152,27 @@ no_prune_results["optimal_value"] = no_prune_results[
 
 # %%
 # %timeit no_prune_results = no_prune_cpd.run_crops(dataset.values)
+# %%
+num_cpts = 10
+exact_cpts = no_prune_cpd.change_points_lookup_[num_cpts]
+jump_cpts = change_point_detector.change_points_lookup_[num_cpts]
+jump_penalty = margin_results[margin_results["num_change_points"] == num_cpts][
+    "penalty"
+].values[0]
+
+admissable_starts = reduce(
+    lambda x, y: x | y,
+    [
+        set(range(cpt - (min_segment_length - 1), cpt + (min_segment_length - 1) + 1))
+        for cpt in jump_cpts
+    ],
+)
+refined_pelt_cost, refined_cpts = run_restricted_optimal_partitioning(
+    cost=cost,
+    penalty=jump_penalty,
+    min_segment_length=min_segment_length,
+    admissable_starts=admissable_starts,
+)
 
 # %%
 # Regular PELT min_segment_length = 10, penalty = 5.892686
@@ -162,6 +189,21 @@ regular_pelt_cpts = (
 (
     cost.evaluate_segmentation(regular_pelt_cpts)
     + (len(regular_pelt_cpts) - 1) * test_penalty
+)
+
+no_prune_regular_pelt_cpts = (
+    PELT(
+        cost=cost,
+        penalty=test_penalty,
+        min_segment_length=min_segment_length,
+        drop_pruning=True,
+    )
+    .fit(dataset)
+    .predict(dataset)
+)["ilocs"].to_numpy()
+(
+    cost.evaluate_segmentation(no_prune_regular_pelt_cpts)
+    + (len(no_prune_regular_pelt_cpts) - 1) * test_penalty
 )
 
 # %%

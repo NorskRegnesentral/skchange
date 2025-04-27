@@ -1,10 +1,13 @@
 """Implementation of the CROPS algorithm for path solutions to penalized CPD."""
 
+from functools import reduce
+
 import numpy as np
 import pandas as pd
 
 from ..change_detectors._pelt import (
     run_improved_pelt_array_based,
+    run_restricted_optimal_partitioning,
     run_pelt_array_based,
     run_pelt_masked,
 )
@@ -194,7 +197,7 @@ class CROPS_PELT(BaseChangeDetector):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": ["johannvk"],
-        "fit_is_empty": True,
+        "fit_is_empty": False,
     }
 
     def __init__(
@@ -207,14 +210,18 @@ class CROPS_PELT(BaseChangeDetector):
         percent_pruning_margin: float = 0.0,
         middle_penalty_nudge: float = 1.0e-4,
         drop_pruning: bool = False,
+        refine_change_points: bool = True,
     ):
         super().__init__()
-        self.cost: BaseCost | JumpCost = (
-            cost.clone()
-            if (min_segment_length == 1) or drop_pruning
-            else JumpCost(cost=cost, jump=min_segment_length, start_index=0)
-        )
-        # self.cost: BaseCost = cost.clone()
+        self.cost: BaseCost = cost.clone()
+        self._cost: BaseCost = cost.clone()
+        if (min_segment_length > 1) and not drop_pruning:
+            self._jump_cost: JumpCost = JumpCost(
+                cost=cost, jump=min_segment_length, start_index=0
+            )
+        else:
+            self._jump_cost = None
+
         self.min_penalty = min_penalty
         self.max_penalty = max_penalty
         self.min_segment_length = min_segment_length
@@ -222,9 +229,9 @@ class CROPS_PELT(BaseChangeDetector):
         self.percent_pruning_margin = percent_pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
         self.drop_pruning = drop_pruning
+        self.refine_change_points = refine_change_points
 
         # Storage for the CROPS results:
-        self._cost = self.cost
         self.change_points_metadata_ = None
         self.change_points_lookup_ = None
 
@@ -236,8 +243,11 @@ class CROPS_PELT(BaseChangeDetector):
         X : np.ndarray
             Data to search for change points in.
         """
-        # Fit the cost function:
         self._cost.fit(X, y)
+        if self._jump_cost is not None:
+            # Fit the jump cost function:
+            self._jump_cost.fit(X, y)
+
         return self
 
     def run_pelt(self, penalty: float) -> dict:
@@ -261,20 +271,51 @@ class CROPS_PELT(BaseChangeDetector):
             # Need PELT to take care of the min_segment_length:
             min_segment_length = self.min_segment_length
 
-        opt_cost, change_points = run_improved_pelt_array_based(
-            self._cost,
-            penalty=penalty,
-            min_segment_length=min_segment_length,
-            split_cost=self.split_cost,
-            percent_pruning_margin=self.percent_pruning_margin,
-            drop_pruning=self.drop_pruning,
-        )
+        if self.drop_pruning:
+            opt_cost, change_points = run_improved_pelt_array_based(
+                self._cost,
+                penalty=penalty,
+                min_segment_length=min_segment_length,
+                split_cost=self.split_cost,
+                percent_pruning_margin=self.percent_pruning_margin,
+                drop_pruning=self.drop_pruning,
+            )
+        else:
+            opt_cost, change_points = run_improved_pelt_array_based(
+                self._jump_cost,
+                penalty=penalty,
+                min_segment_length=1,
+                split_cost=self.split_cost,
+                percent_pruning_margin=self.percent_pruning_margin,
+                drop_pruning=self.drop_pruning,
+            )
 
-        if isinstance(self._cost, JumpCost):
             # Inflate the change points to back the original data indices:
             change_points = np.array(change_points) * self.min_segment_length
 
-        return change_points
+        if self.refine_change_points and len(change_points) > 0:
+            admissable_starts = reduce(
+                lambda x, y: x | y,
+                [
+                    set(
+                        range(
+                            cpt - (min_segment_length - 1),
+                            cpt + (min_segment_length - 1) + 1,
+                        )
+                    )
+                    for cpt in change_points
+                ],
+            )
+            refined_costs, refined_change_points = run_restricted_optimal_partitioning(
+                cost=self._cost,
+                penalty=penalty,
+                min_segment_length=min_segment_length,
+                admissable_starts=admissable_starts,
+            )
+            return refined_change_points
+
+        else:
+            return change_points
 
     def run_crops(self, X: np.ndarray):
         """Run the CROPS algorithm for path solutions to penalized CPD.

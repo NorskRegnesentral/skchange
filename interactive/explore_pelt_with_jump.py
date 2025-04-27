@@ -1,3 +1,4 @@
+# %%
 import numpy as np
 import ruptures as rpt
 from ruptures.base import BaseCost as rpt_BaseCost
@@ -7,6 +8,7 @@ from skchange.change_detectors._crops import CROPS_PELT, GenericCROPS, JumpCost
 from skchange.change_detectors._pelt import (
     run_improved_pelt_array_based,
     run_pelt_with_jump,
+    run_restricted_optimal_partitioning,
 )
 from skchange.change_scores._from_cost import to_change_score
 from skchange.costs import GaussianCost, L1Cost, L2Cost
@@ -46,3 +48,9 @@ jump_cost_pelt_costs, jump_cost_change_points = run_improved_pelt_array_based(
     cost=jump_cost, penalty=test_penalty, min_segment_length=1
 )
 jump_cost_change_points *= jump_step
+
+# %% TODO: Implement a Optimal Partitioning 'refinement' method that explores
+# the neighborhood of the change points found by PELT with a jump step
+# [change_point_u - (jump_step - 1), change_point_u + (jump_step - 1)].
+# Then for CROPS, solve the problem with a jump step == min_segment_length,
+# and then refine the change points.
