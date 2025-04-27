@@ -1,37 +1,4 @@
-"""Extension template for change scores as interval scorers.
-
-Adapted from the sktime extension templates.
-
-Purpose of this implementation template:
-    quick implementation of new estimators following the template
-    NOT a concrete class to import! This is NOT a base class or concrete class!
-    This is to be used as a "fill-in" coding template.
-
-How to use this implementation template to implement a new estimator:
-- make a copy of the template in a suitable location, give it a descriptive name.
-- work through all the "todo" comments below
-- fill in code for mandatory methods, and optionally for optional methods
-- you can add more private methods, but do not override BaseChangeScore's private
-    methods. An easy way to be safe is to prefix your methods with "_custom"
-- change docstrings for functions and the file
-- ensure interface compatibility by sktime.utils.estimator_checks.check_estimator
-- once complete: use as a local library, or contribute to skchange via PR
-- more details:
-  https://www.sktime.net/en/stable/developer_guide/add_estimators.html
-
-Mandatory implements:
-    fitting                  - _fit(self, X, y=None)
-    evaluating optimal param - _evaluate(self, cuts)
-
-Optional implements:
-    minimum size of interval  - min_size(self)
-    number of parameters      - get_param_size(self, p)
-
-Testing - required for sktime test framework and check_estimator usage:
-    get default parameters for test instance(s) - get_test_params()
-
-copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
-"""
+"""The ESAC score for detecting changes in the mean of high-dimensional data."""
 
 import numpy as np
 from scipy.stats import norm
@@ -42,9 +9,8 @@ from ..utils.numba.stats import col_cumsum
 from ._cusum import cusum_score
 
 
-# TODO: document this
 @njit
-def ESAC_Threshold(
+def transform_esac(
     cusum_scores: np.ndarray,
     a_s: np.ndarray,
     nu_s: np.ndarray,
@@ -61,7 +27,7 @@ def ESAC_Threshold(
     Parameters
     ----------
         cusum_scores (np.ndarray): A 2D array where each row represents the
-            CUSUM scores for a specific time step.
+            CUSUM scores for a specific candidate change location.
         a_s (np.ndarray): A 1D array of hard threshold values. Correspond to
             a(t) as defined in Equation (4) in [1]_ for each t specified in t_s.
         nu_s (np.ndarray): A 1D array of mean-centering terms. Correspond to
@@ -75,9 +41,10 @@ def ESAC_Threshold(
     -------
         tuple[np.ndarray, np.ndarray]: A tuple containing:
             - output_scores (np.ndarray): A 2D array of computed ESAC scores. The array
-                has one column.
-            - sargmax (np.ndarray): A 1D array of indices or labels corresponding
-                to the sparisty level at which the maximum score was achieved.
+                has one column, where each element represents the maximum score for each
+                candidate change location.
+            - sargmax (np.ndarray): A 1D array giving sparisty level at which the
+                maximum score was achieved for each candidate change location.
 
     References
     ----------
@@ -145,9 +112,9 @@ class ESACScore(BaseIntervalScorer):
         threshold_dense=1.5,
         threshold_sparse=1.0,
     ):
-        super().__init__()
         self.threshold_dense = threshold_dense
         self.threshold_sparse = threshold_sparse
+        super().__init__()
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score evaluator.
@@ -197,12 +164,11 @@ class ESACScore(BaseIntervalScorer):
                 2 * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
             )
 
-            # Calculate nu_as
-            # nu_as = 1 + as * exp(dnorm(as, log=TRUE) - pnorm(as, lower.tail=FALSE,
-            #   log.p=TRUE))
+            # Calculate nu_as using the following formula:
+            # nu(a) = E(Z^2|Z^2 > a^2) = 1 + a * exp(log(phi(a)) - log(1 - Phi(a))),
+            # where Z ~ N(0, 1) and phi is the standard normal density function,
+            # and Phi is the standard normal cumulative distribution function.
             log_dnorm = norm.logpdf(self.a_s)
-
-            # Log of upper tail probability: log(1 - \Phi(as))
             log_pnorm_upper = norm.logsf(self.a_s)
 
             self.nu_s = 1 + self.a_s * np.exp(log_dnorm - log_pnorm_upper)
@@ -246,7 +212,7 @@ class ESACScore(BaseIntervalScorer):
         splits = cuts[:, 1]
         ends = cuts[:, 2]
         cusum_scores = cusum_score(starts, ends, splits, self._sums)
-        thresholded_cusum_scores, sargmaxes = ESAC_Threshold(
+        thresholded_cusum_scores, sargmaxes = transform_esac(
             cusum_scores, self.a_s, self.nu_s, self.t_s, self.threshold
         )
         self.sargmaxes = sargmaxes
