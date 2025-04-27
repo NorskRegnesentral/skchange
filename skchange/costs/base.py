@@ -170,3 +170,10 @@ class BaseCost(BaseIntervalScorer):
             the corresponding input data column.
         """
         raise NotImplementedError("abstract method")
+
+    def n_samples(self) -> int:
+        """Return the number of samples in the input data."""
+        if self._X is None:
+            raise ValueError("The input data has not been set.")
+        else:
+            return self._X.shape[0]

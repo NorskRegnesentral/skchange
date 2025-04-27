@@ -1,0 +1,48 @@
+import numpy as np
+import ruptures as rpt
+from ruptures.base import BaseCost as rpt_BaseCost
+
+from skchange.change_detectors import PELT, SeededBinarySegmentation
+from skchange.change_detectors._crops import CROPS_PELT, GenericCROPS, JumpCost
+from skchange.change_detectors._pelt import (
+    run_improved_pelt_array_based,
+    run_pelt_with_jump,
+)
+from skchange.change_scores._from_cost import to_change_score
+from skchange.costs import GaussianCost, L1Cost, L2Cost
+from skchange.datasets import generate_alternating_data
+
+# %%
+# Generate test data:
+dataset = generate_alternating_data(
+    n_segments=5,
+    segment_length=100,
+    p=1,
+    mean=3.0,
+    variance=4.0,
+    random_state=42,
+)
+
+# cost = L2Cost()
+cost = GaussianCost()
+# # # cost = L1Cost()
+
+test_penalty = 15.0
+jump_step = 8
+
+# %%
+cost.fit(dataset.values)
+pelt_with_jump_costs, pelt_with_jump_change_points = run_pelt_with_jump(
+    cost,
+    penalty=test_penalty,
+    jump_step=jump_step,
+)
+
+# %%
+# Run the same with a JumpCost:
+jump_cost = JumpCost(GaussianCost(), jump=jump_step)
+jump_cost.fit(dataset.values)
+jump_cost_pelt_costs, jump_cost_change_points = run_improved_pelt_array_based(
+    cost=jump_cost, penalty=test_penalty, min_segment_length=1
+)
+jump_cost_change_points *= jump_step
