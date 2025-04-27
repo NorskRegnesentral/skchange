@@ -18,39 +18,44 @@ def transform_esac(
     threshold: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     r"""
-    Compute ESAC scores from CUSUM scores.
+        Compute ESAC scores from CUSUM scores.
 
-    This function calculates the penalised score for the ESAC algorithm,
-    as defined in Equation (6) in [1]_. The outputs are penalised CUSUM
-    scores computed from the input CUSUM scores.
+        This function calculates the penalised score for the ESAC algorithm,
+        as defined in Equation (6) in [1]_. The outputs are penalised CUSUM
+        scores computed from the input CUSUM scores.
 
     Parameters
     ----------
-        cusum_scores (np.ndarray): A 2D array where each row represents the
-            CUSUM scores for a specific candidate change location.
-        a_s (np.ndarray): A 1D array of hard threshold values. Correspond to
-            a(t) as defined in Equation (4) in [1]_ for each t specified in t_s.
-        nu_s (np.ndarray): A 1D array of mean-centering terms. Correspond to
-            nu(t) as defined after Equation (4) in [1]_ for each t specified in t_s.
-        t_s (np.ndarray): A 1D array of candidate sparsity values corresponding
-            to the element in a_s and nu_s.
-        threshold (np.ndarray): A 1D array of penalty values, corresponding to \gamma(t)
-            in Equation (4) in [1]_, where t is as defined in t_s.
+            cusum_scores (np.ndarray): A 2D array where each row represents the
+                CUSUM scores for a specific candidate change location.
+            a_s (np.ndarray): A 1D array of hard threshold values. Correspond to
+                a(t) as defined in Equation (4) in [1]_ for each t specified in t_s.
+            nu_s (np.ndarray): A 1D array of mean-centering terms. Correspond to
+                nu(t) as defined after Equation (4) in [1]_ for each t specified in t_s.
+            t_s (np.ndarray): A 1D array of candidate sparsity values corresponding
+                to the element in a_s and nu_s.
+            threshold (np.ndarray): A 1D array of penalty values, corresponding to
+                \gamma(t) in Equation (4) in [1]_, where t is as defined in t_s.
 
     Returns
     -------
-        tuple[np.ndarray, np.ndarray]: A tuple containing:
-            - output_scores (np.ndarray): A 2D array of computed ESAC scores. The array
-                has one column, where each element represents the maximum score for each
-                candidate change location.
-            - sargmax (np.ndarray): A 1D array giving sparisty level at which the
-                maximum score was achieved for each candidate change location.
+            tuple[np.ndarray, np.ndarray]: A tuple containing:
+                - output_scores (np.ndarray): A 2D array of computed ESAC scores. The
+                    array has one column, where each element represents the maximum
+                    score for each candidate change location.
+                - sargmax (np.ndarray): A 1D array giving sparisty level at which the
+                    maximum score was achieved for each candidate change location.
+    =======
+                    has one column.
+                - sargmax (np.ndarray): A 1D array of indices or labels corresponding
+                    to the sparsity level at which the maximum score was achieved.
+    >>>>>>> c72c785b690ba93b8f9009525620043d90595fa4
 
     References
     ----------
-    ..  [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
-        sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
-        3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
+        ..  [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
+            sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
+            3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
     """
     num_levels = len(threshold)
     num_cusum_scores = len(cusum_scores)
