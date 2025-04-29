@@ -133,25 +133,27 @@ def run_improved_pelt_array_based(
         opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
-        # Trimming the admissible starts set: (reuse the array of optimal costs)
-        current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
+        if drop_pruning:
+            continue
+        else:
+            # Trimming the admissible starts set: (reuse the array of optimal costs)
+            current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
 
-        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-        start_inclusion_threshold = (
-            (
-                current_obs_ind_opt_cost
-                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+            start_inclusion_threshold = (
+                (
+                    current_obs_ind_opt_cost
+                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                )
+                + penalty  # Moved from 'negative' on left side to 'positive' on right side.
+                - split_cost  # Remove from right side of inequality.
             )
-            + penalty  # Moved from 'negative' on left side to 'positive' on right side.
-            - split_cost  # Remove from right side of inequality.
-        )
 
-        # Only prune starts at least 2*min_segment_length before current observation:
-        new_start_inclusion_mask = (
-            candidate_opt_costs <= start_inclusion_threshold
-        ) | (cost_eval_starts >= latest_start - min_segment_length)
+            # Only prune starts at least 2*min_segment_length before current observation:
+            new_start_inclusion_mask = (
+                candidate_opt_costs <= start_inclusion_threshold
+            ) | (cost_eval_starts >= latest_start - min_segment_length)
 
-        if not drop_pruning:
             cost_eval_starts = cost_eval_starts[new_start_inclusion_mask]
 
     opt_part_cost_evaluations = len(non_changepoint_starts) + (
@@ -201,9 +203,6 @@ def run_pelt_with_jump(
     drop_pruning: bool, optional
         If True, drop the pruning step. Reverts to optimal partitioning.
         Can be useful for debugging and testing.  By default set to False.
-    verbose : int, optional
-        Verbosity level. 0 = no output, 1 = some output, 2 = more output.
-        By default set to 0.
 
     Returns
     -------
@@ -227,7 +226,7 @@ def run_pelt_with_jump(
 
     # observation_indices = np.arange(start=0, stop=n_samples - jump_step, step=jump_step)
     observation_interval_starts = np.arange(
-        start=0, stop=n_samples - jump_step, step=jump_step
+        start=0, stop=n_samples - jump_step + 1, step=jump_step
     )
     observation_interval_ends = np.concatenate(
         (
@@ -260,22 +259,23 @@ def run_pelt_with_jump(
             argmin_candidate_cost
         ]
 
-        # Trimming the admissible starts set: (reuse the array of optimal costs)
-        current_obs_ind_opt_cost = opt_cost[obs_interval_start + 1]
+        if drop_pruning:
+            continue
+        else:
+            # Trimming the admissible starts set: (reuse the array of optimal costs)
+            current_obs_ind_opt_cost = opt_cost[obs_interval_start + 1]
 
-        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-        start_inclusion_threshold = (
-            (
-                current_obs_ind_opt_cost
-                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+            start_inclusion_threshold = (
+                (
+                    current_obs_ind_opt_cost
+                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                )
+                + penalty  # Moved from 'negative' left side to 'positive' right side.
+                - split_cost  # Remove from right side of inequality.
             )
-            + penalty  # Moved from 'negative' on left side to 'positive' on right side.
-            - split_cost  # Remove from right side of inequality.
-        )
 
-        new_start_inclusion_mask = candidate_opt_costs <= start_inclusion_threshold
-
-        if not drop_pruning:
+            new_start_inclusion_mask = candidate_opt_costs <= start_inclusion_threshold
             cost_eval_starts = cost_eval_starts[new_start_inclusion_mask]
 
     return opt_cost[1:], get_changepoints(prev_cpts)
@@ -299,21 +299,8 @@ def run_restricted_optimal_partitioning(
         The penalty incurred for adding a changepoint.
     min_segment_length : int
         The minimum length of a segment, by default 1.
-    split_cost : float, optional
-        The cost of splitting a segment, to ensure that
-        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
-        for all possible splits, 0 <= t < p < s <= len(X) - 1.
-        By default set to 0.0, which is sufficient for
-        log likelihood cost functions to satisfy the
-        above inequality.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 10.0.
-        This is used to prune the admissible starts set.
-        The pruning margin is used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
-    drop_pruning: bool, optional
-        If True, drop the pruning step. Reverts to optimal partitioning.
-        Can be useful for debugging and testing.  By default set to False.
+    admissable_starts : np.ndarray or set[int]
+        The admissable starts for the segments.
 
     Returns
     -------
@@ -369,24 +356,6 @@ def run_restricted_optimal_partitioning(
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
-
-        # # Trimming the admissible starts set: (reuse the array of optimal costs)
-        # current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
-        # # Handle cases where the optimal cost is negative:
-        # abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-        # start_inclusion_threshold = (
-        #     (
-        #         current_obs_ind_opt_cost
-        #         + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-        #     )
-        #     + penalty  # Moved from 'negative' on left side to 'positive' on right side.
-        #     - split_cost  # Remove from right side of inequality.
-        # )
-        # if not drop_pruning:
-        #     cost_eval_starts = cost_eval_starts[
-        #         # Introduce a small tolerance to avoid numerical issues:
-        #         candidate_opt_costs <= start_inclusion_threshold
-        #     ]
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 

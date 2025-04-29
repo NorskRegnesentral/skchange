@@ -80,32 +80,32 @@ rpt_PELT.fit(dataset.values)
 jump_rpt_pelt_cpts = np.array(rpt_PELT.predict(pen=jump_penalty)[:-1])
 
 # Compared to 'JumpCost' from Skchange:
-from skchange.change_detectors._crops import JumpCost
+# from skchange.change_detectors._crops import JumpCost
 
-jump_cost = JumpCost(
-    cost=cost,
-    jump=jump_step,
-)
-jump_cost.fit(dataset.values)
+# jump_cost = JumpCost(
+#     cost=cost,
+#     jump=jump_step,
+# )
+# jump_cost.fit(dataset.values)
 
-pelt_opt_cost, jump_PELT_change_points = run_improved_pelt_array_based(
-    cost=jump_cost, penalty=jump_penalty, min_segment_length=1
-)
-# Rescale the change points to the original data:
-jump_PELT_change_points = jump_PELT_change_points * jump_step
+# pelt_opt_cost, jump_PELT_change_points = run_improved_pelt_array_based(
+#     cost=jump_cost, penalty=jump_penalty, min_segment_length=1
+# )
+# # Rescale the change points to the original data:
+# jump_PELT_change_points = jump_PELT_change_points * jump_step
 
-# With end-point change points:
-with_end_jump_PELT_change_points = np.concatenate(
-    [jump_PELT_change_points, [len(dataset.values)]]
-)
+# # With end-point change points:
+# with_end_jump_PELT_change_points = np.concatenate(
+#     [jump_PELT_change_points, [len(dataset.values)]]
+# )
 with_end_jump_rpt_pelt_cpts = np.concatenate(
     [jump_rpt_pelt_cpts, [len(dataset.values)]]
 )
-assert np.diff(with_end_jump_PELT_change_points).min() >= jump_step
+# assert np.diff(with_end_jump_PELT_change_points).min() >= jump_step
 assert np.diff(with_end_jump_rpt_pelt_cpts).min() >= jump_step
-assert np.array_equal(jump_PELT_change_points, jump_rpt_pelt_cpts), (
-    "JumpCost and Ruptures PELT do not match!"
-)
+# assert np.array_equal(jump_PELT_change_points, jump_rpt_pelt_cpts), (
+#     "JumpCost and Ruptures PELT do not match!"
+# )
 
 # %%
 # change_point_detector._cost.fit(dataset.values)
@@ -120,18 +120,17 @@ change_point_detector = CROPS_PELT(
     max_penalty=max_penalty,
     min_segment_length=min_segment_length,
     # min_segment_length=cost.min_size,
-    percent_pruning_margin=percent_pruning_margin,
+    # percent_pruning_margin=percent_pruning_margin,
     drop_pruning=False,
-    refine_change_points=True,
 )
 
 # Fit the change point detector:
 change_point_detector.fit(dataset)
 
-margin_results = change_point_detector.run_crops(dataset.values)
-margin_results["optimal_value"] = margin_results["segmentation_cost"] + margin_results[
+direct_results = change_point_detector.run_crops(dataset.values)
+direct_results["optimal_value"] = direct_results["segmentation_cost"] + direct_results[
     "penalty"
-] * (margin_results["num_change_points"] + 1)
+] * (direct_results["num_change_points"] + 1)
 # %%
 # %timeit margin_results = change_point_detector.run_crops(dataset.values)
 
@@ -156,7 +155,7 @@ no_prune_results["optimal_value"] = no_prune_results[
 num_cpts = 10
 exact_cpts = no_prune_cpd.change_points_lookup_[num_cpts]
 jump_cpts = change_point_detector.change_points_lookup_[num_cpts]
-jump_penalty = margin_results[margin_results["num_change_points"] == num_cpts][
+jump_penalty = direct_results[direct_results["num_change_points"] == num_cpts][
     "penalty"
 ].values[0]
 
@@ -208,14 +207,14 @@ no_prune_regular_pelt_cpts = (
 
 # %%
 # Check that the results are as expected:
-if len(margin_results) != len(no_prune_results):
+if len(direct_results) != len(no_prune_results):
     print(
-        f"Length of margin results ({len(margin_results)}) does not match"
+        f"Length of margin results ({len(direct_results)}) does not match"
         f" length of no prune results ({len(no_prune_results)})"
     )
 else:
-    print("Len(margin_results):", len(margin_results))
-    print((margin_results == no_prune_results).all())
+    print("Len(margin_results):", len(direct_results))
+    print((direct_results == no_prune_results).all())
 
 # %%
 # import matplotlib.pyplot as plt

@@ -7,9 +7,8 @@ import pandas as pd
 
 from ..change_detectors._pelt import (
     run_improved_pelt_array_based,
+    run_pelt_with_jump,
     run_restricted_optimal_partitioning,
-    run_pelt_array_based,
-    run_pelt_masked,
 )
 from ..costs.base import BaseCost
 from ..penalties import ConstantPenalty
@@ -77,84 +76,6 @@ def format_crops_results(
     return penalty_change_point_metadata_df, change_points_dict
 
 
-class JumpCost:
-    """Cost function for the CROPS algorithm.
-
-    Parameters
-    ----------
-    cost : BaseCost
-        The cost function to use.
-    jump : int
-        The jump size to use.
-    start_index : int, default=0
-        The start index to use.
-    """
-
-    def __init__(self, cost: BaseCost, jump: int, start_index: int = 0):
-        super().__init__()
-        self.cost: BaseCost = cost.clone()
-        self.jump = jump
-        self.start_index = start_index
-
-    def fit(self, X: np.ndarray, y=None):
-        # Delegate fit to the cost object
-        self.cost.fit(X, y)
-        return self
-
-    def check_is_fitted(self):
-        """Check if the cost function is fitted."""
-        return self.cost.check_is_fitted()
-
-    def transform_cuts(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
-        # Delegate to the underlying cost with transformed coordinates
-        orig_starts = starts * self.jump + self.start_index
-        orig_ends = ends * self.jump + self.start_index
-
-        # If 'orig_ends' is greater than the length of the underlying data,
-        # we clip the ends to the length of the data.
-        n_underlying_samples = self.cost.n_samples()
-
-        # The final segment may be longer than the jump size, so then we include
-        # the last few samples in the last segment.
-        orig_ends[(orig_ends + self.jump) > n_underlying_samples] = n_underlying_samples
-        # Could also test for if 'orig_ends' == self.n_samples().
-
-        return orig_starts, orig_ends
-
-    def evaluate(self, cuts: np.ndarray) -> np.ndarray:
-        starts, ends = cuts[:, 0], cuts[:, 1]
-        orig_starts, orig_ends = self.transform_cuts(starts, ends)
-        transformed_cuts = np.column_stack((orig_starts, orig_ends))
-        return self.cost.evaluate(transformed_cuts)
-
-    def n_samples(self) -> int:
-        """Return the number of samples in the input data."""
-        if self.cost._X is None:
-            raise ValueError("Cost function has not been fitted yet.")
-
-        n_orig_samples = self.cost.n_samples()
-        # How many buckets of size 'jump' fit into the original data?
-        n_buckets = n_orig_samples // self.jump
-        return n_buckets
-
-    def evaluate_segmentation(self, change_points: np.ndarray) -> float:
-        """Evaluate the cost for a segmentation.
-
-        Parameters
-        ----------
-        cuts : np.ndarray
-            Array of shape (n_intervals, 2) with start and end indices of the intervals.
-
-        Returns
-        -------
-        float
-            The cost of the segmentation.
-        """
-        # Delegate to the underlying cost with transformed change points:
-        # transformed_change_points = change_points * self.jump + self.start_index
-        return self.cost.evaluate_segmentation(change_points)
-
-
 class CROPS_PELT(BaseChangeDetector):
     """CROPS algorithm for path solutions to penalized CPD.
 
@@ -210,17 +131,10 @@ class CROPS_PELT(BaseChangeDetector):
         percent_pruning_margin: float = 0.0,
         middle_penalty_nudge: float = 1.0e-4,
         drop_pruning: bool = False,
-        refine_change_points: bool = True,
     ):
         super().__init__()
-        self.cost: BaseCost = cost.clone()
+        self.cost: BaseCost = cost
         self._cost: BaseCost = cost.clone()
-        if (min_segment_length > 1) and not drop_pruning:
-            self._jump_cost: JumpCost = JumpCost(
-                cost=cost, jump=min_segment_length, start_index=0
-            )
-        else:
-            self._jump_cost = None
 
         self.min_penalty = min_penalty
         self.max_penalty = max_penalty
@@ -229,7 +143,6 @@ class CROPS_PELT(BaseChangeDetector):
         self.percent_pruning_margin = percent_pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
         self.drop_pruning = drop_pruning
-        self.refine_change_points = refine_change_points
 
         # Storage for the CROPS results:
         self.change_points_metadata_ = None
@@ -244,10 +157,6 @@ class CROPS_PELT(BaseChangeDetector):
             Data to search for change points in.
         """
         self._cost.fit(X, y)
-        if self._jump_cost is not None:
-            # Fit the jump cost function:
-            self._jump_cost.fit(X, y)
-
         return self
 
     def run_pelt(self, penalty: float) -> dict:
@@ -264,58 +173,24 @@ class CROPS_PELT(BaseChangeDetector):
             Dictionary with penalty values as keys and tuples of change points and cost
             as values.
         """
-        if isinstance(self._cost, JumpCost):
-            # Jump takes care of the min_segment_length:
-            min_segment_length = 1
+        if self.min_segment_length > 1 and not self.drop_pruning:
+            opt_cost, change_points = run_pelt_with_jump(
+                self._cost,
+                penalty=penalty,
+                jump_step=self.min_segment_length,
+                split_cost=self.split_cost,
+            )
         else:
-            # Need PELT to take care of the min_segment_length:
-            min_segment_length = self.min_segment_length
-
-        if self.drop_pruning:
             opt_cost, change_points = run_improved_pelt_array_based(
                 self._cost,
                 penalty=penalty,
-                min_segment_length=min_segment_length,
-                split_cost=self.split_cost,
-                percent_pruning_margin=self.percent_pruning_margin,
-                drop_pruning=self.drop_pruning,
-            )
-        else:
-            opt_cost, change_points = run_improved_pelt_array_based(
-                self._jump_cost,
-                penalty=penalty,
-                min_segment_length=1,
+                min_segment_length=self.min_segment_length,
                 split_cost=self.split_cost,
                 percent_pruning_margin=self.percent_pruning_margin,
                 drop_pruning=self.drop_pruning,
             )
 
-            # Inflate the change points to back the original data indices:
-            change_points = np.array(change_points) * self.min_segment_length
-
-        if self.refine_change_points and len(change_points) > 0:
-            admissable_starts = reduce(
-                lambda x, y: x | y,
-                [
-                    set(
-                        range(
-                            cpt - (min_segment_length - 1),
-                            cpt + (min_segment_length - 1) + 1,
-                        )
-                    )
-                    for cpt in change_points
-                ],
-            )
-            refined_costs, refined_change_points = run_restricted_optimal_partitioning(
-                cost=self._cost,
-                penalty=penalty,
-                min_segment_length=min_segment_length,
-                admissable_starts=admissable_starts,
-            )
-            return refined_change_points
-
-        else:
-            return change_points
+        return change_points
 
     def run_crops(self, X: np.ndarray):
         """Run the CROPS algorithm for path solutions to penalized CPD.
@@ -393,94 +268,27 @@ class CROPS_PELT(BaseChangeDetector):
                     middle_penalty_change_points
                 ) == len(low_penalty_change_points)
                 if middle_penalty_matches_high_penalty:
-                    # The same number of change points for penalties in the interval
-                    # [middle_penalty, high_penalty].
+                    # The same number of change points for penalties in
+                    # the interval [middle_penalty, high_penalty].
                     # Don't need to subdivide penalty intervals further.
                     continue
                 elif middle_penalty_matches_low_penalty:
-                    # raise ValueError("This should not happen!")
-                    # In this case, PELT has failed to solve the penalized
-                    # optimization problem exactly. Need to increase the penalty
-                    # until we get at least one more change point than for
-                    # low_penalty.
-
-                    # We're in a case where due to numerical instability, we have
-                    # the same number of change points for low_penalty and
-                    # middle_penalty, although we should have the same number
-                    # of change points for middle penalty and high_penalty.
-                    # And for middle_penalty + epsilon, we would get the same
-                    # number of change points as for high_penalty.
-
-                    # For change detectors that only solve the penalised optimization
-                    # problem approximately, we'll need to perform a linear search
-                    # from the 'middle_penalty' penalty to the 'high_penalty' penalty.
-                    # Until we find a penalty that gives us the same number of
-                    # change points as for for high_penalty, or at least a penalty
-                    # that gives fewer change points than for low_penalty.
-                    # nudged_middle_penalty = middle_penalty * (1 + 1.0e-4)
-                    # nudged_middle_penalty_change_points = self.run_pelt(
-                    #     penalty=nudged_middle_penalty
-                    # )
-                    # nudged_middle_penalty_segmentation_cost = (
-                    #     self.cost.evaluate_segmentation(
-                    #         nudged_middle_penalty_change_points
-                    #     )
-                    # )
-                    # penalty_to_solution_dict[nudged_middle_penalty] = (
-                    #     nudged_middle_penalty_change_points,
-                    #     nudged_middle_penalty_segmentation_cost,
-                    # )
-
-                    # Only add [middle_penalty, high_penalty] to the search intervals:
-                    # penalty_search_intervals.append((middle_penalty, high_penalty))
-                    # penalty_search_intervals.sort(key=lambda x: x[0])
-                    ## Indicates that the 'improved_pelt_array_based' method has failed
-                    ## to solve the penalized optimization problem exactly. Need to
-                    ## increase the pruning margin... Not good...
                     raise ValueError(
-                        "This should not happen! Number of change points should be"
-                        " greater for the middle penalty than for the low penalty."
+                        "PELT optimization has not been solved exactly! "
+                        "Number of change points should be greater for the "
+                        "middle penalty than for the low penalty. "
+                        "Attempt to set the `split_cost` parameter to a "
+                        "non-zero value, or increase `percenct_pruning_margin`."
                     )
-                    print("Warning: This should not happen!")
-                    self.percent_pruning_margin = max(
-                        2.0 * self.percent_pruning_margin, 0.1
-                    )
-                    print(
-                        "Setting percent_pruning_margin to: ",
-                        self.percent_pruning_margin,
-                    )
-                    return self.run_crops(X=X)
                 else:
                     # Number of change points for middle penalty is different from both
-                    # low_penalty and high_penalty. Need to explore the penalty
-                    # intervals further.
-                    # Explore penalties above and below the middle penalty:
+                    # low_penalty and high_penalty. Need to explore further.
                     penalty_search_intervals.append((low_penalty, middle_penalty))
                     penalty_search_intervals.append((middle_penalty, high_penalty))
 
                     # Sort the intervals by lower penalty:
                     penalty_search_intervals.sort(key=lambda x: x[0])
 
-        # # Convert the dict lookup results to a list of tuples:
-        # list_cpd_results = [
-        #     (len(change_points), penalty, change_points, segmentation_cost)
-        #     for (penalty, (change_points, segmentation_cost)) in cpd_results.items()
-        # ]
-        # # When different penalties give the same number of change points, we want to
-        # # keep the segmentation with the lowest penalty. So we sort by number of
-        # # change points, and then negative penalty, in reverse order.
-        # list_cpd_results.sort(key=lambda x: (x[0], -x[1]), reverse=True)
-
-        # # Remove duplicates, and keep the first one:
-        # encountered_num_change_points = set()
-        # unique_cpd_results = []
-        # for i in range(len(list_cpd_results)):
-        #     num_change_points = list_cpd_results[i][0]
-        #     if num_change_points in encountered_num_change_points:
-        #         continue
-        #     else:
-        #         unique_cpd_results.append(list_cpd_results[i])
-        #         encountered_num_change_points.add(num_change_points)
         self.store_crops(penalty_to_solution_dict)
         return self.change_points_metadata_
 
@@ -499,6 +307,72 @@ class CROPS_PELT(BaseChangeDetector):
         )
         self.change_points_metadata_ = metadata_df
         self.change_points_lookup_ = change_points_dict
+
+    def retrieve_solution(
+        self, num_change_points: int, refine_change_points: bool = True
+    ) -> np.ndarray:
+        """Retrieve the change points for a given number of change points.
+
+        Parameters
+        ----------
+        num_change_points : int
+            The number of change points to retrieve.
+        refine_change_points : bool, default=True
+            Whether to refine the change points using the restricted
+            optimal partitioning algorithm. This may change the number
+            of change points detected.
+            If False, the detected change points will be returned as is,
+            with potential change points only every `min_segment_length`.
+
+        Returns
+        -------
+        np.ndarray
+            The change points for the given number of change points.
+        """
+        if self.change_points_lookup_ is None:
+            raise ValueError("CROPS results have not been computed yet.")
+
+        if num_change_points not in self.change_points_lookup_:
+            raise ValueError(
+                f"Number of change points {num_change_points}"
+                " not found in CROPS results."
+            )
+
+        if (
+            not refine_change_points
+            or self.min_segment_length == 1
+            or self.drop_pruning
+        ):
+            return self.change_points_lookup_[num_change_points]
+        else:
+            # Refine the change points using restricted OptPart algorithm:
+            orig_change_points = self.change_points_lookup_[num_change_points]
+            penalty = self.change_points_metadata_.loc[
+                self.change_points_metadata_["num_change_points"] == num_change_points,
+                "penalty",
+            ].values[0]
+
+            admissable_starts = reduce(
+                lambda x, y: x | y,
+                [
+                    set(
+                        range(
+                            cpt - (self.min_segment_length - 1),
+                            cpt + (self.min_segment_length - 1) + 1,
+                        )
+                    )
+                    for cpt in orig_change_points
+                ],
+            )
+
+            refined_costs, refined_change_points = run_restricted_optimal_partitioning(
+                cost=self._cost,
+                penalty=penalty,
+                min_segment_length=self.min_segment_length,
+                admissable_starts=admissable_starts,
+            )
+
+            return refined_change_points
 
 
 class GenericCROPS(BaseChangeDetector):
