@@ -265,7 +265,7 @@ class MovingWindow(BaseChangeDetector):
         if isinstance(bandwidth, int):
             check_larger_than(1, bandwidth, "bandwidth")
             self._bandwidth = [bandwidth]
-        else:
+        elif isinstance(bandwidth, list):
             if len(bandwidth) == 0:
                 raise ValueError("`bandwidth` must be a non-empty list.")
             if not all(isinstance(bw, int) for bw in bandwidth):
@@ -273,6 +273,11 @@ class MovingWindow(BaseChangeDetector):
             if any(bw < 1 for bw in bandwidth):
                 raise ValueError("All elements of `bandwidth` must be greater than 0.")
             self._bandwidth = bandwidth
+        else:
+            raise TypeError(
+                "`bandwidth` must be an integer or a list of integers. "
+                f"Got {type(bandwidth)}."
+            )
 
         check_in_interval(
             pd.Interval(0, 1 / 2, closed="neither"),
