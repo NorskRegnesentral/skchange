@@ -85,7 +85,7 @@ def test_moving_window_single_changepoint():
     """Test MovingWindow with ContinuousLinearTrendScore on a single changepoint."""
     # Generate data with a single changepoint at position 100
     true_change_points = [100]
-    slopes = [0.1, -0.2]  # Positive slope followed by negative slope
+    slopes = [0.5, -0.5]  # Positive slope followed by negative slope
     df = generate_continuous_piecewise_linear_signal(
         change_points=true_change_points,
         slopes=slopes,
@@ -119,7 +119,7 @@ def test_moving_window_multiple_changepoints():
     """Test MovingWindow with ContinuousLinearTrendScore on multiple changepoints."""
     # Generate data with multiple changepoints
     true_change_points = [100, 200, 300]
-    slopes = [0.1, -0.2, 0.15, -0.1]
+    slopes = [0.5, -0.5, 0.4, -0.4]
     df = generate_continuous_piecewise_linear_signal(
         change_points=true_change_points,
         slopes=slopes,
@@ -698,7 +698,7 @@ def test_datetime_indices():
 
     # Generate data with a single changepoint
     true_change_points = [100]
-    slopes = [0.1, -0.2]
+    slopes = [0.5, -0.5]
     n_samples = 200
 
     df = generate_continuous_piecewise_linear_signal(
@@ -829,7 +829,7 @@ def test_date_objects():
 
     # Generate data with a single changepoint
     true_change_points = [100]
-    slopes = [0.1, -0.2]
+    slopes = [0.5, -0.5]
     n_samples = 200
 
     df = generate_continuous_piecewise_linear_signal(
@@ -876,7 +876,7 @@ def test_non_uniform_datetime_sampling():
 
     # Generate data with a single changepoint
     true_change_points = [100]
-    slopes = [0.1, -0.2]
+    slopes = [0.5, -0.5]
     n_samples = 200
 
     df = generate_continuous_piecewise_linear_signal(

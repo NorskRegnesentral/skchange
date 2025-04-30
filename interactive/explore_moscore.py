@@ -25,3 +25,14 @@ profiler = Profiler()
 profiler.start()
 detector.fit_predict(df)
 profiler.stop()
+
+
+# Multiple bandwidths
+df = generate_alternating_data(
+    n_segments=2, mean=10, segment_length=100, p=1, random_state=2
+)
+detector = MovingWindow(bandwidth=[10, 20, 30, 40, 50, 60, 100])
+changepoints = detector.fit_predict(df)
+labels = detector.transform(df)
+scores = detector.transform_scores(df)
+px.scatter(scores)

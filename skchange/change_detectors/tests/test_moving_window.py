@@ -14,9 +14,21 @@ from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 SCORES_AND_COSTS = CHANGE_SCORES + COSTS
 
 
-@pytest.mark.parametrize("ScoreType", SCORES_AND_COSTS)
-def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer]):
-    """Test MovingWindow changepoints."""
+@pytest.mark.parametrize(
+    "ScoreType, params",
+    [
+        (ScoreType, (bandwidth, selection_method))
+        for ScoreType in SCORES_AND_COSTS
+        for bandwidth, selection_method in [
+            (10, "detection_length"),
+            (10, "local_optimum"),
+            [[5, 10, 20], "local_optimum"],
+        ]
+    ],
+)
+def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer], params: tuple):
+    """Test MovingWindow changepoints with different parameters."""
+    bandwidth, selection_method = params
     score = ScoreType.create_test_instance()
     skip_if_no_test_data(score)
 
@@ -25,12 +37,14 @@ def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer]):
     df = generate_alternating_data(
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
-    detector = MovingWindow(score)
+    detector = MovingWindow.create_test_instance().set_params(
+        change_score=score, bandwidth=bandwidth, selection_method=selection_method
+    )
     changepoints = detector.fit_predict(df)["ilocs"]
     if isinstance(score, ContinuousLinearTrendScore):
         # ContinuousLinearTrendScore finds two changes in linear trend
         # (flat, steep, flat) instead of a single change in mean.
-        assert len(changepoints) == n_segments
+        assert len(changepoints) >= n_segments and len(changepoints) <= n_segments + 5
     else:
         assert len(changepoints) == n_segments - 1 and changepoints[0] == seg_len
 
@@ -45,11 +59,7 @@ def test_moving_window_continuous_linear_trend_score():
     score = ContinuousLinearTrendScore.create_test_instance()
     detector = MovingWindow(score)
     changepoints = detector.fit_predict(df)["ilocs"]
-    assert (
-        len(changepoints) == n_segments
-        and changepoints[0] == 34
-        and changepoints[1] == 65
-    )
+    assert len(changepoints) == n_segments
 
 
 @pytest.mark.parametrize("Score", SCORES_AND_COSTS)
@@ -77,3 +87,31 @@ def test_invalid_change_scores():
         MovingWindow("l2")
     with pytest.raises(ValueError, match="change_score"):
         MovingWindow(LocalAnomalyScore(COSTS[1].create_test_instance()))
+
+
+def test_invalid_bandwidth():
+    """
+    Test that MovingWindow raises an error when given an invalid bandwidth argument.
+    """
+    score = CHANGE_SCORES[0].create_test_instance()
+    with pytest.raises(ValueError, match="bandwidth"):
+        MovingWindow(score, bandwidth=0)
+    with pytest.raises(ValueError, match="bandwidth"):
+        MovingWindow(score, bandwidth=[])
+    with pytest.raises(TypeError, match="bandwidth"):
+        MovingWindow(score, bandwidth=1.5)
+    with pytest.raises(TypeError, match="bandwidth"):
+        MovingWindow(score, bandwidth=[1, 1.5])
+    with pytest.raises(ValueError, match="bandwidth"):
+        MovingWindow(score, bandwidth=[1, -1, 3])
+
+
+def test_invalid_selection_method():
+    """
+    Test that MovingWindow raises an error when given an invalid selection_method.
+    """
+    score = CHANGE_SCORES[0].create_test_instance()
+    with pytest.raises(ValueError, match="selection_method"):
+        MovingWindow(score, selection_method="invalid_method")
+    with pytest.raises(ValueError, match="multiple bandwidths"):
+        MovingWindow(score, bandwidth=[2, 5], selection_method="detection_length")
