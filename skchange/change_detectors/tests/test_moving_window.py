@@ -67,6 +67,9 @@ def test_moving_window_scores(Score):
     """Test MovingWindow scores."""
     score = Score.create_test_instance()
     skip_if_no_test_data(score)
+    if score.get_tag("is_penalised"):
+        # Penalised scores cannot be forced to be non-negative in this test.
+        pytest.skip(f"{type(score).__name__} is penalised.")
 
     n_segments = 2
     seg_len = 50
