@@ -45,11 +45,6 @@ def transform_esac(
                     score for each candidate change location.
                 - sargmax (np.ndarray): A 1D array giving sparisty level at which the
                     maximum score was achieved for each candidate change location.
-    =======
-                    has one column.
-                - sargmax (np.ndarray): A 1D array of indices or labels corresponding
-                    to the sparsity level at which the maximum score was achieved.
-    >>>>>>> c72c785b690ba93b8f9009525620043d90595fa4
 
     References
     ----------
