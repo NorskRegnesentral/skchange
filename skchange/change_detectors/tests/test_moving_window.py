@@ -113,5 +113,5 @@ def test_invalid_selection_method():
     score = CHANGE_SCORES[0].create_test_instance()
     with pytest.raises(ValueError, match="selection_method"):
         MovingWindow(score, selection_method="invalid_method")
-    with pytest.raises(ValueError, match="selection_method"):
-        MovingWindow(score, bandwidth=[2, 5], selection_method="detection_lenth")
+    with pytest.raises(ValueError, match="multiple bandwidths"):
+        MovingWindow(score, bandwidth=[2, 5], selection_method="detection_length")
