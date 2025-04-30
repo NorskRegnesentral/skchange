@@ -117,8 +117,8 @@ class ESACScore(BaseIntervalScorer):
         self.threshold_sparse = threshold_sparse
         super().__init__()
 
-        check_larger_than(self.threshold_dense, "threshold_dense", 0.0)
-        check_larger_than(self.threshold_sparse, "threshold_sparse", 0.0)
+        check_larger_than(0.0, self.threshold_dense, "threshold_dense")
+        check_larger_than(0.0, self.threshold_sparse, "threshold_sparse")
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score evaluator.
