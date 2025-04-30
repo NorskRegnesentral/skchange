@@ -87,3 +87,31 @@ def test_invalid_change_scores():
         MovingWindow("l2")
     with pytest.raises(ValueError, match="change_score"):
         MovingWindow(LocalAnomalyScore(COSTS[1].create_test_instance()))
+
+
+def test_invalid_bandwidth():
+    """
+    Test that MovingWindow raises an error when given an invalid bandwidth argument.
+    """
+    score = CHANGE_SCORES[0].create_test_instance()
+    with pytest.raises(ValueError, match="bandwidth"):
+        MovingWindow(score, bandwidth=0)
+    with pytest.raises(ValueError, match="bandwidth"):
+        MovingWindow(score, bandwidth=[])
+    with pytest.raises(TypeError, match="bandwidth"):
+        MovingWindow(score, bandwidth=1.5)
+    with pytest.raises(TypeError, match="bandwidth"):
+        MovingWindow(score, bandwidth=[1, 1.5])
+    with pytest.raises(ValueError, match="bandwidth"):
+        MovingWindow(score, bandwidth=[1, -1, 3])
+
+
+def test_invalid_selection_method():
+    """
+    Test that MovingWindow raises an error when given an invalid selection_method.
+    """
+    score = CHANGE_SCORES[0].create_test_instance()
+    with pytest.raises(ValueError, match="selection_method"):
+        MovingWindow(score, selection_method="invalid_method")
+    with pytest.raises(ValueError, match="selection_method"):
+        MovingWindow(score, bandwidth=[2, 5], selection_method="detection_lenth")
