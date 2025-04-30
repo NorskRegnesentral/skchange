@@ -19,43 +19,139 @@ from .base import BaseChangeDetector
 
 
 @njit
-def mosum_selection(scores: np.ndarray, min_detection_interval: int) -> list:
-    detection_intervals = where(scores > 0)
-    changepoints = []
-    for interval in detection_intervals:
-        start = interval[0]
-        end = interval[1]
-        if end - start >= min_detection_interval:
-            cpt = np.argmax(scores[start:end]) + start
-            changepoints.append(cpt)
-    return changepoints
+def make_extended_moving_window_cuts(
+    n_samples: int,
+    bandwidth: int,
+    min_size: int,
+) -> np.ndarray:
+    splits = np.arange(min_size, n_samples - min_size + 1)
+
+    starts = splits - bandwidth
+    starts[starts < 0] = 0
+    max_start = n_samples - 2 * bandwidth
+    starts[starts > max_start] = max_start
+
+    ends = splits + bandwidth
+    ends[ends > n_samples] = n_samples
+    min_end = 2 * bandwidth
+    ends[ends < min_end] = min_end
+
+    cuts = np.column_stack((starts, splits, ends))
+    return cuts
 
 
-def moving_window_transform(
+def transform_moving_window(
     penalised_score: BaseIntervalScorer,
     bandwidth: int,
-) -> tuple[list, np.ndarray]:
+) -> np.ndarray:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
 
     n_samples = penalised_score._X.shape[0]
-    splits = np.arange(bandwidth, n_samples - bandwidth + 1)
-    starts = splits - bandwidth + 1
-    ends = splits + bandwidth
-    cuts = np.column_stack((starts, splits, ends))
-
-    # astype(float) since penalty_ might be int, which causes all scores to be int.
+    cuts = make_extended_moving_window_cuts(
+        n_samples, bandwidth, penalised_score.min_size
+    )
     scores = np.repeat(np.nan, n_samples)
-    scores[splits] = penalised_score.evaluate(cuts)[:, 0]
+    scores[cuts[:, 1]] = penalised_score.evaluate(cuts).reshape(-1)
     return scores
 
 
-class MovingWindow(BaseChangeDetector):
-    """Moving window algorithm for multiple changepoint detection.
+def transform_multiple_moving_window(
+    penalised_score: BaseIntervalScorer,
+    bandwidths: list,
+) -> np.ndarray:
+    n_samples = penalised_score._X.shape[0]
+    scores = np.full((n_samples, len(bandwidths)), np.nan)
+    for i, bw in enumerate(bandwidths):
+        scores[:, i] = transform_moving_window(penalised_score, bw)
+    return scores
 
-    A generalized version of the MOSUM (moving sum) algorithm [1]_ for changepoint
-    detection. It runs a test statistic for a single changepoint at the midpoint in a
-    moving window of length ``2 * bandwidth`` over the data.
+
+@njit
+def get_candidate_changepoints(
+    scores: np.ndarray,
+) -> tuple[list[int], list[tuple[int, int]]]:
+    detection_intervals = where(scores > 0)
+    changepoints = []
+    for start, end in detection_intervals:
+        cpt = start + np.argmax(scores[start:end])
+        changepoints.append(cpt)
+    return changepoints, detection_intervals
+
+
+@njit
+def select_changepoints_by_detection_length(
+    scores: np.ndarray, min_detection_interval: int
+) -> list:
+    candidate_cpts, detection_intervals = get_candidate_changepoints(scores)
+    cpts = [
+        cpt
+        for cpt, interval in zip(candidate_cpts, detection_intervals)
+        if interval[1] - interval[0] >= min_detection_interval
+    ]
+
+    return cpts
+
+
+@njit
+def select_changepoints_by_local_optimum(
+    scores: np.ndarray, selection_bandwidth: int
+) -> list:
+    candidate_cpts, _ = get_candidate_changepoints(scores)
+    cpts = [
+        cpt
+        for cpt in candidate_cpts
+        if np.isclose(
+            scores[cpt],
+            np.max(scores[cpt - selection_bandwidth : cpt + selection_bandwidth + 1]),
+        )
+    ]
+    return cpts
+
+
+@njit
+def select_changepoints_by_bottom_up(
+    scores: np.ndarray, bandwidths: list, local_optimum_fraction: float
+) -> list:
+    bandwidths = sorted(bandwidths)
+    candidate_cpts = []
+    for i, bw in enumerate(bandwidths):
+        local_optimum_bandwidth = int(local_optimum_fraction * bw)
+        candidate_cpts_bw = select_changepoints_by_local_optimum(
+            scores[:, i], local_optimum_bandwidth
+        )
+        for candidate_cpt in candidate_cpts_bw:
+            candidate_cpts.append((candidate_cpt, bw))
+
+    cpts = [candidate_cpts[0][0]]
+    for candidate_cpt, bw in candidate_cpts[1:]:
+        distance_to_closest = np.min(np.abs(candidate_cpt - np.array(cpts)))
+        local_optimum_bandwidth = int(local_optimum_fraction * bw)
+        if distance_to_closest >= local_optimum_bandwidth:
+            cpts.append(candidate_cpt)
+
+    return cpts
+
+
+class MovingWindow(BaseChangeDetector):
+    """Moving window algorithm for multiple change-point detection.
+
+    The MOSUM (moving sum) algorithm [1]_, but generalized to allow for any penalised
+    and unpenalised change score. The basic algorithm runs a test statistic for a
+    single change-point across the data in a moving window fashion.
+    In each window, the data is split into two equal halves with `bandwidth` samples
+    on either side of a split point.
+    This process generates a time series of penalised scores, which are used to generate
+    candidate change-points as local maxima within intervals where the penalised scores
+    are all above zero.
+    The final set of change-points is selected from the candidate change-points using
+    one of the two selection methods described in [2]_.
+
+    Several of the extensions available in the mosum R package [2]_ are also available
+    in this implementation, including the ability to use multiple bandwidths. The
+    CUSUM-type boundary extension for computing the test statistic for candidate change-
+    points less than `bandwidth` samples from the start and end of the data is also
+    implemented by default.
 
     Parameters
     ----------
@@ -77,18 +173,41 @@ class MovingWindow(BaseChangeDetector):
         * ``None``: A default penalty is created in `predict` based on the fitted
           score using the `make_bic_penalty` function.
 
-    bandwidth : int, default=30
+    bandwidth : int or list of int, default=20
         The bandwidth is the number of samples on either side of a candidate
-        changepoint. The minimum bandwidth depends on the
-        test statistic. For ``"mean"``, the minimum bandwidth is 1.
-    min_detection_interval : int, default=1
-        Minimum number of consecutive scores above the threshold to be considered a
-        changepoint. Must be between ``1`` and ``bandwidth/2``.
+        change-point. Must be 1 or greater. If a list of bandwidths is given, the
+        algorithm will run for each bandwidth in the list and combine the results
+        accoring to the "bottom-up" merging approach described in [2]_. A fibonacci
+        sequence of bandwidths is recommended for multiple bandwidths by the authors
+        in [2]_.
+    selection_method : str, default="local_optimum"
+        The method used to select the final set of change-points from a set of candidate
+        change-points. The options are:
+
+        * ``"detection_length"``: Accepts a candidate change-point if the
+          ``min_detection_fraction * bandwidth`` consecutive penalised scores are above
+          zero. Corresponds to the epsilon-criterion in [2]_. This method is only
+          available for a single bandwidth.
+        * ``"local_optimum"``: Accepts a candidate change-point if it is the local
+          maximum in the scores within a neighbourhood of size
+          ``local_optimum_fraction * bandwidth``. Corresponds to the eta-criterion
+          in [2]_. This method is used within the "bottom-up" merging approach if
+            multiple bandwidths are given.
+
+    min_detection_fraction : float, default=0.2
+        The minimum size of the detection interval for a candidate change-point to be
+        accepted in the ``"detection_length"`` selection method.
+        be between ``0`` (exclusive) and ``1/2`` (exclusive).
+    local_optimum_fraction : float, default=0.4
+        The size of the neighbourhood around a candidate change-point used in the
+        ``"local_optimum"`` selection method. Must be larger than or equal to ``0``.
 
     References
     ----------
     .. [1] Eichinger, B., & Kirch, C. (2018). A MOSUM procedure for the estimation of
-    multiple random change points.
+       multiple random change points.
+    .. [2] Meier, A., Kirch, C., & Cho, H. (2021). mosum: A package for moving sums in
+       change-point analysis. Journal of Statistical Software, 97, 1-42.
 
     Examples
     --------
@@ -113,13 +232,17 @@ class MovingWindow(BaseChangeDetector):
         self,
         change_score: BaseIntervalScorer | None = None,
         penalty: np.ndarray | float | None = None,
-        bandwidth: int = 30,
-        min_detection_interval: int = 1,
+        bandwidth: int | list = 20,
+        selection_method: str = "local_optimum",
+        min_detection_fraction: float = 0.2,
+        local_optimum_fraction: float = 0.4,
     ):
         self.change_score = change_score
         self.penalty = penalty
         self.bandwidth = bandwidth
-        self.min_detection_interval = min_detection_interval
+        self.selection_method = selection_method
+        self.min_detection_fraction = min_detection_fraction
+        self.local_optimum_fraction = local_optimum_fraction
         super().__init__()
 
         _score = CUSUM() if change_score is None else change_score
@@ -139,16 +262,45 @@ class MovingWindow(BaseChangeDetector):
             else PenalisedScore(_change_score, penalty)
         )
 
-        check_larger_than(1, self.bandwidth, "bandwidth")
+        if isinstance(bandwidth, int):
+            check_larger_than(1, bandwidth, "bandwidth")
+            self._bandwidth = [bandwidth]
+        elif isinstance(bandwidth, list):
+            if len(bandwidth) == 0:
+                raise ValueError("`bandwidth` must be a non-empty list.")
+            if not all(isinstance(bw, int) for bw in bandwidth):
+                raise TypeError("All elements of `bandwidth` must be integers.")
+            if any(bw < 1 for bw in bandwidth):
+                raise ValueError("All elements of `bandwidth` must be greater than 0.")
+            self._bandwidth = bandwidth
+        else:
+            raise TypeError(
+                "`bandwidth` must be an integer or a list of integers. "
+                f"Got {type(bandwidth)}."
+            )
+
         check_in_interval(
-            pd.Interval(1, max(1, self.bandwidth / 2 - 1), closed="both"),
-            self.min_detection_interval,
-            "min_detection_interval",
+            pd.Interval(0, 1 / 2, closed="neither"),
+            min_detection_fraction,
+            "min_detection_fraction",
         )
+        check_larger_than(0, local_optimum_fraction, "local_optimum_fraction")
+
+        valid_selection_methods = ["local_optimum", "detection_length"]
+        if selection_method not in valid_selection_methods:
+            raise ValueError(
+                f"`selection_method` must be one of {valid_selection_methods}."
+                f" Got {selection_method}."
+            )
+        if len(self._bandwidth) > 1 and self.selection_method == "detection_length":
+            raise ValueError(
+                "The selection method `detection_length` is not supported for multiple"
+                " bandwidths. Use `'local_optimum'` instead."
+            )
 
         self.clone_tags(_change_score, ["distribution_type"])
 
-    def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
+    def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.DataFrame:
         """Return scores for predicted labels on test/deployment data.
 
         Parameters
@@ -166,20 +318,26 @@ class MovingWindow(BaseChangeDetector):
         fitted_score : BaseIntervalScorer
             The fitted penalised change score used for the detection.
         """
-        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
-        self.fitted_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self.bandwidth,
-            min_length_name="2*bandwidth",
+            min_length=2 * max(self._bandwidth),
+            min_length_name="2*max(bandwidth)",
         )
-        scores = moving_window_transform(
-            self.fitted_score,
-            self.bandwidth,
-        )
-        return pd.Series(scores, index=X.index, name="score")
 
-    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
+        scores = transform_multiple_moving_window(
+            self.fitted_score,
+            self._bandwidth,
+        )
+        formatted_scores = pd.DataFrame(
+            scores,
+            index=X.index,
+            columns=pd.Index([bw for bw in self._bandwidth], name="bandwidth"),
+        )
+        return formatted_scores
+
+    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.DataFrame:
         """Detect events in test/deployment data.
 
         Parameters
@@ -200,8 +358,23 @@ class MovingWindow(BaseChangeDetector):
         scores : pd.Series
             The detection scores obtained by the `transform_scores` method.
         """
-        self.scores: pd.Series = self.transform_scores(X)
-        changepoints = mosum_selection(self.scores.values, self.min_detection_interval)
+        self.scores: pd.DataFrame = self.transform_scores(X)
+
+        if self.selection_method == "detection_length":
+            min_detection_length = int(self.min_detection_fraction * self.bandwidth)
+            changepoints = select_changepoints_by_detection_length(
+                self.scores.values.reshape(-1), min_detection_length
+            )
+        elif self.selection_method == "local_optimum" and len(self._bandwidth) == 1:
+            local_optimum_bandwidth = int(self.local_optimum_fraction * self.bandwidth)
+            changepoints = select_changepoints_by_local_optimum(
+                self.scores.values.reshape(-1), local_optimum_bandwidth
+            )
+        else:
+            changepoints = select_changepoints_by_bottom_up(
+                self.scores.values, self._bandwidth, self.local_optimum_fraction
+            )
+
         return self._format_sparse_output(changepoints)
 
     @classmethod
