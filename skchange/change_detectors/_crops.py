@@ -11,8 +11,6 @@ from ..change_detectors._pelt import (
     run_restricted_optimal_partitioning,
 )
 from ..costs.base import BaseCost
-from ..penalties import ConstantPenalty
-from . import PELT
 from .base import BaseChangeDetector
 
 

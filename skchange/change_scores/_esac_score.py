@@ -6,7 +6,7 @@ from scipy.stats import norm
 from ..base import BaseIntervalScorer
 from ..utils.numba import njit
 from ..utils.numba.stats import col_cumsum
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 from ._cusum import cusum_score
 
 
@@ -117,8 +117,8 @@ class ESACScore(BaseIntervalScorer):
         self.threshold_sparse = threshold_sparse
         super().__init__()
 
-        check_larger_than(0.0, self.threshold_dense, "threshold_dense")
-        check_larger_than(0.0, self.threshold_sparse, "threshold_sparse")
+        check_larger_than_or_equal(0.0, self.threshold_dense, "threshold_dense")
+        check_larger_than_or_equal(0.0, self.threshold_sparse, "threshold_sparse")
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the change score evaluator.
