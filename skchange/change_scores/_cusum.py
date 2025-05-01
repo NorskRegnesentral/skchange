@@ -4,9 +4,9 @@ __author__ = ["Tveten"]
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..utils.numba import njit
 from ..utils.numba.stats import col_cumsum
-from .base import BaseChangeScore
 
 
 @njit
@@ -49,7 +49,7 @@ def cusum_score(
     return cusum
 
 
-class CUSUM(BaseChangeScore):
+class CUSUM(BaseIntervalScorer):
     """CUSUM change score for a change in the mean.
 
     The classical CUSUM test statistic for a change in the mean is calculated as the
@@ -59,10 +59,17 @@ class CUSUM(BaseChangeScore):
     References
     ----------
     .. [1] Page, E. S. (1954). Continuous inspection schemes. Biometrika, 41(1/2),
-    100-115.
+      100-115.
     .. [2] Wang, D., Yu, Y., & Rinaldo, A. (2020). Univariate mean change point
-    detection: Penalization, cusum and optimality.
+      detection: Penalization, cusum and optimality. Electronic Journal of Statistics,
+      14(1) 1917-1961.
     """
+
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "change_score",
+    }
 
     def __init__(self):
         super().__init__()

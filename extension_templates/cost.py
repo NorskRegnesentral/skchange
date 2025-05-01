@@ -27,7 +27,7 @@ Optional implements:
     evaluating fixed param   - _evaluate_fixed_param(self, starts, ends)
     checking fixed param     - _check_fixed_param(self, param, X)
     minimum size of interval  - min_size(self)
-    number of parameters      - get_param_size(self, p)
+    number of parameters      - get_model_size(self, p)
 
 Testing - required for sktime test framework and check_estimator usage:
     get default parameters for test instance(s) - get_test_params()
@@ -40,12 +40,10 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 import numpy as np
 
 # internal extensions located in skchange.costs:
-from ..utils.validation.enums import EvaluationType
 from .base import BaseCost
 
 # external extensions:
 # from skchange.costs.base import BaseCost
-# from skchange.utils.validation.enums import EvaluationType
 
 # todo: add the cost to the COSTS variable in skchange.costs.__init__.py
 
@@ -70,22 +68,31 @@ class MyCost(BaseCost):
 
     # todo: add authors and maintaners Github user name
     _tags = {
-        "authors": ["Tveten", "johannvk"],
-        "maintainers": "Tveten",
+        "authors": ["Tveten", "johannvk"],  # Use Github username
+        "maintainers": "Tveten",  # Use Github username
+        # distribution_type is used to automatically create test cases.
+        # Valid values:
+        # - "None" - No distributional restrictions. Test data: Mostly Gaussian, but
+        #   no guarantee.
+        # - "Poisson" - Integer data. Test data: Poisson distributed.
+        # - "Gaussian" - Real-valued data. Test data: Gaussian distribution.
+        "distribution_type": "None",  # "None", "Poisson", "Gaussian"
+        # is_conditional: whether the scorer uses some of the input variables as
+        # covariates in a regression model or similar. If `True`, the scorer requires
+        # at least two input variables. If `False`, all p input variables/columns are
+        # used to evaluate the score, such that the output has either 1 or p columns.
+        "is_conditional": False,
+        # is_aggregated: whether the scorer always returns a single value per cut or
+        # not, irrespective of the input data shape.
+        # Many scorers will not be aggregated, for example all scorers that evaluate
+        # each input variable separately and return a score vector with one score for
+        # each variable.
+        "is_aggregated": False,
+        # Does the cost support fixed parameters? I.e., is `_evaluate_fixed_param`
+        # implemented? Fixed parameter evaluation is required for the cost to be used as
+        # a saving in certain anomaly detectors.
+        "supports_fixed_params": False,
     }
-
-    # Does the cost evaluate univariate or multivariate data?
-    # If the evaluation_type is EvaluationType.UNIVARIATE:
-    #   * the cost is vectorized over columns in `X` input to `fit`.
-    #   * the output of `evaluate` is has the same number of columns as `X`.
-    # If the evaluation_type is EvaluationType.MULTIVARIATE:
-    #   * the cost is evaluated on each row of `X` input to `fit`.
-    #   * the output of `evaluate` is always a single column, one value per `cut`.
-    evaluation_type = EvaluationType.UNIVARIATE
-    # Does the cost support fixed parameters? I.e., is `_evaluate_fixed_param`
-    # implemented? Fixed parameter evaluation is required for the cost to be used as a
-    # saving in certain anomaly detectors.
-    supports_fixed_params = False
 
     # todo: add any hyper-parameters and components to constructor
     # todo: if fixed parameters are supported, add type hints to `param`
@@ -108,6 +115,23 @@ class MyCost(BaseCost):
         # todo: optional, parameter checking logic (if applicable) should happen here
         # if writes derived values to self, should *not* overwrite self.parama etc
         # instead, write to self._param1, etc.
+        if self.param2 is None:
+            from skchange.somewhere import MyOtherCost
+
+            self._param2 = MyOtherCost(foo=42)
+        else:
+            # estimators should be cloned to avoid side effects
+            self._param2 = param2.clone()
+
+        # todo: if tags of estimator depend on component tags, set these here
+        #  only needed if estimator is a composite
+        #  tags set in the constructor apply to the object and override the class
+        #
+        # example 1: conditional setting of a tag
+        # if est.foo == 42:
+        #   self.set_tags(handles-missing-data=True)
+        # example 2: cloning tags from component
+        #   self.clone_tags(est2, ["enforce_index_type", "handles-missing-data"])
 
     # todo: implement, mandatory
     def _fit(self, X: np.ndarray, y=None):
@@ -230,7 +254,7 @@ class MyCost(BaseCost):
 
     # todo: implement, optional, defaults to output p (one parameter per variable).
     # used for setting a decent default penalty in detectors.
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

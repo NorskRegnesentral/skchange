@@ -14,7 +14,6 @@ from ..utils.numba.stats import (
     log_gamma,
     trigamma,
 )
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
 from ._multivariate_gaussian_cost import (
     gaussian_cost_fixed_params,
@@ -1091,10 +1090,9 @@ class MultivariateTCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
+        "is_aggregated": True,
     }
-
-    supports_fixed_params = True
-    evaluation_type = EvaluationType.MULTIVARIATE
 
     def __init__(
         self,
@@ -1190,7 +1188,7 @@ class MultivariateTCost(BaseCost):
         else:
             return None
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

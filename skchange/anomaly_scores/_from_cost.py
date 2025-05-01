@@ -2,39 +2,43 @@
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..costs import L2Cost
 from ..costs.base import BaseCost
 from ..utils.validation.cuts import check_cuts_array
 from ..utils.validation.data import as_2d_array
-from .base import BaseLocalAnomalyScore, BaseSaving
 
 
-def to_saving(scorer: BaseCost | BaseSaving) -> BaseSaving:
+def to_saving(scorer: BaseIntervalScorer) -> BaseIntervalScorer:
     """Convert compatible scorers to a saving.
 
     Parameters
     ----------
-    scorer : BaseCost or BaseSaving
+    scorer : BaseIntervalScorer
         The scorer to convert to a saving. If a cost, it must be a cost with a fixed
         parameter. If a saving is provided, it is returned as is.
 
     Returns
     -------
-    saving : BaseSaving
+    saving : BaseIntervalScorer
         The saving based on the cost function.
     """
-    if isinstance(scorer, BaseCost):
+    if not isinstance(scorer, BaseIntervalScorer):
+        raise ValueError(f"scorer must be a BaseIntervalScorer. Got {type(scorer)}.")
+    task = scorer.get_tag("task")
+    if task == "cost":
         saving = Saving(scorer)
-    elif isinstance(scorer, BaseSaving):
+    elif task == "saving":
         saving = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseSaving or BaseCost. Got {type(scorer)}."
+            f"scorer must have tag 'task' equal to 'cost' or 'change_score'."
+            f" Got scorer.get_tag('task') = {task}."
         )
     return saving
 
 
-class Saving(BaseSaving):
+class Saving(BaseIntervalScorer):
     """Saving based on a cost class.
 
     Savings are the difference between a cost based on a fixed baseline parameter
@@ -47,25 +51,35 @@ class Saving(BaseSaving):
     ----------
     baseline_cost : BaseCost
         The baseline cost with a fixed parameter. The optimised cost is
-        constructed by copying the baseline cost and setting the parameter to ``None``.
+        constructed by copying the baseline cost and setting `param` to ``None``.
     """
+
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "saving",
+    }
 
     def __init__(self, baseline_cost: BaseCost):
         self.baseline_cost = baseline_cost
         self.optimised_cost: BaseCost = baseline_cost.clone().set_params(param=None)
-        self.evaluation_type = self.baseline_cost.evaluation_type
         super().__init__()
 
-        if not baseline_cost.supports_fixed_params:
+        if not baseline_cost.get_tag("supports_fixed_param"):
             raise ValueError(
-                "The baseline cost must support fixed"
-                " parameter(s) to use it as a Saving."
+                "The baseline cost must support fixed parameter(s) to use it as a "
+                " saving. The support is indicated by the tag 'supports_fixed_param'."
             )
-        elif baseline_cost.param is None:
+        if baseline_cost.param is None:
             raise ValueError(
-                "The baseline cost must have fixed"
-                " parameters (`param`) set to use it as a Saving."
+                "The baseline cost must have set a fixed parameter to use it as a"
+                " saving (`param` of `baseline_cost` not set to None)."
             )
+
+        self.clone_tags(
+            baseline_cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:
@@ -75,7 +89,7 @@ class Saving(BaseSaving):
         else:
             return self.optimised_cost.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the saving function.
 
         Defaults to 1 parameter per variable in the data. This method should be
@@ -88,9 +102,9 @@ class Saving(BaseSaving):
             Number of variables in the data.
         """
         if self.is_fitted:
-            return self.optimised_cost_.get_param_size(p)
+            return self.optimised_cost_.get_model_size(p)
         else:
-            return self.optimised_cost.get_param_size(p)
+            return self.optimised_cost.get_model_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
@@ -165,35 +179,36 @@ class Saving(BaseSaving):
         return params
 
 
-def to_local_anomaly_score(
-    scorer: BaseCost | BaseLocalAnomalyScore,
-) -> BaseLocalAnomalyScore:
+def to_local_anomaly_score(scorer: BaseIntervalScorer) -> BaseIntervalScorer:
     """Convert compatible scorers to a saving.
 
     Parameters
     ----------
-    scorer : BaseCost or BaseLocalAnomalyScore
+    scorer : BaseIntervalScorer
         The scorer to convert to a local anomaly score. If a local anomaly score is
         provided, it is returned as is.
 
     Returns
     -------
-    local_anomaly_score : BaseLocalAnomalyScore
+    local_anomaly_score : BaseIntervalScorer
         The local anomaly score based on the cost function.
     """
-    if isinstance(scorer, BaseCost):
+    if not isinstance(scorer, BaseIntervalScorer):
+        raise ValueError(f"scorer must be a BaseIntervalScorer. Got {type(scorer)}.")
+    task = scorer.get_tag("task")
+    if task == "cost":
         local_anomaly_score = LocalAnomalyScore(scorer)
-    elif isinstance(scorer, BaseLocalAnomalyScore):
+    elif task == "local_anomaly_score":
         local_anomaly_score = scorer
     else:
         raise ValueError(
-            f"scorer must be an instance of BaseLocalAnomalyScore or BaseCost. "
-            f"Got {type(scorer)}."
+            f"scorer must have tag 'task' equal to 'cost' or 'change_score'."
+            f" Got scorer.get_tag('task') = {task}."
         )
     return local_anomaly_score
 
 
-class LocalAnomalyScore(BaseLocalAnomalyScore):
+class LocalAnomalyScore(BaseIntervalScorer):
     """Local anomaly scores based on costs.
 
     Local anomaly scores compare the data behaviour of an inner interval with the
@@ -218,12 +233,22 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
     expensive.
     """
 
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "task": "local_anomaly_score",
+    }
+
     def __init__(self, cost: BaseCost):
         self.cost = cost
-        self.evaluation_type = self.cost.evaluation_type
         super().__init__()
 
         self._subset_cost: BaseCost = cost.clone()
+
+        self.clone_tags(
+            cost,
+            ["distribution_type", "is_conditional", "is_aggregated", "is_penalised"],
+        )
 
     @property
     def min_size(self) -> int:
@@ -233,7 +258,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         else:
             return self.cost.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty
@@ -245,9 +270,9 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
             Number of variables in the data.
         """
         if self.is_fitted:
-            return self.interval_cost_.get_param_size(p)
+            return self.interval_cost_.get_model_size(p)
         else:
-            return self.cost.get_param_size(p)
+            return self.cost.get_model_size(p)
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the saving scorer.
@@ -333,7 +358,7 @@ class LocalAnomalyScore(BaseLocalAnomalyScore):
         """
         cuts = check_cuts_array(
             cuts,
-            last_dim_size=self.expected_cut_entries,
+            last_dim_size=self._get_required_cut_size(),
         )
 
         inner_intervals_sizes = np.diff(cuts[:, [1, 2]], axis=1)

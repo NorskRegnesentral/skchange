@@ -14,6 +14,7 @@ from skchange.change_detectors._pelt import (
     run_improved_pelt_array_based,
 )
 from skchange.change_detectors._pelt import run_pelt_masked as run_pelt
+from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
 from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
@@ -1274,3 +1275,17 @@ def test_improved_pelt_failing_2():
     print("Low penalty changepoints:", low_penalty_rpt_changepoints)
     print("Middle penalty changepoints:", middle_penalty_rpt_changepoints)
     print("High penalty changepoints:", high_penalty_rpt_changepoints)
+
+
+def test_invalid_costs():
+    """
+    Test that PELT raises an error when given an invalid cost argument.
+    """
+    with pytest.raises(ValueError, match="cost"):
+        PELT(cost="l2")
+    with pytest.raises(ValueError, match="cost"):
+        PELT(cost=CUSUM())
+    with pytest.raises(ValueError, match="cost"):
+        cost = L2Cost()
+        cost.set_tags(is_penalised=True)  # Simulate a penalised score
+        PELT(cost=cost)

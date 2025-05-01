@@ -5,10 +5,9 @@ __all__ = ["MultivariateGaussianScore"]
 
 import numpy as np
 
+from ..base import BaseIntervalScorer
 from ..costs._multivariate_gaussian_cost import MultivariateGaussianCost
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
-from .base import BaseChangeScore
 
 
 @njit
@@ -135,7 +134,7 @@ def compute_bartlett_corrections(
     return bartlett_corrections
 
 
-class MultivariateGaussianScore(BaseChangeScore):
+class MultivariateGaussianScore(BaseIntervalScorer):
     """Multivariate Gaussian change score for a change in mean and/or covariance.
 
     Scores are calculated as the likelihood ratio scores for a change
@@ -160,7 +159,12 @@ class MultivariateGaussianScore(BaseChangeScore):
     Journal of Quality Technology, 41(3), 285-303.
     """
 
-    evaluation_type = EvaluationType.MULTIVARIATE
+    _tags = {
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
+        "task": "change_score",
+        "is_aggregated": True,
+    }
 
     def __init__(self, apply_bartlett_correction: bool = True):
         super().__init__()
@@ -175,7 +179,7 @@ class MultivariateGaussianScore(BaseChangeScore):
         else:
             return None
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty

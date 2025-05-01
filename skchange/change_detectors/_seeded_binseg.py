@@ -6,15 +6,14 @@ __all__ = ["SeededBinarySegmentation"]
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..change_scores import CUSUM, to_change_score
-from ..change_scores.base import BaseChangeScore
 from ..compose.penalised_score import PenalisedScore
-from ..costs.base import BaseCost
-from ..penalties import BICPenalty, as_penalty
-from ..penalties.base import BasePenalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
+from ..utils.validation.interval_scorer import check_interval_scorer
 from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
+from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
@@ -88,7 +87,7 @@ def narrowest_selection(
 
 
 def run_seeded_binseg(
-    penalised_score: BaseChangeScore,
+    penalised_score: BaseIntervalScorer,
     max_interval_length: int,
     growth_factor: float,
     selection_method: str = "greedy",
@@ -115,7 +114,7 @@ def run_seeded_binseg(
         )
         scores = penalised_score.evaluate(intervals)
         argmax = np.argmax(scores)
-        max_scores[i] = scores[argmax]
+        max_scores[i] = scores[argmax, 0]  # index 0 to get a scalar value
         argmax_scores[i] = splits[0] + argmax
 
     if selection_method == "greedy":
@@ -138,21 +137,24 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseChangeScore or BaseCost, optional, default=CUSUM()
-        The change score to use in the algorithm. If a cost function is given, it is
+    change_score : BaseIntervalScorer, optional, default=CUSUM()
+        The change score to use in the algorithm. If a cost is given, it is
         converted to a change score using the `ChangeScore` class.
-    penalty : BasePenalty, np.ndarray or float, optional, default=`BICPenalty`
-        The penalty to use for the changepoint detection. If
-        `change_score.is_penalised_score == True` the penalty will be ignored.
-        The conversion of different types of penalties is as follows (see `as_penalty`):
+    penalty : np.ndarray or float, optional, default=None
+        The penalty to use for change detection. If the penalty is
+        penalised (`change_score.get_tag("is_penalised")`) the penalty will
+        be ignored. The different types of penalties are as follows:
 
-        * ``float``: A constant penalty.
-        * ``np.ndarray``: A penalty array of the same length as the number of columns in
-        the data. It is converted internally to a constant, linear or nonlinear penalty
-        depending on its values.
-        * ``None``, the penalty is set to a BIC penalty with ``n=X.shape[0]`` and
-        ``n_params=change_score.get_param_size(X.shape[1])``, where ``X`` is the input
-        data to `predict`.
+        * ``float``: A constant penalty applied to the sum of scores across all
+          variables in the data.
+        * ``np.ndarray``: A penalty array of the same length as the number of
+          columns in the data, where element ``i`` of the array is the penalty for
+          ``i+1`` variables being affected by a change. The penalty array
+          must be positive and increasing (not strictly). A penalised score with a
+          linear penalty array is faster to evaluate than a nonlinear penalty array.
+        * ``None``: A default penalty is created in `predict` based on the fitted
+          score using the `make_bic_penalty` function.
+
     max_interval_length : int, default=200
         The maximum length of an interval to estimate a changepoint in. Must be greater
         than or equal to ``2 * change_score.min_size``.
@@ -177,12 +179,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
     References
     ----------
     .. [1] Kovács, S., Bühlmann, P., Li, H., & Munk, A. (2023). Seeded binary
-    segmentation: a general methodology for fast and optimal changepoint detection.
-    Biometrika, 110(1), 249-256.
-    .. [2] Rafal Baranowski, Yining Chen, Piotr Fryzlewicz, Narrowest-Over-Threshold
-    Detection of Multiple Change Points and Change-Point-Like Features, Journal of the
-    Royal Statistical Society Series B: Statistical Methodology, Volume 81, Issue 3,
-    July 2019, Pages 649-672.
+        segmentation: a general methodology for fast and optimal changepoint detection.
+        Biometrika, 110(1), 249-256.
+
+    .. [2] Baranowski, R., Chen, Y., & Fryzlewicz, P. (2019). Narrowest-over-threshold
+        detection of multiple change points and change-point-like features. Journal of
+        the Royal Statistical Society Series B: Statistical Methodology, 81(3), 649-672.
 
     Examples
     --------
@@ -205,8 +207,8 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
     def __init__(
         self,
-        change_score: BaseChangeScore | BaseCost | None = None,
-        penalty: BasePenalty | np.ndarray | float | None = None,
+        change_score: BaseIntervalScorer | None = None,
+        penalty: np.ndarray | float | None = None,
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
@@ -218,13 +220,21 @@ class SeededBinarySegmentation(BaseChangeDetector):
         self.selection_method = selection_method
         super().__init__()
 
-        self._change_score = CUSUM() if change_score is None else change_score
-        self._change_score = to_change_score(self._change_score)
-        self._penalty = as_penalty(self.penalty, default=BICPenalty())
+        _score = CUSUM() if change_score is None else change_score
+        check_interval_scorer(
+            _score,
+            "change_score",
+            "SeededBinarySegmentation",
+            required_tasks=["cost", "change_score"],
+            allow_penalised=True,
+        )
+        _change_score = to_change_score(_score)
+
+        check_penalty(penalty, "penalty", "SeededBinarySegmentation")
         self._penalised_score = (
-            self._change_score.clone()  # need to avoid modifying the input change_score
-            if self._change_score.is_penalised_score
-            else PenalisedScore(self._change_score, self._penalty)
+            _change_score.clone()  # need to avoid modifying the input change_score
+            if _change_score.get_tag("is_penalised")
+            else PenalisedScore(_change_score, penalty)
         )
 
         check_in_interval(
@@ -238,21 +248,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
                 f"Invalid selection method. Must be one of {valid_selection_methods}."
             )
 
-    def update_penalty(self, penalty: float | BasePenalty) -> None:
-        """Update the penalty of the cost function.
-
-        Parameters
-        ----------
-        penalty : float or BasePenalty
-            The new penalty to use.
-        """
-        self.penalty = penalty
-        self._penalty = as_penalty(self.penalty, require_penalty_type="constant")
-        self._penalised_score = (
-            self._change_score.clone()  # need to avoid modifying the input cost
-            if self._change_score.is_penalised_score
-            else PenalisedScore(self._change_score, self._penalty)
-        )
+        self.clone_tags(_change_score, ["distribution_type"])
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -267,20 +263,32 @@ class SeededBinarySegmentation(BaseChangeDetector):
         y_sparse : pd.DataFrame
             A `pd.DataFrame` with a range index and one column:
             * ``"ilocs"`` - integer locations of the change points.
+
+        Attributes
+        ----------
+        fitted_score : BaseIntervalScorer
+            The fitted penalised change score used for the detection.
+        scores: pd.DataFrame
+            A `pd.DataFrame` with the following columns:
+            * ``"start"`` - start of the interval.
+            * ``"end"`` - end of the interval.
+            * ``"argmax"`` - index of the maximum score in the interval.
+            * ``"max"`` - maximum score in the interval.
         """
-        self._penalised_score.fit(X)
+        self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
+        self.fitted_score.fit(X)
         X = check_data(
             X,
-            min_length=2 * self._penalised_score.min_size,
-            min_length_name="2 * change_score.min_size",
+            min_length=2 * self.fitted_score.min_size,
+            min_length_name="2 * fitted_change_score.min_size",
         )
         check_larger_than_or_equal(
-            2 * self._penalised_score.min_size,
+            2 * self.fitted_score.min_size,
             self.max_interval_length,
             "max_interval_length",
         )
         cpts, scores, maximizers, starts, ends = run_seeded_binseg(
-            penalised_score=self._penalised_score,
+            penalised_score=self.fitted_score,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
             selection_method=self.selection_method,

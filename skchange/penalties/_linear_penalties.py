@@ -3,64 +3,41 @@
 import numpy as np
 
 from ..utils.validation.parameters import check_larger_than_or_equal
-from .base import BasePenalty
 
 
-class LinearPenalty(BasePenalty):
-    """Linear penalty."""
+def make_linear_penalty(intercept: float, slope: float, p: int) -> np.ndarray:
+    """Create a linear penalty.
 
-    penalty_type = "linear"
+    The penalty is given by ``intercept + slope * (1, 2, ..., p)``, where `p` is the
+    number of variables/columns in the data being analysed. The penalty is
+    non-decreasing.
 
-    def __init__(self, intercept: float, slope: float, scale: float = 1.0):
-        self.intercept = intercept
-        self.slope = slope
-        super().__init__(scale)
+    Parameters
+    ----------
+    intercept : float
+        Intercept of the linear penalty.
+    slope : float
+        Slope of the linear penalty.
+    p : int
+        Number of variables/columns in the data being analysed.
 
-        check_larger_than_or_equal(0.0, self.intercept, "intercept")
-        check_larger_than_or_equal(0.0, self.slope, "slope")
+    Returns
+    -------
+    np.ndarray
+        The non-decreasing linear penalty values. The shape is ``(p,)``. Element ``i``
+        of the array is the penalty value for ``i+1`` variables being affected by a
+        change or anomaly.
+    """
+    check_larger_than_or_equal(0.0, intercept, "intercept")
+    check_larger_than_or_equal(0.0, slope, "slope")
+    check_larger_than_or_equal(1, p, "p")
 
-    @property
-    def _base_values(self) -> np.ndarray:
-        """Get the base penalty values.
-
-        Returns
-        -------
-        base_values : np.ndarray
-            Shape ``(p,)`` array with the base (unscaled) penalty values, where ``p`` is
-            the number of variables/columns in the data being analysed. Element ``i`` of
-            the array is the base penalty value for ``i+1`` variables being affected by
-            the change. The base penalty array is non-decreasing.
-        """
-        return self.intercept + self.slope * np.arange(1, self.p_ + 1)
-
-    @classmethod
-    def get_test_params(cls, parameter_set="default"):
-        """Return testing parameter settings for the estimator.
-
-        Parameters
-        ----------
-        parameter_set : str, default="default"
-            Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for penalties.
-
-        Returns
-        -------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
-            Each dict are parameters to construct an "interesting" test instance, i.e.,
-            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
-            `create_test_instance` uses the first (or only) dictionary in `params`
-        """
-        params = [
-            {"intercept": 1.0, "slope": 0.5, "scale": 1.0},
-            {"intercept": 0.0, "slope": 1.0, "scale": 0.5},
-        ]
-        return params
+    penalty_vector = intercept + slope * np.arange(1, p + 1)
+    return penalty_vector
 
 
-class LinearChiSquarePenalty(BasePenalty):
-    """Linear Chi-square penalty.
+def make_linear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
+    """Create a linear chi-square penalty.
 
     The penalty is a piece of the default penalty for the `MVCAPA` algorithm. It is
     described as "penalty regime 2" in the MVCAPA article [1]_, suitable for detecting
@@ -68,8 +45,19 @@ class LinearChiSquarePenalty(BasePenalty):
 
     Parameters
     ----------
-    scale : float, optional, default=1.0
-        Scaling factor for the penalty.
+    n_params_per_variable: int
+        Number of model parameters per variable and segment.
+    n : int
+        Sample size.
+    p : int
+        Number of variables/columns in the data being analysed.
+
+    Returns
+    -------
+    np.ndarray
+        The non-decreasing linear chi-square penalty values. The shape is ``(p,)``.
+        Element ``i`` of the array is the penalty value for ``i+1`` variables being
+        affected by a change or anomaly.
 
     References
     ----------
@@ -77,50 +65,11 @@ class LinearChiSquarePenalty(BasePenalty):
        segment and point anomaly detection. Journal of Computational and Graphical
        Statistics, 31(2), 574-585.
     """
+    check_larger_than_or_equal(1, n_params_per_variable, "n_params_per_variable")
+    check_larger_than_or_equal(1, n, "n")
+    check_larger_than_or_equal(1, p, "p")
 
-    penalty_type = "linear"
-
-    def __init__(self, scale: float = 1.0):
-        super().__init__(scale)
-
-    @property
-    def _base_values(self) -> np.ndarray:
-        """Get the base penalty values.
-
-        Returns
-        -------
-        base_values : np.ndarray
-            Shape ``(p,)`` array with the base (unscaled) penalty values, where ``p`` is
-            the number of variables/columns in the data being analysed. Element ``i`` of
-            the array is the base penalty value for ``i+1`` variables being affected by
-            the change. The base penalty array is non-decreasing.
-        """
-        psi = np.log(self.n_)
-        component_penalty = 2 * np.log(self.n_params_per_variable_ * self.p_)
-        base_penalties = 2 * psi + 2 * np.cumsum(np.full(self.p_, component_penalty))
-        return base_penalties
-
-    @classmethod
-    def get_test_params(cls, parameter_set="default"):
-        """Return testing parameter settings for the estimator.
-
-        Parameters
-        ----------
-        parameter_set : str, default="default"
-            Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return `"default"` set.
-            There are currently no reserved values for penalties.
-
-        Returns
-        -------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
-            Each dict are parameters to construct an "interesting" test instance, i.e.,
-            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
-            `create_test_instance` uses the first (or only) dictionary in `params`
-        """
-        params = [
-            {"scale": 1.0},
-            {"scale": 2.0},
-        ]
-        return params
+    psi = np.log(n)
+    component_penalty = 2 * np.log(n_params_per_variable * p)
+    penalty_vector = 2 * psi + 2 * np.cumsum(np.full(p, component_penalty))
+    return penalty_vector

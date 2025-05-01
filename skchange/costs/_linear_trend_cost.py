@@ -8,7 +8,6 @@ and a best fit linear trend line within each interval.
 import numpy as np
 
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
 from ..utils.validation.parameters import check_data_column
 from .base import BaseCost
 
@@ -275,10 +274,8 @@ class LinearTrendCost(BaseCost):
     _tags = {
         "authors": ["johannvk"],
         "maintainers": "johannvk",
+        "supports_fixed_param": True,
     }
-
-    evaluation_type = EvaluationType.UNIVARIATE
-    supports_fixed_params = True
 
     def __init__(
         self,
@@ -446,7 +443,7 @@ class LinearTrendCost(BaseCost):
         """
         return 3
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
 
         Parameters

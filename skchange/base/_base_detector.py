@@ -74,12 +74,11 @@ class BaseDetector(_BaseDetector):
         "capability:multivariate": True,
         "capability:missing_values": False,
         "capability:update": False,
-        # todo: distribution_type does not seem to be used - refactor or remove
+        "capability:identify_variables": False,
         "distribution_type": "None",
         "X_inner_mtype": "pd.DataFrame",
         "fit_is_empty": False,
     }
-    capability_variable_identification = False
 
     def transform(self, X) -> pd.DataFrame:
         """Create labels on test/deployment data.

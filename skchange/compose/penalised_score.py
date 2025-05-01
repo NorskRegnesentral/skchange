@@ -1,35 +1,35 @@
 """Penalised interval scorer."""
 
 import copy
+from typing import Callable, Optional
 
 import numpy as np
 import pandas as pd
 
 from ..base import BaseIntervalScorer
-from ..penalties.base import BasePenalty
+from ..penalties import make_bic_penalty
 from ..utils.numba import njit
-from ..utils.validation.enums import EvaluationType
+from ..utils.validation.interval_scorer import check_interval_scorer
+from ..utils.validation.penalties import check_penalty, check_penalty_against_data
 
 
 @njit
-def _penalise_scores_constant(
-    scores: np.ndarray, penalty_values: np.ndarray
-) -> np.ndarray:
+def _penalise_scores_constant(scores: np.ndarray, penalty: float) -> np.ndarray:
     """Penalise scores with a constant penalty.
 
     Parameters
     ----------
     scores : np.ndarray
         The scores to penalise. The output of a BaseIntervalScorer.
-    penalty_values : np.ndarray
-        The penalty values. The output of a constant BasePenalty.
+    penalty: float
+        The penalty value.
 
     Returns
     -------
     penalised_scores : np.ndarray
         The penalised scores.
     """
-    penalised_scores = scores.sum(axis=1) - penalty_values
+    penalised_scores = scores.sum(axis=1) - penalty
     return penalised_scores
 
 
@@ -44,7 +44,7 @@ def _penalise_scores_linear(
     scores : np.ndarray
         The scores to penalise. The output of a BaseIntervalScorer.
     penalty_values : np.ndarray
-        The penalty values. The output of a linear BasePenalty.
+        The penalty values.
 
     Returns
     -------
@@ -72,7 +72,7 @@ def _penalise_scores_nonlinear(
     scores : np.ndarray
         The scores to penalise. The output of a BaseIntervalScorer.
     penalty_values : np.ndarray
-        The penalty values. The output of a nonlinear BasePenalty.
+        The penalty values.
 
     Returns
     -------
@@ -88,46 +88,108 @@ def _penalise_scores_nonlinear(
     return np.array(penalised_scores, dtype=np.float64)
 
 
+def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
+    score.check_is_fitted()
+    n = score._X.shape[0]
+    p = score._X.shape[1]
+    return make_bic_penalty(score.get_model_size(p), n)
+
+
 class PenalisedScore(BaseIntervalScorer):
     """Penalised interval scorer.
 
-    Penalises the scores of an interval scorer and aggregates them into a single value
-    for each cut. For non-constant penalties, the penalised score is optimised over the
-    number of affected components.
+    A wrapper for interval scorers that aggregates and penalises the scores according to
+    a penalty function over the set of affected variables as described in [1]_ and [2]_.
+    Depending on the type of penalty input, the penalised score is calculated as
+    follows:
+
+    * A constant penalty: The penalised score is simply the sum of the scores across
+      all variables in the data minus the penalty.
+    * A penalty array where element ``i`` of the array is the penalty for ``i+1``
+      variables being affected by a change or anomaly: The penalised score is the optimal
+      penalised score over the number of affected components. This is suitable for data
+      where it is unknown how many variables are affected by a change or anomaly, and to
+      obtain strong detection power against both sparse and dense changes or anomalies.
 
     Parameters
     ----------
-    scorer : BaseIntervalScorer
-        The interval scorer to penalise.
-    penalty : BasePenalty
-        The penalty to apply to the scores. The penalty must be constant for
-        multivariate scorers. If the penalty is already fitted, it will not be refitted
-        to the data in the `fit` method.
-    """
+    score : BaseIntervalScorer
+        The score to penalise. Costs are currently not supported.
+    penalty : np.ndarray | float, optional, default=None
+        The penalty to use for the penalised score. There are three options:
 
-    evaluation_type = EvaluationType.MULTIVARIATE
-    is_penalised_score = True
+        * ``float``: A constant penalty applied to the sum of scores across all
+          variables in the data.
+        * ``np.ndarray``: A penalty array of the same length as the number of
+          columns in the data, where element ``i`` of the array is the penalty for
+          ``i+1`` variables being affected by a change or anomaly. The penalty array
+          must be positive and increasing (not strictly). A penalised score with a
+          linear penalty array is faster to evaluate than a nonlinear penalty array.
+        * ``None``: A default penalty is created in `fit` based on the fitted
+          `score` using the `make_default_penalty` function.
 
-    def __init__(self, scorer: BaseIntervalScorer, penalty: BasePenalty):
-        self.scorer = scorer
+    make_default_penalty : Callable, optional, default=None
+        A function to create a default penalty from the fitted `score`. The function
+        must take a fitted `BaseIntervalScorer` and return a penalty value or
+        array. If `None`, the default penalty is created using
+        ``make_bic_penalty(score.get_model_size(score._X.shape[1]), score._X.shape[0])``.
+
+    References
+    ----------
+    .. [1] Fisch, A. T., Eckley, I. A., & Fearnhead, P. (2022). Subset multivariate
+       segment and point anomaly detection. Journal of Computational and Graphical
+       Statistics, 31(2), 574-585.
+
+    .. [2] Tickle, S. O., Eckley, I. A., & Fearnhead, P. (2021). A computationally
+       efficient, high-dimensional multiple changepoint procedure with application to
+       global terrorism incidence. Journal of the Royal Statistical Society Series A:
+       Statistics in Society, 184(4), 1303-1325.
+    """  # noqa: E501
+
+    _tags = {
+        "authors": ["Tveten"],
+        "maintainers": "Tveten",
+        "is_aggregated": True,
+        "is_penalised": True,
+    }
+
+    def __init__(
+        self,
+        score: BaseIntervalScorer,
+        penalty: np.ndarray | float | None = None,
+        make_default_penalty: Optional[Callable] = None,
+    ):
+        self.score = score
         self.penalty = penalty
+        self.make_default_penalty = make_default_penalty
         super().__init__()
 
-        self.expected_cut_entries = scorer.expected_cut_entries
-
-        if scorer.is_penalised_score:
-            raise ValueError(
-                "The scorer must not be a penalised score. " f"Got {type(scorer)}."
-            )
+        check_interval_scorer(
+            score,
+            "score",
+            "PenalisedScore",
+            required_tasks=["change_score", "local_anomaly_score", "saving"],
+            allow_penalised=False,
+        )
+        check_penalty(penalty, "penalty", "PenalisedScore")
 
         if (
-            scorer.evaluation_type == EvaluationType.MULTIVARIATE
-            and penalty.penalty_type != "constant"
+            score.get_tag("is_aggregated")
+            and isinstance(penalty, np.ndarray)
+            and penalty.size > 1
         ):
             raise ValueError(
-                "Multivariate scorers output a single score per cut and are therefore"
-                "only compatible with constant penalties."
+                "`penalty` must be a constant penalty (a single value) for aggregated"
+                f" scores. Got `score={score.__class__.__name__}`."
             )
+
+        self._make_default_penalty = (
+            _make_bic_penalty_from_score
+            if make_default_penalty is None
+            else make_default_penalty
+        )
+
+        self.clone_tags(score, ["task", "distribution_type", "is_conditional"])
 
     def _fit(self, X: np.ndarray, y=None) -> "PenalisedScore":
         """Fit the penalised interval scorer to training data.
@@ -143,36 +205,25 @@ class PenalisedScore(BaseIntervalScorer):
         -------
         self :
             Reference to self.
-
-        Notes
-        -----
-        If the penalty is already fitted, it will not be refitted to the data. If the
-        data is not compatible with the penalty, a ValueError will be raised.
         """
-        self.scorer_: BaseIntervalScorer = self.scorer.clone()
+        self.score_: BaseIntervalScorer = self.score.clone()
         # Some scores operate on named columns of X, so the columns must be passed on
         # to the internal scorer.
         X_inner = pd.DataFrame(X, columns=self._X_columns, copy=False)
-        self.scorer_.fit(X_inner)
+        self.score_.fit(X_inner)
 
-        if self.penalty.is_fitted:
-            # Need to copy the penalty because a `clone` will not copy the fitted values
-            self.penalty_ = copy.deepcopy(self.penalty)
-            if X.shape[1] != self.penalty_.p_:
-                raise ValueError(
-                    "The number of variables in the data must match the number of"
-                    " variables in the penalty."
-                    f" 'X.shape[1]' = {X.shape[1]} and 'penalty.p' = {self.penalty.p_}."
-                    " This error is most likely due to the penalty being fitted to a "
-                    " different data set than the scorer."
-                )
+        if self.penalty is None:
+            self.penalty_ = self._make_default_penalty(self.score_)
+            check_penalty(self.penalty_, "penalty_", "PenalisedScore", allow_none=False)
         else:
-            self.penalty_: BasePenalty = self.penalty.clone()
-            self.penalty_.fit(X, self.scorer_)
+            self.penalty_ = copy.deepcopy(self.penalty)
+            check_penalty_against_data(self.penalty_, X, "PenalisedScore")
 
-        if self.penalty.penalty_type == "constant" or X.shape[1] == 1:
+        penalty_array = np.asarray(self.penalty_).flatten()
+        penalty_diff = np.diff(penalty_array)
+        if X.shape[1] == 1 or penalty_array.size == 1:
             self.penalise_scores = _penalise_scores_constant
-        elif self.penalty.penalty_type == "linear":
+        elif np.allclose(penalty_diff, penalty_diff[0]):
             self.penalise_scores = _penalise_scores_linear
         else:
             self.penalise_scores = _penalise_scores_nonlinear
@@ -193,11 +244,11 @@ class PenalisedScore(BaseIntervalScorer):
         values : np.ndarray
             A 2D array of scores. One row for each row in cuts.
         """
-        scores = self.scorer_.evaluate(cuts)
-        return self.penalise_scores(scores, self.penalty_.values).reshape(-1, 1)
+        scores = self.score_.evaluate(cuts)
+        return self.penalise_scores(scores, self.penalty_).reshape(-1, 1)
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum valid size of an interval to evaluate.
 
         The size of each interval is by default defined as ``np.diff(cuts[i, ])``.
@@ -213,11 +264,11 @@ class PenalisedScore(BaseIntervalScorer):
             first to determine the minimum size.
         """
         if self.is_fitted:
-            return self.scorer_.min_size
+            return self.score_.min_size
         else:
-            return None
+            return self.score.min_size
 
-    def get_param_size(self, p: int) -> int:
+    def get_model_size(self, p: int) -> int:
         """Get the number of parameters to estimate over each interval.
 
         The primary use of this method is to determine an appropriate default penalty
@@ -231,7 +282,7 @@ class PenalisedScore(BaseIntervalScorer):
         p : int
             Number of variables in the data.
         """
-        return self.scorer.get_param_size(p)
+        return self.score.get_model_size(p)
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -254,11 +305,10 @@ class PenalisedScore(BaseIntervalScorer):
         """
         from skchange.anomaly_scores import L2Saving
         from skchange.change_scores import MultivariateGaussianScore
-        from skchange.penalties import BICPenalty, LinearChiSquarePenalty
 
         params = [
-            {"scorer": L2Saving(), "penalty": LinearChiSquarePenalty()},
-            {"scorer": MultivariateGaussianScore(), "penalty": BICPenalty()},
+            {"score": L2Saving(), "penalty": 20},
+            {"score": MultivariateGaussianScore()},
         ]
 
         return params

@@ -6,9 +6,13 @@ Scitype defining methods:
     fitting                         - fit(self, X, y=None)
     evaluating                      - evaluate(self, cuts)
 
-Needs to be implemented for a concrete detector:
+Needs to be implemented for a concrete interval scorer:
     _fit(self, X, y=None)
     _evaluate(self, cuts)
+
+Recommended but optional to implement for a concrete detector:
+    min_size(self)
+    get_model_size(self, p)
 """
 
 __author__ = ["Tveten", "johannvk", "fkiraly"]
@@ -22,7 +26,6 @@ from sktime.utils.validation.series import check_series
 
 from skchange.utils.validation.cuts import check_cuts_array
 from skchange.utils.validation.data import as_2d_array
-from skchange.utils.validation.enums import EvaluationType
 
 
 class BaseIntervalScorer(BaseEstimator):
@@ -45,29 +48,30 @@ class BaseIntervalScorer(BaseEstimator):
         "object_type": "interval_scorer",  # type of object
         "authors": ["Tveten", "johannvk", "fkiraly"],  # author(s) of the object
         "maintainers": "Tveten",  # current maintainer(s) of the object
-    }  # for unit test cases
-
-    # Number of expected entries in the cuts array of `evaluate`. Must be overridden in
-    # subclasses, like for change scores and costs, before call to `evaluate`.
-    expected_cut_entries = None
-
-    # The `evaluation_type` indicates whether the scorer is univariate or multivariate.
-    # Univariate scorers are vectorized over variables/columns in the data,
-    # such that output is one column per variable.
-    # Multivariate scorers take the entire data as input and output a single
-    # value, such that the output is a single column no matter how many variables.
-    # TODO: Implement as tags?
-    # For now a class variable to pass sktime conformance test.
-    evaluation_type = EvaluationType.UNIVARIATE
-
-    # `is_penalised_score` indicates whether the score is inherently penalised (True) or
-    # not (False).
-    # For example, for change scores or savings:
-    # If `True`, a score > 0 means that a change or anomaly is detected. Penalised
-    # scores can be both positive and negative.
-    # If `False`, the score is not penalised. To test for the existence of a change,
-    # penalisation must be performed externally. Such scores are always non-negative.
-    is_penalised_score = False
+        "task": None,  # "cost", "change_score", "local_anomaly_score", "saving"
+        "distribution_type": "None",  # "None", "Poisson", "Gaussian"
+        # is_conditional: whether the scorer uses some of the input variables as
+        # covariates in a regression model or similar. If `True`, the scorer requires
+        # at least two input variables. If `False`, all p input variables/columns are
+        # used to evaluate the score, such that the output has either 1 or p columns.
+        "is_conditional": False,
+        # is_aggregated: whether the scorer always returns a single value per cut or
+        # not, irrespective of the input data shape.
+        # Many scorers will not be aggregated, for example all scorers that evaluate
+        # each input variable separately and return a score vector with one score for
+        # each variable.
+        "is_aggregated": False,
+        # is_penalised: indicates whether the score is inherently penalised (True) or
+        # not (False). If `True`, a score > 0 means that a change or anomaly is
+        # detected. Penalised scores can be both positive and negative.
+        # If `False`, the score is not penalised. To test for the existence of a change,
+        # penalisation must be performed externally. Such scores are always
+        # non-negative.
+        "is_penalised": False,
+        "capability:multivariate": True,
+        "capability:missing_values": False,
+        "capability:update": False,
+    }
 
     def __init__(self):
         self._is_fitted = False
@@ -193,32 +197,8 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return 1
 
-    @property
-    def output_dim(self) -> int:
-        """Get the output dimension of the scorer.
-
-        Returns the number of columns in the output of the scorer. For univariate
-        scorers, this is the number of variables in the data. For multivariate scorers,
-        this is 1. Subclasses should override this method accordingly.
-        """
-        if self.evaluation_type == EvaluationType.UNIVARIATE:
-            return self._X.shape[1] if self._X is not None else None
-        elif self.evaluation_type == EvaluationType.MULTIVARIATE:
-            return 1
-        elif self.evaluation_type == EvaluationType.CONDITIONAL:
-            return self._output_dim()
-
-    def _output_dim(self) -> int:
-        """Get the output dimension of the scorer.
-
-        In the case of a scorer with 'evaluation_type' as 'CONDITIONAL', this method
-        should be overridden to return the number of columns in the scorer output.
-        Subclasses should override this method accordingly.
-        """
-        raise NotImplementedError("abstract method")
-
-    def get_param_size(self, p: int) -> int:
-        """Get the number of parameters to estimate over each interval.
+    def get_model_size(self, p: int) -> int:
+        """Get the number of model parameters to estimate for each interval.
 
         The primary use of this method is to determine an appropriate default penalty
         value in detectors. For example, a scorer for a change in mean has one
@@ -232,6 +212,28 @@ class BaseIntervalScorer(BaseEstimator):
             Number of variables in the data.
         """
         return p
+
+    def _get_required_cut_size(self) -> int:
+        """Get the required cut size for the scorer.
+
+        The cut size is the number of columns in the cuts array. The cut size is
+        determined by the task of the scorer. For example, a cost and a saving has a cut
+        size of 2, a change score has a cut size of 3, and a local anomaly score has a
+        cut size of 4. The cut size is used to check the cuts array for compatibility.
+        """
+        task = self.get_tag("task")
+        if task == "cost":
+            cut_size = 2
+        elif task == "change_score":
+            cut_size = 3
+        elif task == "saving":
+            cut_size = 2
+        elif task == "local_anomaly_score":
+            cut_size = 4
+        else:
+            raise RuntimeError("The task of the interval scorer is not set.")
+
+        return cut_size
 
     def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
         """Check cuts for compatibility.
@@ -255,10 +257,10 @@ class BaseIntervalScorer(BaseEstimator):
         return check_cuts_array(
             cuts,
             min_size=self.min_size,
-            last_dim_size=self.expected_cut_entries,
+            last_dim_size=self._get_required_cut_size(),
         )
 
     def check_is_penalised(self):
-        """Check if the score is inherently performing penalisation."""
-        if not self.is_penalised_score:
-            raise ValueError("The score is not penalised.")
+        """Check if the scorer is inherently performing penalisation."""
+        if not self.get_tag("is_penalised"):
+            raise RuntimeError("The interval scorer is not penalised.")
