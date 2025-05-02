@@ -74,7 +74,7 @@ def transform_esac(
 
 
 class ESACScore(BaseIntervalScorer):
-    """Custom score class.
+    """The ESAC score for detecting changes in the mean of high-dimensional data.
 
     This is the sparsity adaptive penalised CUSUM score for a change in the mean.
     The ESAC score is a penalised version of the CUSUM score, where the CUSUM of
