@@ -54,10 +54,10 @@ def _estimate_scale_matrix_trace(
 
     References
     ----------
-    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel \
-    Parameter Estimation Algorithm for the Multivariate T-Distribution and Its \
-    Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607. \
-    Berlin, Heidelberg: Springer
+    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel
+       Parameter Estimation Algorithm for the Multivariate T-Distribution and Its
+       Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607.
+       Berlin, Heidelberg: Springer
 
     Returns
     -------
@@ -100,10 +100,10 @@ def _initial_scale_matrix_estimate(
 
     References
     ----------
-    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel \
-    Parameter Estimation Algorithm for the Multivariate T-Distribution and Its \
-    Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607. \
-    Berlin, Heidelberg: Springer
+    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel
+       Parameter Estimation Algorithm for the Multivariate T-Distribution and Its
+       Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607.
+       Berlin, Heidelberg: Springer
 
     Returns
     -------
@@ -755,9 +755,9 @@ def _iterative_mv_t_dof_estimate(
     float
         The estimated degrees of freedom of the multivariate t-distribution.
 
-    .. [1] Ollila, Esa, & Daniel P. Palomar, & Frédéric Pascal. (2020). Shrinking the \
-    Eigenvalues of M-Estimators of Covariance Matrix. IEEE Transactions on Signal \
-    Processing, 256-269.
+    .. [1] Ollila, Esa, & Daniel P. Palomar, & Frédéric Pascal. (2020). Shrinking the
+       Eigenvalues of M-Estimators of Covariance Matrix. IEEE Transactions on Signal
+       Processing, 256-269.
     """
     n = centered_samples.shape[0]
     if initial_dof > infinite_dof_threshold:
@@ -1004,7 +1004,7 @@ def _estimate_mv_t_dof(
 
 
 class MultivariateTCost(BaseCost):
-    r"""Multivariate T twice negative log likelihood cost.
+    """Multivariate T twice negative log likelihood cost.
 
     The multivariate T-distribution is a generalization of the multivariate
     Gaussian distribution, allowing for heavier tails. The degrees of freedom
@@ -1056,15 +1056,15 @@ class MultivariateTCost(BaseCost):
     fixed_dof : float, optional (default=None)
         Fixed degrees of freedom for the cost calculation.
         If None, the degrees of freedom are estimated from the data.
+    refine_dof_threshold : int, optional
+        (default=1000 with Numba installed, 100 without)
+        The number of samples below which the degrees of freedom
+        estimate is refined using a leave-one-out iterative method.
     infinite_dof_threshold : float, optional (default=50.0)
         The threshold at which the degrees of freedom are considered infinite.
         If the degrees of freedom are above this threshold,
         the multivariate t-distribution is approximated with
         a multivariate Gaussian distribution.
-    refine_dof_threshold : int, optional
-        (default=1000 with Numba installed, 100 without)
-        The number of samples below which the degrees of freedom
-        estimate is refined using a leave-one-out iterative method.
     mle_scale_abs_tol : float, optional (default=1.0e-2)
         The absolute tolerance for convergence in the MLE scale matrix estimation.
     mle_scale_rel_tol : float, optional (default=1.0e-2)
@@ -1075,16 +1075,16 @@ class MultivariateTCost(BaseCost):
 
     References
     ----------
-    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel \
-    Parameter Estimation Algorithm for the Multivariate T-Distribution and Its \
-    Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607. \
-    Berlin, Heidelberg: Springer
-    .. [2] Ollila, Esa, & Palomar, Daniel P. & Pascal, Frédéric. (2020). Shrinking the \
-    Eigenvalues of M-Estimators of Covariance Matrix. IEEE Transactions on Signal \
-    Processing, 256-269.
-    .. [3] Pascal, Frédéric & Ollila, Esa & Palomar, Daniel P. (2021) Improved \
-    Estimation of the Degree of Freedom Parameter of Multivariate T-Distribution. \
-    In 2021 29th European Signal Processing Conference (EUSIPCO), 860-864.
+    .. [1] Aeschliman, Chad, & Johnny Park, & Avinash C. Kak. (2009). A Novel
+       Parameter Estimation Algorithm for the Multivariate T-Distribution and Its
+       Application to Computer Vision. In Computer Vision - ECCV 2010, 594-607.
+       Berlin, Heidelberg: Springer
+    .. [2] Ollila, Esa, & Palomar, Daniel P. & Pascal, Frédéric. (2020). Shrinking the
+       Eigenvalues of M-Estimators of Covariance Matrix. IEEE Transactions on Signal
+       Processing, 256-269.
+    .. [3] Pascal, Frédéric & Ollila, Esa & Palomar, Daniel P. (2021) Improved
+       Estimation of the Degree of Freedom Parameter of Multivariate T-Distribution.
+       In 2021 29th European Signal Processing Conference (EUSIPCO), 860-864.
     """
 
     _tags = {
