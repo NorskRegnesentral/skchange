@@ -12,6 +12,7 @@ Change scores
     ChangeScore
     ContinuousLinearTrendScore
     CUSUM
+    ESACScore
     MultivariateGaussianScore
 
 Utility functions
