@@ -6,6 +6,54 @@ import pandas as pd
 from ..base import BaseIntervalScorer
 
 
+def check_cost_cuts_array(cuts: np.ndarray, min_interval_length: int) -> np.ndarray:
+    """Check array of cost cuts.
+
+    Parameters
+    ----------
+    cuts : np.ndarray
+        Array of cuts to check.
+    min_size : int
+        Minimum size of the intervals obtained by the cuts.
+
+    Returns
+    -------
+    cuts : np.ndarray
+        The unmodified input cuts array.
+
+    Raises
+    ------
+    ValueError
+        If the cuts does not meet the requirements.
+    """
+    cost_cuts_last_dim_size = 2
+    if cuts.ndim != 2:
+        raise ValueError("The cuts must be a 2D array.")
+
+    if not np.issubdtype(cuts.dtype, np.integer):
+        raise ValueError("The cuts must be of integer type.")
+
+    if cuts.shape[-1] != cost_cuts_last_dim_size:
+        raise ValueError(
+            "The cuts must be specified as an array with length "
+            f"{cost_cuts_last_dim_size} in the last dimension."
+        )
+
+    start_split_diffs = cuts[:, 1] - cuts[:, 0]
+    end_split_diffs = cuts[:, 1] - cuts[:, 0]
+    if not np.all(start_split_diffs >= min_interval_length):
+        raise ValueError(
+            "All `split - start` differences in `cuts` must be strictly increasing and "
+            f"each entry must be more than min_size={min_interval_length} apart."
+        )
+    if not np.all(end_split_diffs >= min_interval_length + 1):
+        raise ValueError(
+            "All `end - split` differences in `cuts` must be strictly increasing and "
+            f"each entry must be more than min_size+1={min_interval_length + 1} apart."
+        )
+    return cuts
+
+
 class BaseCost(BaseIntervalScorer):
     """Base class template for cost functions.
 
@@ -179,3 +227,21 @@ class BaseCost(BaseIntervalScorer):
             raise ValueError("The input data has not been set.")
         else:
             return self._X.shape[0]
+
+    # def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
+    #     """Check cuts for compatibility.
+    #     Parameters
+    #     ----------
+    #     cuts : np.ndarray
+    #         A 2D array of integer location-based cuts to evaluate. Each row in the array
+    #         must be sorted in increasing order.
+    #     Returns
+    #     -------
+    #     cuts : np.ndarray
+    #         The unmodified input `cuts` array.
+    #     Raises
+    #     ------
+    #     ValueError
+    #         If the `cuts` are not compatible.
+    #     """
+    #     return check_cost_cuts_array(cuts, min_interval_length=self.min_size)

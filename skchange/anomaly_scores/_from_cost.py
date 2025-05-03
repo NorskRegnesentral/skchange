@@ -365,12 +365,18 @@ class LocalAnomalyScore(BaseIntervalScorer):
         before_inner_sizes = np.diff(cuts[:, [0, 1]], axis=1)
         after_inner_sizes = np.diff(cuts[:, [2, 3]], axis=1)
         surrounding_intervals_sizes = before_inner_sizes + after_inner_sizes
-        if not np.all(inner_intervals_sizes >= self.min_size):
+        if isinstance(self.min_size, int):
+            min_size_interval = self.min_size
+        else:
+            # Could be iterable, but we only need the max size.
+            min_size_interval = max(self.min_size)
+
+        if not np.all(inner_intervals_sizes >= min_size_interval):
             raise ValueError(
                 f"The inner intervals must be at least min_size={self.min_size}."
                 f" Got {inner_intervals_sizes.min()}."
             )
-        if not np.all(surrounding_intervals_sizes >= self.min_size):
+        if not np.all(surrounding_intervals_sizes >= min_size_interval):
             raise ValueError(
                 f"The surrounding intervals must be at least min_size={self.min_size}."
                 f" in total. Got {surrounding_intervals_sizes.min()}."

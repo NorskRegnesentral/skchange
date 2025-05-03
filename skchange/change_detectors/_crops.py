@@ -10,6 +10,7 @@ from ..change_detectors._pelt import (
     run_pelt_with_jump,
     run_restricted_optimal_partitioning,
 )
+from ..change_scores import ContinuousLinearTrendScore
 from ..costs.base import BaseCost
 from .base import BaseChangeDetector
 
@@ -61,7 +62,9 @@ def format_crops_results(
     change_points_dict = {len(x[3]): x[3] for x in unique_cpd_results}
 
     # Extract out the change points metadata into a DataFrame.
-    change_points_metadata = [x[0:3] for x in unique_cpd_results]
+    # Reverse the order of the list, so that the lowest number
+    # of change points comes first.
+    change_points_metadata = [x[0:3] for x in unique_cpd_results][::-1]
     penalty_change_point_metadata_df = pd.DataFrame(
         change_points_metadata,
         columns=[
@@ -72,6 +75,84 @@ def format_crops_results(
     )
 
     return penalty_change_point_metadata_df, change_points_dict
+
+
+def segmentation_bic_value(cost: BaseCost, change_points: np.ndarray) -> float:
+    """Calculate the BIC score for a given segmentation.
+
+    Parameters
+    ----------
+    cost : BaseCost
+        The cost function to use.
+    change_points : np.ndarray
+        The change points to use.
+
+    Returns
+    -------
+    float
+        The BIC score for the given segmentation.
+    """
+    cost.check_is_fitted()
+    num_segments = len(change_points) + 1
+    data_dim = cost._X.shape[1]
+    num_parameters = cost.get_model_size(data_dim)
+    n_samples = cost.n_samples()
+    return cost.evaluate_segmentation(
+        change_points
+    ) + num_parameters * num_segments * np.log(n_samples)
+
+
+def crops_elbow_score(
+    num_change_points_and_segmentation_cost_df: pd.DataFrame,
+) -> pd.Series:
+    """Calculate the elbow cost for a given segmentation.
+
+    Parameters
+    ----------
+    num_change_points : int
+        The number of change points.
+    segmentation_cost : float
+        The segmentation cost.
+
+    Returns
+    -------
+    pd.Series
+        The elbow cost for each number of change points.
+    """
+    num_segmentations = len(num_change_points_and_segmentation_cost_df)
+    if num_segmentations < 3:
+        # Not enough segmentations to calculate the elbow cost.
+        raise ValueError(
+            "Not enough segmentations to calculate the elbow cost. "
+            "Need at least 3 segmentations."
+        )
+
+    # Calculate the elbow (change in slope) cost for each number of change points:
+    continuous_linear_trend_score = ContinuousLinearTrendScore(
+        time_column="num_change_points"
+    )
+    continuous_linear_trend_score.fit(num_change_points_and_segmentation_cost_df)
+
+    # Construct cuts at all intermediate number of change points.
+    # I.e. not at the first and last number of change points.
+    score_eval_cuts = np.column_stack(
+        (
+            np.repeat(0, num_segmentations - 2),
+            np.arange(1, num_segmentations - 1),
+            np.repeat(num_segmentations, num_segmentations - 2),
+        )
+    )
+
+    # Pad the elbow score with `-np.inf` for the first and last segmentations,
+    # which we cannot calculate a "change in slope" score for.
+    elbow_score = np.concatenate(
+        (
+            np.array([-np.inf]),
+            continuous_linear_trend_score.evaluate(score_eval_cuts).reshape(-1),
+            np.array([-np.inf]),
+        )
+    )
+    return elbow_score
 
 
 class CROPS_PELT(BaseChangeDetector):
@@ -95,6 +176,11 @@ class CROPS_PELT(BaseChangeDetector):
         The minimum penalty to use.
     max_penalty : float
         The maximum penalty to use.
+    selection_criterion : str, default="bic"
+        The selection criterion to use for selecting the
+        best segmentation among the optimal segmentations for
+        the penalty range `[min_penalty, max_penalty]`.
+        Options: ["bic", "elbow"]. Default is "bic".
     min_segment_length : int, default=1
         The minimum segment length to use.
     split_cost : float, optional, default=0.0
@@ -124,6 +210,7 @@ class CROPS_PELT(BaseChangeDetector):
         cost: BaseCost,
         min_penalty: float,
         max_penalty: float,
+        selection_criterion: str = "bic",
         min_segment_length: int = 1,
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
@@ -136,18 +223,25 @@ class CROPS_PELT(BaseChangeDetector):
 
         self.min_penalty = min_penalty
         self.max_penalty = max_penalty
+        self.selection_criterion = selection_criterion
         self.min_segment_length = min_segment_length
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
         self.drop_pruning = drop_pruning
 
+        if selection_criterion not in ["bic", "elbow"]:
+            raise ValueError(
+                f"Invalid selection criterion: {selection_criterion}. "
+                "Must be one of ['bic', 'elbow']."
+            )
+
         # Storage for the CROPS results:
-        self.change_points_metadata_ = None
-        self.change_points_lookup_ = None
+        self.change_points_metadata_: pd.DataFrame | None = None
+        self.change_points_lookup_: dict[int, np.ndarray] | None = None
 
     def _fit(self, X, y=None):
-        """Fit the CROPS algorithm.
+        """Fit the cost.
 
         Parameters
         ----------
@@ -156,6 +250,48 @@ class CROPS_PELT(BaseChangeDetector):
         """
         self._cost.fit(X, y)
         return self
+
+    def _predict(self, X: np.ndarray) -> np.ndarray:
+        """Run the CROPS algorithm for path solutions to penalized CPD.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to search for change points in.
+
+        Returns
+        -------
+        np.ndarray
+            The change points for the given number of change points.
+        """
+        self.run_crops(X=X)
+
+        if self.selection_criterion == "bic":
+            # Select the best segmentation using the BIC criterion.
+            self.change_points_metadata_["bic_value"] = self.change_points_metadata_[
+                "num_change_points"
+            ].apply(
+                lambda num_change_points: segmentation_bic_value(
+                    cost=self._cost,
+                    change_points=self.change_points_lookup_[num_change_points],
+                )
+            )
+            best_num_change_points = self.change_points_metadata_.sort_values(
+                by="bic_value", ascending=True
+            )["num_change_points"].iloc[0]
+
+        elif self.selection_criterion == "elbow":
+            # Select the best segmentation using the elbow criterion.
+            self.change_points_metadata_["elbow_score"] = crops_elbow_score(
+                self.change_points_metadata_[
+                    ["num_change_points", "segmentation_cost"]
+                ],
+            )
+            best_num_change_points = self.change_points_metadata_.sort_values(
+                by="elbow_score", ascending=False
+            )["num_change_points"].iloc[0]
+
+        return self.change_points_lookup_[best_num_change_points]
 
     def run_pelt(self, penalty: float) -> dict:
         """Run the CROPS algorithm for path solutions to penalized CPD.
@@ -287,10 +423,10 @@ class CROPS_PELT(BaseChangeDetector):
                     # Sort the intervals by lower penalty:
                     penalty_search_intervals.sort(key=lambda x: x[0])
 
-        self.store_crops(penalty_to_solution_dict)
+        self.store_path_solution(penalty_to_solution_dict)
         return self.change_points_metadata_
 
-    def store_crops(self, penalty_to_solution_dict: list) -> None:
+    def store_path_solution(self, penalty_to_solution_dict: list) -> None:
         """Store the CROPS results in the change point detector.
 
         Parameters
@@ -306,7 +442,7 @@ class CROPS_PELT(BaseChangeDetector):
         self.change_points_metadata_ = metadata_df
         self.change_points_lookup_ = change_points_dict
 
-    def retrieve_solution(
+    def retrieve_change_points(
         self, num_change_points: int, refine_change_points: bool = True
     ) -> np.ndarray:
         """Retrieve the change points for a given number of change points.

@@ -266,9 +266,15 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         """
         self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
         self.fitted_score.fit(X)
+
+        if isinstance(self.fitted_score.min_size, int):
+            fitted_score_min_size = self.fitted_score.min_size
+        else:
+            fitted_score_min_size = max(self.fitted_score.min_size)
+
         X = check_data(
             X,
-            min_length=2 * self.fitted_score.min_size,
+            min_length=2 * fitted_score_min_size,
             min_length_name="2 * fitted_change_score.min_size",
         )
 

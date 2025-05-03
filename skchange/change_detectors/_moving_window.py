@@ -48,9 +48,12 @@ def transform_moving_window(
     penalised_score.check_is_fitted()
 
     n_samples = penalised_score._X.shape[0]
-    cuts = make_extended_moving_window_cuts(
-        n_samples, bandwidth, penalised_score.min_size
-    )
+    if isinstance(penalised_score.min_size, int):
+        max_min_size = penalised_score.min_size
+    else:
+        max_min_size = max(penalised_score.min_size)
+
+    cuts = make_extended_moving_window_cuts(n_samples, bandwidth, max_min_size)
     scores = np.repeat(np.nan, n_samples)
     scores[cuts[:, 1]] = penalised_score.evaluate(cuts).reshape(-1)
     return scores

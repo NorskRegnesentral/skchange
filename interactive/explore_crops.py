@@ -116,23 +116,35 @@ assert np.diff(with_end_jump_rpt_pelt_cpts).min() >= jump_step
 # for each 'JUMP' change point?
 change_point_detector = CROPS_PELT(
     cost=cost,
+    selection_criterion="elbow",
     min_penalty=min_penalty,
     max_penalty=max_penalty,
     min_segment_length=min_segment_length,
-    # min_segment_length=cost.min_size,
-    # percent_pruning_margin=percent_pruning_margin,
     drop_pruning=False,
 )
 
 # Fit the change point detector:
 change_point_detector.fit(dataset)
-
+crops_pred_results = change_point_detector.predict(dataset)
 direct_results = change_point_detector.run_crops(dataset.values)
 direct_results["optimal_value"] = direct_results["segmentation_cost"] + direct_results[
     "penalty"
 ] * (direct_results["num_change_points"] + 1)
 # %%
 # %timeit margin_results = change_point_detector.run_crops(dataset.values)
+
+# BIC selection criterion:
+bic_crops_model = CROPS_PELT(
+    cost=cost,
+    selection_criterion="bic",
+    min_penalty=min_penalty,
+    max_penalty=max_penalty,
+    min_segment_length=min_segment_length,
+    drop_pruning=False,
+)
+bic_crops_model.fit(dataset)
+bic_crops_pred_results = bic_crops_model.predict(dataset)
+
 
 # %%
 no_prune_cpd = CROPS_PELT(

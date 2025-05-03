@@ -177,7 +177,6 @@ def run_pelt_with_jump(
     penalty: float,
     jump_step: int,
     split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.0,
     drop_pruning: bool = False,
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
@@ -266,12 +265,8 @@ def run_pelt_with_jump(
             # Trimming the admissible starts set: (reuse the array of optimal costs)
             current_obs_ind_opt_cost = opt_cost[obs_interval_start + 1]
 
-            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
             start_inclusion_threshold = (
-                (
-                    current_obs_ind_opt_cost
-                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-                )
+                current_obs_ind_opt_cost
                 + penalty  # Moved from 'negative' left side to 'positive' right side.
                 - split_cost  # Remove from right side of inequality.
             )

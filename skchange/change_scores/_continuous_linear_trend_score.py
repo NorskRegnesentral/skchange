@@ -321,18 +321,25 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
         return scores
 
     @property
-    def min_size(self) -> int:
-        """Minimum size of the interval to evaluate.
+    def min_size(self) -> tuple[int, int]:
+        """Minimum number of points on each side to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
-        To solve for a linear trend, we need at least 2 points.
+        To solve for a linear trend, we need at least 2 points on each side
+        of the split point. Due to the construction of the score where we
+        enfore continuity continuity at the split point, we need at least 1 point
+        on the left side of the split point and 1 points on the right side of the
+        split point. The minimum size of the total interval is therefore 3.
 
         Returns
         -------
         int
             The minimum valid size of an interval to evaluate.
         """
-        return 2  # Need at least 2 points to define a line
+        # Need at least a difference of 1 between the start and split
+        # indices to evaluate the cost, and at least a difference of 2
+        # between the split and end indices to evaluate the cost.
+        return (1, 2)
 
     def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
