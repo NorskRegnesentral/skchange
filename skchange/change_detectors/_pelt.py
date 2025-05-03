@@ -47,8 +47,6 @@ def run_improved_pelt_array_based(
 
     Parameters
     ----------
-    X : np.ndarray
-        The data to find changepoints in.
     cost: BaseCost
         The cost to use.
     penalty : float
@@ -456,20 +454,22 @@ def run_pelt_array_based(
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
-        # Trimming the admissible starts set: (reuse the array of optimal costs)
-        current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
-        # Handle cases where the optimal cost is negative:
-        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-        start_inclusion_threshold = (
-            (
-                current_obs_ind_opt_cost
-                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+        if drop_pruning:
+            continue
+        else:
+            # Trimming the admissible starts set: (reuse the array of optimal costs)
+            current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
+            # Handle cases where the optimal cost is negative:
+            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+            start_inclusion_threshold = (
+                (
+                    current_obs_ind_opt_cost
+                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                )
+                + penalty  # Moved from 'negative' on left side to 'positive' on right side.
+                - split_cost  # Remove from right side of inequality.
             )
-            + penalty  # Moved from 'negative' on left side to 'positive' on right side.
-            - split_cost  # Remove from right side of inequality.
-        )
 
-        if not drop_pruning:
             cost_eval_starts = cost_eval_starts[
                 # Introduce a small tolerance to avoid numerical issues:
                 candidate_opt_costs <= start_inclusion_threshold
@@ -483,7 +483,8 @@ def run_pelt_masked(
     penalty: float,
     min_segment_length: int,
     split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.1,
+    percent_pruning_margin: float = 0.0,
+    drop_pruning: bool = False,
     pre_allocation_multiplier: float = 5.0,  # Initial multiple of log(n_samples)
     growth_factor: float = 2.0,  # Geometric growth factor
 ) -> tuple[np.ndarray, list]:
@@ -535,7 +536,7 @@ def run_pelt_masked(
     opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
 
     # Cannot compute the cost for the first 'min_segment_shift' elements:
-    opt_cost[1:min_segment_length] = 0.0
+    opt_cost[1:min_segment_length] = np.inf
 
     # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
     non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
@@ -611,29 +612,32 @@ def run_pelt_masked(
         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = min_start_idx
 
-        # Pruning: update valid starts to exclude positions that cannot be optimal
-        current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
-        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+        if drop_pruning:
+            continue
+        else:
+            # Pruning: update valid starts to exclude positions that cannot be optimal
+            current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
+            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
 
-        # Calculate pruning threshold with margin:
-        start_inclusion_threshold = (
-            (
-                current_obs_ind_opt_cost
-                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+            # Calculate pruning threshold with margin:
+            start_inclusion_threshold = (
+                (
+                    current_obs_ind_opt_cost
+                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                )
+                + penalty  # Pruning inequality does not include added penalty.
+                - split_cost  # Remove from right side of inequality.
             )
-            + penalty  # Pruning inequality does not include added penalty.
-            - split_cost  # Remove from right side of inequality.
-        )
 
-        # Apply pruning by filtering valid starts:
-        valid_starts_mask = (
-            candidate_opt_costs[:n_valid_starts] <= start_inclusion_threshold
-        )
-        n_new_valid_starts = np.sum(valid_starts_mask)
-        starts_buffer[:n_new_valid_starts] = starts_buffer[:n_valid_starts][
-            valid_starts_mask
-        ]
-        n_valid_starts = n_new_valid_starts
+            # Apply pruning by filtering valid starts:
+            valid_starts_mask = (
+                candidate_opt_costs[:n_valid_starts] <= start_inclusion_threshold
+            )
+            n_new_valid_starts = np.sum(valid_starts_mask)
+            starts_buffer[:n_new_valid_starts] = starts_buffer[:n_valid_starts][
+                valid_starts_mask
+            ]
+            n_valid_starts = n_new_valid_starts
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
