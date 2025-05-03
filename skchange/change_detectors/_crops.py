@@ -367,7 +367,7 @@ class CROPS_PELT(BaseChangeDetector):
                 cost=self._cost,
                 penalty=penalty,
                 min_segment_length=self.min_segment_length,
-                admissable_starts=admissable_starts,
+                admissable_cpts=admissable_starts,
             )
 
             return refined_change_points

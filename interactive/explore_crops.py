@@ -170,7 +170,7 @@ refined_pelt_cost, refined_cpts = run_restricted_optimal_partitioning(
     cost=cost,
     penalty=jump_penalty,
     min_segment_length=min_segment_length,
-    admissable_starts=admissable_starts,
+    admissable_cpts=admissable_starts,
 )
 
 # %%

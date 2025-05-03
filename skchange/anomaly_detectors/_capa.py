@@ -233,6 +233,7 @@ class CAPA(BaseSegmentAnomalyDetector):
     _tags = {
         "capability:missing_values": False,
         "capability:multivariate": True,
+        "capability:identify_variables": False,  # Can be set to True in init.
         "fit_is_empty": True,
     }
 
@@ -304,6 +305,9 @@ class CAPA(BaseSegmentAnomalyDetector):
         check_larger_than_or_equal(
             min_segment_length, max_segment_length, "max_segment_length"
         )
+
+        self.clone_tags(_segment_saving, ["distribution_type"])
+        self.set_tags(**{"capability:identify_variables": find_affected_components})
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

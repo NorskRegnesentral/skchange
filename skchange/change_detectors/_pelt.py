@@ -3,6 +3,8 @@
 __author__ = ["Tveten", "johannvk"]
 __all__ = ["PELT"]
 
+from functools import reduce
+
 import numpy as np
 import pandas as pd
 
@@ -284,7 +286,7 @@ def run_restricted_optimal_partitioning(
     cost: BaseCost,
     penalty: float,
     min_segment_length: int,
-    admissable_starts: np.ndarray | set[int],
+    admissable_cpts: np.ndarray | set[int],
 ) -> tuple[np.ndarray, list]:
     """Run optimal partitioning algorithm, restricted to a set of admissable starts.
 
@@ -341,7 +343,7 @@ def run_restricted_optimal_partitioning(
         latest_start = current_obs_ind - min_segment_shift
 
         # Add the next start to the admissible starts set:
-        if latest_start[0] in admissable_starts:
+        if latest_start[0] in admissable_cpts:
             cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
 
         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
@@ -658,6 +660,10 @@ class PELT(BaseChangeDetector):
         where ``X`` is the input data to `predict`.
     min_segment_length : int, optional, default=2
         Minimum length of a segment.
+    jump: bool, optional, default=False
+        If True, only indices that are multiples of `min_segment_length` from the
+        first data point (index `0`) are considered as potential changepoints.
+        Only used if `min_segment_length >= 2`.
     split_cost : float, optional, default=0.0
         The cost of splitting a segment, to ensure that
         cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
@@ -699,7 +705,8 @@ class PELT(BaseChangeDetector):
         self,
         cost: BaseIntervalScorer = None,
         penalty: float | None = None,
-        min_segment_length: int = 2,
+        min_segment_length: int = 1,
+        jump: bool = False,
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
         drop_pruning: bool = False,
@@ -708,6 +715,7 @@ class PELT(BaseChangeDetector):
         self.cost = cost
         self.penalty = penalty
         self.min_segment_length = min_segment_length
+        self.jump = jump
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.drop_pruning = drop_pruning
@@ -723,6 +731,8 @@ class PELT(BaseChangeDetector):
             allow_penalised=False,
         )
         self._cost = _cost.clone()
+        self.fitted_cost: BaseIntervalScorer | None = None
+        self.fitted_penalty: float | None = None
 
         check_penalty(
             penalty,
@@ -734,6 +744,27 @@ class PELT(BaseChangeDetector):
         check_larger_than_or_equal(1, min_segment_length, "min_segment_length")
 
         self.clone_tags(self._cost, ["distribution_type"])
+
+    def fit_cost_and_penalty(
+        self,
+        X: pd.DataFrame | pd.Series,
+    ):
+        X = check_data(
+            X,
+            min_length=2 * self.min_segment_length,
+            min_length_name="2*min_segment_length",
+        )
+
+        self.fitted_cost: BaseIntervalScorer = self._cost.clone()
+        self.fitted_cost.fit(X)
+
+        if self.penalty is None:
+            self.fitted_penalty = make_bic_penalty(
+                n=X.shape[0],
+                n_params=self.fitted_cost.get_model_size(X.shape[1]),
+            )
+        else:
+            self.fitted_penalty = self.penalty
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.
@@ -757,32 +788,31 @@ class PELT(BaseChangeDetector):
             The fitted penalty value. Either the user-specified value or the fitted BIC
             penalty.
         """
-        X = check_data(
-            X,
-            min_length=2 * self.min_segment_length,
-            min_length_name="2*min_segment_length",
-        )
+        self.fit_cost_and_penalty(X)
 
-        self.fitted_cost: BaseIntervalScorer = self._cost.clone()
-        self.fitted_cost.fit(X)
-
-        if self.penalty is None:
-            self.fitted_penalty = make_bic_penalty(
-                n=X.shape[0],
-                n_params=self.fitted_cost.get_model_size(X.shape[1]),
+        # opt_costs, changepoints = run_pelt_array_based(
+        if self.jump and self.min_segment_length >= 2:
+            # Use the jump version of PELT
+            opt_costs, changepoints = run_pelt_with_jump(
+                cost=self.fitted_cost,
+                penalty=self.fitted_penalty,
+                jump_step=self.min_segment_length,
+                split_cost=self.split_cost,
+                percent_pruning_margin=self.percent_pruning_margin,
+                drop_pruning=self.drop_pruning,
             )
-        else:
-            self.fitted_penalty = self.penalty
 
-        opt_costs, changepoints = run_pelt_array_based(
-            cost=self.fitted_cost,
-            penalty=self.fitted_penalty,
-            min_segment_length=self.min_segment_length,
-            split_cost=self.split_cost,
-            percent_pruning_margin=self.percent_pruning_margin,
-            drop_pruning=self.drop_pruning,
-            verbose=self.verbose,
-        )
+        else:
+            opt_costs, changepoints = run_improved_pelt_array_based(
+                cost=self.fitted_cost,
+                penalty=self.fitted_penalty,
+                min_segment_length=self.min_segment_length,
+                split_cost=self.split_cost,
+                percent_pruning_margin=self.percent_pruning_margin,
+                drop_pruning=self.drop_pruning,
+                verbose=self.verbose,
+            )
+
         # Store the scores for introspection without recomputing using transform_scores
         self.scores = pd.Series(opt_costs, index=X.index, name="score")
         return self._format_sparse_output(changepoints)
@@ -807,6 +837,70 @@ class PELT(BaseChangeDetector):
         """
         self.predict(X)
         return self.scores
+
+    def refine_change_points(
+        self,
+        change_points: list[int] | np.ndarray[int],
+        X: pd.DataFrame | pd.Series | None = None,
+        change_point_margin: int | None = None,
+    ) -> np.ndarray[int]:
+        """Refine the changepoints using the optimal partitioning algorithm.
+
+        Parameters
+        ----------
+        cpts : list[int] | np.ndarray[int]
+            List of changepoints to refine.
+        X : pd.DataFrame, pd.Series or np.ndarray
+            Data to score (time series).
+        change_point_margin : int, optional
+            The margin size on each side of the provided change point, to use as
+            potential change point during the refinement. If None, the default is
+            `self.min_segment_length`.
+
+        Returns
+        -------
+        refined_cpts : np.ndarray[int]
+            List of refined changepoints.
+        """
+        self.check_is_fitted()
+
+        if X is not None:
+            self.fit_cost_and_penalty(X)
+        else:
+            if self.fitted_cost is None or self.fitted_penalty is None:
+                raise RuntimeError(
+                    "The `PELT` cost and penalty have not been fitted yet. "
+                    "Please call `.predict()` before refining changepoints."
+                )
+
+        if change_point_margin is None:
+            change_point_margin = self.min_segment_length
+
+        if len(change_points) == 0:
+            return np.array([], dtype=np.int64)
+        else:
+            # Construct the admissible change points set:
+            admissable_cpts = reduce(
+                lambda x, y: x | y,
+                [
+                    set(
+                        range(
+                            cpt - (change_point_margin - 1),
+                            cpt + (change_point_margin - 1) + 1,
+                        )
+                    )
+                    for cpt in change_points
+                ],
+            )
+
+            refined_cpts = run_restricted_optimal_partitioning(
+                cost=self.fitted_cost,
+                penalty=self.fitted_penalty,
+                min_segment_length=self.min_segment_length,
+                admissable_cpts=admissable_cpts,
+            )[1]
+
+            return refined_cpts
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
