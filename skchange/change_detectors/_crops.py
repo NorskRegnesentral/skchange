@@ -536,3 +536,33 @@ class CROPS_PELT(BaseChangeDetector):
             )
 
             return refined_change_points
+
+    @classmethod
+    def get_test_params(cls, parameter_set: str = "default") -> dict:
+        """Get test parameters for the CROPS algorithm."""
+        from skchange.costs import L2Cost
+
+        return [
+            {
+                "cost": L2Cost(),
+                "min_penalty": 0.5,
+                "max_penalty": 50.0,
+                "segmentation_selection": "bic",
+                "min_segment_length": 5,
+                "split_cost": 0.0,
+                "percent_pruning_margin": 0.0,
+                "middle_penalty_nudge": 1.0e-4,
+                "drop_pruning": False,
+            },
+            {
+                "cost": L2Cost(),
+                "min_penalty": 1.0,
+                "max_penalty": 10.0,
+                "segmentation_selection": "elbow",
+                "min_segment_length": 2,
+                "split_cost": 0.0,
+                "percent_pruning_margin": 0.0,
+                "middle_penalty_nudge": 1.0e-4,
+                "drop_pruning": True,
+            },
+        ]
