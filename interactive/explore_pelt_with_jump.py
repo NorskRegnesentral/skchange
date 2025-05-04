@@ -4,7 +4,7 @@ import ruptures as rpt
 from ruptures.base import BaseCost as rpt_BaseCost
 
 from skchange.change_detectors import PELT, SeededBinarySegmentation
-from skchange.change_detectors._crops import CROPS_PELT, GenericCROPS, JumpCost
+from skchange.change_detectors._crops import CROPS_PELT, JumpCost
 from skchange.change_detectors._pelt import (
     run_improved_pelt_array_based,
     run_pelt_with_jump,

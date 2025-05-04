@@ -1,5 +1,5 @@
 from skchange.change_detectors import PELT, SeededBinarySegmentation
-from skchange.change_detectors._crops import CROPS_PELT, GenericCROPS
+from skchange.change_detectors._crops import CROPS_PELT
 from skchange.change_scores._from_cost import to_change_score
 from skchange.costs import GaussianCost, L1Cost, L2Cost
 from skchange.datasets import generate_alternating_data

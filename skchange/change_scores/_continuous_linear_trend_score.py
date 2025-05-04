@@ -101,9 +101,9 @@ def continuous_piecewise_linear_trend_squared_contrast(
     # Assume 'start' is the first index of the data, perform inner product with the
     # desired segment of the data to get the cost.
     assert (
-        first_interval_inclusive_start + 1
+        first_interval_inclusive_start
         < second_interval_inclusive_start
-        < non_inclusive_end
+        < non_inclusive_end - 1
     )
 
     ## Translate named parameters to the NOT-paper sytax.

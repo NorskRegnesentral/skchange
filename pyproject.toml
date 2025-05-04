@@ -55,6 +55,11 @@ all_extras = [
     "numba>=0.61,<0.62",
 ]
 
+test = [
+    "pytest",
+    "pytest-cov",
+    "ruptures"
+]
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"
 dev = [
