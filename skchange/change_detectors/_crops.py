@@ -288,7 +288,8 @@ class CROPS_PELT(BaseChangeDetector):
             change_in_slope_df = self.change_points_metadata_[
                 ["num_change_points", "optimum_value"]
             ].copy()
-            # Subrtract the minimum value from the optimum value to improve conditioning.
+            # Subrtract the minimum value from the optimum value
+            # to improve conditioning number of linreg problems.
             change_in_slope_df["optimum_value"] = (
                 change_in_slope_df["optimum_value"]
                 - change_in_slope_df["optimum_value"].min()
