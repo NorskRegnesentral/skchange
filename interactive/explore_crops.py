@@ -116,7 +116,7 @@ assert np.diff(with_end_jump_rpt_pelt_cpts).min() >= jump_step
 # for each 'JUMP' change point?
 change_point_detector = CROPS_PELT(
     cost=cost,
-    selection_criterion="elbow",
+    segmentation_selection="elbow",
     min_penalty=min_penalty,
     max_penalty=max_penalty,
     min_segment_length=min_segment_length,
@@ -136,7 +136,7 @@ direct_results["optimal_value"] = direct_results["segmentation_cost"] + direct_r
 # BIC selection criterion:
 bic_crops_model = CROPS_PELT(
     cost=cost,
-    selection_criterion="bic",
+    segmentation_selection="bic",
     min_penalty=min_penalty,
     max_penalty=max_penalty,
     min_segment_length=min_segment_length,

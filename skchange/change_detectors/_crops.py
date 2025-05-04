@@ -1,5 +1,6 @@
 """Implementation of the CROPS algorithm for path solutions to penalized CPD."""
 
+import warnings
 from functools import reduce
 
 import numpy as np
@@ -73,7 +74,15 @@ def format_crops_results(
             "segmentation_cost",
         ],
     )
+    penalty_change_point_metadata_df["num_change_points"] = (
+        penalty_change_point_metadata_df["num_change_points"].astype(int)
+    )
 
+    penalty_change_point_metadata_df["optimum_value"] = (
+        penalty_change_point_metadata_df["segmentation_cost"]
+        + penalty_change_point_metadata_df["penalty"]
+        * (penalty_change_point_metadata_df["num_change_points"] + 1)
+    )
     return penalty_change_point_metadata_df, change_points_dict
 
 
@@ -103,9 +112,16 @@ def segmentation_bic_value(cost: BaseCost, change_points: np.ndarray) -> float:
 
 
 def crops_elbow_score(
-    num_change_points_and_segmentation_cost_df: pd.DataFrame,
+    num_change_points_and_optimum_value_df: pd.DataFrame,
 ) -> pd.Series:
     """Calculate the elbow cost for a given segmentation.
+
+    Specifically, the elbow score is calculated as the evidence for a change
+    of slope in the segmentation cost as a function of the number of
+    change points, at each intermediate number of change points.
+    We cannot calculate the elbow score for the first and last number of
+    change points, as there are not enough segmentations to calculate a change
+    in slope before or after the first and last number of change points.
 
     Parameters
     ----------
@@ -119,19 +135,20 @@ def crops_elbow_score(
     pd.Series
         The elbow cost for each number of change points.
     """
-    num_segmentations = len(num_change_points_and_segmentation_cost_df)
+    num_segmentations = len(num_change_points_and_optimum_value_df)
     if num_segmentations < 3:
         # Not enough segmentations to calculate the elbow cost.
-        raise ValueError(
-            "Not enough segmentations to calculate the elbow cost. "
-            "Need at least 3 segmentations."
+        warnings.warn(
+            f"Not enough segmentations {num_segmentations} to calculate "
+            "the elbow cost. Returning -np.inf for all segmentations."
         )
+        return pd.Series([-np.inf] * num_segmentations)
 
     # Calculate the elbow (change in slope) cost for each number of change points:
     continuous_linear_trend_score = ContinuousLinearTrendScore(
         time_column="num_change_points"
     )
-    continuous_linear_trend_score.fit(num_change_points_and_segmentation_cost_df)
+    continuous_linear_trend_score.fit(num_change_points_and_optimum_value_df)
 
     # Construct cuts at all intermediate number of change points.
     # I.e. not at the first and last number of change points.
@@ -176,7 +193,7 @@ class CROPS_PELT(BaseChangeDetector):
         The minimum penalty to use.
     max_penalty : float
         The maximum penalty to use.
-    selection_criterion : str, default="bic"
+    segmentation_selection : str, default="bic"
         The selection criterion to use for selecting the
         best segmentation among the optimal segmentations for
         the penalty range `[min_penalty, max_penalty]`.
@@ -210,7 +227,7 @@ class CROPS_PELT(BaseChangeDetector):
         cost: BaseCost,
         min_penalty: float,
         max_penalty: float,
-        selection_criterion: str = "bic",
+        segmentation_selection: str = "bic",
         min_segment_length: int = 1,
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
@@ -223,16 +240,16 @@ class CROPS_PELT(BaseChangeDetector):
 
         self.min_penalty = min_penalty
         self.max_penalty = max_penalty
-        self.selection_criterion = selection_criterion
+        self.segmentation_selection = segmentation_selection
         self.min_segment_length = min_segment_length
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
         self.drop_pruning = drop_pruning
 
-        if selection_criterion not in ["bic", "elbow"]:
+        if segmentation_selection not in ["bic", "elbow"]:
             raise ValueError(
-                f"Invalid selection criterion: {selection_criterion}. "
+                f"Invalid selection criterion: {segmentation_selection}. "
                 "Must be one of ['bic', 'elbow']."
             )
 
@@ -266,7 +283,24 @@ class CROPS_PELT(BaseChangeDetector):
         """
         self.run_crops(X=X)
 
-        if self.selection_criterion == "bic":
+        if self.segmentation_selection == "elbow":
+            # Select the best segmentation using the elbow criterion.
+            change_in_slope_df = self.change_points_metadata_[
+                ["num_change_points", "optimum_value"]
+            ].copy()
+            # Subrtract the minimum value from the optimum value to improve conditioning.
+            change_in_slope_df["optimum_value"] = (
+                change_in_slope_df["optimum_value"]
+                - change_in_slope_df["optimum_value"].min()
+            )
+            self.change_points_metadata_["elbow_score"] = crops_elbow_score(
+                change_in_slope_df,
+            )
+            best_num_change_points = self.change_points_metadata_.sort_values(
+                by="elbow_score", ascending=False
+            )["num_change_points"].iloc[0]
+
+        elif self.segmentation_selection == "bic":
             # Select the best segmentation using the BIC criterion.
             self.change_points_metadata_["bic_value"] = self.change_points_metadata_[
                 "num_change_points"
@@ -280,16 +314,11 @@ class CROPS_PELT(BaseChangeDetector):
                 by="bic_value", ascending=True
             )["num_change_points"].iloc[0]
 
-        elif self.selection_criterion == "elbow":
-            # Select the best segmentation using the elbow criterion.
-            self.change_points_metadata_["elbow_score"] = crops_elbow_score(
-                self.change_points_metadata_[
-                    ["num_change_points", "segmentation_cost"]
-                ],
+        else:
+            raise ValueError(
+                f"Invalid selection criterion: {self.segmentation_selection}. "
+                "Must be one of ['bic', 'elbow']."
             )
-            best_num_change_points = self.change_points_metadata_.sort_values(
-                by="elbow_score", ascending=False
-            )["num_change_points"].iloc[0]
 
         return self.change_points_lookup_[best_num_change_points]
 
@@ -507,229 +536,3 @@ class CROPS_PELT(BaseChangeDetector):
             )
 
             return refined_change_points
-
-
-class GenericCROPS(BaseChangeDetector):
-    """CROPS algorithm for path solutions to penalized CPD.
-
-    Reference: https://arxiv.org/pdf/1412.3617
-
-    Parameters
-    ----------
-    cost : BaseCost
-        The cost function to use.
-    min_penalty : float
-        The minimum penalty to use.
-    max_penalty : float
-        The maximum penalty to use.
-    change_detector : BaseChangeDetector
-        The change point detector to use. For theoretical guarantees,
-        the change point detector should be a PELT-kind of detector,
-        which solves a linearly penalized optimal segmentation problem.
-        If None, will use the PELT detector. Default is None.
-    """
-
-    _tags = {
-        "authors": ["johannvk"],
-        "maintainers": ["johannvk"],
-        "fit_is_empty": True,
-    }
-
-    def __init__(
-        self,
-        change_detector: BaseChangeDetector,
-        min_penalty: float,
-        max_penalty: float,
-        segmentation_cost: BaseCost,
-    ):
-        super().__init__()
-        self.change_detector = change_detector
-        self.min_penalty = min_penalty
-        self.max_penalty = max_penalty
-        self.segmentation_cost: BaseCost = segmentation_cost
-
-    def run_change_point_prediction(self, penalty: float, X: np.ndarray) -> dict:
-        """Run the CROPS algorithm for path solutions to penalized CPD.
-
-        Parameters
-        ----------
-        X : np.ndarray
-            Data to search for change points in.
-
-        Returns
-        -------
-        cpd_results : dict
-            Dictionary with penalty values as keys and tuples of change points and cost
-            as values.
-        """
-        # change_point_detector = self.change_detector(cost=self.cost, penalty=penalty)
-        self.change_detector.update_penalty(penalty=penalty)
-        self.change_detector.fit(X)  # May be empty, but need to call fit at least once?
-        change_points = self.change_detector.predict(X)
-
-        return change_points
-
-    def _predict(self, X: np.ndarray):
-        """Run the CROPS algorithm for path solutions to penalized CPD.
-
-        Parameters
-        ----------
-        X : np.ndarray
-            Data to search for change points in.
-        """
-        cpd_results: dict[float, (np.ndarray, float)] = dict()
-        self.segmentation_cost.fit(X)
-
-        min_penalty_change_points = self.run_change_point_prediction(
-            penalty=self.min_penalty, X=X
-        )
-        num_min_penalty_change_points = len(min_penalty_change_points)
-
-        max_penalty_change_points = self.run_change_point_prediction(
-            penalty=self.max_penalty, X=X
-        )
-        num_max_penalty_change_points = len(max_penalty_change_points)
-
-        # Annoying to have to do this, but need to dig into the PELT object to get the
-        # segmentation cost.
-        # min_penalty_segmentation_cost = (
-        #     min_penalty_cpd._penalised_cost.scorer_.evaluate_interval(
-        #         min_penalty_change_points["ilocs"]
-        #     )
-        # )
-        min_penalty_segmentation_cost = self.segmentation_cost.evaluate_segmentation(
-            min_penalty_change_points["ilocs"]
-        )
-        max_penalty_segmentation_cost = self.segmentation_cost.evaluate_segmentation(
-            max_penalty_change_points["ilocs"]
-        )
-
-        cpd_results[self.min_penalty] = (
-            min_penalty_change_points,
-            min_penalty_segmentation_cost,
-        )
-        cpd_results[self.max_penalty] = (
-            max_penalty_change_points,
-            max_penalty_segmentation_cost,
-        )
-
-        if num_min_penalty_change_points <= num_max_penalty_change_points + 1:
-            # Less than two change points in difference between min and max penalty.
-            # No need to split the penalty intervals further.
-            return cpd_results
-
-        # Calculate the middle penalty value, to explore penalty interval further:
-        first_middle_penalty = (
-            max_penalty_segmentation_cost - min_penalty_segmentation_cost
-        ) / (num_min_penalty_change_points - num_max_penalty_change_points)
-
-        first_middle_penalty_change_points = self.run_change_point_prediction(
-            penalty=first_middle_penalty, X=X
-        )
-        num_first_middle_penalty_change_points = len(first_middle_penalty_change_points)
-        first_middle_penalty_segmentation_cost = (
-            self.segmentation_cost.evaluate_segmentation(
-                first_middle_penalty_change_points["ilocs"]
-            )
-        )
-        cpd_results[first_middle_penalty] = (
-            first_middle_penalty_change_points,
-            first_middle_penalty_segmentation_cost,
-        )
-
-        if num_first_middle_penalty_change_points == num_max_penalty_change_points:
-            # No need to split the penalty intervals further.
-            return cpd_results
-
-        # Want a Heap of some kind, so that we can pop and push intervals onto it.
-        penalty_intervals = [
-            (self.min_penalty, first_middle_penalty),
-            (first_middle_penalty, self.max_penalty),
-        ]
-
-        while len(penalty_intervals) > 0:
-            # Pop the interval with the lowest penalty.
-            low_penalty, high_penalty = penalty_intervals.pop(0)
-            low_penalty_change_points, low_penalty_segmentation_cost = cpd_results[
-                low_penalty
-            ]
-            high_penalty_change_points, high_penalty_segmentation_cost = cpd_results[
-                high_penalty
-            ]
-            if len(low_penalty_change_points) > (len(high_penalty_change_points) + 1):
-                # Need to compute the middle penalty value, to explore interval further:
-                middle_penalty = (
-                    (high_penalty_segmentation_cost - low_penalty_segmentation_cost)
-                    / (len(low_penalty_change_points) - len(high_penalty_change_points))
-                    * (
-                        1.0 + 1.0e-4
-                    )  # Nudge the penalty to avoid numerical instability.
-                )
-
-                middle_penalty_change_points = self.run_change_point_prediction(
-                    penalty=middle_penalty, X=X
-                )
-                middle_penalty_segmentation_cost = (
-                    self.segmentation_cost.evaluate_segmentation(
-                        middle_penalty_change_points["ilocs"]
-                    )
-                )
-                middle_penalty_matches_high_penalty = len(
-                    middle_penalty_change_points
-                ) == len(high_penalty_change_points)
-                middle_penalty_matches_low_penalty = len(
-                    middle_penalty_change_points
-                ) == len(low_penalty_change_points)
-                if middle_penalty_matches_high_penalty:
-                    # The same number of change points for penalties in the interval
-                    # [middle_penalty, high_penalty], or [low_penalty, middle_penalty].
-                    # Don't need to explore the penalty # intervals further.
-                    cpd_results[middle_penalty] = (
-                        middle_penalty_change_points,
-                        middle_penalty_segmentation_cost,
-                    )
-                    continue
-                elif middle_penalty_matches_low_penalty:
-                    # We're in a case where due to numerical instability, we have
-                    # the same number of change points for low_penalty and
-                    # middle_penalty, although we should have the same number
-                    # of change points for middle penalty and high_penalty.
-                    # And for middle_penalty + epsilon, we would get the same
-                    # number of change points as for high_penalty.
-
-                    # For change detectors that only solve the penalised optimization
-                    # problem approximately, we'll need to perform a linear search
-                    # from the 'middle_penalty' penalty to the 'high_penalty' penalty.
-                    # Until we fnd a penalty that gives us the same number of
-                    # change points as for for high_penalty, or at least a penalty
-                    # that gives fewer change points than for low_penalty.
-                    nudged_middle_penalty = middle_penalty * (1 + 1.0e-4)
-                    nudged_middle_penalty_change_points = (
-                        self.run_change_point_prediction(
-                            penalty=nudged_middle_penalty, X=X
-                        )
-                    )
-                    nudged_middle_penalty_segmentation_cost = (
-                        self.segmentation_cost.evaluate_segmentation(
-                            nudged_middle_penalty_change_points["ilocs"]
-                        )
-                    )
-
-                    cpd_results[nudged_middle_penalty] = (
-                        nudged_middle_penalty_change_points,
-                        nudged_middle_penalty_segmentation_cost,
-                    )
-                else:
-                    # Explore penalties above and below the middle penalty:
-                    penalty_intervals.append((low_penalty, middle_penalty))
-                    penalty_intervals.append((middle_penalty, high_penalty))
-
-                    # Sort the intervals by lower penalty:
-                    penalty_intervals.sort(key=lambda x: x[0])
-
-                    cpd_results[middle_penalty] = (
-                        middle_penalty_change_points,
-                        middle_penalty_segmentation_cost,
-                    )
-
-        return cpd_results

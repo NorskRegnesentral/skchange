@@ -64,7 +64,12 @@ def lin_reg_cont_piecewise_linear_trend_score(
         split_interval_linreg_res = np.linalg.lstsq(
             split_interval_trend_data, X[start:end, :]
         )
-        split_interval_squared_residuals = split_interval_linreg_res[1]
+        if (end - start) == 3 and split_interval_linreg_res[2] == 3:
+            # If the interval is only 3 points long (the minimum),
+            # and the model matrix is full rank, the residuals are zero.
+            split_interval_squared_residuals = np.zeros((n_columns,))
+        else:
+            split_interval_squared_residuals = split_interval_linreg_res[1]
 
         # By only regressing onto the first two columns, we can calculate the cost
         # without allowing for a change in slope at the split point.
