@@ -316,7 +316,7 @@ class CROPS_PELT(BaseChangeDetector):
             )["num_change_points"].iloc[0]
 
         else:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 f"Invalid selection criterion: {self.segmentation_selection}. "
                 "Must be one of ['bic', 'elbow']."
             )
@@ -437,7 +437,7 @@ class CROPS_PELT(BaseChangeDetector):
                     # Don't need to subdivide penalty intervals further.
                     continue
                 elif middle_penalty_matches_low_penalty:
-                    raise ValueError(
+                    raise ValueError(  # pragma: no cover
                         "PELT optimization has not been solved exactly! "
                         "Number of change points should be greater for the "
                         "middle penalty than for the low penalty. "
