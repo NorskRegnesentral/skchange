@@ -194,7 +194,7 @@ html_context = {
     "doc_path": "docs/source/",
 }
 html_sidebars = {
-    "**": ["sidebar-nav-bs.html", "sidebar-ethical-ads.html"],
+    "**": ["sidebar-nav-bs.html"],
     "index": [],
     "get_started": [],
     "search": [],
