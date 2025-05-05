@@ -187,7 +187,7 @@ html_theme_options = {
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "secondary_sidebar_items": {
-        "**/*": ["page-toc", "sourcelink"],
+        "**/*": ["page-toc"],
     },
 }
 html_context = {
