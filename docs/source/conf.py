@@ -9,12 +9,6 @@ import skchange
 
 pio.renderers.default = "notebook"  # Needed for plotly to render in Sphinx
 
-
-def setup(app):
-    """Set up Sphinx configuration."""
-    app.add_js_file("custom.js")
-
-
 # -- Project information
 
 project = "skchange"
@@ -59,7 +53,6 @@ extensions = [
 nbsphinx_allow_errors = True
 nbsphinx_execute = "always"
 nbsphinx_codecell_lexer = "ipython3"
-
 
 html_static_path = ["_static"]
 html_css_files = ["custom_notebook.css"]

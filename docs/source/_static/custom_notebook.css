@@ -50,7 +50,3 @@ div.nbinput {
 div.nbinput:not(:first-child) {
     margin-top: 1em;
 }
-
-.plotly-container {
-    width: 100% !important;
-}
