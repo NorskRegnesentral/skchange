@@ -186,6 +186,9 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "secondary_sidebar_items": {
+        "**/*": ["page-toc", "sourcelink"],
+    },
 }
 html_context = {
     "github_user": "NorskRegnesentral",
