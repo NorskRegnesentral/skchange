@@ -56,6 +56,9 @@ nbsphinx_codecell_lexer = "ipython3"
 
 html_static_path = ["_static"]
 html_css_files = ["custom_notebook.css"]
+html_js_files = [
+    "plotly_resize.js",  # plotly need to resize after the sidebars load.
+]
 
 # Recommended by sphinx_design when using the MyST Parser
 myst_enable_extensions = ["colon_fence"]
