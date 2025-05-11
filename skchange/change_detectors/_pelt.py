@@ -38,7 +38,6 @@ def run_improved_pelt_array_based(
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
     drop_pruning: bool = False,
-    verbose: int = 0,
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -70,9 +69,6 @@ def run_improved_pelt_array_based(
     drop_pruning: bool, optional
         If True, drop the pruning step. Reverts to optimal partitioning.
         Can be useful for debugging and testing.  By default set to False.
-    verbose : int, optional
-        Verbosity level. 0 = no output, 1 = some output, 2 = more output.
-        By default set to 0.
 
     Returns
     -------
@@ -111,9 +107,6 @@ def run_improved_pelt_array_based(
         -1, 1
     )
 
-    # Keep track of the number of cost evaluations:
-    num_cost_evaluations = len(non_changepoint_starts)
-
     for current_obs_ind in observation_indices:
         latest_start = current_obs_ind - min_segment_shift
         opt_cost_obs_ind = current_obs_ind[0] + 1
@@ -124,8 +117,6 @@ def run_improved_pelt_array_based(
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
         costs = cost.evaluate(cost_eval_intervals)
         agg_costs = np.sum(costs, axis=1)
-
-        num_cost_evaluations += len(cost_eval_starts)
 
         # Add the penalty for a new segment:
         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
@@ -160,18 +151,6 @@ def run_improved_pelt_array_based(
             ) | (cost_eval_starts >= latest_start - min_segment_length)
 
             cost_eval_starts = cost_eval_starts[new_start_inclusion_mask]
-
-    opt_part_cost_evaluations = len(non_changepoint_starts) + (
-        len(observation_indices) * (len(observation_indices) + 1) / 2
-    )
-    fraction_cost_evaluations_vs_opt_part = (
-        num_cost_evaluations / opt_part_cost_evaluations
-    )
-    if verbose > 0:
-        print(
-            "Fraction of cost evaluations vs. opt. part:"
-            f" {fraction_cost_evaluations_vs_opt_part:.2%}"
-        )
 
     return opt_cost[1:], get_changepoints(prev_cpts)
 
@@ -676,8 +655,6 @@ class PELT(BaseChangeDetector):
     drop_pruning : bool, optional, default=False
         If True, drop the pruning step. Reverts to optimal partitioning.
         Can be useful for debugging and testing. By default set to False.
-    verbose : int, optional, default=0
-        Verbosity level. 0 = no output, 1 = some output, 2 = more output.
 
     References
     ----------
@@ -711,7 +688,6 @@ class PELT(BaseChangeDetector):
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
         drop_pruning: bool = False,
-        verbose: int = 0,
     ):
         self.cost = cost
         self.penalty = penalty
@@ -720,7 +696,6 @@ class PELT(BaseChangeDetector):
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.drop_pruning = drop_pruning
-        self.verbose = verbose
         super().__init__()
 
         _cost = L2Cost() if cost is None else cost
@@ -791,18 +766,14 @@ class PELT(BaseChangeDetector):
         """
         self.fit_cost_and_penalty(X)
 
-        # opt_costs, changepoints = run_pelt_array_based(
         if self.jump and self.min_segment_length >= 2:
-            # Use the jump version of PELT
             opt_costs, changepoints = run_pelt_with_jump(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
                 jump_step=self.min_segment_length,
                 split_cost=self.split_cost,
-                percent_pruning_margin=self.percent_pruning_margin,
                 drop_pruning=self.drop_pruning,
             )
-
         else:
             opt_costs, changepoints = run_improved_pelt_array_based(
                 cost=self.fitted_cost,
@@ -811,7 +782,6 @@ class PELT(BaseChangeDetector):
                 split_cost=self.split_cost,
                 percent_pruning_margin=self.percent_pruning_margin,
                 drop_pruning=self.drop_pruning,
-                verbose=self.verbose,
             )
 
         # Store the scores for introspection without recomputing using transform_scores

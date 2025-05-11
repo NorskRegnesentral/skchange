@@ -736,3 +736,98 @@ def test_invalid_costs():
         cost = L2Cost()
         cost.set_tags(is_penalised=True)  # Simulate a penalised score
         PELT(cost=cost)
+
+
+@pytest.mark.parametrize("min_segment_length", [3, 5, 10])
+def test_pelt_with_jump(cost: BaseCost, penalty: float, min_segment_length: int):
+    """Test PELT with jump parameter enabled and min_segment_length > 2."""
+
+    # Run PELT with jump=True
+    pelt_model = PELT(
+        cost=cost,
+        min_segment_length=min_segment_length,
+        penalty=penalty,
+        jump=True,
+    )
+    pelt_model.fit(alternating_sequence)
+    pelt_changepoints = pelt_model.predict(alternating_sequence)["ilocs"].to_numpy()
+
+    assert np.all(pelt_changepoints % min_segment_length == 0)
+
+    # Compare with ruptures implementation for validation
+    rpt_model = rpt.Pelt(
+        model="l2", min_size=min_segment_length, jump=min_segment_length
+    )
+    rpt_changepoints = np.array(
+        rpt_model.fit_predict(alternating_sequence, pen=penalty)[:-1]
+    )
+
+    # Check if our implementation finds reasonable changepoints:
+    assert len(pelt_changepoints) > 0
+
+    assert len(pelt_changepoints) == len(rpt_changepoints)
+    assert np.all(pelt_changepoints == rpt_changepoints)
+
+
+@pytest.mark.parametrize("min_segment_length", [3, 5, 10])
+def test_refine_change_points_decreases_segmentation_cost(
+    penalty: float, min_segment_length: int
+):
+    """Test refine_change_points decreases segmentation cost after PELT(jump=True)."""
+    gaussian_cost = GaussianCost()
+
+    # Run PELT with jump=True, and GaussianCost.
+    pelt_model = PELT(
+        cost=gaussian_cost,
+        min_segment_length=min_segment_length,
+        penalty=penalty,
+        jump=True,
+    )
+    pelt_model.fit(alternating_sequence)
+
+    # Get the original jump-step based changepoints
+    initial_changepoints = pelt_model.predict(alternating_sequence)["ilocs"].to_numpy()
+
+    # Verify that the initial changepoints are at jump-step positions
+    assert np.all(initial_changepoints % min_segment_length == 0), (
+        "Initial changepoints should be at multiples of min_segment_length"
+    )
+
+    # Calculate initial segmentation cost
+    gaussian_cost.fit(alternating_sequence)
+    initial_segmentation_cost = (
+        gaussian_cost.evaluate_segmentation(initial_changepoints)
+        + (len(initial_changepoints) + 1) * penalty
+    )
+
+    # Refine the changepoints using refine_change_points
+    refined_changepoints = pelt_model.refine_change_points(
+        initial_changepoints,
+        alternating_sequence,
+        change_point_margin=min_segment_length,
+    )
+
+    # Calculate refined segmentation cost
+    refined_segmentation_cost = (
+        gaussian_cost.evaluate_segmentation(refined_changepoints)
+        + (len(refined_changepoints) + 1) * penalty
+    )
+
+    # The refined segmentation cost should be less than or equal to the initial cost
+    assert refined_segmentation_cost <= initial_segmentation_cost, (
+        f"Refined segmentation cost ({refined_segmentation_cost}) should be less than "
+        f"or equal to initial segmentation cost ({initial_segmentation_cost})"
+    )
+
+    # Check if there's actual refinement happening (changepoints should differ)
+    if refined_segmentation_cost < initial_segmentation_cost:
+        assert not np.array_equal(initial_changepoints, refined_changepoints), (
+            "Refined changepoints should differ from initial changepoints."
+        )
+
+        # Verify that refined changepoints are not constrained to jump-step positions
+        if len(refined_changepoints) > 0:
+            non_jump_step_cpts = np.any(refined_changepoints % min_segment_length != 0)
+            assert non_jump_step_cpts, (
+                "Some refined changepoints should not be at jump-step positions"
+            )
