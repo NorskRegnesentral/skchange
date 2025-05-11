@@ -3,7 +3,6 @@
 import time
 
 import numpy as np
-import pandas as pd
 import pytest
 import ruptures as rpt
 from ruptures.base import BaseCost as rpt_BaseCost

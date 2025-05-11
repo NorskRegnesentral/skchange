@@ -12,14 +12,12 @@ import numpy as np
 import ruptures as rpt
 from ruptures.base import BaseCost as rpt_BaseCost
 
-from skchange.change_detectors import PELT, SeededBinarySegmentation
+from skchange.change_detectors import PELT
 from skchange.change_detectors._crops import CROPS_PELT
 from skchange.change_detectors._pelt import (
-    run_improved_pelt_array_based,
     run_restricted_optimal_partitioning,
 )
-from skchange.change_scores._from_cost import to_change_score
-from skchange.costs import GaussianCost, L1Cost, L2Cost
+from skchange.costs import GaussianCost
 from skchange.datasets import generate_alternating_data
 
 # %% Testin out the "automatic" elbow detection method:

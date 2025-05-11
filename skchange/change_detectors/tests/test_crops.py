@@ -1,10 +1,8 @@
 import numpy as np
 import pytest
 
-from skchange.change_detectors import PELT, SeededBinarySegmentation
 from skchange.change_detectors._crops import CROPS_PELT
-from skchange.change_scores._from_cost import to_change_score
-from skchange.costs import GaussianCost, L1Cost, L2Cost
+from skchange.costs import L2Cost
 from skchange.datasets import generate_alternating_data
 
 
@@ -185,6 +183,6 @@ def test_retrieve_refined_change_points():
     )
 
     # Check that the results are as expected:
-    assert np.all(refined_change_points == np.array([88, 176])), (
-        f"Expected [88, 176], got {refined_change_points}"
-    )
+    assert np.all(
+        refined_change_points == np.array([88, 176])
+    ), f"Expected [88, 176], got {refined_change_points}"
