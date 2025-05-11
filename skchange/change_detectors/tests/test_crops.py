@@ -39,7 +39,7 @@ def test_pelt_crops():
 
 
 def test_pelt_crops_raises_on_wrong_segmentation_selection():
-    """Test that the CROPS algorithm raises an error when the segmentation selection is wrong."""
+    """Test CROPS algorithm raises error when segmentation selection is wrong."""
     cost = L2Cost()
     min_penalty = 1.0
     max_penalty = 2.0
@@ -55,7 +55,7 @@ def test_pelt_crops_raises_on_wrong_segmentation_selection():
 
 
 def test_retrieve_change_points_before_predict_raises():
-    """Test that the retrieve_change_points method raises an error if called before predict."""
+    """Test retrieve_change_points method raises an error if called before predict."""
     cost = L2Cost()
     min_penalty = 1.0
     max_penalty = 2.0

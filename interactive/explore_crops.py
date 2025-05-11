@@ -300,7 +300,8 @@ else:
 # restricted_to_min_n_percent_decrease_from_top_df = pd.concat(
 #     [
 #         with_no_change_points_df[
-#             with_no_change_points_df["percent_decrease_from_top"] > min_percent_decrease
+#             (with_no_change_points_df["percent_decrease_from_top"]
+#              > min_percent_decrease)
 #         ]
 #         .copy()
 #         .reset_index(drop=True),

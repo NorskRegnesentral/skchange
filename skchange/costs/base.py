@@ -111,8 +111,6 @@ class BaseCost(BaseIntervalScorer):
     def evaluate_segmentation(self, segmentation: np.ndarray | pd.Series) -> float:
         """Evaluate the cost of a segmentation.
 
-        IDEA: Implement 'CROPS' algoritghm: https://arxiv.org/pdf/1412.3617
-
         Parameters
         ----------
         segmentation : np.ndarray
@@ -150,6 +148,7 @@ class BaseCost(BaseIntervalScorer):
         cuts = np.vstack((segmentation[:-1], segmentation[1:])).T
         # Currently supports only "multivariate" evaluation type, returns a single
         # cost value.
+        # TODO: Support univariate evaluation type.
         return np.sum(self.evaluate(cuts))
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
@@ -227,21 +226,3 @@ class BaseCost(BaseIntervalScorer):
             raise ValueError("The input data has not been set.")
         else:
             return self._X.shape[0]
-
-    # def _check_cuts(self, cuts: np.ndarray) -> np.ndarray:
-    #     """Check cuts for compatibility.
-    #     Parameters
-    #     ----------
-    #     cuts : np.ndarray
-    #         A 2D array of integer location-based cuts to evaluate. Each row in the array
-    #         must be sorted in increasing order.
-    #     Returns
-    #     -------
-    #     cuts : np.ndarray
-    #         The unmodified input `cuts` array.
-    #     Raises
-    #     ------
-    #     ValueError
-    #         If the `cuts` are not compatible.
-    #     """
-    #     return check_cost_cuts_array(cuts, min_interval_length=self.min_size)

@@ -1,3 +1,4 @@
+"""Explore PELT with jump step and CROPS with JumpCost."""
 # %%
 
 from skchange.change_detectors._crops import JumpCost

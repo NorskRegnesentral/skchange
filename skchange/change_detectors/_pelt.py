@@ -146,11 +146,15 @@ def run_improved_pelt_array_based(
                     current_obs_ind_opt_cost
                     + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
                 )
-                + penalty  # Moved from 'negative' on left side to 'positive' on right side.
-                - split_cost  # Remove from right side of inequality.
+                # Moved from 'negative' on left side
+                # to 'positive' on right side.
+                + penalty
+                # Remove from right side of inequality.
+                - split_cost
             )
 
-            # Only prune starts at least 2*min_segment_length before current observation:
+            # Only prune starts at least 2*min_segment_length
+            # before current observation:
             new_start_inclusion_mask = (
                 candidate_opt_costs <= start_inclusion_threshold
             ) | (cost_eval_starts >= latest_start - min_segment_length)
@@ -224,7 +228,6 @@ def run_pelt_with_jump(
     # Evolving set of admissible segment starts.
     cost_eval_starts = np.array([], dtype=np.int64)
 
-    # observation_indices = np.arange(start=0, stop=n_samples - jump_step, step=jump_step)
     observation_interval_starts = np.arange(
         start=0, stop=n_samples - jump_step + 1, step=jump_step
     )
@@ -463,8 +466,11 @@ def run_pelt_array_based(
                     current_obs_ind_opt_cost
                     + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
                 )
-                + penalty  # Moved from 'negative' on left side to 'positive' on right side.
-                - split_cost  # Remove from right side of inequality.
+                # Moved from 'negative' on left side to
+                # 'positive' on right side.
+                + penalty
+                # Remove from right side of inequality.
+                - split_cost
             )
 
             cost_eval_starts = cost_eval_starts[
