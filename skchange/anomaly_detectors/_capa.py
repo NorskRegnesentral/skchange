@@ -13,7 +13,7 @@ from ..penalties import make_chi2_penalty, make_linear_chi2_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
@@ -233,6 +233,7 @@ class CAPA(BaseSegmentAnomalyDetector):
     _tags = {
         "capability:missing_values": False,
         "capability:multivariate": True,
+        "capability:identify_variables": False,  # Can be set to True in init.
         "fit_is_empty": True,
     }
 
@@ -285,7 +286,13 @@ class CAPA(BaseSegmentAnomalyDetector):
             required_tasks=["cost", "saving"],
             allow_penalised=True,
         )
-        if _point_score.min_size != 1:
+
+        if isinstance(_point_score.min_size, int) or (_point_score.min_size is None):
+            point_score_max_min_size = _point_score.min_size
+        else:
+            point_score_max_min_size = max(_point_score.min_size)
+
+        if not (point_score_max_min_size == 1):
             raise ValueError("`point_saving` must have `min_size == 1`.")
         _point_saving = to_saving(_point_score)
 
@@ -300,8 +307,10 @@ class CAPA(BaseSegmentAnomalyDetector):
                 make_default_penalty=_make_linear_chi2_penalty_from_score,
             )
 
-        check_larger_than(2, min_segment_length, "min_segment_length")
-        check_larger_than(min_segment_length, max_segment_length, "max_segment_length")
+        check_larger_than_or_equal(2, min_segment_length, "min_segment_length")
+        check_larger_than_or_equal(
+            min_segment_length, max_segment_length, "max_segment_length"
+        )
 
         self.clone_tags(_segment_saving, ["distribution_type"])
         self.set_tags(**{"capability:identify_variables": find_affected_components})

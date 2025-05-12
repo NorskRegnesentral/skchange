@@ -1,8 +1,57 @@
 """Cost functions as interval evaluators."""
 
 import numpy as np
+import pandas as pd
 
 from ..base import BaseIntervalScorer
+
+
+def check_cost_cuts_array(cuts: np.ndarray, min_interval_length: int) -> np.ndarray:
+    """Check array of cost cuts.
+
+    Parameters
+    ----------
+    cuts : np.ndarray
+        Array of cuts to check.
+    min_size : int
+        Minimum size of the intervals obtained by the cuts.
+
+    Returns
+    -------
+    cuts : np.ndarray
+        The unmodified input cuts array.
+
+    Raises
+    ------
+    ValueError
+        If the cuts does not meet the requirements.
+    """
+    cost_cuts_last_dim_size = 2
+    if cuts.ndim != 2:
+        raise ValueError("The cuts must be a 2D array.")
+
+    if not np.issubdtype(cuts.dtype, np.integer):
+        raise ValueError("The cuts must be of integer type.")
+
+    if cuts.shape[-1] != cost_cuts_last_dim_size:
+        raise ValueError(
+            "The cuts must be specified as an array with length "
+            f"{cost_cuts_last_dim_size} in the last dimension."
+        )
+
+    start_split_diffs = cuts[:, 1] - cuts[:, 0]
+    end_split_diffs = cuts[:, 1] - cuts[:, 0]
+    if not np.all(start_split_diffs >= min_interval_length):
+        raise ValueError(
+            "All `split - start` differences in `cuts` must be strictly increasing and "
+            f"each entry must be more than min_size={min_interval_length} apart."
+        )
+    if not np.all(end_split_diffs >= min_interval_length + 1):
+        raise ValueError(
+            "All `end - split` differences in `cuts` must be strictly increasing and "
+            f"each entry must be more than min_size+1={min_interval_length + 1} apart."
+        )
+    return cuts
 
 
 class BaseCost(BaseIntervalScorer):
@@ -58,6 +107,49 @@ class BaseCost(BaseIntervalScorer):
         to make sure `param` is valid relative to the input data `X`.
         """
         return param
+
+    def evaluate_segmentation(self, segmentation: np.ndarray | pd.Series) -> float:
+        """Evaluate the cost of a segmentation.
+
+        Parameters
+        ----------
+        segmentation : np.ndarray
+            A 1D array with the indices of the change points in the input data.
+            Each change point signifies the first index of a new segment.
+
+        Returns
+        -------
+        cost : float
+            The cost of the segmentation.
+        """
+        if isinstance(segmentation, pd.Series):
+            segmentation = segmentation.to_numpy()
+        if segmentation.ndim != 1:
+            try:
+                segmentation = segmentation.reshape(-1)
+            except Exception as e:
+                raise ValueError(
+                    "The segmentation must be convertible to a 1D array."
+                ) from e
+
+        # Prepend 0 and append the length of the data to the segmentation:
+        # This is done to ensure that the first and last segments are included.
+        # The segmentation is assumed to be sorted in increasing order.
+        if np.any(np.diff(segmentation) <= 0):
+            raise ValueError(
+                "The segmentation must be a 1D array with strictly increasing entries."
+            )
+        if len(segmentation) == 0:
+            segmentation = np.array([0, self._X.shape[0]])
+        elif segmentation[0] != 0 and segmentation[-1] != self._X.shape[0]:
+            segmentation = np.concatenate(
+                (np.array([0]), segmentation, np.array([self._X.shape[0]]))
+            )
+        cuts = np.vstack((segmentation[:-1], segmentation[1:])).T
+        # Currently supports only "multivariate" evaluation type, returns a single
+        # cost value.
+        # TODO: Support univariate evaluation type.
+        return np.sum(self.evaluate(cuts))
 
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the cost on a set of intervals.
@@ -127,3 +219,10 @@ class BaseCost(BaseIntervalScorer):
             the corresponding input data column.
         """
         raise NotImplementedError("abstract method")
+
+    def n_samples(self) -> int:
+        """Return the number of samples in the input data."""
+        if self._X is None:
+            raise ValueError("The input data has not been set.")
+        else:
+            return self._X.shape[0]

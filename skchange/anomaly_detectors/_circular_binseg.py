@@ -15,7 +15,7 @@ from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
 from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
@@ -225,8 +225,8 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             )
         )
 
-        check_larger_than(1.0, self.min_segment_length, "min_segment_length")
-        check_larger_than(
+        check_larger_than_or_equal(1.0, self.min_segment_length, "min_segment_length")
+        check_larger_than_or_equal(
             2 * self.min_segment_length, self.max_interval_length, "max_interval_length"
         )
         check_in_interval(
@@ -266,9 +266,15 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         """
         self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
         self.fitted_score.fit(X)
+
+        if isinstance(self.fitted_score.min_size, int):
+            fitted_score_min_size = self.fitted_score.min_size
+        else:
+            fitted_score_min_size = max(self.fitted_score.min_size)
+
         X = check_data(
             X,
-            min_length=2 * self.fitted_score.min_size,
+            min_length=2 * fitted_score_min_size,
             min_length_name="2 * fitted_change_score.min_size",
         )
 

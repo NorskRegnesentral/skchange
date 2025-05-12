@@ -13,7 +13,7 @@ from ..utils.numba import njit
 from ..utils.numba.general import where
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_in_interval, check_larger_than
+from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
 from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
@@ -48,9 +48,12 @@ def transform_moving_window(
     penalised_score.check_is_fitted()
 
     n_samples = penalised_score._X.shape[0]
-    cuts = make_extended_moving_window_cuts(
-        n_samples, bandwidth, penalised_score.min_size
-    )
+    if isinstance(penalised_score.min_size, int):
+        max_min_size = penalised_score.min_size
+    else:
+        max_min_size = max(penalised_score.min_size)
+
+    cuts = make_extended_moving_window_cuts(n_samples, bandwidth, max_min_size)
     scores = np.repeat(np.nan, n_samples)
     scores[cuts[:, 1]] = penalised_score.evaluate(cuts).reshape(-1)
     return scores
@@ -263,7 +266,7 @@ class MovingWindow(BaseChangeDetector):
         )
 
         if isinstance(bandwidth, int):
-            check_larger_than(1, bandwidth, "bandwidth")
+            check_larger_than_or_equal(1, bandwidth, "bandwidth")
             self._bandwidth = [bandwidth]
         elif isinstance(bandwidth, list):
             if len(bandwidth) == 0:
@@ -284,7 +287,7 @@ class MovingWindow(BaseChangeDetector):
             min_detection_fraction,
             "min_detection_fraction",
         )
-        check_larger_than(0, local_optimum_fraction, "local_optimum_fraction")
+        check_larger_than_or_equal(0, local_optimum_fraction, "local_optimum_fraction")
 
         valid_selection_methods = ["local_optimum", "detection_length"]
         if selection_method not in valid_selection_methods:

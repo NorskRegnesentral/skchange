@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than_or_equal
 
 
 def make_bic_penalty(n_params: int, n: int, additional_cpts: int = 1) -> float:
@@ -29,9 +29,9 @@ def make_bic_penalty(n_params: int, n: int, additional_cpts: int = 1) -> float:
     float
         The BIC penalty value.
     """
-    check_larger_than(1, n_params, "n_params")
-    check_larger_than(1, n, "n")
-    check_larger_than(0, additional_cpts, "additional_cpts")
+    check_larger_than_or_equal(1, n_params, "n_params")
+    check_larger_than_or_equal(1, n, "n")
+    check_larger_than_or_equal(0, additional_cpts, "additional_cpts")
 
     return (n_params + additional_cpts) * np.log(n)
 
@@ -65,8 +65,8 @@ def make_chi2_penalty(n_params: int, n: int) -> float:
        segment and point anomaly detection. Journal of Computational and Graphical
        Statistics, 31(2), 574-585.
     """
-    check_larger_than(1, n_params, "n_params")
-    check_larger_than(1, n, "n")
+    check_larger_than_or_equal(1, n_params, "n_params")
+    check_larger_than_or_equal(1, n, "n")
 
     psi = np.log(n)
     return n_params + 2 * np.sqrt(n_params * psi) + 2 * psi

@@ -997,3 +997,24 @@ def test_large_timestamp_values():
     assert isinstance(
         detected_cps, pd.DataFrame
     ), "Should return valid changepoints with normalized timestamps"
+
+
+def test_three_point_segment():
+    """Test with a three-point segment."""
+    X = np.array([[1, 2], [2, 3], [3, 4]], dtype=float)
+    # Add some noise:
+    np.random.seed(0)  # For reproducibility
+    X += np.random.normal(0, 1.0, X.shape)  # Add some noise
+    starts = np.array([0])
+    splits = np.array([1])
+    ends = np.array([3])
+    times = np.arange(X.shape[0])
+
+    # Calculate scores using both methods
+    scores_func = analytical_cont_piecewise_linear_trend_score(starts, splits, ends, X)
+    scores_with_times = lin_reg_cont_piecewise_linear_trend_score(
+        starts, splits, ends, X, times
+    )
+    assert np.allclose(
+        scores_func, scores_with_times
+    ), f"Expected {scores_func}, got {scores_with_times}"
