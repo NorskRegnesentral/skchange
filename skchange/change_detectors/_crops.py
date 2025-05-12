@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ..change_detectors._pelt import (
-    run_improved_pelt_array_based,
+    run_pelt,
     run_pelt_with_jump,
     run_restricted_optimal_partitioning,
 )
@@ -288,6 +288,7 @@ class CROPS_PELT(BaseChangeDetector):
             change_in_slope_df = self.change_points_metadata_[
                 ["num_change_points", "optimum_value"]
             ].copy()
+
             # Subrtract the minimum value from the optimum value
             # to improve conditioning number of linreg problems.
             change_in_slope_df["optimum_value"] = (
@@ -345,7 +346,7 @@ class CROPS_PELT(BaseChangeDetector):
                 split_cost=self.split_cost,
             )
         else:
-            opt_cost, change_points = run_improved_pelt_array_based(
+            opt_cost, change_points = run_pelt(
                 self._cost,
                 penalty=penalty,
                 min_segment_length=self.min_segment_length,
@@ -437,7 +438,7 @@ class CROPS_PELT(BaseChangeDetector):
                     # Don't need to subdivide penalty intervals further.
                     continue
                 elif middle_penalty_matches_low_penalty:
-                    raise ValueError(  # pragma: no cover
+                    raise ValueError(
                         "PELT optimization has not been solved exactly! "
                         "Number of change points should be greater for the "
                         "middle penalty than for the low penalty. "

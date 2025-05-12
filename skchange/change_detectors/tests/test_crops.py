@@ -19,6 +19,7 @@ def test_pelt_crops():
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
+        min_segment_length=30,
     )
 
     # Generate test data:
@@ -30,6 +31,21 @@ def test_pelt_crops():
         variance=4.0,
         random_state=42,
     )
+
+    # Issues: non-restrictive pruning:
+    # - min_segment_length=30
+    # - high penalty: 50.0
+    # - middle penalty: np.float64(1.6562305936619783)
+    # - low penalty: np.float64(1.6120892290743671)
+
+    # Issues: with restrictive pruning.
+    # TODO: Look into when a difference from optimal partioning
+    # occurs. First time a potential change point start is pruned,
+    # that should not have been pruned.
+    # - min_segment_length=30
+    # high_penalty: 50.0
+    # middle_penalty: np.float64(1.6562305936619783)
+    # low_penalty: np.float64(1.6120892290743671)
 
     # Fit the change point detector:
     change_point_detector.fit(dataset)
@@ -183,6 +199,6 @@ def test_retrieve_refined_change_points():
     )
 
     # Check that the results are as expected:
-    assert np.all(
-        refined_change_points == np.array([88, 176])
-    ), f"Expected [88, 176], got {refined_change_points}"
+    assert np.all(refined_change_points == np.array([88, 176])), (
+        f"Expected [88, 176], got {refined_change_points}"
+    )

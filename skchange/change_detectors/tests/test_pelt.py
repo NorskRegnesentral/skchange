@@ -10,11 +10,8 @@ from ruptures.base import BaseCost as rpt_BaseCost
 from skchange.change_detectors._pelt import (
     PELT,
     get_changepoints,
-    run_improved_pelt_array_based,
+    run_pelt,
 )
-
-# from skchange.change_detectors._pelt import run_pelt_masked as run_pelt
-from skchange.change_detectors._pelt import run_improved_pelt_array_based as run_pelt
 from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
 from skchange.costs.base import BaseCost
@@ -108,6 +105,9 @@ def run_pelt_array_based(
     min_segment_length: int,
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
+    drop_pruning: bool = False,
+    opt_part_prev_cpts: np.ndarray = None,
+    opt_part_costs: np.ndarray = None,
 ) -> tuple[np.ndarray, list]:
     """Run the PELT algorithm.
 
@@ -195,25 +195,32 @@ def run_pelt_array_based(
         opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
-        # Trimming the admissible starts set: (reuse the array of optimal costs)
-        current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
-        # Handle cases where the optimal cost is negative:
-        abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-        start_inclusion_threshold = (
-            current_obs_ind_opt_cost
-            + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-        ) + penalty  # Moved from 'negative' on left side to 'positive' on right side.
+        # TODO: When is the optimal start at 'current_obs_ind' (63),
+        # removed from the admissible starts set?
+        if drop_pruning:
+            continue
+        else:
+            # Trimming the admissible starts set: (reuse the array of optimal costs)
+            current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
+            # Handle cases where the optimal cost is negative:
+            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+            start_inclusion_threshold = (
+                (
+                    current_obs_ind_opt_cost
+                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                )
+                + penalty
+            )  # Moved from 'negative' on left side to 'positive' on right side.
+            start_inclusion_mask = (
+                candidate_opt_costs + split_cost <= start_inclusion_threshold
+            )
+            cost_eval_starts = cost_eval_starts[
+                # Introduce a small tolerance to avoid numerical issues:
+                # candidate_opt_costs + split_cost <= start_inclusion_threshold
+                start_inclusion_mask
+            ]
 
-        old_start_inclusion_mask = (
-            candidate_opt_costs + split_cost <= start_inclusion_threshold
-        )
-        cost_eval_starts = cost_eval_starts[
-            # Introduce a small tolerance to avoid numerical issues:
-            # candidate_opt_costs + split_cost <= start_inclusion_threshold
-            old_start_inclusion_mask
-        ]
-
-    return opt_cost[1:], get_changepoints(prev_cpts), cost_eval_time
+    return opt_cost[1:], get_changepoints(prev_cpts), prev_cpts
 
 
 def run_pelt_masked(
@@ -651,7 +658,7 @@ def test_compare_with_ruptures_pelt_where_it_fails(
     """
     cost.fit(long_alternating_sequence)
 
-    opt_part_costs, opt_part_cpts = run_improved_pelt_array_based(
+    opt_part_costs, opt_part_cpts = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -659,6 +666,26 @@ def test_compare_with_ruptures_pelt_where_it_fails(
     )
     opt_part_min_value = (
         cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts) + 1) * penalty
+    )
+
+    opt_part_array_costs, opt_part_array_cpts, opt_part_array_prev_cpts = (
+        run_pelt_array_based(
+            cost,
+            penalty=penalty,
+            min_segment_length=min_segment_length,
+            drop_pruning=True,
+        )
+    )
+
+    pelt_array_based_costs, pelt_array_based_cpts, pelt_array_based_prev_cpts = (
+        run_pelt_array_based(
+            cost,
+            penalty=penalty,
+            min_segment_length=min_segment_length,
+            drop_pruning=False,
+            opt_part_costs=opt_part_array_costs,
+            opt_part_prev_cpts=opt_part_array_prev_cpts,
+        )
     )
 
     # Compare with 'improved PELT':
@@ -671,6 +698,27 @@ def test_compare_with_ruptures_pelt_where_it_fails(
         cost.evaluate_segmentation(skchange_pelt_cpts)
         + (len(skchange_pelt_cpts) + 1) * penalty
     )
+
+    non_improved_pelt_costs, non_improved_pelt_cpts = run_pelt(
+        cost,
+        penalty=penalty,
+        min_segment_length=min_segment_length,
+        restricted_pruning=False,
+        percent_pruning_margin=0.0,
+        drop_pruning=False,
+    )
+
+    # run_pelt_array_based()
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(2, 1, figsize=(10, 5))
+    ax[0].plot(long_alternating_sequence, label="Data")
+    ax[0].set_title("Data")
+    ax[0].legend()
+    ax[1].plot(opt_part_costs, label="Optimal Partitioning")
+    ax[1].set_title("Optimal Partitioning")
+    ax[1].legend()
+    fig.tight_layout()
 
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
     rpt_model.fit(long_alternating_sequence)
