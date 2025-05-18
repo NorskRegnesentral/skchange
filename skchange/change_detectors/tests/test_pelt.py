@@ -85,7 +85,8 @@ def pelt_partition_cost(
 
     # Add number of 'segments' * penalty to the cost.
     # Instead of number of 'changepoints' * penalty.
-    total_cost = penalty * (len(changepoints) + 1)
+    # total_cost = penalty * (len(changepoints) + 1)
+    total_cost = penalty * len(changepoints)
     np_changepoints = np.asarray(changepoints, dtype=np.int64)
 
     interval_starts = np.concatenate((np.array([0]), np_changepoints), axis=0)
@@ -603,7 +604,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         drop_pruning=True,
     )
     opt_part_min_value = (
-        cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts) + 1) * penalty
+        cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts)) * penalty
     )
 
     skchange_pelt_costs, skchange_pelt_cpts = run_pelt(
@@ -613,7 +614,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
     )
     skchange_pelt_min_value = (
         cost.evaluate_segmentation(skchange_pelt_cpts)
-        + (len(skchange_pelt_cpts) + 1) * penalty
+        + (len(skchange_pelt_cpts)) * penalty
     )
 
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
@@ -623,7 +624,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
     )
     dyn_num_opt_part_cpts_min_value = (
         cost.evaluate_segmentation(dyn_rpt_num_opt_part_cpts)
-        + (len(dyn_rpt_num_opt_part_cpts) + 1) * penalty
+        + (len(dyn_rpt_num_opt_part_cpts)) * penalty
     )
 
     ruptures_pelt_cpts = np.array(
@@ -633,7 +634,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
     )
     rpt_pelt_min_value = (
         cost.evaluate_segmentation(ruptures_pelt_cpts)
-        + (len(ruptures_pelt_cpts) + 1) * penalty
+        + (len(ruptures_pelt_cpts)) * penalty
     )
     assert np.all(skchange_pelt_cpts == opt_part_cpts)
     assert np.all(skchange_pelt_cpts == dyn_rpt_num_opt_part_cpts)
@@ -665,7 +666,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         drop_pruning=True,
     )
     opt_part_min_value = (
-        cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts) + 1) * penalty
+        cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts)) * penalty
     )
 
     # Compare with 'improved PELT':
@@ -676,7 +677,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     )
     skchange_pelt_min_value = (
         cost.evaluate_segmentation(skchange_pelt_cpts)
-        + (len(skchange_pelt_cpts) + 1) * penalty
+        + (len(skchange_pelt_cpts)) * penalty
     )
 
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
@@ -686,7 +687,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     )
     dyn_num_opt_part_cpts_min_value = (
         cost.evaluate_segmentation(dyn_rpt_num_opt_part_cpts)
-        + (len(dyn_rpt_num_opt_part_cpts) + 1) * penalty
+        + (len(dyn_rpt_num_opt_part_cpts)) * penalty
     )
 
     ruptures_pelt_cpts = np.array(
@@ -696,7 +697,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     )
     rpt_pelt_min_value = (
         cost.evaluate_segmentation(ruptures_pelt_cpts)
-        + (len(ruptures_pelt_cpts) + 1) * penalty
+        + (len(ruptures_pelt_cpts)) * penalty
     )
     assert np.all(skchange_pelt_cpts == opt_part_cpts)
     assert np.all(skchange_pelt_cpts == dyn_rpt_num_opt_part_cpts)
@@ -804,7 +805,7 @@ def test_refine_change_points_decreases_segmentation_cost(
     gaussian_cost.fit(alternating_sequence)
     initial_segmentation_cost = (
         gaussian_cost.evaluate_segmentation(initial_changepoints)
-        + (len(initial_changepoints) + 1) * penalty
+        + (len(initial_changepoints)) * penalty
     )
 
     # Refine the changepoints using refine_change_points
@@ -817,7 +818,7 @@ def test_refine_change_points_decreases_segmentation_cost(
     # Calculate refined segmentation cost
     refined_segmentation_cost = (
         gaussian_cost.evaluate_segmentation(refined_changepoints)
-        + (len(refined_changepoints) + 1) * penalty
+        + (len(refined_changepoints)) * penalty
     )
 
     # The refined segmentation cost should be less than or equal to the initial cost

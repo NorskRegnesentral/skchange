@@ -85,7 +85,8 @@ def run_pelt(
     min_segment_shift = min_segment_length - 1
 
     # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
-    opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
+    # opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
+    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
 
     # Cannot compute the cost for the first 'min_segment_shift' elements:
     opt_cost[1:min_segment_length] = np.inf
@@ -98,7 +99,7 @@ def run_pelt(
     )
     costs = cost.evaluate(non_changepoint_intervals)
     agg_costs = np.sum(costs, axis=1)
-    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
+    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
@@ -217,8 +218,7 @@ def run_improved_pelt(
     n_samples = cost.n_samples()
     min_segment_shift = min_segment_length - 1
 
-    # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
-    opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
+    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
 
     # Cannot compute the cost for the first 'min_segment_shift' elements:
     opt_cost[1:min_segment_length] = np.inf
@@ -231,7 +231,7 @@ def run_improved_pelt(
     )
     costs = cost.evaluate(non_changepoint_intervals)
     agg_costs = np.sum(costs, axis=1)
-    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
+    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
@@ -255,7 +255,8 @@ def run_improved_pelt(
             starts_to_prune = pruning_indices[current_obs_ind % min_segment_length]
             # Delete the start indices that can be pruned:
             cost_eval_starts = np.delete(
-                cost_eval_starts, np.where(np.isin(cost_eval_starts, starts_to_prune))[0]
+                cost_eval_starts,
+                np.where(np.isin(cost_eval_starts, starts_to_prune))[0],
             )
 
         cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))

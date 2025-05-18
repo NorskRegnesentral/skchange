@@ -47,6 +47,7 @@ def format_crops_results(
     # keep the segmentation with the lowest penalty. So we sort by number of
     # change points, and then negative penalty, in reverse order.
     list_cpd_results.sort(key=lambda x: (x[0], -x[1]), reverse=True)
+
     # If there are solutions that only differ by a single changepoint when we increase
     # the penalty, we can compute the penalty for which the number of change points
     # changes when increasing penalty from the lower value to the higher value.
@@ -100,19 +101,18 @@ def format_crops_results(
             "segmentation_cost",
         ],
     )
+
+    # Ensure that the number of change points is an integer:
     penalty_change_point_metadata_df["num_change_points"] = (
         penalty_change_point_metadata_df["num_change_points"].astype(int)
     )
-    # TODO: Go through all solutions with only a single change point
-    # more changepoint when increasing penalty. There we can compute the threshold
-    # penalty for which the number of change points changes (when increasing penalty)
-    # from the lower value.
+
     penalty_change_point_metadata_df["optimum_value"] = (
         penalty_change_point_metadata_df["segmentation_cost"]
         + penalty_change_point_metadata_df["penalty"]
-        * (penalty_change_point_metadata_df["num_change_points"])
-        # * (penalty_change_point_metadata_df["num_change_points"] + 1)
+        * penalty_change_point_metadata_df["num_change_points"]
     )
+
     return penalty_change_point_metadata_df, change_points_dict
 
 
