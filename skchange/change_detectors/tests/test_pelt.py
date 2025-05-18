@@ -646,7 +646,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
 
 
 @pytest.mark.parametrize("min_segment_length", [31, 32])
-def test_compare_with_ruptures_pelt_where_it_fails(
+def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     cost: BaseCost, penalty: float, min_segment_length: int
 ):
     """
@@ -668,26 +668,6 @@ def test_compare_with_ruptures_pelt_where_it_fails(
         cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts) + 1) * penalty
     )
 
-    opt_part_array_costs, opt_part_array_cpts, opt_part_array_prev_cpts = (
-        run_pelt_array_based(
-            cost,
-            penalty=penalty,
-            min_segment_length=min_segment_length,
-            drop_pruning=True,
-        )
-    )
-
-    pelt_array_based_costs, pelt_array_based_cpts, pelt_array_based_prev_cpts = (
-        run_pelt_array_based(
-            cost,
-            penalty=penalty,
-            min_segment_length=min_segment_length,
-            drop_pruning=False,
-            opt_part_costs=opt_part_array_costs,
-            opt_part_prev_cpts=opt_part_array_prev_cpts,
-        )
-    )
-
     # Compare with 'improved PELT':
     skchange_pelt_costs, skchange_pelt_cpts = run_pelt(
         cost,
@@ -698,27 +678,6 @@ def test_compare_with_ruptures_pelt_where_it_fails(
         cost.evaluate_segmentation(skchange_pelt_cpts)
         + (len(skchange_pelt_cpts) + 1) * penalty
     )
-
-    non_improved_pelt_costs, non_improved_pelt_cpts = run_pelt(
-        cost,
-        penalty=penalty,
-        min_segment_length=min_segment_length,
-        restricted_pruning=False,
-        percent_pruning_margin=0.0,
-        drop_pruning=False,
-    )
-
-    # run_pelt_array_based()
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots(2, 1, figsize=(10, 5))
-    ax[0].plot(long_alternating_sequence, label="Data")
-    ax[0].set_title("Data")
-    ax[0].legend()
-    ax[1].plot(opt_part_costs, label="Optimal Partitioning")
-    ax[1].set_title("Optimal Partitioning")
-    ax[1].legend()
-    fig.tight_layout()
 
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
     rpt_model.fit(long_alternating_sequence)

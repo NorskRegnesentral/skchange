@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ..change_detectors._pelt import (
+    run_improved_pelt,
     run_pelt,
     run_pelt_with_jump,
     run_restricted_optimal_partitioning,
@@ -17,7 +18,7 @@ from .base import BaseChangeDetector
 
 
 def format_crops_results(
-    penalty_to_solution_dict: dict[float, (np.ndarray, float)],
+    penalty_to_solution_dict: dict[float, (np.ndarray, float)], penalty_nudge: float
 ) -> pd.DataFrame:
     """Format the CROPS results into a DataFrame.
 
@@ -46,6 +47,31 @@ def format_crops_results(
     # keep the segmentation with the lowest penalty. So we sort by number of
     # change points, and then negative penalty, in reverse order.
     list_cpd_results.sort(key=lambda x: (x[0], -x[1]), reverse=True)
+    # If there are solutions that only differ by a single changepoint when we increase
+    # the penalty, we can compute the penalty for which the number of change points
+    # changes when increasing penalty from the lower value to the higher value.
+    for i in range(len(list_cpd_results) - 1):
+        # If the number of change points is the same, and the penalty is different,
+        # we can compute the penalty for which the number of change points changes
+        # when increasing penalty from the lower value to the higher value.
+        lower_penalty_num_change_points = list_cpd_results[i][0]
+        higher_penalty_num_change_points = list_cpd_results[i + 1][0]
+        if lower_penalty_num_change_points == higher_penalty_num_change_points + 1:
+            # Difference in segmentation cost is the critical penalty value.
+            # Multiply by (1.0 + penalty_nudge) to avoid numerical instability.
+            lower_penalty_segmentation_cost = list_cpd_results[i][2]
+            higher_penalty_segmentation_cost = list_cpd_results[i + 1][2]
+            critical_penalty = (
+                higher_penalty_segmentation_cost - lower_penalty_segmentation_cost
+            ) * (1.0 + penalty_nudge)
+
+            # Replace the penalty value with the critical penalty value.
+            list_cpd_results[i + 1] = (
+                list_cpd_results[i + 1][0],
+                critical_penalty,
+                list_cpd_results[i + 1][2],
+                list_cpd_results[i + 1][3],
+            )
 
     # Remove duplicates, and keep the first one:
     encountered_num_change_points = set()
@@ -77,11 +103,15 @@ def format_crops_results(
     penalty_change_point_metadata_df["num_change_points"] = (
         penalty_change_point_metadata_df["num_change_points"].astype(int)
     )
-
+    # TODO: Go through all solutions with only a single change point
+    # more changepoint when increasing penalty. There we can compute the threshold
+    # penalty for which the number of change points changes (when increasing penalty)
+    # from the lower value.
     penalty_change_point_metadata_df["optimum_value"] = (
         penalty_change_point_metadata_df["segmentation_cost"]
         + penalty_change_point_metadata_df["penalty"]
-        * (penalty_change_point_metadata_df["num_change_points"] + 1)
+        * (penalty_change_point_metadata_df["num_change_points"])
+        # * (penalty_change_point_metadata_df["num_change_points"] + 1)
     )
     return penalty_change_point_metadata_df, change_points_dict
 
@@ -338,22 +368,41 @@ class CROPS_PELT(BaseChangeDetector):
             Dictionary with penalty values as keys and tuples of change points and cost
             as values.
         """
-        if self.min_segment_length > 1 and not self.drop_pruning:
-            opt_cost, change_points = run_pelt_with_jump(
-                self._cost,
-                penalty=penalty,
-                jump_step=self.min_segment_length,
-                split_cost=self.split_cost,
-            )
-        else:
-            opt_cost, change_points = run_pelt(
-                self._cost,
-                penalty=penalty,
-                min_segment_length=self.min_segment_length,
-                split_cost=self.split_cost,
-                percent_pruning_margin=self.percent_pruning_margin,
-                drop_pruning=self.drop_pruning,
-            )
+        # Improved PELT with 'deferred' pruning:
+        opt_cost, change_points = run_improved_pelt(
+            self._cost,
+            penalty=penalty,
+            min_segment_length=self.min_segment_length,
+            split_cost=self.split_cost,
+            drop_pruning=self.drop_pruning,
+        )
+
+        ## Old pelt:
+        # opt_cost, change_points = run_pelt(
+        #     self._cost,
+        #     penalty=penalty,
+        #     min_segment_length=self.min_segment_length,
+        #     split_cost=self.split_cost,
+        #     percent_pruning_margin=self.percent_pruning_margin,
+        #     drop_pruning=self.drop_pruning,
+        # )
+
+        # if self.min_segment_length > 1 and not self.drop_pruning:
+        #     opt_cost, change_points = run_pelt_with_jump(
+        #         self._cost,
+        #         penalty=penalty,
+        #         jump_step=self.min_segment_length,
+        #         split_cost=self.split_cost,
+        #     )
+        # else:
+        #     opt_cost, change_points = run_pelt(
+        #         self._cost,
+        #         penalty=penalty,
+        #         min_segment_length=self.min_segment_length,
+        #         split_cost=self.split_cost,
+        #         percent_pruning_margin=self.percent_pruning_margin,
+        #         drop_pruning=self.drop_pruning,
+        #     )
 
         return change_points
 
@@ -468,7 +517,8 @@ class CROPS_PELT(BaseChangeDetector):
 
         """
         metadata_df, change_points_dict = format_crops_results(
-            penalty_to_solution_dict=penalty_to_solution_dict
+            penalty_to_solution_dict=penalty_to_solution_dict,
+            penalty_nudge=self.middle_penalty_nudge,
         )
         self.change_points_metadata_ = metadata_df
         self.change_points_lookup_ = change_points_dict
