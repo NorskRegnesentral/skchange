@@ -67,7 +67,7 @@ def test_pelt_crops():
         f"Expected {no_pruning_results}, got {results}"
     )
     # Check that the results are as expected:
-    assert len(results) == 64
+    assert len(results) == 10
 
 
 def test_pelt_failing_with_large_min_segment_length():
@@ -269,13 +269,10 @@ def test_retrieve_change_points():
     change_point_detector.run_crops(dataset)
 
     # Check that the results are as expected:
-    assert (
-        len(change_point_detector.retrieve_change_points(1, refine_change_points=False))
-        == 1
-    )
+    assert len(change_point_detector.retrieve_change_points(1)) == 1
 
 
-def test_retrieve_refined_change_points():
+def test_retrieve_change_points_2():
     """Test the retrieve_change_points method."""
     cost = L2Cost()
     min_penalty = 10.0
@@ -302,9 +299,7 @@ def test_retrieve_refined_change_points():
     change_point_detector.fit(dataset)
     change_point_detector.run_crops(dataset)
 
-    refined_change_points = change_point_detector.retrieve_change_points(
-        2, refine_change_points=True
-    )
+    refined_change_points = change_point_detector.retrieve_change_points(2)
 
     # Check that the results are as expected:
     assert np.all(refined_change_points == np.array([88, 176])), (

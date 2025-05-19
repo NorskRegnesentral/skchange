@@ -1,16 +1,12 @@
 """Implementation of the CROPS algorithm for path solutions to penalized CPD."""
 
 import warnings
-from functools import reduce
 
 import numpy as np
 import pandas as pd
 
 from ..change_detectors._pelt import (
     run_improved_pelt,
-    run_pelt,
-    run_pelt_with_jump,
-    run_restricted_optimal_partitioning,
 )
 from ..change_scores import ContinuousLinearTrendScore
 from ..costs.base import BaseCost
@@ -136,9 +132,12 @@ def segmentation_bic_value(cost: BaseCost, change_points: np.ndarray) -> float:
     data_dim = cost._X.shape[1]
     num_parameters = cost.get_model_size(data_dim)
     n_samples = cost.n_samples()
-    return cost.evaluate_segmentation(
+
+    bic_score = cost.evaluate_segmentation(
         change_points
     ) + num_parameters * num_segments * np.log(n_samples)
+
+    return bic_score
 
 
 def crops_elbow_score(
@@ -199,6 +198,7 @@ def crops_elbow_score(
             np.array([-np.inf]),
         )
     )
+
     return elbow_score
 
 
@@ -347,14 +347,14 @@ class CROPS_PELT(BaseChangeDetector):
             )["num_change_points"].iloc[0]
 
         else:
-            raise ValueError(  # pragma: no cover
+            raise ValueError(
                 f"Invalid selection criterion: {self.segmentation_selection}. "
                 "Must be one of ['bic', 'elbow']."
             )
 
         return self.change_points_lookup_[best_num_change_points]
 
-    def run_pelt(self, penalty: float) -> dict:
+    def run_pelt_cpd(self, penalty: float) -> dict:
         """Run the CROPS algorithm for path solutions to penalized CPD.
 
         Parameters
@@ -369,40 +369,13 @@ class CROPS_PELT(BaseChangeDetector):
             as values.
         """
         # Improved PELT with 'deferred' pruning:
-        opt_cost, change_points = run_improved_pelt(
+        _, change_points = run_improved_pelt(
             self._cost,
             penalty=penalty,
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
             drop_pruning=self.drop_pruning,
         )
-
-        ## Old pelt:
-        # opt_cost, change_points = run_pelt(
-        #     self._cost,
-        #     penalty=penalty,
-        #     min_segment_length=self.min_segment_length,
-        #     split_cost=self.split_cost,
-        #     percent_pruning_margin=self.percent_pruning_margin,
-        #     drop_pruning=self.drop_pruning,
-        # )
-
-        # if self.min_segment_length > 1 and not self.drop_pruning:
-        #     opt_cost, change_points = run_pelt_with_jump(
-        #         self._cost,
-        #         penalty=penalty,
-        #         jump_step=self.min_segment_length,
-        #         split_cost=self.split_cost,
-        #     )
-        # else:
-        #     opt_cost, change_points = run_pelt(
-        #         self._cost,
-        #         penalty=penalty,
-        #         min_segment_length=self.min_segment_length,
-        #         split_cost=self.split_cost,
-        #         percent_pruning_margin=self.percent_pruning_margin,
-        #         drop_pruning=self.drop_pruning,
-        #     )
 
         return change_points
 
@@ -416,8 +389,8 @@ class CROPS_PELT(BaseChangeDetector):
         """
         self._cost.fit(X)
 
-        min_penalty_change_points = self.run_pelt(penalty=self.min_penalty)
-        max_penalty_change_points = self.run_pelt(penalty=self.max_penalty)
+        min_penalty_change_points = self.run_pelt_cpd(penalty=self.min_penalty)
+        max_penalty_change_points = self.run_pelt_cpd(penalty=self.max_penalty)
 
         num_min_penalty_change_points = len(min_penalty_change_points)
         num_max_penalty_change_points = len(max_penalty_change_points)
@@ -466,7 +439,7 @@ class CROPS_PELT(BaseChangeDetector):
                     )  # Nudge the penalty to avoid numerical instability.
                 )
 
-                middle_penalty_change_points = self.run_pelt(penalty=middle_penalty)
+                middle_penalty_change_points = self.run_pelt_cpd(penalty=middle_penalty)
                 middle_penalty_segmentation_cost = self._cost.evaluate_segmentation(
                     middle_penalty_change_points
                 )
@@ -523,9 +496,7 @@ class CROPS_PELT(BaseChangeDetector):
         self.change_points_metadata_ = metadata_df
         self.change_points_lookup_ = change_points_dict
 
-    def retrieve_change_points(
-        self, num_change_points: int, refine_change_points: bool = True
-    ) -> np.ndarray:
+    def retrieve_change_points(self, num_change_points: int) -> np.ndarray:
         """Retrieve the change points for a given number of change points.
 
         Parameters
@@ -553,41 +524,7 @@ class CROPS_PELT(BaseChangeDetector):
                 " not found in CROPS results."
             )
 
-        if (
-            not refine_change_points
-            or self.min_segment_length == 1
-            or self.drop_pruning
-        ):
-            return self.change_points_lookup_[num_change_points]
-        else:
-            # Refine the change points using restricted OptPart algorithm:
-            orig_change_points = self.change_points_lookup_[num_change_points]
-            penalty = self.change_points_metadata_.loc[
-                self.change_points_metadata_["num_change_points"] == num_change_points,
-                "penalty",
-            ].values[0]
-
-            admissable_starts = reduce(
-                lambda x, y: x | y,
-                [
-                    set(
-                        range(
-                            cpt - (self.min_segment_length - 1),
-                            cpt + (self.min_segment_length - 1) + 1,
-                        )
-                    )
-                    for cpt in orig_change_points
-                ],
-            )
-
-            refined_costs, refined_change_points = run_restricted_optimal_partitioning(
-                cost=self._cost,
-                penalty=penalty,
-                min_segment_length=self.min_segment_length,
-                admissable_cpts=admissable_starts,
-            )
-
-            return refined_change_points
+        return self.change_points_lookup_[num_change_points]
 
     @classmethod
     def get_test_params(cls, parameter_set: str = "default") -> dict:
@@ -600,7 +537,7 @@ class CROPS_PELT(BaseChangeDetector):
                 "min_penalty": 0.5,
                 "max_penalty": 50.0,
                 "segmentation_selection": "bic",
-                "min_segment_length": 5,
+                "min_segment_length": 10,
                 "split_cost": 0.0,
                 "percent_pruning_margin": 0.0,
                 "middle_penalty_nudge": 1.0e-4,

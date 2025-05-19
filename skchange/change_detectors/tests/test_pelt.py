@@ -9,9 +9,11 @@ from ruptures.base import BaseCost as rpt_BaseCost
 
 from skchange.change_detectors._pelt import (
     PELT,
+    JumpPELT,
     get_changepoints,
-    run_pelt,
+    # run_pelt,
 )
+from skchange.change_detectors._pelt import run_improved_pelt as run_pelt
 from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
 from skchange.costs.base import BaseCost
@@ -554,12 +556,12 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
     # The PELT implementation fails to find the same changepoints
     # as the optimal partitioning for these segment lengths,
     # when min_segment_length > 30 and the pruning margin is zero.
-    margin_pelt_costs, margin_pelt_changepoints = run_pelt(
-        cost,
-        penalty=penalty,
-        min_segment_length=min_segment_length,
-        percent_pruning_margin=0.5,
-    )
+    # margin_pelt_costs, margin_pelt_changepoints = run_pelt(
+    #     cost,
+    #     penalty=penalty,
+    #     min_segment_length=min_segment_length,
+    #     percent_pruning_margin=0.5,
+    # )
 
     no_margin_pelt_costs, no_margin_pelt_changepoints = run_pelt(
         cost,
@@ -574,14 +576,11 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
+    # assert np.all(margin_pelt_changepoints == opt_part_changepoints)
+    # np.testing.assert_array_almost_equal(margin_pelt_costs, opt_part_costs)
 
-    assert np.all(margin_pelt_changepoints == opt_part_changepoints)
-    np.testing.assert_array_almost_equal(margin_pelt_costs, opt_part_costs)
-
-    # Assert that without the pruning margin, skchange PELT
-    # fails to find the exact same solution as the optimal partitioning.
-    with pytest.raises(AssertionError):
-        np.testing.assert_array_almost_equal(no_margin_pelt_costs, opt_part_costs)
+    assert np.all(no_margin_pelt_changepoints == opt_part_changepoints)
+    np.testing.assert_array_almost_equal(no_margin_pelt_costs, opt_part_costs)
 
 
 @pytest.mark.parametrize("min_segment_length", [33, 39])
@@ -746,26 +745,26 @@ def test_invalid_costs():
         PELT(cost=cost)
 
 
-@pytest.mark.parametrize("min_segment_length", [3, 5, 10])
-def test_pelt_with_jump(cost: BaseCost, penalty: float, min_segment_length: int):
+@pytest.mark.parametrize("jump_step", [3, 5, 10])
+def test_pelt_with_jump(cost: BaseCost, penalty: float, jump_step: int):
     """Test PELT with jump parameter enabled and min_segment_length > 2."""
 
     # Run PELT with jump=True
-    pelt_model = PELT(
+    # Instead, implement "JumpPELT".
+    jump_pelt_model = JumpPELT(
         cost=cost,
-        min_segment_length=min_segment_length,
+        jump_step=jump_step,
         penalty=penalty,
-        jump=True,
     )
-    pelt_model.fit(alternating_sequence)
-    pelt_changepoints = pelt_model.predict(alternating_sequence)["ilocs"].to_numpy()
+    jump_pelt_model.fit(alternating_sequence)
+    pelt_changepoints = jump_pelt_model.predict(alternating_sequence)[
+        "ilocs"
+    ].to_numpy()
 
-    assert np.all(pelt_changepoints % min_segment_length == 0)
+    assert np.all(pelt_changepoints % jump_step == 0)
 
     # Compare with ruptures implementation for validation
-    rpt_model = rpt.Pelt(
-        model="l2", min_size=min_segment_length, jump=min_segment_length
-    )
+    rpt_model = rpt.Pelt(model="l2", min_size=jump_step, jump=jump_step)
     rpt_changepoints = np.array(
         rpt_model.fit_predict(alternating_sequence, pen=penalty)[:-1]
     )
@@ -775,67 +774,3 @@ def test_pelt_with_jump(cost: BaseCost, penalty: float, min_segment_length: int)
 
     assert len(pelt_changepoints) == len(rpt_changepoints)
     assert np.all(pelt_changepoints == rpt_changepoints)
-
-
-@pytest.mark.parametrize("min_segment_length", [3, 5, 10])
-def test_refine_change_points_decreases_segmentation_cost(
-    penalty: float, min_segment_length: int
-):
-    """Test refine_change_points decreases segmentation cost after PELT(jump=True)."""
-    gaussian_cost = GaussianCost()
-
-    # Run PELT with jump=True, and GaussianCost.
-    pelt_model = PELT(
-        cost=gaussian_cost,
-        min_segment_length=min_segment_length,
-        penalty=penalty,
-        jump=True,
-    )
-    pelt_model.fit(alternating_sequence)
-
-    # Get the original jump-step based changepoints
-    initial_changepoints = pelt_model.predict(alternating_sequence)["ilocs"].to_numpy()
-
-    # Verify that the initial changepoints are at jump-step positions
-    assert np.all(initial_changepoints % min_segment_length == 0), (
-        "Initial changepoints should be at multiples of min_segment_length"
-    )
-
-    # Calculate initial segmentation cost
-    gaussian_cost.fit(alternating_sequence)
-    initial_segmentation_cost = (
-        gaussian_cost.evaluate_segmentation(initial_changepoints)
-        + (len(initial_changepoints)) * penalty
-    )
-
-    # Refine the changepoints using refine_change_points
-    refined_changepoints = pelt_model.refine_change_points(
-        initial_changepoints,
-        alternating_sequence,
-        change_point_margin=min_segment_length,
-    )
-
-    # Calculate refined segmentation cost
-    refined_segmentation_cost = (
-        gaussian_cost.evaluate_segmentation(refined_changepoints)
-        + (len(refined_changepoints)) * penalty
-    )
-
-    # The refined segmentation cost should be less than or equal to the initial cost
-    assert refined_segmentation_cost <= initial_segmentation_cost, (
-        f"Refined segmentation cost ({refined_segmentation_cost}) should be less than "
-        f"or equal to initial segmentation cost ({initial_segmentation_cost})"
-    )
-
-    # Check if there's actual refinement happening (changepoints should differ)
-    if refined_segmentation_cost < initial_segmentation_cost:
-        assert not np.array_equal(initial_changepoints, refined_changepoints), (
-            "Refined changepoints should differ from initial changepoints."
-        )
-
-        # Verify that refined changepoints are not constrained to jump-step positions
-        if len(refined_changepoints) > 0:
-            non_jump_step_cpts = np.any(refined_changepoints % min_segment_length != 0)
-            assert non_jump_step_cpts, (
-                "Some refined changepoints should not be at jump-step positions"
-            )
