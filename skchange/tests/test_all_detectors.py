@@ -14,7 +14,7 @@ ALL_DETECTORS = ANOMALY_DETECTORS + CHANGE_DETECTORS
 VALID_DETECTOR_TAGS = list(VALID_ESTIMATOR_TAGS) + [
     "task",
     "learning_type",
-    "capability:identify_variables",
+    "capability:variable_identification",
 ]
 
 
