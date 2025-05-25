@@ -269,7 +269,7 @@ class MovingWindow(BaseChangeDetector):
 
         if isinstance(bandwidth, int):
             check_larger_than(1, bandwidth, "bandwidth")
-            self._bandwidth = [bandwidth]
+            self._bandwidth = np.array([bandwidth])
         elif isinstance(bandwidth, list):
             if len(bandwidth) == 0:
                 raise ValueError("`bandwidth` must be a non-empty list.")
@@ -277,7 +277,7 @@ class MovingWindow(BaseChangeDetector):
                 raise TypeError("All elements of `bandwidth` must be integers.")
             if any(bw < 1 for bw in bandwidth):
                 raise ValueError("All elements of `bandwidth` must be greater than 0.")
-            self._bandwidth = bandwidth
+            self._bandwidth = np.array(bandwidth)
         else:
             raise TypeError(
                 "`bandwidth` must be an integer or a list of integers. "
