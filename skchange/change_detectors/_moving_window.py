@@ -103,9 +103,14 @@ def select_changepoints_by_local_optimum(
         for cpt in candidate_cpts
         if np.isclose(
             scores[cpt],
-            np.max(scores[cpt - selection_bandwidth : cpt + selection_bandwidth + 1]),
+            np.max(
+                scores[
+                    max(cpt - selection_bandwidth, 0) : cpt + selection_bandwidth + 1
+                ]
+            ),
         )
     ]
+
     return cpts
 
 
