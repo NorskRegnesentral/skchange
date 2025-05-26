@@ -577,7 +577,7 @@ def test_high_min_segment_length(cost: BaseCost, penalty: float, min_segment_len
 
 
 @pytest.mark.parametrize("min_segment_length", [25])
-def test_pruning_margin_fixes_pelt_min_segment_length_problems(
+def test_pelt_agrees_with_opt_part_longer_min_segment_length(
     cost: BaseCost, penalty: float, min_segment_length
 ):
     """
@@ -585,24 +585,7 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
     fails to find the same changepoints as the optimal partitioning.
     """
     cost.fit(long_alternating_sequence)
-    # The PELT implementation fails to find the same changepoints
-    # as the optimal partitioning for these segment lengths,
-    # when min_segment_length > 30 and the pruning margin is zero.
-    # margin_pelt_costs, margin_pelt_changepoints = run_pelt(
-    #     cost,
-    #     penalty=penalty,
-    #     min_segment_length=min_segment_length,
-    #     percent_pruning_margin=0.5,
-    # )
-
     pelt_result = run_pelt(
-        cost,
-        penalty=penalty,
-        min_segment_length=min_segment_length,
-        percent_pruning_margin=0.0,
-    )
-
-    old_pelt_result = old_run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -615,8 +598,6 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
-    # assert np.all(margin_pelt_changepoints == opt_part_changepoints)
-    # np.testing.assert_array_almost_equal(margin_pelt_costs, opt_part_costs)
 
     assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
     np.testing.assert_array_almost_equal(
@@ -1050,9 +1031,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert min_seg_length_one_pelt_result == regular_pelt_result, (
-        "Expected PELT with min_segment_length=1 to agree with regular PELT."
-    )
+    assert (
+        min_seg_length_one_pelt_result == regular_pelt_result
+    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and drop_pruning=True to agree with "
         "regular PELT with drop_pruning=True."

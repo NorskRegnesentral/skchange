@@ -62,12 +62,11 @@ def test_pelt_crops():
     no_pruning_change_detector.fit(dataset)
     no_pruning_results = no_pruning_change_detector.run_crops(dataset.values)
 
-    assert np.all(results == no_pruning_results), (
-        f"Expected {no_pruning_results}, got {results}"
-    )
+    assert np.all(
+        results == no_pruning_results
+    ), f"Expected {no_pruning_results}, got {results}"
     # Check that the results are as expected:
     assert len(results) == 10
-
 
 
 def test_pelt_crops_raises_on_wrong_segmentation_selection():
@@ -210,6 +209,6 @@ def test_retrieve_change_points_2():
     refined_change_points = change_point_detector.retrieve_change_points(2)
 
     # Check that the results are as expected:
-    assert np.array_equal(refined_change_points, np.array([88, 176])), (
-        f"Expected [88, 176], got {refined_change_points}"
-    )
+    assert np.array_equal(
+        refined_change_points, np.array([88, 176])
+    ), f"Expected [88, 176], got {refined_change_points}"
