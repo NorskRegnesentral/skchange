@@ -313,7 +313,9 @@ class CAPA(BaseSegmentAnomalyDetector):
         )
 
         self.clone_tags(_segment_saving, ["distribution_type"])
-        self.set_tags(**{"capability:identify_variables": find_affected_components})
+        self.set_tags(
+            **{"capability:variable_identification": find_affected_components}
+        )
 
     def _predict(self, X: pd.DataFrame | pd.Series) -> pd.Series:
         """Detect events in test/deployment data.

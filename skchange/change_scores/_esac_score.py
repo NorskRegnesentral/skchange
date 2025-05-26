@@ -49,9 +49,9 @@ def transform_esac(
 
     References
     ----------
-        ..  [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
-            sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
-            3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
+    .. [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
+       sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
+       3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
     """
     num_levels = len(threshold)
     num_cusum_scores = len(cusum_scores)
@@ -74,7 +74,7 @@ def transform_esac(
 
 
 class ESACScore(BaseIntervalScorer):
-    """Custom score class.
+    """The ESAC score for detecting changes in the mean of high-dimensional data.
 
     This is the sparsity adaptive penalised CUSUM score for a change in the mean.
     The ESAC score is a penalised version of the CUSUM score, where the CUSUM of
@@ -93,9 +93,9 @@ class ESACScore(BaseIntervalScorer):
 
     References
     ----------
-    ..  [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
-        sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
-        3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
+    .. [1] Per August Jarval Moen, Ingrid Kristine Glad, Martin Tveten. Efficient
+       sparsity adaptive changepoint estimation. Electron. J. Statist. 18 (2)
+       3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
     """
 
     _tags = {

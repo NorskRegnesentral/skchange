@@ -6,7 +6,7 @@
 [![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/skchange)
+[![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
 
 
 [skchange]((https://skchange.readthedocs.io/en/latest/)) provides [sktime](https://www.sktime.net/)-compatible change detection and changepoint-based anomaly detection algorithms.
@@ -15,7 +15,7 @@ Experimental but maturing.
 
 <!-- ## Latest release -->
 
-Check out the latest version: [v0.12.0](https://github.com/NorskRegnesentral/skchange/releases)
+Check out the latest version: [v0.13.0](https://github.com/NorskRegnesentral/skchange/releases)
 
 ## Documentation
 
