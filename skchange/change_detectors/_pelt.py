@@ -21,30 +21,65 @@ from .base import BaseChangeDetector
 
 @dataclass
 class PELTResult:
-    """Result of the PELT algorithm."""
+    """Result of running the PELT algorithm.
 
-    optimal_cost: np.ndarray
+    Containing:
+    - `optimal_costs`: The optimal penalized segmentation costs for each sample.
+    - `previous_change_points`: The optimal previous change point for each sample.
+    - `pruning_fraction`: The fraction of starts pruned during the run, as compared
+                          to Optimal Partitioning.
+    - `changepoints`: The final set of changepoints.
+    """
+
+    optimal_costs: np.ndarray
     previous_change_points: np.ndarray
     pruning_fraction: float
     changepoints: np.ndarray
 
+    def __eq__(self, other):
+        """Check equality between two PELTResult instances.
+
+        Compares all attributes using numpy's array_equal for array attributes.
+        """
+        if not isinstance(other, PELTResult):
+            return False
+
+        return (
+            np.array_equal(self.optimal_costs, other.optimal_costs)
+            and np.array_equal(
+                self.previous_change_points, other.previous_change_points
+            )
+            and self.pruning_fraction == other.pruning_fraction
+            and np.array_equal(self.changepoints, other.changepoints)
+        )
+
+    def __hash__(self):
+        """Make instances hashable.
+
+        Since we're implementing __eq__, we should also implement __hash__.
+        This implementation makes instances with equal contents have the same hash,
+        but prevents them from being used as dictionary keys or in sets because
+        numpy arrays are mutable.
+        """
+        return None  # Makes the class unhashable, which is safe for mutable objects
+
     @classmethod
     def new(
         cls,
-        optimal_cost: np.ndarray,
+        optimal_costs: np.ndarray,
         previous_change_points: np.ndarray,
         pruning_fraction: float,
     ) -> "PELTResult":
         """Create a new PeltResult instance."""
         # Check that the lengths of opt_cost and prev_cpts match:
-        if len(optimal_cost) != len(previous_change_points):
+        if len(optimal_costs) != len(previous_change_points):
             raise ValueError(
                 "The lengths of `opt_cost` and `prev_cpts` must match. "
-                f"Got {len(optimal_cost)} and {len(previous_change_points)}."
+                f"Got {len(optimal_costs)} and {len(previous_change_points)}."
             )
         changepoints = get_changepoints(previous_change_points)
         return cls(
-            optimal_cost=optimal_cost,
+            optimal_costs=optimal_costs,
             previous_change_points=previous_change_points,
             pruning_fraction=pruning_fraction,
             changepoints=changepoints,
@@ -60,150 +95,6 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
         changepoints.append(cpt_i)
         i = cpt_i - 1
     return np.array(changepoints[-2::-1])  # Remove the artificial changepoint at 0.
-
-
-def old_run_pelt(
-    cost: BaseCost,
-    penalty: float,
-    min_segment_length: int,
-    split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.0,
-    drop_pruning: bool = False,
-) -> PELTResult:
-    """Run the PELT algorithm.
-
-    Currently agrees with the 'changepoint::cpt.mean' implementation of PELT in R.
-    If the 'min_segment_length' is large enough to span more than a single changepoint,
-    the algorithm can return a suboptimal partitioning.
-    In that case, resort to the 'optimal_partitioning' algorithm.
-
-    Parameters
-    ----------
-    cost: BaseCost
-        The cost to use.
-    penalty : float
-        The penalty incurred for adding a changepoint.
-    min_segment_length : int
-        The minimum length of a segment, by default 1.
-    split_cost : float, optional
-        The cost of splitting a segment, to ensure that
-        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
-        for all possible splits, 0 <= t < p < s <= len(X) - 1.
-        By default set to 0.0, which is sufficient for
-        log likelihood cost functions to satisfy the
-        above inequality.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 10.0.
-        This is used to prune the admissible starts set.
-        The pruning margin is used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
-    drop_pruning: bool, optional
-        If True, drop the pruning step. Reverts to optimal partitioning.
-        Can be useful for debugging and testing.  By default set to False.
-
-    Returns
-    -------
-    PELTResult
-        Summary of the PELT algorithm run, containing:
-        - `optimal_cost`: The optimal costs for each segment.
-        - `previous_change_points`: The previous changepoints for each segment.
-        - `pruning_fraction`: The fraction of pruning applied during the run.
-        - `changepoints`: The final set of changepoints.
-    """
-    cost.check_is_fitted()
-    # n_samples = cost._X.shape[0]
-    n_samples = cost.n_samples()
-    min_segment_shift = min_segment_length - 1
-
-    # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
-    # opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
-    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
-
-    # Cannot compute the cost for the first 'min_segment_shift' elements:
-    opt_cost[1:min_segment_length] = np.inf
-
-    # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
-    non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
-    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
-    non_changepoint_intervals = np.column_stack(
-        (non_changepoint_starts, non_changepoint_ends)
-    )
-    costs = cost.evaluate(non_changepoint_intervals)
-    agg_costs = np.sum(costs, axis=1)
-    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs
-
-    # Aggregate number of cost evaluations:
-    num_pelt_cost_evals = len(non_changepoint_starts)
-    num_opt_part_cost_evals = len(non_changepoint_starts)
-
-    # Store the previous changepoint for each latest start added.
-    # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(0, n_samples)
-
-    # Evolving set of admissible segment starts.
-    cost_eval_starts = np.array(([0]), dtype=np.int64)
-
-    observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
-        -1, 1
-    )
-
-    num_opt_part_cost_evals += int(
-        (len(observation_indices) + 2) * (len(observation_indices) + 1) // 2 - 1
-    )
-
-    for current_obs_ind in observation_indices:
-        latest_start = current_obs_ind - min_segment_shift
-        opt_cost_obs_ind = current_obs_ind[0] + 1
-
-        # Add the next start to the admissible starts set:
-        cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
-        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
-        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        costs = cost.evaluate(cost_eval_intervals)
-        agg_costs = np.sum(costs, axis=1)
-
-        num_pelt_cost_evals += len(cost_eval_starts)
-
-        # Add the penalty for a new segment:
-        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
-
-        argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
-
-        if drop_pruning:
-            continue
-        else:
-            # Trimming the admissible starts set: (reuse the array of optimal costs)
-            current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
-
-            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-            start_inclusion_threshold = (
-                (
-                    current_obs_ind_opt_cost
-                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-                )
-                # Moved from 'negative' on left side
-                # to 'positive' on right side.
-                + penalty
-                # Remove from right side of inequality.
-                - split_cost
-            )
-
-            # Apply pruning:
-            cost_eval_starts = cost_eval_starts[
-                candidate_opt_costs <= start_inclusion_threshold
-            ]
-
-    pruning_fraction = 1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
-
-    pelt_result = PELTResult.new(
-        optimal_cost=opt_cost[1:],
-        previous_change_points=prev_cpts,
-        pruning_fraction=pruning_fraction,
-    )
-
-    return pelt_result
 
 
 def run_pelt(
@@ -254,11 +145,7 @@ def run_pelt(
     Returns
     -------
     PELTResult
-        Summary of the PELT algorithm run, containing:
-        - `optimal_cost`: The optimal costs for each segment.
-        - `previous_change_points`: The previous changepoints for each segment.
-        - `pruning_fraction`: The fraction of pruning applied during the run.
-        - `changepoints`: The final set of changepoints.
+        Container for the results of the PELT algorithm run.
     """
     cost.check_is_fitted()
     n_samples = cost.n_samples()
@@ -357,17 +244,10 @@ def run_pelt(
                 - split_cost
             )
 
-            possible_prune_starts_mask = (
-                cost_eval_starts <= current_obs_ind - min_segment_length
-            )
-            start_inclusion_mask = (
-                candidate_opt_costs[possible_prune_starts_mask]
-                <= start_inclusion_threshold
-            )
-            new_starts_to_prune = cost_eval_starts[possible_prune_starts_mask][
-                ~start_inclusion_mask
+            # Store indices to prune for the `min_segment_length`'th next observation:
+            pruning_indices[current_obs_ind % min_segment_length] = cost_eval_starts[
+                candidate_opt_costs > start_inclusion_threshold
             ]
-            pruning_indices[current_obs_ind % min_segment_length] = new_starts_to_prune
 
     if num_opt_part_cost_evals > 0:
         pruning_fraction = 1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
@@ -375,7 +255,141 @@ def run_pelt(
         pruning_fraction = np.nan
 
     pelt_result = PELTResult.new(
-        optimal_cost=opt_cost[1:],
+        optimal_costs=opt_cost[1:],
+        previous_change_points=prev_cpts,
+        pruning_fraction=pruning_fraction,
+    )
+
+    return pelt_result
+
+
+def run_pelt_min_segment_length_one(
+    cost: BaseCost,
+    penalty: float,
+    split_cost: float = 0.0,
+    percent_pruning_margin: float = 0.0,
+    drop_pruning: bool = False,
+) -> PELTResult:
+    """Run the PELT algorithm, with a minimum segment length of one.
+
+    This is a special case of the PELT algorithm, where the minimum segment length
+    is set to one. This means that the algorithm can consider every single point as a
+    potential changepoint, and thus it can be used for very fine-grained change point
+    detection. We can also simplify the algorithm by not having to keep track of
+    deferred pruning information, as all pruning of start points is applicable
+    for the next observation.
+
+    Parameters
+    ----------
+    cost: BaseCost
+        The cost to use.
+    penalty : float
+        The penalty incurred for adding a changepoint.
+    split_cost : float, optional
+        The cost of splitting a segment, to ensure that
+        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
+        for all possible splits, 0 <= t < p < s <= len(X) - 1.
+        By default set to 0.0, which is sufficient for
+        log likelihood cost functions to satisfy the
+        above inequality.
+    percent_pruning_margin : float, optional
+        The percentage of pruning margin to use. By default set to 10.0.
+        This is used to prune the admissible starts set.
+        The pruning margin is used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
+    drop_pruning: bool, optional
+        If True, drop the pruning step. Reverts to optimal partitioning.
+        Can be useful for debugging and testing.  By default set to False.
+
+    Returns
+    -------
+    PELTResult
+        Summary of the PELT algorithm run, containing:
+        - `optimal_cost`: The optimal costs for each segment.
+        - `previous_change_points`: The previous changepoints for each segment.
+        - `pruning_fraction`: The fraction of pruning applied during the run.
+        - `changepoints`: The final set of changepoints.
+    """
+    cost.check_is_fitted()
+    # n_samples = cost._X.shape[0]
+    n_samples = cost.n_samples()
+    if n_samples < 1:
+        raise ValueError(
+            "The number of samples for the fitted cost must be at least one. "
+            f"Got {n_samples} samples."
+        )
+
+    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
+
+    # Compute the cost for the first observation directly:
+    opt_cost[1] = cost.evaluate(np.array([[0, 1]]))[0, 0]
+
+    # Aggregate number of cost evaluations:
+    num_pelt_cost_evals = 1
+    num_opt_part_cost_evals = 1
+
+    # Store the previous changepoint for each latest start added.
+    # Used to get the final set of changepoints after the loop.
+    prev_cpts = np.repeat(0, n_samples)
+
+    # Evolving set of admissible segment starts.
+    cost_eval_starts = np.array(([0]), dtype=np.int64)
+
+    observation_indices = np.arange(1, n_samples)
+
+    num_opt_part_cost_evals += (len(observation_indices) + 2) * (
+        len(observation_indices) + 1
+    ) // 2 - 1
+
+    for current_obs_ind in observation_indices:
+        opt_cost_obs_ind = current_obs_ind + 1
+
+        # Add the next start to the admissible starts set:
+        cost_eval_starts = np.concatenate(
+            (cost_eval_starts, np.array([current_obs_ind]))
+        )
+        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
+        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        costs = cost.evaluate(cost_eval_intervals)
+        agg_costs = np.sum(costs, axis=1)
+
+        num_pelt_cost_evals += len(cost_eval_starts)
+
+        # Add the penalty for a new segment:
+        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+
+        argmin_candidate_cost = np.argmin(candidate_opt_costs)
+        opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
+
+        if drop_pruning:
+            continue
+        else:
+            # Trimming the admissible starts set: (reuse the array of optimal costs)
+            current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
+
+            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+            start_inclusion_threshold = (
+                (
+                    current_obs_ind_opt_cost
+                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                )
+                # Moved from 'negative' on left side
+                # to 'positive' on right side.
+                + penalty
+                # Remove from right side of inequality.
+                - split_cost
+            )
+
+            # Apply pruning:
+            cost_eval_starts = cost_eval_starts[
+                candidate_opt_costs <= start_inclusion_threshold
+            ]
+
+    pruning_fraction = 1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
+
+    pelt_result = PELTResult.new(
+        optimal_costs=opt_cost[1:],
         previous_change_points=prev_cpts,
         pruning_fraction=pruning_fraction,
     )
@@ -418,23 +432,20 @@ def run_pelt_with_jump(
     Returns
     -------
     PELTResult
-        Summary of the PELT algorithm run, containing:
-        - `optimal_cost`: The optimal costs for each segment.
-        - `previous_change_points`: The previous changepoints for each segment.
-        - `pruning_fraction`: The fraction of pruning applied during the run.
-        - `changepoints`: The final set of changepoints.
+        Container for the results of the PELT algorithm run.
     """
     cost.check_is_fitted()
     n_samples = cost.n_samples()
+    if n_samples < jump_step:
+        raise ValueError("The `jump_step` cannot be larger than the number of samples.")
 
-    # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
-    # opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
-    opt_cost = np.zeros(1 + n_samples)
+    # Initialize the optimal costs array:
+    opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
 
     # Store the previous changepoint for each latest start added.
     # Used to get the final set of changepoints after the loop.
     # Initialize to invalid previous changepoints:
-    prev_cpts = np.zeros(n_samples, dtype=np.int64) + n_samples
+    prev_cpts = np.zeros(n_samples, dtype=np.int64)
 
     # Evolving set of admissible segment starts.
     cost_eval_starts = np.array([], dtype=np.int64)
@@ -452,6 +463,12 @@ def run_pelt_with_jump(
         (observation_interval_starts, observation_interval_ends)
     )
 
+    # Triangle number formula for the unpruned number of cost evaluations.
+    opt_part_cost_evals = (
+        len(observation_intervals) * (len(observation_intervals) + 1) // 2
+    )
+    pelt_cost_evals = 0
+
     for obs_interval_start, obs_interval_end in observation_intervals:
         # Add the next start to the admissible starts set:
         cost_eval_starts = np.concatenate(
@@ -461,6 +478,8 @@ def run_pelt_with_jump(
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
         costs = cost.evaluate(cost_eval_intervals)
         agg_costs = np.sum(costs, axis=1)
+
+        pelt_cost_evals += len(cost_eval_starts)
 
         # Add the penalty for a new segment:
         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
@@ -488,245 +507,16 @@ def run_pelt_with_jump(
             new_start_inclusion_mask = candidate_opt_costs <= start_inclusion_threshold
             cost_eval_starts = cost_eval_starts[new_start_inclusion_mask]
 
-    pelt_result = PELTResult.new(
-        optimal_cost=opt_cost[1:],
-        previous_change_points=prev_cpts,
-        pruning_fraction=0.0,  # No pruning in this case.
+    pruning_fraction = (
+        (1.0 - pelt_cost_evals / opt_part_cost_evals)
+        if opt_part_cost_evals > 0
+        else np.nan
     )
 
-    return pelt_result
-
-
-# def run_restricted_optimal_partitioning(
-#     cost: BaseCost,
-#     penalty: float,
-#     min_segment_length: int,
-#     admissable_cpts: np.ndarray | set[int],
-# ) -> tuple[np.ndarray, list]:
-#     """Run optimal partitioning algorithm, restricted to a set of admissable starts.
-#     Parameters
-#     ----------
-#     X : np.ndarray
-#         The data to find changepoints in.
-#     cost: BaseCost
-#         The cost to use.
-#     penalty : float
-#         The penalty incurred for adding a changepoint.
-#     min_segment_length : int
-#         The minimum length of a segment, by default 1.
-#     admissable_starts : np.ndarray or set[int]
-#         The admissable starts for the segments.
-#     Returns
-#     -------
-#     tuple[np.ndarray, list]
-#         The optimal costs and the changepoints.
-#     """
-#     cost.check_is_fitted()
-#     n_samples = cost.n_samples()
-#     min_segment_shift = min_segment_length - 1
-#     # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
-#     opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
-#     # Cannot compute the cost for the first 'min_segment_shift' elements:
-#     opt_cost[1:min_segment_length] = 0.0
-#     # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
-#     non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
-#     non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
-#     non_changepoint_intervals = np.column_stack(
-#         (non_changepoint_starts, non_changepoint_ends)
-#     )
-#     costs = cost.evaluate(non_changepoint_intervals)
-#     agg_costs = np.sum(costs, axis=1)
-#     opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
-#     # Store the previous changepoint for each latest start added.
-#     # Used to get the final set of changepoints after the loop.
-#     prev_cpts = np.repeat(0, n_samples)
-#     # Evolving set of admissible segment starts.
-#     cost_eval_starts = np.array(([0]), dtype=np.int64)
-#     observation_indices = np.arange(2 * min_segment_length - 1, n_samples).reshape(
-#         -1, 1
-#     )
-#     for current_obs_ind in observation_indices:
-#         latest_start = current_obs_ind - min_segment_shift
-#         # Add the next start to the admissible starts set:
-#         if latest_start[0] in admissable_cpts:
-#             cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
-#         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
-#         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-#         costs = cost.evaluate(cost_eval_intervals)
-#         agg_costs = np.sum(costs, axis=1)
-#         # Add the penalty for a new segment:
-#         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
-#         argmin_candidate_cost = np.argmin(candidate_opt_costs)
-#         opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
-#         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
-#     return opt_cost[1:], get_changepoints(prev_cpts)
-
-
-def run_pelt_masked(
-    cost: BaseCost,
-    penalty: float,
-    min_segment_length: int,
-    split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.0,
-    drop_pruning: bool = False,
-    pre_allocation_multiplier: float = 5.0,  # Initial multiple of log(n_samples)
-    growth_factor: float = 2.0,  # Geometric growth factor
-) -> tuple[np.ndarray, list]:
-    """Run the PELT algorithm.
-
-    Currently agrees with the 'changepoint::cpt.mean' implementation of PELT in R.
-    If the 'min_segment_length' is large enough to span more than a single changepoint,
-    the algorithm can return a suboptimal partitioning.
-    In that case, resort to the 'optimal_partitioning' algorithm.
-
-    Parameters
-    ----------
-    cost: BaseCost
-        The cost to use.
-    penalty : float
-        The penalty incurred for adding a changepoint.
-    min_segment_length : int
-        The minimum length of a segment, by default 1.
-    split_cost : float, optional
-        The cost of splitting a segment, to ensure that
-        cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
-        for all possible splits, 0 <= t < p < s <= len(X) - 1.
-        By default set to 0.0, which is sufficient for
-        log likelihood cost functions to satisfy the
-        above inequality.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 0.1.
-        This is used to prune the admissible starts set.
-        The pruning margin is used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
-    initial_capacity : float, optional
-        The initial capacity of the arrays as a fraction of n_samples.
-        Default is 0.1 (10% of n_samples).
-    growth_factor : float, optional
-        The factor by which to grow the arrays when they need to be resized.
-        Default is 2.0.
-
-    Returns
-    -------
-    tuple[np.ndarray, list]
-        The optimal costs and the changepoints.
-    """
-    cost.check_is_fitted()
-    n_samples = cost.n_samples()
-    min_segment_shift = min_segment_length - 1
-
-    # Explicitly set the first element to 0.
-    # Define "opt_cost[0]"" to start at 0.0, as done in 2014 PELT.
-    opt_cost = np.concatenate((np.array([0.0]), np.zeros(n_samples)))
-
-    # Cannot compute the cost for the first 'min_segment_shift' elements:
-    opt_cost[1:min_segment_length] = np.inf
-
-    # Compute the cost in [min_segment_length, 2*min_segment_length - 1] directly:
-    non_changepoint_starts = np.zeros(min_segment_length, dtype=np.int64)
-    non_changepoint_ends = np.arange(min_segment_length, 2 * min_segment_length)
-    non_changepoint_intervals = np.column_stack(
-        (non_changepoint_starts, non_changepoint_ends)
-    )
-    costs = cost.evaluate(non_changepoint_intervals)
-    agg_costs = np.sum(costs, axis=1)
-    opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs + penalty
-
-    # Store the previous changepoint for each latest start added.
-    # Used to get the final set of changepoints after the loop.
-    prev_cpts = np.repeat(0, n_samples)
-
-    # Initialize smaller arrays with a multiple of log(n_samples) capacity:
-    initial_allocation_size = max(2, int(np.log(n_samples) * pre_allocation_multiplier))
-
-    # Pre-allocate arrays with initial capacity
-    starts_capacity = initial_allocation_size
-    starts_buffer = np.zeros(starts_capacity, dtype=np.int64)
-    interval_capacity = initial_allocation_size
-    interval_buffer = np.zeros((interval_capacity, 2), dtype=np.int64)
-
-    # Initialize with the first valid start position (position 0)
-    n_valid_starts = 1
-    starts_buffer[0] = 0  # First valid start is at position 0
-
-    for current_obs_ind in range(2 * min_segment_length - 1, n_samples):
-        latest_start = current_obs_ind - min_segment_shift
-
-        # Add the next start position to the admissible set:
-        # First check if we need to grow the arrays
-        if n_valid_starts + 1 > starts_capacity:
-            # Grow arrays geometrically
-            new_capacity = int(starts_capacity * growth_factor)
-            new_starts_buffer = np.zeros(new_capacity, dtype=np.int64)
-            new_starts_buffer[:n_valid_starts] = starts_buffer[:n_valid_starts]
-            starts_buffer = new_starts_buffer
-            starts_capacity = new_capacity
-
-            # Also grow the interval buffer
-            new_interval_capacity = int(interval_capacity * growth_factor)
-            new_interval_buffer = np.zeros((new_interval_capacity, 2), dtype=np.int64)
-            new_interval_buffer[:interval_capacity] = interval_buffer[
-                :interval_capacity
-            ]
-            interval_buffer = new_interval_buffer
-            interval_capacity = new_interval_capacity
-
-        # Add the latest start to the buffer of valid starts
-        starts_buffer[n_valid_starts] = latest_start
-        n_valid_starts += 1
-
-        # Set up intervals for cost evaluation
-        current_end = current_obs_ind + 1
-
-        # Fill the interval buffer with current valid starts and the current end
-        interval_buffer[:n_valid_starts, 0] = starts_buffer[:n_valid_starts]
-        interval_buffer[:n_valid_starts, 1] = current_end
-
-        # Evaluate costs:
-        agg_costs = np.sum(cost.evaluate(interval_buffer[:n_valid_starts]), axis=1)
-
-        # Add the cost and penalty for a new segment (since last changepoint)
-        # Reusing the agg_costs array to store the candidate optimal costs.
-        agg_costs[:] += penalty + opt_cost[starts_buffer[:n_valid_starts]]
-        candidate_opt_costs = agg_costs
-
-        # Find the optimal cost and previous changepoint:
-        argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        min_start_idx = starts_buffer[argmin_candidate_cost]
-        opt_cost[current_obs_ind + 1] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[current_obs_ind] = min_start_idx
-
-        if drop_pruning:
-            continue
-        else:
-            # Pruning: update valid starts to exclude positions that cannot be optimal
-            current_obs_ind_opt_cost = opt_cost[current_obs_ind + 1]
-            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-
-            # Calculate pruning threshold with margin:
-            start_inclusion_threshold = (
-                (
-                    current_obs_ind_opt_cost
-                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-                )
-                + penalty  # Pruning inequality does not include added penalty.
-                - split_cost  # Remove from right side of inequality.
-            )
-
-            # Apply pruning by filtering valid starts:
-            valid_starts_mask = (
-                candidate_opt_costs[:n_valid_starts] <= start_inclusion_threshold
-            )
-            n_new_valid_starts = np.sum(valid_starts_mask)
-            starts_buffer[:n_new_valid_starts] = starts_buffer[:n_valid_starts][
-                valid_starts_mask
-            ]
-            n_valid_starts = n_new_valid_starts
-
     pelt_result = PELTResult.new(
-        optimal_cost=opt_cost[1:],
+        optimal_costs=opt_cost[1:],
         previous_change_points=prev_cpts,
-        pruning_fraction=np.nan,  # Not computed in this version.
+        pruning_fraction=pruning_fraction,
     )
 
     return pelt_result
@@ -872,16 +662,27 @@ class PELT(BaseChangeDetector):
         """
         self.fit_cost_and_penalty(X)
 
-        pelt_result = run_pelt(
-            cost=self.fitted_cost,
-            penalty=self.fitted_penalty,
-            min_segment_length=self.min_segment_length,
-            split_cost=self.split_cost,
-            drop_pruning=self.drop_pruning,
-        )
+        if self.min_segment_length == 1:
+            # Special case for min_segment_length=1, use the optimized version:
+            pelt_result = run_pelt_min_segment_length_one(
+                cost=self.fitted_cost,
+                penalty=self.fitted_penalty,
+                split_cost=self.split_cost,
+                drop_pruning=self.drop_pruning,
+                percent_pruning_margin=self.percent_pruning_margin,
+            )
+        else:
+            pelt_result = run_pelt(
+                cost=self.fitted_cost,
+                penalty=self.fitted_penalty,
+                min_segment_length=self.min_segment_length,
+                split_cost=self.split_cost,
+                drop_pruning=self.drop_pruning,
+                percent_pruning_margin=self.percent_pruning_margin,
+            )
 
         # Store the scores for introspection without recomputing using transform_scores
-        self.scores = pd.Series(pelt_result.optimal_cost, index=X.index, name="score")
+        self.scores = pd.Series(pelt_result.optimal_costs, index=X.index, name="score")
         return self._format_sparse_output(pelt_result.changepoints)
 
     def _transform_scores(self, X: pd.DataFrame | pd.Series) -> pd.Series:
@@ -977,7 +778,7 @@ class JumpPELT(PELT):
         )
 
         # Store the scores for introspection without recomputing using transform_scores
-        self.scores = pd.Series(pelt_result.optimal_cost, index=X.index, name="score")
+        self.scores = pd.Series(pelt_result.optimal_costs, index=X.index, name="score")
         return self._format_sparse_output(pelt_result.changepoints)
 
     @classmethod

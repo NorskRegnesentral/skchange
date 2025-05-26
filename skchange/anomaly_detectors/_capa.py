@@ -233,7 +233,6 @@ class CAPA(BaseSegmentAnomalyDetector):
     _tags = {
         "capability:missing_values": False,
         "capability:multivariate": True,
-        "capability:identify_variables": False,  # Can be set to True in init.
         "fit_is_empty": True,
     }
 

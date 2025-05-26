@@ -122,6 +122,8 @@ class BaseCost(BaseIntervalScorer):
         cost : float
             The cost of the segmentation.
         """
+        self.check_is_fitted()
+
         if isinstance(segmentation, pd.Series):
             segmentation = segmentation.to_numpy()
         if segmentation.ndim != 1:

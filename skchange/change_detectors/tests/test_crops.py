@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from skchange.change_detectors._crops import CROPS_PELT
-from skchange.change_detectors._pelt import old_run_pelt, run_pelt
 from skchange.costs import L2Cost
 from skchange.datasets import generate_alternating_data
 
