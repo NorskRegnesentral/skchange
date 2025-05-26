@@ -53,6 +53,9 @@ extensions = [
 nbsphinx_allow_errors = True
 nbsphinx_execute = "always"
 nbsphinx_codecell_lexer = "ipython3"
+nbsphinx_requirejs_path = (
+    "https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"
+)
 
 html_static_path = ["_static"]
 html_css_files = ["custom_notebook.css"]
