@@ -3,7 +3,7 @@
 
 from skchange.change_detectors._crops import JumpCost
 from skchange.change_detectors._pelt import (
-    run_pelt,
+    old_run_pelt,
     run_pelt_with_jump,
 )
 from skchange.costs import GaussianCost
@@ -39,7 +39,7 @@ pelt_with_jump_costs, pelt_with_jump_change_points = run_pelt_with_jump(
 # Run the same with a JumpCost:
 jump_cost = JumpCost(GaussianCost(), jump=jump_step)
 jump_cost.fit(dataset.values)
-jump_cost_pelt_costs, jump_cost_change_points = run_pelt(
+jump_cost_pelt_costs, jump_cost_change_points = old_run_pelt(
     cost=jump_cost, penalty=test_penalty, min_segment_length=1
 )
 jump_cost_change_points *= jump_step

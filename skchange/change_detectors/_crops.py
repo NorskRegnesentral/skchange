@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from ..change_detectors._pelt import (
-    run_improved_pelt,
+    run_pelt,
 )
 from ..change_scores import ContinuousLinearTrendScore
 from ..costs.base import BaseCost
@@ -354,7 +354,7 @@ class CROPS_PELT(BaseChangeDetector):
 
         return self.change_points_lookup_[best_num_change_points]
 
-    def run_pelt_cpd(self, penalty: float) -> dict:
+    def run_pelt_cpd(self, penalty: float) -> np.ndarray:
         """Run the CROPS algorithm for path solutions to penalized CPD.
 
         Parameters
@@ -369,7 +369,7 @@ class CROPS_PELT(BaseChangeDetector):
             as values.
         """
         # Improved PELT with 'deferred' pruning:
-        _, change_points = run_improved_pelt(
+        pelt_result = run_pelt(
             self._cost,
             penalty=penalty,
             min_segment_length=self.min_segment_length,
@@ -377,7 +377,7 @@ class CROPS_PELT(BaseChangeDetector):
             drop_pruning=self.drop_pruning,
         )
 
-        return change_points
+        return pelt_result.changepoints
 
     def run_crops(self, X: np.ndarray):
         """Run the CROPS algorithm for path solutions to penalized CPD.

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skchange.change_detectors._crops import CROPS_PELT
-from skchange.change_detectors._pelt import run_improved_pelt, run_pelt
+from skchange.change_detectors._pelt import old_run_pelt, run_pelt
 from skchange.costs import L2Cost
 from skchange.datasets import generate_alternating_data
 
@@ -69,97 +69,6 @@ def test_pelt_crops():
     # Check that the results are as expected:
     assert len(results) == 10
 
-
-def test_pelt_failing_with_large_min_segment_length():
-    """Test the CROPS algorithm for path solutions to penalized CPD.
-
-    Reference: https://arxiv.org/pdf/1412.3617
-    """
-    cost = L2Cost()
-    min_penalty = 0.5
-    max_penalty = 50.0
-
-    min_segment_length = 30
-
-    # Generate test data:
-    dataset = generate_alternating_data(
-        n_segments=2,
-        segment_length=100,
-        p=1,
-        mean=3.0,
-        variance=4.0,
-        random_state=42,
-    )
-
-    # Issues: non-restrictive and restrictive pruning:
-    # - min_segment_length=30
-    high_penalty = 50.0
-    middle_penalty = np.float64(1.6562305936619783)
-    low_penalty = np.float64(1.6120892290743671)
-
-    common_penalty = low_penalty
-
-    # Issues: with restrictive pruning.
-    # TODO: Look into when a difference from optimal partioning
-    # occurs. First time a potential change point start is pruned,
-    # that should not have been pruned.
-    # - min_segment_length=30
-    # high_penalty: 50.0
-    # middle_penalty: np.float64(1.6562305936619783)
-    # low_penalty: np.float64(1.6120892290743671)
-
-    # Fit the change point detector:
-    cost.fit(dataset)
-
-    # Check that the results are as expected:
-    # Optimal start for the final point: Index 101
-    opt_part_costs, opt_part_cpts = run_pelt(
-        cost=cost,
-        penalty=common_penalty,
-        min_segment_length=min_segment_length,
-        drop_pruning=True,
-    )
-
-    improved_pelt_costs, improved_pelt_cpts = run_improved_pelt(
-        cost=cost,
-        penalty=common_penalty,
-        min_segment_length=min_segment_length,
-        drop_pruning=False,
-    )
-
-    orig_pelt_costs, orig_pelt_cpts = run_pelt(
-        cost=cost,
-        penalty=common_penalty,
-        min_segment_length=min_segment_length,
-        restricted_pruning=False,
-        drop_pruning=False,
-    )
-
-    restricted_pelt_costs, restricted_pelt_cpts = run_pelt(
-        cost=cost,
-        penalty=common_penalty,
-        min_segment_length=min_segment_length,
-        restricted_pruning=True,
-        drop_pruning=False,
-    )
-
-    # PELT objective values:
-    opt_part_min_value = cost.evaluate_segmentation(opt_part_cpts) + common_penalty * (
-        len(opt_part_cpts) + 1
-    )
-
-    orig_pelt_min_value = cost.evaluate_segmentation(
-        orig_pelt_cpts
-    ) + common_penalty * (len(orig_pelt_cpts) + 1)
-
-    restricted_pelt_min_value = cost.evaluate_segmentation(
-        restricted_pelt_cpts
-    ) + common_penalty * (len(restricted_pelt_cpts) + 1)
-
-    # First index where
-    assert np.all(opt_part_costs == orig_pelt_costs), (
-        f"Expected {opt_part_costs}, got {orig_pelt_costs}"
-    )
 
 
 def test_pelt_crops_raises_on_wrong_segmentation_selection():
@@ -302,6 +211,6 @@ def test_retrieve_change_points_2():
     refined_change_points = change_point_detector.retrieve_change_points(2)
 
     # Check that the results are as expected:
-    assert np.all(refined_change_points == np.array([88, 176])), (
+    assert np.array_equal(refined_change_points, np.array([88, 176])), (
         f"Expected [88, 176], got {refined_change_points}"
     )

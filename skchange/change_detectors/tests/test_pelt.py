@@ -11,9 +11,9 @@ from skchange.change_detectors._pelt import (
     PELT,
     JumpPELT,
     get_changepoints,
-    # run_pelt,
+    old_run_pelt,
+    run_pelt,
 )
-from skchange.change_detectors._pelt import run_improved_pelt as run_pelt
 from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
 from skchange.costs.base import BaseCost
@@ -392,7 +392,7 @@ def test_run_optimal_partitioning(
     cost: BaseCost, penalty: float, min_segment_length: int = 1
 ):
     cost.fit(changepoint_data)
-    opt_costs, changepoints = run_pelt(
+    pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -401,22 +401,22 @@ def test_run_optimal_partitioning(
 
     # Assert monotonicity of costs:
     if min_segment_length == 1:
-        assert np.all(np.diff(opt_costs) >= 0)
-    assert len(changepoints) == n_segments - 1
-    assert changepoints == [seg_len]
+        assert np.all(np.diff(pelt_result.optimal_cost) >= 0)
+    assert len(pelt_result.changepoints) == n_segments - 1
+    assert pelt_result.changepoints.tolist() == [seg_len]
 
 
 def test_run_pelt(cost: BaseCost, penalty: float, min_segment_length=1):
     cost.fit(changepoint_data)
-    opt_costs, changepoints = run_pelt(
+    pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
 
-    assert np.all(np.diff(opt_costs) >= 0)
-    assert len(changepoints) == n_segments - 1
-    assert changepoints == [seg_len]
+    assert np.all(np.diff(pelt_result.optimal_cost) >= 0)
+    assert len(pelt_result.changepoints) == n_segments - 1
+    assert pelt_result.changepoints.tolist() == [seg_len]
 
 
 def test_compare_all_pelt_functions(
@@ -424,21 +424,23 @@ def test_compare_all_pelt_functions(
 ):
     cost.fit(changepoint_data)
 
-    opt_part_costs, opt_part_changepoints = run_pelt(
+    opt_part_results = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
 
-    pelt_costs, pelt_changepoints = run_pelt(
+    pelt_results = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
 
-    assert opt_part_changepoints == pelt_changepoints
-    np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs)
+    assert np.array_equal(opt_part_results.changepoints, pelt_results.changepoints)
+    np.testing.assert_array_almost_equal(
+        pelt_results.optimal_cost, opt_part_results.optimal_cost
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", [1, 5, 10])
@@ -458,32 +460,34 @@ def test_pelt_on_tricky_data(
     # Original "run_pelt" found 7 changepoints.
     percent_pruning_margin = 0.0
     cost.fit(alternating_sequence[0:signal_end_index])
-    pelt_costs, pelt_changepoints = run_pelt(
+    pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         percent_pruning_margin=percent_pruning_margin,
     )
-    opt_part_costs, opt_part_changepoints = run_pelt(
+    opt_part_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
 
-    assert np.all(pelt_changepoints == opt_part_changepoints)
+    assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
     np.testing.assert_almost_equal(
-        pelt_costs[-1],
+        pelt_result.optimal_cost[-1],
         pelt_partition_cost(
             alternating_sequence[0:signal_end_index],
-            pelt_changepoints,
+            pelt_result.changepoints,
             cost,
             penalty=penalty,
         ),
         decimal=10,
         err_msg="PELT cost for final observation does not match partition cost.",
     )
-    np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs)
+    np.testing.assert_array_almost_equal(
+        pelt_result.optimal_cost, opt_part_result.optimal_cost
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", range(1, 20))
@@ -498,22 +502,24 @@ def test_pelt_min_segment_lengths(cost: BaseCost, penalty: float, min_segment_le
     Segment length of 30 works again...
     """
     cost.fit(alternating_sequence)
-    pelt_costs, pelt_changepoints = run_pelt(
+    pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
 
     cost.fit(alternating_sequence)
-    opt_part_costs, opt_part_changepoints = run_pelt(
+    opt_part_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
 
-    assert np.all(pelt_changepoints == opt_part_changepoints)
-    np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs, decimal=10)
+    assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
+    np.testing.assert_array_almost_equal(
+        pelt_result.optimal_cost, opt_part_result.optimal_cost, decimal=10
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", range(31, 40))
@@ -523,25 +529,26 @@ def test_high_min_segment_length(cost: BaseCost, penalty: float, min_segment_len
     finds the same changepoints as the optimal partitioning.
     """
     cost.fit(alternating_sequence)
-    # The PELT implementation fails to find the same changepoints
-    # as the optimal partitioning for these segment lengths,
-    # when the segment length is greater than 30 and
-    # the pruning margin is zero.
-    pelt_costs, pelt_changepoints = run_pelt(
+    # The PELT implementation (no longer) fails to find the same
+    # changepoints as the optimal partitioning for these segment lengths,
+    # when the segment length is greater than 30 and the pruning margin is zero.
+    pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
 
-    opt_part_costs, opt_part_changepoints = run_pelt(
+    opt_part_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
 
-    assert np.all(pelt_changepoints == opt_part_changepoints)
-    np.testing.assert_array_almost_equal(pelt_costs, opt_part_costs)
+    assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
+    np.testing.assert_array_almost_equal(
+        pelt_result.optimal_cost, opt_part_result.optimal_cost
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", [25])
@@ -563,14 +570,20 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
     #     percent_pruning_margin=0.5,
     # )
 
-    no_margin_pelt_costs, no_margin_pelt_changepoints = run_pelt(
+    pelt_result = run_pelt(
+        cost,
+        penalty=penalty,
+        min_segment_length=min_segment_length,
+        percent_pruning_margin=0.0,
+    )
+    old_pelt_result = old_run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         percent_pruning_margin=0.0,
     )
 
-    opt_part_costs, opt_part_changepoints = run_pelt(
+    opt_part_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -579,8 +592,10 @@ def test_pruning_margin_fixes_pelt_min_segment_length_problems(
     # assert np.all(margin_pelt_changepoints == opt_part_changepoints)
     # np.testing.assert_array_almost_equal(margin_pelt_costs, opt_part_costs)
 
-    assert np.all(no_margin_pelt_changepoints == opt_part_changepoints)
-    np.testing.assert_array_almost_equal(no_margin_pelt_costs, opt_part_costs)
+    assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
+    np.testing.assert_array_almost_equal(
+        pelt_result.optimal_cost, opt_part_result.optimal_cost
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", [33, 39])
@@ -596,30 +611,31 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
     """
     cost.fit(long_alternating_sequence)
 
-    opt_part_costs, opt_part_cpts = run_pelt(
+    opt_part_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
     opt_part_min_value = (
-        cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts)) * penalty
+        cost.evaluate_segmentation(opt_part_result.changepoints)
+        + (len(opt_part_result.changepoints)) * penalty
     )
 
-    skchange_pelt_costs, skchange_pelt_cpts = run_pelt(
+    skchange_pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
     skchange_pelt_min_value = (
-        cost.evaluate_segmentation(skchange_pelt_cpts)
-        + (len(skchange_pelt_cpts)) * penalty
+        cost.evaluate_segmentation(skchange_pelt_result.changepoints)
+        + (len(skchange_pelt_result.changepoints)) * penalty
     )
 
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
     rpt_model.fit(long_alternating_sequence)
     dyn_rpt_num_opt_part_cpts = np.array(
-        rpt_model.predict(n_bkps=len(opt_part_cpts))[:-1]
+        rpt_model.predict(n_bkps=len(opt_part_result.changepoints))[:-1]
     )
     dyn_num_opt_part_cpts_min_value = (
         cost.evaluate_segmentation(dyn_rpt_num_opt_part_cpts)
@@ -635,14 +651,19 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         cost.evaluate_segmentation(ruptures_pelt_cpts)
         + (len(ruptures_pelt_cpts)) * penalty
     )
-    assert np.all(skchange_pelt_cpts == opt_part_cpts)
-    assert np.all(skchange_pelt_cpts == dyn_rpt_num_opt_part_cpts)
-    assert np.all(skchange_pelt_cpts == ruptures_pelt_cpts)
+    assert np.array_equal(
+        skchange_pelt_result.changepoints, opt_part_result.changepoints
+    )
+    assert np.array_equal(skchange_pelt_result.changepoints, dyn_rpt_num_opt_part_cpts)
+    assert np.array_equal(skchange_pelt_result.changepoints, ruptures_pelt_cpts)
 
     assert skchange_pelt_min_value == opt_part_min_value
     assert skchange_pelt_min_value == dyn_num_opt_part_cpts_min_value
     assert skchange_pelt_min_value == rpt_pelt_min_value
-    assert np.abs(skchange_pelt_costs[-1] - opt_part_costs[-1]) < 1e-16
+    assert (
+        np.abs(skchange_pelt_result.optimal_cost[-1] - opt_part_result.optimal_cost[-1])
+        < 1e-16
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", [31, 32])
@@ -658,31 +679,32 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     """
     cost.fit(long_alternating_sequence)
 
-    opt_part_costs, opt_part_cpts = run_pelt(
+    opt_part_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         drop_pruning=True,
     )
     opt_part_min_value = (
-        cost.evaluate_segmentation(opt_part_cpts) + (len(opt_part_cpts)) * penalty
+        cost.evaluate_segmentation(opt_part_result.changepoints)
+        + (len(opt_part_result.changepoints)) * penalty
     )
 
     # Compare with 'improved PELT':
-    skchange_pelt_costs, skchange_pelt_cpts = run_pelt(
+    skchange_pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
     skchange_pelt_min_value = (
-        cost.evaluate_segmentation(skchange_pelt_cpts)
-        + (len(skchange_pelt_cpts)) * penalty
+        cost.evaluate_segmentation(skchange_pelt_result.changepoints)
+        + (len(skchange_pelt_result.changepoints)) * penalty
     )
 
     rpt_model = rpt.Dynp(model="l2", min_size=min_segment_length, jump=1)
     rpt_model.fit(long_alternating_sequence)
     dyn_rpt_num_opt_part_cpts = np.array(
-        rpt_model.predict(n_bkps=len(opt_part_cpts))[:-1]
+        rpt_model.predict(n_bkps=len(opt_part_result.changepoints))[:-1]
     )
     dyn_num_opt_part_cpts_min_value = (
         cost.evaluate_segmentation(dyn_rpt_num_opt_part_cpts)
@@ -698,13 +720,18 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         cost.evaluate_segmentation(ruptures_pelt_cpts)
         + (len(ruptures_pelt_cpts)) * penalty
     )
-    assert np.all(skchange_pelt_cpts == opt_part_cpts)
-    assert np.all(skchange_pelt_cpts == dyn_rpt_num_opt_part_cpts)
+    assert np.array_equal(
+        skchange_pelt_result.changepoints, opt_part_result.changepoints
+    )
+    assert np.array_equal(skchange_pelt_result.changepoints, dyn_rpt_num_opt_part_cpts)
 
     assert skchange_pelt_min_value == opt_part_min_value
     assert skchange_pelt_min_value == dyn_num_opt_part_cpts_min_value
     assert skchange_pelt_min_value < rpt_pelt_min_value
-    assert np.abs(skchange_pelt_costs[-1] - opt_part_costs[-1]) < 1e-16
+    assert (
+        np.abs(skchange_pelt_result.optimal_cost[-1] - opt_part_result.optimal_cost[-1])
+        < 1e-16
+    )
 
 
 @pytest.mark.parametrize("min_segment_length", [1, 2, 5, 10])
@@ -716,7 +743,7 @@ def test_pelt_dense_changepoints_parametrized(cost: BaseCost, min_segment_length
     increasing_data = np.linspace(0, 1 * seg_len, seg_len).reshape(-1, 1)
     penalty = 0.0
     cost.fit(increasing_data)
-    _, changepoints = run_pelt(
+    pelt_result = run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -728,7 +755,7 @@ def test_pelt_dense_changepoints_parametrized(cost: BaseCost, min_segment_length
         for i in range(1, len(increasing_data) // min_segment_length)
     ]
 
-    assert np.all(changepoints == expected_changepoints)
+    assert np.array_equal(pelt_result.changepoints, expected_changepoints)
 
 
 def test_invalid_costs():
@@ -773,4 +800,99 @@ def test_pelt_with_jump(cost: BaseCost, penalty: float, jump_step: int):
     assert len(pelt_changepoints) > 0
 
     assert len(pelt_changepoints) == len(rpt_changepoints)
-    assert np.all(pelt_changepoints == rpt_changepoints)
+    assert np.array_equal(pelt_changepoints, rpt_changepoints)
+
+
+@pytest.mark.parametrize("min_segment_length", [30, 35, 40])
+@pytest.mark.parametrize("common_penalty", [1.6120892290743671, 1.6562305936619783])
+def test_old_pelt_failing_with_large_min_segment_length(
+    common_penalty: float, min_segment_length: int
+):
+    """Test the CROPS algorithm for path solutions to penalized CPD.
+
+    Reference: https://arxiv.org/pdf/1412.3617
+    """
+    cost = L2Cost()
+
+    # Generate test data:
+    dataset = generate_alternating_data(
+        n_segments=2,
+        segment_length=100,
+        p=1,
+        mean=3.0,
+        variance=4.0,
+        random_state=42,
+    )
+
+    # Fit the change point detector:
+    cost.fit(dataset)
+
+    # Check that the results are as expected:
+    # Optimal start for the final point: Index 101
+    opt_part_result = run_pelt(
+        cost=cost,
+        penalty=common_penalty,
+        min_segment_length=min_segment_length,
+        drop_pruning=True,
+    )
+
+    improved_pelt_result = run_pelt(
+        cost=cost,
+        penalty=common_penalty,
+        min_segment_length=min_segment_length,
+        drop_pruning=False,
+    )
+
+    old_pelt_result = old_run_pelt(
+        cost=cost,
+        penalty=common_penalty,
+        min_segment_length=min_segment_length,
+        drop_pruning=False,
+    )
+
+    # PELT objective values:
+    opt_part_min_value = cost.evaluate_segmentation(
+        opt_part_result.changepoints
+    ) + common_penalty * len(opt_part_result.changepoints)
+
+    improved_pelt_min_value = cost.evaluate_segmentation(
+        improved_pelt_result.changepoints
+    ) + common_penalty * len(improved_pelt_result.changepoints)
+
+    old_pelt_min_value = cost.evaluate_segmentation(
+        old_pelt_result.changepoints
+    ) + common_penalty * len(old_pelt_result.changepoints)
+
+    # Compare results:
+    assert np.array_equal(
+        opt_part_result.changepoints, improved_pelt_result.changepoints
+    )
+    # Old PELT result should be different from the optimal partitioning result:
+    assert not np.array_equal(
+        opt_part_result.changepoints, old_pelt_result.changepoints
+    )
+
+    np.testing.assert_array_equal(
+        opt_part_result.optimal_cost, improved_pelt_result.optimal_cost
+    )
+    assert old_pelt_min_value > opt_part_min_value, (
+        f"Expected old PELT cost to be greater than optimal partitioning cost, "
+        f"got {old_pelt_min_value} vs {opt_part_min_value}"
+    )
+    assert improved_pelt_min_value == opt_part_min_value, (
+        f"Expected improved PELT cost to be equal to optimal partitioning cost, "
+        f"got {improved_pelt_min_value} vs {opt_part_min_value}"
+    )
+
+
+def test_pelt_with_fewer_samples_than_min_segment_length_throws():
+    """Test that PELT raises when `n_samples` is less than `min_segment_length`."""
+    cost = L2Cost()
+    data = np.random.randn(5, 1)  # Less than min_segment_length of 10
+    cost.fit(data)
+
+    with pytest.raises(
+        ValueError,
+        match="The `min_segment_length` cannot be larger than the number of samples",
+    ):
+        run_pelt(cost, penalty=1.0, min_segment_length=10)
