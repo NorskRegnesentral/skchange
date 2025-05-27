@@ -19,7 +19,7 @@ from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True, kw_only=True, eq=False)
 class PELTResult:
     """Result of running the PELT algorithm.
 
