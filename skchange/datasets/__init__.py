@@ -6,6 +6,7 @@ from ._generate import (
     generate_alternating_data,
     generate_anomalous_data,
     generate_changing_data,
+    generate_continuous_piecewise_linear_data,
 )
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "generate_anomalous_data",
     "generate_alternating_data",
     "generate_changing_data",
+    "generate_continuous_piecewise_linear_data",
     "load_hvac_system_data",
 ]

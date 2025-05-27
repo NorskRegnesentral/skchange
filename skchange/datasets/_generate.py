@@ -6,12 +6,46 @@ from numbers import Number
 
 import numpy as np
 import pandas as pd
-from scipy.stats import multivariate_normal
+import scipy.stats
+
+
+def _check_change_points(change_points: int | list[int], n: int):
+    """Check if change points are valid.
+
+    Parameters
+    ----------
+    change_points : list of int
+        List of change points.
+    n : int
+        Total number of observations.
+
+    Raises
+    ------
+    ValueError
+        If any change point is out of bounds.
+    """
+    if isinstance(change_points, Number):
+        change_points = [change_points]
+
+    change_points = sorted(change_points)
+    if any([cpt > n - 1 or cpt < 0 for cpt in change_points]):
+        raise ValueError(
+            "Changepoints must be within the range of the data."
+            f" Got n={n}, max(change_points)={change_points} and"
+            f" min(change_points)={min(change_points)}."
+        )
+    if min(np.diff(change_points)) < 1:
+        raise ValueError(
+            "Changepoints must be at least 1 apart."
+            f" Got change_points={change_points}."
+        )
+
+    return change_points
 
 
 def generate_changing_data(
     n: int = 100,
-    changepoints: int | list[int] = 50,
+    change_points: int | list[int] = 50,
     means: float | list[float] | list[np.ndarray] = 0.0,
     variances: float | list[float] | list[np.ndarray] = 1.0,
     random_state: int = None,
@@ -23,8 +57,8 @@ def generate_changing_data(
     ----------
     n : int, optional, default=100
         Number of observations.
-    changepoints : int or list of ints, optional, default=50
-        Changepoints in the data.
+    change_points : int or list of ints, optional, default=50
+        Change points in the data.
     means : list of floats or list of arrays, optional, default=0.0
         List of means for each segment.
     variances : list of floats or list of arrays, optional, default=1.0
@@ -37,8 +71,7 @@ def generate_changing_data(
     `pd.DataFrame`
         DataFrame with generated data.
     """
-    if isinstance(changepoints, int):
-        changepoints = [changepoints]
+    change_points = _check_change_points(change_points, n)
     if isinstance(means, Number):
         means = [means]
     if isinstance(variances, Number):
@@ -47,7 +80,7 @@ def generate_changing_data(
     means = [np.asarray(mean).reshape(-1) for mean in means]
     variances = [np.asarray(variance).reshape(-1) for variance in variances]
 
-    n_segments = len(changepoints) + 1
+    n_segments = len(change_points) + 1
     if len(means) == 1:
         means = means * n_segments
     if len(variances) == 1:
@@ -55,20 +88,15 @@ def generate_changing_data(
 
     if n_segments != len(means) or n_segments != len(variances):
         raise ValueError(
-            "Number of segments (len(changepoints) + 1),"
+            "Number of segments (len(change_points) + 1),"
             + " means and variances must be the same."
-        )
-    if any([changepoint > n - 1 for changepoint in changepoints]):
-        raise ValueError(
-            "Changepoints must be within the range of the data"
-            + f" (n={n} and max(changepoints)={max(changepoints)})."
         )
 
     p = len(means[0])
-    x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
-    changepoints = [0] + changepoints + [n]
+    x = scipy.stats.multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
+    change_points = [0] + change_points + [n]
     for prev_cpt, next_cpt, mean, variance in zip(
-        changepoints[:-1], changepoints[1:], means, variances
+        change_points[:-1], change_points[1:], means, variances
     ):
         x[prev_cpt:next_cpt] = mean + np.sqrt(variance) * x[prev_cpt:next_cpt]
 
@@ -131,7 +159,7 @@ def generate_anomalous_data(
         raise ValueError("Anomalies must be within the range of the data.")
 
     p = len(means[0])
-    x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
+    x = scipy.stats.multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
     for anomaly, mean, variance in zip(anomalies, means, variances):
         start, end = anomaly
         x[start:end] = mean + np.sqrt(variance) * x[start:end]
@@ -218,5 +246,73 @@ def generate_alternating_data(
         vars.append(vars_vec)
 
     n = segment_length * n_segments
-    changepoints = [segment_length * i for i in range(1, n_segments)]
-    return generate_changing_data(n, changepoints, means, vars, random_state)
+    change_points = [segment_length * i for i in range(1, n_segments)]
+    return generate_changing_data(n, change_points, means, vars, random_state)
+
+
+def generate_continuous_piecewise_linear_data(
+    n: int = 200,
+    change_points: int | list[int] = 100,
+    slopes: float | list[float] = [1.0, -1.0],
+    intercept: float = 0.0,
+    noise_std: float = 1.0,
+    random_state: int | None = None,
+):
+    """Generate a continuous piecewise linear signal with noise.
+
+    Parameters
+    ----------
+    change_points : list
+        List of indices where the slope changes.
+    slopes : list
+        List of slopes for each segment. This list should have length equal to
+        `len(change_points) + 1`.
+    intercept : float, default=0
+        Starting intercept value.
+    n_samples : int, default=200
+        Total number of samples.
+    noise_std : float, default=0.1
+        Standard deviation of the Gaussian noise to add.
+    random_state : int or `RandomState`, optional
+        Random seed for reproducibility.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with a single column named "var0" containing the generated data.
+    """
+    change_points = _check_change_points(change_points, n)
+    if isinstance(slopes, Number):
+        slopes = [slopes]
+
+    if len(slopes) != len(change_points) + 1:
+        raise ValueError(
+            "Number of slopes must be one more than number of change points"
+        )
+
+    time = np.arange(n)
+    signal = np.zeros(n)
+
+    # First segment
+    signal[: change_points[0]] = intercept + slopes[0] * time[: change_points[0]]
+    current_value = signal[change_points[0] - 1]
+
+    # Middle segments
+    for i in range(len(change_points) - 1):
+        start_idx = change_points[i]
+        end_idx = change_points[i + 1]
+        segment_time = time[start_idx:end_idx] - time[start_idx]
+        signal[start_idx:end_idx] = current_value + slopes[i + 1] * segment_time
+        current_value = signal[end_idx - 1]
+
+    # Last segment
+    if len(change_points) > 0:
+        last_start = change_points[-1]
+        segment_time = time[last_start:] - time[last_start]
+        signal[last_start:] = current_value + slopes[-1] * segment_time
+
+    signal += scipy.stats.norm.rvs(
+        loc=0, scale=noise_std, size=n, random_state=random_state
+    )
+    df = pd.DataFrame({"var0": signal})
+    return df
