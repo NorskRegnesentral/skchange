@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from skchange.change_detectors._crops import CROPS_PELT
-from skchange.costs import L2Cost
+from skchange.costs import L1Cost, L2Cost
 from skchange.datasets import generate_alternating_data
 
 
@@ -197,3 +197,25 @@ def test_retrieve_change_points_2():
     assert np.array_equal(
         refined_change_points, np.array([88, 176])
     ), f"Expected [88, 176], got {refined_change_points}"
+
+
+def test_non_aggregated_cost_raises():
+    """Test CROPS algorithm raises an error if a non-aggregated cost is used."""
+    cost = L1Cost()
+    two_dim_data = generate_alternating_data(
+        n_segments=2,
+        segment_length=100,
+        p=2,  # Two dimensions
+        mean=3.0,
+        variance=4.0,
+        random_state=42,
+    )
+
+    crops_cpd = CROPS_PELT(cost=cost, min_penalty=1.0, max_penalty=2.0)
+    crops_cpd.fit(two_dim_data)
+
+    with pytest.raises(
+        ValueError,
+        match="CROPS_PELT only supports costs that return a single value per cut",
+    ):
+        crops_cpd.predict(two_dim_data.values)

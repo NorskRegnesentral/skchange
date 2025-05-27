@@ -105,6 +105,15 @@ def test_evaluate_segmentation(CostClass: type[BaseCost]):
     np_changepoints = np.array([10, 20, 30, 40])
 
     np_2d_segmentation = np_segmentation.reshape(-1, 1)
+    # np_bad_2d_segmentation = np.array(
+    #     [
+    #         [0, 10],
+    #         [20, 30],
+    #         [
+    #             40,
+    #         ],
+    #     ]
+    # )
 
     assert np.array_equal(
         cost.evaluate_segmentation(np_segmentation),
@@ -128,13 +137,16 @@ def test_evaluate_segmentation_raises(CostClass: type[BaseCost]):
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
     cost.fit(df)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError,
+        match="The segmentation must contain strictly increasing entries.",
+    ):
         # Not strictly increasing segmentation:
         cost.evaluate_segmentation(np.array([0, 10, 20, 30, 20, 40]))
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="The segmentation must univariate"):
         # Invalid segmentation shape:
-        cost.evaluate_segmentation(np.array([[0, 10], [20, 30], [40]]))
+        cost.evaluate_segmentation(np.array([[0, 10], [20, 30], [40, 50]]))
 
 
 @pytest.mark.parametrize("CostClass", COSTS)

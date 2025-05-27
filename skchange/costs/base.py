@@ -79,20 +79,17 @@ class BaseCost(BaseIntervalScorer):
 
         if isinstance(segmentation, pd.Series):
             segmentation = segmentation.to_numpy()
-        if segmentation.ndim != 1:
-            try:
-                segmentation = segmentation.reshape(-1)
-            except Exception as e:
-                raise ValueError(
-                    "The segmentation must be convertible to a 1D array."
-                ) from e
+        if segmentation.ndim != 1 and segmentation.shape[1] != 1:
+            raise ValueError("The segmentation must univariate")
+        else:
+            segmentation = segmentation.reshape(-1)
 
         # Prepend 0 and append the length of the data to the segmentation:
         # This is done to ensure that the first and last segments are included.
         # The segmentation is assumed to be sorted in increasing order.
         if np.any(np.diff(segmentation) <= 0):
             raise ValueError(
-                "The segmentation must be a 1D array with strictly increasing entries."
+                "The segmentation must contain strictly increasing entries."
             )
         if len(segmentation) == 0:
             segmentation = np.array([0, self._X.shape[0]])
