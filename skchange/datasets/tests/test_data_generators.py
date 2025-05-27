@@ -7,19 +7,19 @@ def test_generate_changing_data():
     n = 100
     generate_changing_data(
         n=n,
-        changepoints=[25, 50],
+        change_points=[25, 50],
         means=[3.0, 0.0, 5.0],
         variances=[1.0, 2.0, 3.0],
     )
 
     generate_changing_data(
         n,
-        changepoints=40,
+        change_points=40,
     )
 
     generate_changing_data(
         n=n,
-        changepoints=[],
+        change_points=[],
         means=1.0,
         variances=5.0,
     )
@@ -34,7 +34,7 @@ def test_generate_changing_data_with_multiple_changepoints():
     with pytest.raises(ValueError):
         generate_changing_data(
             n=n,
-            changepoints=changepoints,
+            change_points=changepoints,
             means=means,
             variances=variances,
             random_state=random_state,
@@ -45,7 +45,7 @@ def test_generate_changing_data_invalid_changepoints():
     with pytest.raises(ValueError):
         generate_changing_data(
             n=100,
-            changepoints=110,  # Invalid changepoint.
+            change_points=110,  # Invalid changepoint.
         )
 
 
@@ -58,7 +58,7 @@ def test_generate_changing_data_mismatched_lengths():
     with pytest.raises(ValueError):
         generate_changing_data(
             n=n,
-            changepoints=changepoints,
+            change_points=changepoints,
             means=means,
             variances=variances,
             random_state=random_state,
