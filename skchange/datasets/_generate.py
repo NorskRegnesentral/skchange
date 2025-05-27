@@ -253,7 +253,7 @@ def generate_continuous_piecewise_linear_signal(
         np.random.seed(random_seed)
 
     if len(slopes) != len(change_points) + 1:
-        raise ValueError(
+        raise ValueError(  # pragma: no cover
             "Number of slopes must be one more than number of change points"
         )
 
