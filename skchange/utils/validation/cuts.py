@@ -42,7 +42,7 @@ def check_cuts_array(
         )
 
     interval_sizes = np.diff(cuts, axis=1)
-    if isinstance(min_size, tuple):
+    if isinstance(min_size, tuple) and len(min_size) > 1:
         min_sizes = np.array(min_size, dtype=cuts.dtype)
         if min_sizes.shape[0] != interval_sizes.shape[1]:
             raise ValueError(

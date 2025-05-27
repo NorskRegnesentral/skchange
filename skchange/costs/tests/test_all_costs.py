@@ -150,7 +150,7 @@ def test_evaluate_segmentation_raises(CostClass: type[BaseCost]):
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def accessing_n_samples_before_fit_raises(
+def test_accessing_n_samples_before_fit_raises(
     CostClass: type[BaseCost],
 ):
     """Test that accessing n_samples before fitting raises an error."""

@@ -8,7 +8,7 @@ from skchange.anomaly_scores import (
     to_saving,
 )
 from skchange.change_scores import CUSUM
-from skchange.costs import COSTS
+from skchange.costs import COSTS, L2Cost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import create_fixed_cost_test_instance
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
@@ -145,3 +145,40 @@ def test_to_local_anomaly_score_error():
         to_local_anomaly_score("invalid_evaluator")
     with pytest.raises(ValueError):
         to_local_anomaly_score(CUSUM())
+
+
+class TupleMinSizeL2Cost(L2Cost):
+    """A custom cost class that changes `min_size` to return a tuple."""
+
+    @property
+    def min_size(self) -> tuple[int]:
+        """Return a tuple instead of an integer."""
+        return (3,)
+
+
+def test_local_anomaly_score_with_tuple_min_size_cost():
+    """Test anomaly detector with a custom cost class that returns a tuple."""
+    local_score = to_local_anomaly_score(scorer=TupleMinSizeL2Cost(param=0.0))
+    local_score._check_cuts(np.array([[0, 5, 10, 12], [5, 10, 15, 17]]))
+
+
+def test_raises_if_inner_if_inner_interval_size_is_too_small():
+    """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
+    local_score = to_local_anomaly_score(scorer=TupleMinSizeL2Cost(param=0.0))
+    with pytest.raises(
+        ValueError, match="The inner intervals must be at least min_size="
+    ):
+        local_score._check_cuts(
+            np.array([[1, 3, 5, 8]])
+        )  # Too small inner interval size.
+
+
+def test_raises_if_inner_if_surrounding_interval_size_is_too_small():
+    """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
+    local_score = to_local_anomaly_score(scorer=TupleMinSizeL2Cost(param=0.0))
+    with pytest.raises(
+        ValueError, match="The surrounding intervals must be at least min_size="
+    ):
+        local_score._check_cuts(
+            np.array([[1, 2, 6, 7]])
+        )  # Too small surrounding interval size.
