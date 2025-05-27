@@ -13,4 +13,3 @@ you make the most of the library.
 
     detectors
     interval_scores
-    penalties
