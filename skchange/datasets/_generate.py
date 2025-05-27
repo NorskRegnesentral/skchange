@@ -9,7 +9,7 @@ import pandas as pd
 import scipy.stats
 
 
-def _check_change_points(change_points: int | list[int], n: int):
+def _check_change_points(change_points: int | list[int], n: int) -> list[int]:
     """Check if change points are valid.
 
     Parameters
@@ -30,13 +30,13 @@ def _check_change_points(change_points: int | list[int], n: int):
     change_points = sorted(change_points)
     if any([cpt > n - 1 or cpt < 0 for cpt in change_points]):
         raise ValueError(
-            "Changepoints must be within the range of the data."
+            "Change points must be within the range of the data."
             f" Got n={n}, max(change_points)={change_points} and"
             f" min(change_points)={min(change_points)}."
         )
-    if min(np.diff(change_points)) < 1:
+    if len(change_points) >= 2 and min(np.diff(change_points)) < 1:
         raise ValueError(
-            "Changepoints must be at least 1 apart."
+            "Change points must be at least 1 apart."
             f" Got change_points={change_points}."
         )
 
