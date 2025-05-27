@@ -19,7 +19,7 @@ from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
 
-@dataclass
+@dataclass(frozen=True, kw_only=True)
 class PELTResult:
     """Result of running the PELT algorithm.
 
@@ -52,16 +52,6 @@ class PELTResult:
             and self.pruning_fraction == other.pruning_fraction
             and np.array_equal(self.changepoints, other.changepoints)
         )
-
-    def __hash__(self):
-        """Make instances hashable.
-
-        Since we're implementing __eq__, we should also implement __hash__.
-        This implementation makes instances with equal contents have the same hash,
-        but prevents them from being used as dictionary keys or in sets because
-        numpy arrays are mutable.
-        """
-        return None  # Makes the class unhashable, which is safe for mutable objects
 
     @classmethod
     def new(

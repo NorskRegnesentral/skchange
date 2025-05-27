@@ -1082,5 +1082,5 @@ def test_PELTResult_cannot_be_hashed():
         previous_change_points=np.array([0, 1]),
         pruning_fraction=0.0,
     )
-    with pytest.raises(TypeError, match="__hash__ method should return an integer"):
+    with pytest.raises(TypeError, match="unhashable type: 'PELTResult'"):
         _ = {pelt_result: "value"}  # Attempt to use PELTResult as a dict key
