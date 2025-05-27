@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from skchange.costs import COSTS
@@ -90,3 +91,57 @@ def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     intervals = np.column_stack((starts, ends))
     costs = cost.evaluate(intervals)
     assert np.all(costs >= 0.0)
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_evaluate_segmentation(CostClass: type[BaseCost]):
+    cost = CostClass.create_test_instance()
+    skip_if_no_test_data(cost)
+    n = 50
+    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
+    cost.fit(df)
+    np_segmentation = np.array([0, 10, 20, 30, 40, 50])
+    pd_segmentation = pd.Series(np_segmentation)
+    np_changepoints = np.array([10, 20, 30, 40])
+
+    np_2d_segmentation = np_segmentation.reshape(-1, 1)
+
+    assert np.array_equal(
+        cost.evaluate_segmentation(np_segmentation),
+        cost.evaluate_segmentation(pd_segmentation),
+    )
+    assert np.array_equal(
+        cost.evaluate_segmentation(np_2d_segmentation),
+        cost.evaluate_segmentation(np_segmentation),
+    )
+    assert np.array_equal(
+        cost.evaluate_segmentation(np_changepoints),
+        cost.evaluate_segmentation(pd_segmentation),
+    )
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_evaluate_segmentation_raises(CostClass: type[BaseCost]):
+    cost = CostClass.create_test_instance()
+    skip_if_no_test_data(cost)
+    n = 50
+    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
+    cost.fit(df)
+
+    with pytest.raises(ValueError):
+        # Not strictly increasing segmentation:
+        cost.evaluate_segmentation(np.array([0, 10, 20, 30, 20, 40]))
+
+    with pytest.raises(ValueError):
+        # Invalid segmentation shape:
+        cost.evaluate_segmentation(np.array([[0, 10], [20, 30], [40]]))
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def accessing_n_samples_before_fit_raises(
+    CostClass: type[BaseCost],
+):
+    """Test that accessing n_samples before fitting raises an error."""
+    cost = CostClass.create_test_instance()
+    with pytest.raises(ValueError, match="The cost has not been fitted yet."):
+        cost.n_samples()

@@ -74,8 +74,9 @@ class PELTResult:
         # Check that the lengths of opt_cost and prev_cpts match:
         if len(optimal_costs) != len(previous_change_points):
             raise ValueError(
-                "The lengths of `opt_cost` and `prev_cpts` must match. "
-                f"Got {len(optimal_costs)} and {len(previous_change_points)}."
+                "All input arrays must have the same length. "
+                "The lengths of `opt_cost` and `prev_cpts` were "
+                f"{len(optimal_costs)} != {len(previous_change_points)}."
             )
         changepoints = get_changepoints(previous_change_points)
         return cls(
@@ -177,9 +178,10 @@ def run_pelt(
     non_changepoint_intervals = np.column_stack(
         (non_changepoint_starts, non_changepoint_ends)
     )
-    non_changepoint_costs = cost.evaluate(non_changepoint_intervals)
-    non_changepoint_agg_costs = np.sum(non_changepoint_costs, axis=1)
-    opt_cost[min_segment_length:non_changepoint_slice_end] = non_changepoint_agg_costs
+
+    # TODO: Only allow aggregated costs in to "PELT"? User decides aggregation method.
+    non_changepoint_costs = np.sum(cost.evaluate(non_changepoint_intervals), axis=1)
+    opt_cost[min_segment_length:non_changepoint_slice_end] = non_changepoint_costs
 
     num_pelt_cost_evals += len(non_changepoint_starts)
     num_opt_part_cost_evals += len(non_changepoint_starts)
@@ -213,13 +215,12 @@ def run_pelt(
         cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))
         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        costs = cost.evaluate(cost_eval_intervals)
-        agg_costs = np.sum(costs, axis=1)
+        interval_costs = np.sum(cost.evaluate(cost_eval_intervals), axis=1)
 
         num_pelt_cost_evals += len(cost_eval_starts)
 
-        # Add the penalty for a new segment:
-        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+        # Add the cost and penalty for a new segment:
+        candidate_opt_costs = opt_cost[cost_eval_starts] + interval_costs + penalty
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
@@ -249,10 +250,11 @@ def run_pelt(
                 candidate_opt_costs > start_inclusion_threshold
             ]
 
-    if num_opt_part_cost_evals > 0:
-        pruning_fraction = 1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
-    else:
-        pruning_fraction = np.nan
+    pruning_fraction = (
+        1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
+        if num_opt_part_cost_evals > 0
+        else np.nan
+    )
 
     pelt_result = PELTResult.new(
         optimal_costs=opt_cost[1:],
@@ -333,7 +335,7 @@ def run_pelt_min_segment_length_one(
     prev_cpts = np.repeat(0, n_samples)
 
     # Evolving set of admissible segment starts.
-    cost_eval_starts = np.array(([0]), dtype=np.int64)
+    eval_starts = np.array(([0]), dtype=np.int64)
 
     observation_indices = np.arange(1, n_samples)
 
@@ -345,22 +347,19 @@ def run_pelt_min_segment_length_one(
         opt_cost_obs_ind = current_obs_ind + 1
 
         # Add the next start to the admissible starts set:
-        cost_eval_starts = np.concatenate(
-            (cost_eval_starts, np.array([current_obs_ind]))
-        )
-        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
-        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        costs = cost.evaluate(cost_eval_intervals)
-        agg_costs = np.sum(costs, axis=1)
+        eval_starts = np.concatenate((eval_starts, np.array([current_obs_ind])))
+        eval_ends = np.repeat(current_obs_ind + 1, len(eval_starts))
+        eval_intervals = np.column_stack((eval_starts, eval_ends))
+        interval_costs = np.sum(cost.evaluate(eval_intervals), axis=1)
 
-        num_pelt_cost_evals += len(cost_eval_starts)
+        num_pelt_cost_evals += len(eval_starts)
 
-        # Add the penalty for a new segment:
-        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+        # Add the cost and penalty for a new segment:
+        candidate_opt_costs = opt_cost[eval_starts] + interval_costs + penalty
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
+        prev_cpts[current_obs_ind] = eval_starts[argmin_candidate_cost]
 
         if drop_pruning:
             continue
@@ -382,11 +381,13 @@ def run_pelt_min_segment_length_one(
             )
 
             # Apply pruning:
-            cost_eval_starts = cost_eval_starts[
-                candidate_opt_costs <= start_inclusion_threshold
-            ]
+            eval_starts = eval_starts[candidate_opt_costs <= start_inclusion_threshold]
 
-    pruning_fraction = 1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
+    pruning_fraction = (
+        1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
+        if num_opt_part_cost_evals > 0
+        else np.nan
+    )
 
     pelt_result = PELTResult.new(
         optimal_costs=opt_cost[1:],
@@ -448,7 +449,7 @@ def run_pelt_with_jump(
     prev_cpts = np.zeros(n_samples, dtype=np.int64)
 
     # Evolving set of admissible segment starts.
-    cost_eval_starts = np.array([], dtype=np.int64)
+    eval_starts = np.array([], dtype=np.int64)
 
     observation_interval_starts = np.arange(
         start=0, stop=n_samples - jump_step + 1, step=jump_step
@@ -471,24 +472,21 @@ def run_pelt_with_jump(
 
     for obs_interval_start, obs_interval_end in observation_intervals:
         # Add the next start to the admissible starts set:
-        cost_eval_starts = np.concatenate(
-            (cost_eval_starts, np.array([obs_interval_start]))
-        )
-        cost_eval_ends = np.repeat(obs_interval_end + 1, len(cost_eval_starts))
-        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        costs = cost.evaluate(cost_eval_intervals)
-        agg_costs = np.sum(costs, axis=1)
+        eval_starts = np.concatenate((eval_starts, np.array([obs_interval_start])))
+        eval_ends = np.repeat(obs_interval_end + 1, len(eval_starts))
+        eval_intervals = np.column_stack((eval_starts, eval_ends))
+        interval_costs = np.sum(cost.evaluate(eval_intervals), axis=1)
 
-        pelt_cost_evals += len(cost_eval_starts)
+        pelt_cost_evals += len(eval_starts)
 
         # Add the penalty for a new segment:
-        candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
+        candidate_opt_costs = opt_cost[eval_starts] + interval_costs + penalty
 
         argmin_candidate_cost = np.argmin(candidate_opt_costs)
         opt_cost[obs_interval_start + 1 : obs_interval_end + 1 + 1] = (
             candidate_opt_costs[argmin_candidate_cost]
         )
-        prev_cpts[obs_interval_start : obs_interval_end + 1] = cost_eval_starts[
+        prev_cpts[obs_interval_start : obs_interval_end + 1] = eval_starts[
             argmin_candidate_cost
         ]
 
@@ -505,7 +503,7 @@ def run_pelt_with_jump(
             )
 
             new_start_inclusion_mask = candidate_opt_costs <= start_inclusion_threshold
-            cost_eval_starts = cost_eval_starts[new_start_inclusion_mask]
+            eval_starts = eval_starts[new_start_inclusion_mask]
 
     pruning_fraction = (
         (1.0 - pelt_cost_evals / opt_part_cost_evals)

@@ -1031,9 +1031,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert (
-        min_seg_length_one_pelt_result == regular_pelt_result
-    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    assert min_seg_length_one_pelt_result == regular_pelt_result, (
+        "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    )
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and drop_pruning=True to agree with "
         "regular PELT with drop_pruning=True."
@@ -1051,3 +1051,36 @@ def test_pelt_min_segment_length_one_throws_if_zero_sample():
         match="The number of samples for the fitted cost must be at least one.",
     ):
         run_pelt_min_segment_length_one(cost, penalty=1.0)
+
+
+def test_constructing_PELTResult_with_differing_array_sizes_raises_error():
+    """Test that PELTResult raises an error if arrays have different sizes."""
+    with pytest.raises(ValueError, match="All input arrays must have the same length."):
+        PELTResult.new(
+            optimal_costs=np.array([1.0, 2.0]),
+            previous_change_points=np.array([0]),
+            pruning_fraction=0.0,
+        )
+
+
+def test_comparing_PELTResult_with_non_PELTResult_returns_false():
+    """Test that PELTResult comparison with non-PELTResult returns False."""
+    pelt_result = PELTResult.new(
+        optimal_costs=np.array([1.0, 2.0]),
+        previous_change_points=np.array([0, 1]),
+        pruning_fraction=0.0,
+    )
+    assert not pelt_result == "not a PELTResult object", (
+        "Expected comparison with non-PELTResult to return False."
+    )
+
+
+def test_PELTResult_cannot_be_hashed():
+    """Test that PELTResult cannot be used as a key in a dictionary."""
+    pelt_result = PELTResult.new(
+        optimal_costs=np.array([1.0, 2.0]),
+        previous_change_points=np.array([0, 1]),
+        pruning_fraction=0.0,
+    )
+    with pytest.raises(TypeError, match="__hash__ method should return an integer"):
+        _ = {pelt_result: "value"}  # Attempt to use PELTResult as a dict key
