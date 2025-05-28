@@ -570,6 +570,7 @@ class PELT(BaseChangeDetector):
         cost: BaseCost | None = None,
         penalty: float | None = None,
         min_segment_length: int = 1,
+        jump_step: int = 1,
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
         drop_pruning: bool = False,
@@ -577,10 +578,17 @@ class PELT(BaseChangeDetector):
         self.cost = cost
         self.penalty = penalty
         self.min_segment_length = min_segment_length
+        self.jump_step = jump_step
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.drop_pruning = drop_pruning
         super().__init__()
+
+        if self.jump_step > 1 and self.min_segment_length > self.jump_step:
+            raise ValueError(
+                f"PELT `min_segment_length`(={self.min_segment_length}) cannot be "
+                f"greater than the `jump_step`(={self.jump_step}) > 1."
+            )
 
         _cost = L2Cost() if cost is None else cost
         check_interval_scorer(
@@ -615,7 +623,7 @@ class PELT(BaseChangeDetector):
             min_length_name="2*min_segment_length",
         )
 
-        self.fitted_cost: BaseCost = self._cost.clone()
+        self.fitted_cost = self._cost.clone()
         self.fitted_cost.fit(X)
 
         if self.penalty is None:
@@ -650,7 +658,16 @@ class PELT(BaseChangeDetector):
         """
         self.fit_cost_and_penalty(X)
 
-        if self.min_segment_length == 1:
+        if self.jump_step > 1:
+            # If jump_step > 1, use the JumpPELT algorithm:
+            pelt_result = run_pelt_with_jump(
+                cost=self.fitted_cost,
+                penalty=self.fitted_penalty,
+                jump_step=self.jump_step,
+                split_cost=self.split_cost,
+                drop_pruning=self.drop_pruning,
+            )
+        elif self.min_segment_length == 1:
             # Special case for min_segment_length=1, use the optimized version:
             pelt_result = run_pelt_min_segment_length_one(
                 cost=self.fitted_cost,
@@ -717,81 +734,6 @@ class PELT(BaseChangeDetector):
 
         params = [
             {"cost": L2Cost(), "min_segment_length": 5},
-            {"cost": L2Cost(), "penalty": 0.0, "min_segment_length": 1},
-        ]
-        return params
-
-
-class JumpPELT(PELT):
-    def __init__(
-        self,
-        cost: BaseCost | None = None,
-        jump_step: int = 5,
-        penalty: float | None = None,
-        split_cost: float = 0.0,
-        drop_pruning: bool = False,
-    ):
-        super().__init__(
-            cost=cost,
-            penalty=penalty,
-            split_cost=split_cost,
-            drop_pruning=drop_pruning,
-        )
-
-        self.jump_step = jump_step
-        check_larger_than_or_equal(1, jump_step, "jump_step")
-
-    def _predict(self, X: pd.DataFrame | pd.Series) -> pd.DataFrame:
-        """Detect events in test/deployment data.
-
-        Parameters
-        ----------
-        X : pd.DataFrame
-            Time series to detect change points in.
-
-        Returns
-        -------
-        y_sparse : pd.DataFrame
-            A `pd.DataFrame` with a range index and one column:
-            * ``"ilocs"`` - integer locations of the changepoints.
-        """
-        self.fit_cost_and_penalty(X)
-
-        pelt_result = run_pelt_with_jump(
-            cost=self.fitted_cost,
-            penalty=self.fitted_penalty,
-            jump_step=self.jump_step,
-            split_cost=self.split_cost,
-            drop_pruning=self.drop_pruning,
-        )
-
-        # Store the scores for introspection without recomputing using transform_scores
-        self.scores = pd.Series(pelt_result.optimal_costs, index=X.index, name="score")
-        return self._format_sparse_output(pelt_result.changepoints)
-
-    @classmethod
-    def get_test_params(cls, parameter_set="default"):
-        """Return testing parameter settings for the estimator.
-
-        Parameters
-        ----------
-        parameter_set : str, default="default"
-            Name of the set of test parameters to return, for use in tests. If no
-            special parameters are defined for a value, will return ``"default"`` set.
-            There are currently no reserved values for annotators.
-
-        Returns
-        -------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
-            Each dict are parameters to construct an "interesting" test instance, i.e.,
-            `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
-            `create_test_instance` uses the first (or only) dictionary in `params`
-        """
-        from skchange.costs import L2Cost
-
-        params = [
-            {"cost": L2Cost(), "jump_step": 5},
-            {"cost": L2Cost(), "penalty": 0.0, "jump_step": 1},
+            {"cost": L2Cost(), "penalty": 0.0, "min_segment_length": 4, "jump_step": 4},
         ]
         return params

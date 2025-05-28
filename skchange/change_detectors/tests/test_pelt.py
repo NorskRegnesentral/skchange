@@ -1,5 +1,6 @@
 """Tests for the PELT implementation."""
 
+import re
 import time
 
 import numpy as np
@@ -9,7 +10,6 @@ from ruptures.base import BaseCost as rpt_BaseCost
 
 from skchange.change_detectors._pelt import (
     PELT,
-    JumpPELT,
     PELTResult,
     get_changepoints,
     run_pelt,
@@ -784,12 +784,11 @@ def test_invalid_costs():
 
 
 @pytest.mark.parametrize("jump_step", [3, 5, 10])
-def test_pelt_with_jump(cost: BaseCost, penalty: float, jump_step: int):
+def test_pelt_with_jump_step(cost: BaseCost, penalty: float, jump_step: int):
     """Test PELT with jump parameter enabled and min_segment_length > 2."""
 
-    # Run PELT with jump=True
-    # Instead, implement "JumpPELT".
-    jump_pelt_model = JumpPELT(
+    # Run PELT with jump_step > 1:
+    jump_pelt_model = PELT(
         cost=cost,
         jump_step=jump_step,
         penalty=penalty,
@@ -964,12 +963,12 @@ def test_pelt_with_fewer_samples_than_min_segment_length_throws():
 
 
 def test_jump_pelt_with_fewer_samples_than_jump_step_throws():
-    """Test that JumpPELT raises when `n_samples` is less than `jump_step`."""
+    """Test that PELT-jump_step  raises when `n_samples` is less than `jump_step`."""
     cost = L2Cost()
     data = np.random.randn(5, 1)  # Less than jump_step of 10
 
-    # Creating the JumpPELT model with jump_step=10
-    jump_pelt_model = JumpPELT(cost=cost, jump_step=10, penalty=1.0)
+    # Creating the PELT model with jump_step=10
+    jump_pelt_model = PELT(cost=cost, jump_step=10, penalty=1.0)
 
     with pytest.raises(
         ValueError,
@@ -980,16 +979,16 @@ def test_jump_pelt_with_fewer_samples_than_jump_step_throws():
 
 
 def test_jump_pelt_with_fewer_samples_than_twice_jump_step_returns_single_interval():
-    """Test that JumpPELT raises when `n_samples` is less than `jump_step`."""
+    """Test that PELT-jump_pelt raises when `n_samples` is less than `jump_step`."""
     cost = L2Cost()
     data = np.random.randn(10, 1)  # Less than jump_step of 10
 
-    # Creating the JumpPELT model with jump_step=10
-    jump_pelt_model = JumpPELT(cost=cost, jump_step=6, penalty=1.0)
+    # Creating the PELT model with jump_step=6
+    jump_pelt_model = PELT(cost=cost, jump_step=6, penalty=1.0)
 
     jump_pelt_model.fit(data)
     jump_pelt_res = jump_pelt_model.predict(data)
-    # Expect JumpPELT to return an empty array when n_samples < 2 * jump_step.
+    # Expect PELT-jump_step to return an empty array when n_samples < 2 * jump_step.
     np.testing.assert_array_equal(jump_pelt_res["ilocs"].to_numpy(), np.array([]))
 
 
@@ -1031,9 +1030,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert (
-        min_seg_length_one_pelt_result == regular_pelt_result
-    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    assert min_seg_length_one_pelt_result == regular_pelt_result, (
+        "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    )
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and drop_pruning=True to agree with "
         "regular PELT with drop_pruning=True."
@@ -1070,9 +1069,9 @@ def test_comparing_PELTResult_with_non_PELTResult_returns_false():
         previous_change_points=np.array([0, 1]),
         pruning_fraction=0.0,
     )
-    assert (
-        not pelt_result == "not a PELTResult object"
-    ), "Expected comparison with non-PELTResult to return False."
+    assert not pelt_result == "not a PELTResult object", (
+        "Expected comparison with non-PELTResult to return False."
+    )
 
 
 def test_PELTResult_cannot_be_hashed():
@@ -1084,3 +1083,26 @@ def test_PELTResult_cannot_be_hashed():
     )
     with pytest.raises(TypeError, match="unhashable type: 'PELTResult'"):
         _ = {pelt_result: "value"}  # Attempt to use PELTResult as a dict key
+
+
+def test_PELT_jump_step_less_than_min_segment_length():
+    """Test that PELT with jump_step < min_segment_length raises an error."""
+    cost = L2Cost()
+    data = np.random.randn(100, 1)  # Enough samples for testing
+    cost.fit(data)
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            re.escape(
+                "PELT `min_segment_length`(=10) cannot be "
+                "greater than the `jump_step`(=5) > 1."
+            )
+        ),
+    ):
+        PELT(
+            cost=cost,
+            jump_step=5,  # Jump step less than min_segment_length
+            penalty=1.0,
+            min_segment_length=10,  # Min segment length is larger
+        ).fit_predict(data)
