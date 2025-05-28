@@ -8,14 +8,17 @@ import pandas as pd
 from ..change_detectors._pelt import (
     run_pelt,
 )
-from ..change_scores import ContinuousLinearTrendScore
+from ..change_scores._continuous_linear_trend_score import (
+    lin_reg_cont_piecewise_linear_trend_score,
+)
 from ..costs.base import BaseCost
 from .base import BaseChangeDetector
 
 
 def format_crops_results(
-    penalty_to_solution_dict: dict[float, (np.ndarray, float)], penalty_nudge: float
-) -> pd.DataFrame:
+    penalty_to_solution_dict: dict[float, tuple[np.ndarray, float]],
+    penalty_nudge: float,
+) -> tuple[pd.DataFrame, dict]:
     """Format the CROPS results into a DataFrame.
 
     Parameters
@@ -140,9 +143,9 @@ def segmentation_bic_value(cost: BaseCost, change_points: np.ndarray) -> float:
     return bic_score
 
 
-def crops_elbow_score(
+def crops_elbow_scores(
     num_change_points_and_optimum_value_df: pd.DataFrame,
-) -> pd.Series:
+) -> np.ndarray:
     """Calculate the elbow cost for a given segmentation.
 
     Specifically, the elbow score is calculated as the evidence for a change
@@ -174,32 +177,29 @@ def crops_elbow_score(
         return pd.Series([-np.inf] * num_segmentations)
 
     # Calculate the elbow (change in slope) cost for each number of change points:
-    continuous_linear_trend_score = ContinuousLinearTrendScore(
-        time_column="num_change_points"
-    )
-    continuous_linear_trend_score.fit(num_change_points_and_optimum_value_df)
-
-    # Construct cuts at all intermediate number of change points.
-    # I.e. not at the first and last number of change points.
-    score_eval_cuts = np.column_stack(
-        (
-            np.repeat(0, num_segmentations - 2),
-            np.arange(1, num_segmentations - 1),
-            np.repeat(num_segmentations, num_segmentations - 2),
-        )
+    times = num_change_points_and_optimum_value_df["num_change_points"].values
+    optim_values = num_change_points_and_optimum_value_df[
+        "optimum_value"
+    ].values.reshape(-1, 1)
+    elbow_values = lin_reg_cont_piecewise_linear_trend_score(
+        starts=np.repeat(0, num_segmentations - 2),
+        splits=np.arange(1, num_segmentations - 1),
+        ends=np.repeat(num_segmentations, num_segmentations - 2),
+        X=optim_values,
+        times=times,
     )
 
     # Pad the elbow score with `-np.inf` for the first and last segmentations,
     # which we cannot calculate a "change in slope" score for.
-    elbow_score = np.concatenate(
+    elbow_scores = np.concatenate(
         (
             np.array([-np.inf]),
-            continuous_linear_trend_score.evaluate(score_eval_cuts).reshape(-1),
+            elbow_values.reshape(-1),
             np.array([-np.inf]),
         )
     )
 
-    return elbow_score
+    return elbow_scores
 
 
 class CROPS_PELT(BaseChangeDetector):
@@ -320,7 +320,7 @@ class CROPS_PELT(BaseChangeDetector):
                 change_in_slope_df["optimum_value"]
                 - change_in_slope_df["optimum_value"].min()
             )
-            self.change_points_metadata_["elbow_score"] = crops_elbow_score(
+            self.change_points_metadata_["elbow_score"] = crops_elbow_scores(
                 change_in_slope_df,
             )
             best_num_change_points = self.change_points_metadata_.sort_values(

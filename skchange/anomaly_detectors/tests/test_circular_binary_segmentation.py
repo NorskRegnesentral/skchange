@@ -4,8 +4,7 @@ import pytest
 
 from skchange.anomaly_detectors import CircularBinarySegmentation
 from skchange.change_scores import ChangeScore
-from skchange.costs import COSTS, L2Cost
-from skchange.datasets import generate_alternating_data
+from skchange.costs import COSTS
 
 
 def test_invalid_change_scores():
