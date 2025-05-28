@@ -248,7 +248,7 @@ class PenalisedScore(BaseIntervalScorer):
         return self.penalise_scores(scores, self.penalty_).reshape(-1, 1)
 
     @property
-    def min_size(self) -> int | tuple | None:
+    def min_size(self) -> int | None:
         """Minimum valid size of an interval to evaluate.
 
         The size of each interval is by default defined as ``np.diff(cuts[i, ])``.

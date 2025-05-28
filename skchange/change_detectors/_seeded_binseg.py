@@ -96,14 +96,9 @@ def run_seeded_binseg(
     penalised_score.check_is_fitted()
     n_samples = penalised_score._X.shape[0]
 
-    if isinstance(penalised_score.min_size, int):
-        max_min_size = penalised_score.min_size
-    else:
-        max_min_size = max(penalised_score.min_size)
-
     starts, ends = make_seeded_intervals(
         n_samples,
-        2 * max_min_size,
+        2 * penalised_score.min_size,
         max_interval_length,
         growth_factor,
     )
@@ -111,7 +106,9 @@ def run_seeded_binseg(
     max_scores = np.zeros(starts.size)
     argmax_scores = np.zeros(starts.size, dtype=np.int64)
     for i, (start, end) in enumerate(zip(starts, ends)):
-        splits = np.arange(start + max_min_size, end - max_min_size + 1)
+        splits = np.arange(
+            start + penalised_score.min_size, end - penalised_score.min_size + 1
+        )
         intervals = np.column_stack(
             (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
         )
@@ -280,19 +277,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
         """
         self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
         self.fitted_score.fit(X)
-
-        if isinstance(self.fitted_score.min_size, int):
-            fitted_score_max_min_size = self.fitted_score.min_size
-        else:
-            fitted_score_max_min_size = max(self.fitted_score.min_size)
-
         X = check_data(
             X,
-            min_length=2 * fitted_score_max_min_size,
+            min_length=2 * self.fitted_score.min_size,
             min_length_name="2 * fitted_change_score.min_size",
         )
         check_larger_than_or_equal(
-            2 * fitted_score_max_min_size,
+            2 * self.fitted_score.min_size,
             self.max_interval_length,
             "max_interval_length",
         )

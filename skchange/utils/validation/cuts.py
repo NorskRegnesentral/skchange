@@ -5,7 +5,7 @@ import numpy as np
 
 def check_cuts_array(
     cuts: np.ndarray,
-    min_size: int | tuple = 1,
+    min_size: int | None = None,
     last_dim_size: int = 2,
 ) -> np.ndarray:
     """Check array type cuts.
@@ -29,6 +29,9 @@ def check_cuts_array(
     ValueError
         If the cuts does not meet the requirements.
     """
+    if min_size is None:
+        min_size = 1
+
     if cuts.ndim != 2:
         raise ValueError("The cuts must be a 2D array.")
 
@@ -42,14 +45,6 @@ def check_cuts_array(
         )
 
     interval_sizes = np.diff(cuts, axis=1)
-    if isinstance(min_size, tuple) and len(min_size) > 1:
-        min_sizes = np.array(min_size, dtype=cuts.dtype)
-        if min_sizes.shape[0] != interval_sizes.shape[1]:
-            raise ValueError(
-                "The `min_size` must be a scalar or a tuple with one "
-                "less entry than the number number of columns in `cuts`. "
-            )
-
     if not np.all(interval_sizes >= min_size):
         raise ValueError(
             "All rows in `cuts` must be strictly increasing and each entry must"

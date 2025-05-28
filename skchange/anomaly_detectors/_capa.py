@@ -285,13 +285,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             required_tasks=["cost", "saving"],
             allow_penalised=True,
         )
-
-        if isinstance(_point_score.min_size, int) or (_point_score.min_size is None):
-            point_score_max_min_size = _point_score.min_size
-        else:
-            point_score_max_min_size = max(_point_score.min_size)
-
-        if not (point_score_max_min_size == 1):
+        if _point_score.min_size != 1:
             raise ValueError("`point_saving` must have `min_size == 1`.")
         _point_saving = to_saving(_point_score)
 

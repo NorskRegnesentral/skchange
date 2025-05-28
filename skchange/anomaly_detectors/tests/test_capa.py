@@ -187,20 +187,3 @@ def test_valid_point_savings():
     score = L2Saving()
     penalised_score = PenalisedScore(score)
     CAPA(point_saving=penalised_score)
-
-
-class TupleMinSizeL2Cost(L2Cost):
-    """A custom cost class that changes `min_size` to return a tuple."""
-
-    @property
-    def min_size(self) -> tuple[int]:
-        """Return a tuple instead of an integer."""
-        return (1,)
-
-
-def test_CAPA_init_with_tuple_min_size():
-    """Test anomaly detector with a custom cost class that returns a tuple."""
-    CAPA(
-        segment_saving=TupleMinSizeL2Cost(param=0.0),
-        point_saving=TupleMinSizeL2Cost(param=0.0),
-    )

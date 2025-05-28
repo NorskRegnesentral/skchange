@@ -231,7 +231,7 @@ class MyCost(BaseCost):
     # todo: implement, optional, defaults to min_size = 1.
     # used for automatic validation of cuts in `evaluate`.
     @property
-    def min_size(self) -> int | tuple | None:
+    def min_size(self) -> int | None:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.

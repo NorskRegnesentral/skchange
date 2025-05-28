@@ -82,7 +82,7 @@ class Saving(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int | tuple | None:
+    def min_size(self) -> int | None:
         """Minimum valid size of the interval to evaluate."""
         if self.is_fitted:
             return self.optimised_cost_.min_size
@@ -251,7 +251,7 @@ class LocalAnomalyScore(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int | tuple | None:
+    def min_size(self) -> int | None:
         """Minimum valid size of the interval to evaluate."""
         if self.is_fitted:
             return self.interval_cost_.min_size
@@ -365,18 +365,12 @@ class LocalAnomalyScore(BaseIntervalScorer):
         before_inner_sizes = np.diff(cuts[:, [0, 1]], axis=1)
         after_inner_sizes = np.diff(cuts[:, [2, 3]], axis=1)
         surrounding_intervals_sizes = before_inner_sizes + after_inner_sizes
-        if isinstance(self.min_size, int):
-            min_size_interval = self.min_size
-        else:
-            # Could be iterable, but we only need the max size.
-            min_size_interval = max(self.min_size)
-
-        if not np.all(inner_intervals_sizes >= min_size_interval):
+        if not np.all(inner_intervals_sizes >= self.min_size):
             raise ValueError(
                 f"The inner intervals must be at least min_size={self.min_size}."
                 f" Got {inner_intervals_sizes.min()}."
             )
-        if not np.all(surrounding_intervals_sizes >= min_size_interval):
+        if not np.all(surrounding_intervals_sizes >= self.min_size):
             raise ValueError(
                 f"The surrounding intervals must be at least min_size={self.min_size}."
                 f" in total. Got {surrounding_intervals_sizes.min()}."

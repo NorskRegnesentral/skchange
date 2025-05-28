@@ -147,24 +147,18 @@ def test_to_local_anomaly_score_error():
         to_local_anomaly_score(CUSUM())
 
 
-class TupleMinSizeL2Cost(L2Cost):
+class HighMinSizeL2Cost(L2Cost):
     """A custom cost class that changes `min_size` to return a tuple."""
 
     @property
-    def min_size(self) -> tuple[int]:
+    def min_size(self) -> int:
         """Return a tuple instead of an integer."""
-        return (3,)
-
-
-def test_local_anomaly_score_with_tuple_min_size_cost():
-    """Test anomaly detector with a custom cost class that returns a tuple."""
-    local_score = to_local_anomaly_score(scorer=TupleMinSizeL2Cost(param=0.0))
-    local_score._check_cuts(np.array([[0, 5, 10, 12], [5, 10, 15, 17]]))
+        return 3
 
 
 def test_raises_if_inner_if_inner_interval_size_is_too_small():
     """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
-    local_score = to_local_anomaly_score(scorer=TupleMinSizeL2Cost(param=0.0))
+    local_score = to_local_anomaly_score(scorer=HighMinSizeL2Cost(param=0.0))
     with pytest.raises(
         ValueError, match="The inner intervals must be at least min_size="
     ):
@@ -175,7 +169,7 @@ def test_raises_if_inner_if_inner_interval_size_is_too_small():
 
 def test_raises_if_inner_if_surrounding_interval_size_is_too_small():
     """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
-    local_score = to_local_anomaly_score(scorer=TupleMinSizeL2Cost(param=0.0))
+    local_score = to_local_anomaly_score(scorer=HighMinSizeL2Cost(param=0.0))
     with pytest.raises(
         ValueError, match="The surrounding intervals must be at least min_size="
     ):

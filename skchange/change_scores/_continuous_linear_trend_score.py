@@ -326,7 +326,7 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
         return scores
 
     @property
-    def min_size(self) -> tuple[int, int]:
+    def min_size(self) -> int:
         """Minimum number of points on each side to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
@@ -344,7 +344,7 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
         # Need at least a difference of 1 between the start and split
         # indices to evaluate the cost, and at least a difference of 2
         # between the split and end indices to evaluate the cost.
-        return (1, 2)
+        return 2
 
     def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.

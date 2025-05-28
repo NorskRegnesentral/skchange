@@ -180,7 +180,7 @@ class BaseIntervalScorer(BaseEstimator):
         raise NotImplementedError("abstract method")
 
     @property
-    def min_size(self) -> int | tuple[int] | None:
+    def min_size(self) -> int:
         """Minimum valid size of an interval to evaluate.
 
         The size of each interval is by default defined as ``np.diff(cuts[i, ])``.
