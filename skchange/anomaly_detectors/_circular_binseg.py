@@ -15,7 +15,7 @@ from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
+from ..utils.validation.parameters import check_in_interval, check_larger_than
 from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
@@ -225,8 +225,8 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             )
         )
 
-        check_larger_than_or_equal(1.0, self.min_segment_length, "min_segment_length")
-        check_larger_than_or_equal(
+        check_larger_than(1.0, self.min_segment_length, "min_segment_length")
+        check_larger_than(
             2 * self.min_segment_length, self.max_interval_length, "max_interval_length"
         )
         check_in_interval(

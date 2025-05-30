@@ -33,7 +33,7 @@ def check_none(value: Number, name: str, allow_none: bool = False) -> Number:
     return value
 
 
-def check_larger_than_or_equal(
+def check_larger_than(
     min_value: Number, value: Number, name: str, allow_none: bool = False
 ) -> Number:
     """Check if `value` is larger than or equal to `min_value`.

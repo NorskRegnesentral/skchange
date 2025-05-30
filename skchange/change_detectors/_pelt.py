@@ -14,7 +14,7 @@ from ..penalties import make_bic_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_larger_than_or_equal
+from ..utils.validation.parameters import check_larger_than
 from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
@@ -609,7 +609,7 @@ class PELT(BaseChangeDetector):
             require_constant_penalty=True,
             allow_none=True,
         )
-        check_larger_than_or_equal(1, min_segment_length, "min_segment_length")
+        check_larger_than(1, min_segment_length, "min_segment_length")
 
         self.clone_tags(self._cost, ["distribution_type"])
 

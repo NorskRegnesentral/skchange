@@ -63,7 +63,7 @@ class ChangeScore(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum valid size of an interval to evaluate."""
         if self.is_fitted:
             return self.cost_.min_size

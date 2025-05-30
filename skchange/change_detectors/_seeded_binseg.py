@@ -12,7 +12,7 @@ from ..compose.penalised_score import PenalisedScore
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
+from ..utils.validation.parameters import check_in_interval, check_larger_than
 from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
@@ -282,7 +282,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
             min_length=2 * self.fitted_score.min_size,
             min_length_name="2 * fitted_change_score.min_size",
         )
-        check_larger_than_or_equal(
+        check_larger_than(
             2 * self.fitted_score.min_size,
             self.max_interval_length,
             "max_interval_length",

@@ -3,7 +3,7 @@
 import numpy as np
 from scipy.stats import chi2
 
-from ..utils.validation.parameters import check_larger_than_or_equal
+from ..utils.validation.parameters import check_larger_than
 from ._constant_penalties import make_chi2_penalty
 from ._linear_penalties import make_linear_chi2_penalty
 
@@ -40,9 +40,9 @@ def make_nonlinear_chi2_penalty(
        segment and point anomaly detection. Journal of Computational and Graphical
        Statistics, 31(2), 574-585.
     """
-    check_larger_than_or_equal(1, n_params_per_variable, "n_params_per_variable")
-    check_larger_than_or_equal(1, n, "n")
-    check_larger_than_or_equal(1, p, "p")
+    check_larger_than(1, n_params_per_variable, "n_params_per_variable")
+    check_larger_than(1, n, "n")
+    check_larger_than(1, p, "p")
 
     if p == 1:
         # This penalty is not defined for p = 1, so we return a penalty value equal

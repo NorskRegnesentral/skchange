@@ -13,7 +13,7 @@ from ..penalties import make_chi2_penalty, make_linear_chi2_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_larger_than_or_equal
+from ..utils.validation.parameters import check_larger_than
 from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
@@ -300,8 +300,8 @@ class CAPA(BaseSegmentAnomalyDetector):
                 make_default_penalty=_make_linear_chi2_penalty_from_score,
             )
 
-        check_larger_than_or_equal(2, min_segment_length, "min_segment_length")
-        check_larger_than_or_equal(
+        check_larger_than(2, min_segment_length, "min_segment_length")
+        check_larger_than(
             min_segment_length, max_segment_length, "max_segment_length"
         )
 

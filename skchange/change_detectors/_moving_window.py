@@ -13,7 +13,7 @@ from ..utils.numba import njit
 from ..utils.numba.general import where
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_in_interval, check_larger_than_or_equal
+from ..utils.validation.parameters import check_in_interval, check_larger_than
 from ..utils.validation.penalties import check_penalty
 from .base import BaseChangeDetector
 
@@ -268,7 +268,7 @@ class MovingWindow(BaseChangeDetector):
         )
 
         if isinstance(bandwidth, int):
-            check_larger_than_or_equal(1, bandwidth, "bandwidth")
+            check_larger_than(1, bandwidth, "bandwidth")
             self._bandwidth = np.array([bandwidth])
         elif isinstance(bandwidth, list):
             if len(bandwidth) == 0:
@@ -289,7 +289,7 @@ class MovingWindow(BaseChangeDetector):
             min_detection_fraction,
             "min_detection_fraction",
         )
-        check_larger_than_or_equal(0, local_optimum_fraction, "local_optimum_fraction")
+        check_larger_than(0, local_optimum_fraction, "local_optimum_fraction")
 
         valid_selection_methods = ["local_optimum", "detection_length"]
         if selection_method not in valid_selection_methods:

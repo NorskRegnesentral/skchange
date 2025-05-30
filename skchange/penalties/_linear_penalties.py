@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from ..utils.validation.parameters import check_larger_than_or_equal
+from ..utils.validation.parameters import check_larger_than
 
 
 def make_linear_penalty(intercept: float, slope: float, p: int) -> np.ndarray:
@@ -28,9 +28,9 @@ def make_linear_penalty(intercept: float, slope: float, p: int) -> np.ndarray:
         of the array is the penalty value for ``i+1`` variables being affected by a
         change or anomaly.
     """
-    check_larger_than_or_equal(0.0, intercept, "intercept")
-    check_larger_than_or_equal(0.0, slope, "slope")
-    check_larger_than_or_equal(1, p, "p")
+    check_larger_than(0.0, intercept, "intercept")
+    check_larger_than(0.0, slope, "slope")
+    check_larger_than(1, p, "p")
 
     penalty_vector = intercept + slope * np.arange(1, p + 1)
     return penalty_vector
@@ -65,9 +65,9 @@ def make_linear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.n
        segment and point anomaly detection. Journal of Computational and Graphical
        Statistics, 31(2), 574-585.
     """
-    check_larger_than_or_equal(1, n_params_per_variable, "n_params_per_variable")
-    check_larger_than_or_equal(1, n, "n")
-    check_larger_than_or_equal(1, p, "p")
+    check_larger_than(1, n_params_per_variable, "n_params_per_variable")
+    check_larger_than(1, n, "n")
+    check_larger_than(1, p, "p")
 
     psi = np.log(n)
     component_penalty = 2 * np.log(n_params_per_variable * p)
