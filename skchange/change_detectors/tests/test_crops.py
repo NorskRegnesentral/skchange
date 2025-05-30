@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from skchange.change_detectors._crops import CROPS_PELT
+from skchange.change_detectors._crops import CROPS
 from skchange.costs import L1Cost, L2Cost
 from skchange.datasets import generate_alternating_data
 
@@ -28,7 +28,7 @@ def test_pelt_crops():
     )
 
     # Fit CROPS change point detector:
-    change_point_detector = CROPS_PELT(
+    change_point_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -37,7 +37,7 @@ def test_pelt_crops():
     change_point_detector.fit(dataset)
     results = change_point_detector.run_crops(dataset.values)
 
-    no_pruning_change_detector = CROPS_PELT(
+    no_pruning_change_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -62,7 +62,7 @@ def test_pelt_crops_raises_on_wrong_segmentation_selection():
 
     # Check that the results are as expected:
     with pytest.raises(ValueError):
-        CROPS_PELT(
+        CROPS(
             cost=cost,
             segmentation_selection="wrong",
             min_penalty=min_penalty,
@@ -76,7 +76,7 @@ def test_retrieve_change_points_before_predict_raises():
     min_penalty = 1.0
     max_penalty = 2.0
 
-    change_point_detector = CROPS_PELT(
+    change_point_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -109,7 +109,7 @@ def test_retrieve_change_points_non_existing_num_change_point():
     min_penalty = 1.0
     max_penalty = 2.0
 
-    change_point_detector = CROPS_PELT(
+    change_point_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -140,7 +140,7 @@ def test_retrieve_change_points():
     min_penalty = 40.0
     max_penalty = 50.0
 
-    change_point_detector = CROPS_PELT(
+    change_point_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -170,7 +170,7 @@ def test_retrieve_change_points_2():
     min_penalty = 10.0
     max_penalty = 50.0
 
-    change_point_detector = CROPS_PELT(
+    change_point_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -211,7 +211,7 @@ def test_non_aggregated_cost_raises():
         random_state=42,
     )
 
-    crops_cpd = CROPS_PELT(cost=cost, min_penalty=1.0, max_penalty=2.0)
+    crops_cpd = CROPS(cost=cost, min_penalty=1.0, max_penalty=2.0)
     crops_cpd.fit(two_dim_data)
 
     with pytest.raises(

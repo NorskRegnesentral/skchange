@@ -204,7 +204,7 @@ def crops_elbow_scores(
     return elbow_scores
 
 
-class CROPS_PELT(BaseChangeDetector):
+class CROPS(BaseChangeDetector):
     """CROPS algorithm for path solutions to penalized CPD.
 
     The algorithm can fail when the penalty is low, and the number of
