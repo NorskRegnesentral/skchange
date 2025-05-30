@@ -371,7 +371,7 @@ class CROPS_PELT(BaseChangeDetector):
             penalty=penalty,
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
-            drop_pruning=self.drop_pruning,
+            prune=self.drop_pruning,
         )
 
         return pelt_result.changepoints

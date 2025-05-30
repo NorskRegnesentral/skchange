@@ -110,7 +110,7 @@ def old_run_pelt(
     min_segment_length: int,
     split_cost: float = 0.0,
     percent_pruning_margin: float = 0.0,
-    drop_pruning: bool = False,
+    prune: bool = True,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -139,9 +139,9 @@ def old_run_pelt(
         This is used to prune the admissible starts set.
         The pruning margin is used to avoid numerical issues when comparing
         the candidate optimal costs with the current optimal cost.
-    drop_pruning: bool, optional
-        If True, drop the pruning step. Reverts to optimal partitioning.
-        Can be useful for debugging and testing.  By default set to False.
+    prune: bool, optional
+        If False, drop the pruning step, reverting to optimal partitioning.
+        Can be useful for debugging and testing. By default set to True.
 
     Returns
     -------
@@ -213,9 +213,7 @@ def old_run_pelt(
         opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
         prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
-        if drop_pruning:
-            continue
-        else:
+        if prune:
             # Trimming the admissible starts set: (reuse the array of optimal costs)
             current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
 
@@ -421,7 +419,7 @@ def test_run_optimal_partitioning(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=True,
     )
 
     # Assert monotonicity of costs:
@@ -453,7 +451,7 @@ def test_pelt_with_and_without_pruning_is_the_same(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
 
     pelt_results = run_pelt(
@@ -495,7 +493,7 @@ def test_pelt_on_tricky_data(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=True,
     )
 
     assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
@@ -538,7 +536,7 @@ def test_pelt_min_segment_lengths(cost: BaseCost, penalty: float, min_segment_le
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
 
     assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
@@ -567,7 +565,7 @@ def test_high_min_segment_length(cost: BaseCost, penalty: float, min_segment_len
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
 
     assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
@@ -596,7 +594,7 @@ def test_pelt_agrees_with_opt_part_longer_min_segment_length(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
 
     assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
@@ -622,7 +620,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
     opt_part_min_value = (
         cost.evaluate_segmentation(opt_part_result.changepoints)
@@ -692,7 +690,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
     opt_part_min_value = (
         cost.evaluate_segmentation(opt_part_result.changepoints)
@@ -833,7 +831,7 @@ def test_jump_pelt_pruning_fraction(cost: BaseCost, penalty: float):
         cost=cost,
         penalty=penalty,
         jump_step=jump_step,
-        drop_pruning=True,
+        prune=False,
     )
 
     # Run with pruning enabled
@@ -841,18 +839,17 @@ def test_jump_pelt_pruning_fraction(cost: BaseCost, penalty: float):
         cost=cost,
         penalty=penalty,
         jump_step=jump_step,
-        drop_pruning=False,
     )
 
     # Check that pruning fraction is 1.0 when pruning is disabled
     assert pelt_result_no_pruning.pruning_fraction == 0.0, (
-        f"Expected pruning fraction to be 0.0 when drop_pruning=True, "
+        f"Expected pruning fraction to be 0.0 when prune=False, "
         f"got {pelt_result_no_pruning.pruning_fraction}"
     )
 
     # Check that pruning fraction is less than 1.0 when pruning is enabled
     assert 0.0 < pelt_result_with_pruning.pruning_fraction < 1.0, (
-        f"Expected pruning fraction to be between 0.0 and 1.0 when drop_pruning=False, "
+        f"Expected pruning fraction to be between 0.0 and 1.0 when prune=True, "
         f"got {pelt_result_with_pruning.pruning_fraction}"
     )
 
@@ -897,21 +894,19 @@ def test_old_pelt_failing_with_large_min_segment_length(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=False,
     )
 
     improved_pelt_result = run_pelt(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=False,
     )
 
     old_pelt_result = old_run_pelt(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=False,
     )
 
     # PELT objective values:
@@ -1007,7 +1002,7 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=1,
-        drop_pruning=True,
+        prune=False,
     )
     np.testing.assert_array_equal(
         regular_pelt_result.changepoints, no_pruning_pelt_result.changepoints
@@ -1023,7 +1018,7 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
     no_pruning_min_seg_length_one_pelt_result = run_pelt_min_segment_length_one(
         cost,
         penalty=penalty,
-        drop_pruning=True,
+        prune=False,
     )
     assert no_pruning_min_seg_length_one_pelt_result.pruning_fraction == 0.0, (
         "Expected no pruning when min_segment_length=1 and drop_pruning=True, "
