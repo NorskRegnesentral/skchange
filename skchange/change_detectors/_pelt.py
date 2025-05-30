@@ -95,7 +95,7 @@ def _run_pelt(
     min_segment_length: int,
     split_cost: float = 0.0,
     prune: bool = True,
-    percent_pruning_margin: float = 0.0,
+    pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -124,11 +124,11 @@ def _run_pelt(
     prune: bool, optional
         If False, drop the pruning step, reverting to optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 0.0.
-        This is used to prune the admissible starts set.
-        The pruning margin is used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
+    pruning_margin : float, optional
+        The pruning margin to use. By default set to 0.0.
+        This is used reduce pruning of the admissible starts set.
+        Can be useful if the cost function is imprecise, i.e.
+        based on solving an optimization problem with large tolerance.
 
     Returns
     -------
@@ -219,10 +219,9 @@ def _run_pelt(
 
             abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
             start_inclusion_threshold = (
-                (
-                    current_obs_ind_opt_cost
-                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-                )
+                current_obs_ind_opt_cost
+                # Apply pruning margin to the current optimal cost:
+                + abs_current_obs_opt_cost * pruning_margin
                 # Moved from 'negative' on left side
                 # to 'positive' on right side.
                 + penalty
@@ -254,7 +253,7 @@ def run_pelt_min_segment_length_one(
     cost: BaseCost,
     penalty: float,
     split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.0,
+    pruning_margin: float = 0.0,
     prune: bool = True,
 ) -> PELTResult:
     """Run the PELT algorithm, with a minimum segment length of one.
@@ -279,11 +278,11 @@ def run_pelt_min_segment_length_one(
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the
         above inequality.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 10.0.
-        This is used to prune the admissible starts set.
-        The pruning margin is used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
+    pruning_margin : float, optional
+        The pruning margin to use. By default set to 10.0.
+        This is used to reduce pruning of the admissible starts set.
+        Can be useful if the cost function is imprecise, i.e.
+        based on solving an optimization problem with large tolerance.
     prune: bool, optional
         If False, drop the pruning step, performing optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
@@ -352,10 +351,9 @@ def run_pelt_min_segment_length_one(
 
             abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
             start_inclusion_threshold = (
-                (
-                    current_obs_ind_opt_cost
-                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-                )
+                current_obs_ind_opt_cost
+                # Apply pruning margin to the current optimal cost:
+                + abs_current_obs_opt_cost * pruning_margin
                 # Moved from 'negative' on left side
                 # to 'positive' on right side.
                 + penalty
@@ -387,7 +385,7 @@ def run_pelt_with_jump(
     jump_step: int,
     split_cost: float = 0.0,
     prune: bool = True,
-    percent_pruning_margin: float = 0.0,
+    pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -413,10 +411,10 @@ def run_pelt_with_jump(
     prune: bool, optional
         If False, drop the pruning step, reverting to optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 0.0.
-        This sets the threshold for pruning the admissible starts set,
-        and can be useful if the cost function is imprecise, i.e.
+    pruning_margin : float, optional
+        The pruning margin to use. By default set to zero.
+        This is used to reduce pruning of the admissible starts set.
+        Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with large tolerance.
 
     Returns
@@ -486,18 +484,13 @@ def run_pelt_with_jump(
             abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
             start_inclusion_threshold = (
                 current_obs_ind_opt_cost
-                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                # Apply pruning margin to the current optimal cost:
+                + abs_current_obs_opt_cost * pruning_margin
                 # Moved from 'negative' on left side
                 # to 'positive' on right side.
                 + penalty
                 # Remove from right side of inequality.
                 - split_cost
-            )
-
-            start_inclusion_threshold = (
-                current_obs_ind_opt_cost
-                + penalty  # Moved from 'negative' left side to 'positive' right side.
-                - split_cost  # Remove from right side of inequality.
             )
 
             new_start_inclusion_mask = candidate_opt_costs <= start_inclusion_threshold
@@ -550,14 +543,14 @@ class PELT(BaseChangeDetector):
         for all possible splits, 0 <= t < p < s <= len(X) - 1.
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the above inequality.
-    percent_pruning_margin : float, optional, default=0.0
-        The percentage of pruning margin to use. By default set to 0.0.
-        This sets the threshold for pruning the admissible starts set,
-        and can be useful if the cost function is imprecise, i.e.
-        based on solving an optimization problem with large tolerance.
-    drop_pruning : bool, optional, default=False
+    prune : bool, optional, default=False
         If True, drop the pruning step. Reverts to optimal partitioning.
         Can be useful for debugging and testing. By default set to False.
+    pruning_margin : float, optional, default=0.0
+        The pruning margin to use. By default set to zero.
+        This is used to reduce pruning of the admissible starts set.
+        Can be useful if the cost function is imprecise, i.e.
+        based on solving an optimization problem with large tolerance.
 
     References
     ----------
@@ -589,16 +582,16 @@ class PELT(BaseChangeDetector):
         min_segment_length: int = 1,
         jump_step: int = 1,
         split_cost: float = 0.0,
-        percent_pruning_margin: float = 0.0,
         prune: bool = True,
+        pruning_margin: float = 0.0,
     ):
         self.cost = cost
         self.penalty = penalty
         self.min_segment_length = min_segment_length
         self.jump_step = jump_step
         self.split_cost = split_cost
-        self.percent_pruning_margin = percent_pruning_margin
         self.prune = prune
+        self.pruning_margin = pruning_margin
         super().__init__()
 
         if self.jump_step > 1 and self.min_segment_length > self.jump_step:
@@ -616,7 +609,7 @@ class PELT(BaseChangeDetector):
             allow_penalised=False,
         )
         self._cost = _cost.clone()
-        self.pelt_result_: PELTResult | None = None
+        self.pelt_result: PELTResult | None = None
         self.fitted_cost: BaseCost | None = None
         self.fitted_penalty: float | None = None
 
@@ -631,7 +624,7 @@ class PELT(BaseChangeDetector):
 
         self.clone_tags(self._cost, ["distribution_type"])
 
-    def fit_cost_and_penalty(
+    def _fit_cost_and_penalty(
         self,
         X: pd.DataFrame | pd.Series,
     ):
@@ -673,9 +666,10 @@ class PELT(BaseChangeDetector):
         fitted_penalty : float
             The fitted penalty value. Either the user-specified value or the fitted BIC
             penalty.
+        pelt_result : PELTResult
+            The result of running the PELT algorithm on the input data `X`.
         """
-        self.pelt_result_ = None
-        self.fit_cost_and_penalty(X)
+        self._fit_cost_and_penalty(X)
 
         if self.jump_step > 1:
             # If jump_step > 1, use the JumpPELT algorithm:
@@ -685,7 +679,7 @@ class PELT(BaseChangeDetector):
                 jump_step=self.jump_step,
                 split_cost=self.split_cost,
                 prune=self.prune,
-                percent_pruning_margin=self.percent_pruning_margin,
+                pruning_margin=self.pruning_margin,
             )
         elif self.min_segment_length == 1:
             # Special case for min_segment_length=1, with less overhead:
@@ -694,7 +688,7 @@ class PELT(BaseChangeDetector):
                 penalty=self.fitted_penalty,
                 split_cost=self.split_cost,
                 prune=self.prune,
-                percent_pruning_margin=self.percent_pruning_margin,
+                pruning_margin=self.pruning_margin,
             )
         else:
             pelt_result = _run_pelt(
@@ -703,11 +697,11 @@ class PELT(BaseChangeDetector):
                 min_segment_length=self.min_segment_length,
                 split_cost=self.split_cost,
                 prune=self.prune,
-                percent_pruning_margin=self.percent_pruning_margin,
+                pruning_margin=self.pruning_margin,
             )
 
         # Store the scores for introspection without recomputing using transform_scores
-        self.pelt_result_ = pelt_result
+        self.pelt_result = pelt_result
         self.scores = pd.Series(pelt_result.optimal_costs, index=X.index, name="score")
         return self._format_sparse_output(pelt_result.changepoints)
 

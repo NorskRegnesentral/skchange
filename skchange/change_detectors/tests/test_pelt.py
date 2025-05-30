@@ -109,7 +109,7 @@ def old_run_pelt(
     penalty: float,
     min_segment_length: int,
     split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.0,
+    pruning_margin: float = 0.0,
     prune: bool = True,
 ) -> PELTResult:
     """Run the PELT algorithm.
@@ -134,7 +134,7 @@ def old_run_pelt(
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the
         above inequality.
-    percent_pruning_margin : float, optional
+    pruning_margin : float, optional
         The percentage of pruning margin to use. By default set to 10.0.
         This is used to prune the admissible starts set.
         The pruning margin is used to avoid numerical issues when comparing
@@ -219,10 +219,9 @@ def old_run_pelt(
 
             abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
             start_inclusion_threshold = (
-                (
-                    current_obs_ind_opt_cost
-                    + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
-                )
+                current_obs_ind_opt_cost
+                # Apply pruning margin to the current optimal cost:
+                + abs_current_obs_opt_cost * pruning_margin
                 # Moved from 'negative' on left side
                 # to 'positive' on right side.
                 + penalty
@@ -251,7 +250,7 @@ def run_pelt_masked(
     penalty: float,
     min_segment_length: int,
     split_cost: float = 0.0,
-    percent_pruning_margin: float = 0.0,
+    pruning_margin: float = 0.0,
     allocation_multiplier: float = 5.0,  # Initial multiple of log(n_samples)
     growth_factor: float = 2.0,  # Geometric growth factor
 ) -> tuple[np.ndarray, list]:
@@ -280,8 +279,8 @@ def run_pelt_masked(
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the
         above inequality.
-    percent_pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 10.0.
+    pruning_margin : float, optional
+        The pruning margin to use. By default set to zero.
         This is used to prune the admissible starts set.
         The pruning margin is used to avoid numerical issues when comparing
         the candidate optimal costs with the current optimal cost.
@@ -394,7 +393,7 @@ def run_pelt_masked(
         start_inclusion_threshold = (
             (
                 current_obs_ind_opt_cost
-                + abs_current_obs_opt_cost * (percent_pruning_margin / 100.0)
+                + abs_current_obs_opt_cost * (pruning_margin / 100.0)
             )
             + penalty  # Pruning inequality does not include added penalty.
             - split_cost  # Remove from right side of inequality.
@@ -481,13 +480,13 @@ def test_pelt_on_tricky_data(
     less than 20.
     """
     # Original "run_pelt" found 7 changepoints.
-    percent_pruning_margin = 0.0
+    pruning_margin = 0.0
     cost.fit(alternating_sequence[0:signal_end_index])
     pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        percent_pruning_margin=percent_pruning_margin,
+        pruning_margin=pruning_margin,
     )
     opt_part_result = _run_pelt(
         cost,
@@ -587,7 +586,7 @@ def test_pelt_agrees_with_opt_part_longer_min_segment_length(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        percent_pruning_margin=0.0,
+        pruning_margin=0.0,
     )
 
     opt_part_result = _run_pelt(
@@ -1021,7 +1020,7 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         prune=False,
     )
     assert no_pruning_min_seg_length_one_pelt_result.pruning_fraction == 0.0, (
-        "Expected no pruning when min_segment_length=1 and drop_pruning=True, "
+        "Expected no pruning when min_segment_length=1 and prune=False, "
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
@@ -1029,8 +1028,8 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         min_seg_length_one_pelt_result == regular_pelt_result
     ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
-        "Expected PELT with min_segment_length=1 and drop_pruning=True to agree with "
-        "regular PELT with drop_pruning=True."
+        "Expected PELT with min_segment_length=1 and prune=False to agree with "
+        "regular PELT with prune=False."
     )
 
 

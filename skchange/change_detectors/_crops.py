@@ -231,17 +231,17 @@ class CROPS(BaseChangeDetector):
         for all possible splits, 0 <= t < p < s <= len(X) - 1.
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the above inequality.
-    percent_pruning_margin : float, optional, default=0.0
-        The percentage of pruning margin to use. By default set to 10.0.
-        This is used to prune the admissible starts set.
-        The pruning margin can be used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
-    middle_penalty_nudge : float, optional, default=1.0e-4
-        Size of multiplicative nudge to apply to the middle penalty
-        value to avoid numerical instability. By default set to 1.0e-4.
     prune: bool, optional
         If False, drop the pruning step, reverting to optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
+    pruning_margin : float, optional, default=0.0
+        The pruning margin to use. By default set to zero.
+        This is used to reduce pruning of the admissible starts set.
+        Can be useful when the cost function is imprecise, e.g.
+        based on solving an optimization problem with large tolerance.
+    middle_penalty_nudge : float, optional, default=1.0e-4
+        Size of multiplicative nudge to apply to the middle penalty
+        value to avoid numerical instability. By default set to 1.0e-4.
     """
 
     _tags = {
@@ -258,9 +258,9 @@ class CROPS(BaseChangeDetector):
         segmentation_selection: str = "bic",
         min_segment_length: int = 1,
         split_cost: float = 0.0,
-        percent_pruning_margin: float = 0.0,
-        middle_penalty_nudge: float = 1.0e-4,
         prune: bool = True,
+        pruning_margin: float = 0.0,
+        middle_penalty_nudge: float = 1.0e-4,
     ):
         super().__init__()
         self.cost = cost
@@ -269,7 +269,7 @@ class CROPS(BaseChangeDetector):
         self.segmentation_selection = segmentation_selection
         self.min_segment_length = min_segment_length
         self.split_cost = split_cost
-        self.percent_pruning_margin = percent_pruning_margin
+        self.pruning_margin = pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
         self.prune = prune
 
@@ -302,7 +302,9 @@ class CROPS(BaseChangeDetector):
         Returns
         -------
         np.ndarray
-            The change points for the given number of change points.
+            The optimal change points for penalties within
+            `[self.min_penalty, self.max_penalty]`, as decided by the
+            `segmentation_selection` criterion.
 
         Attributes
         ----------
@@ -358,8 +360,8 @@ class CROPS(BaseChangeDetector):
 
         return self.change_points_lookup[best_num_change_points]
 
-    def _run_pelt_cpd(self, penalty: float) -> np.ndarray:
-        """Run the CROPS algorithm for path solutions to penalized CPD.
+    def _solve_for_changepoints(self, penalty: float) -> np.ndarray:
+        """Solve for the optimal changepoints given `penalty` using PELT.
 
         Parameters
         ----------
@@ -372,13 +374,13 @@ class CROPS(BaseChangeDetector):
             Dictionary with penalty values as keys and tuples of change points and cost
             as values.
         """
-        # Improved PELT with 'deferred' pruning:
         pelt_result = _run_pelt(
             self._cost,
             penalty=penalty,
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
             prune=self.prune,
+            pruning_margin=self.pruning_margin,
         )
 
         return pelt_result.changepoints
@@ -393,8 +395,12 @@ class CROPS(BaseChangeDetector):
         """
         self._cost.fit(X)
 
-        min_penalty_change_points = self._run_pelt_cpd(penalty=self.min_penalty)
-        max_penalty_change_points = self._run_pelt_cpd(penalty=self.max_penalty)
+        min_penalty_change_points = self._solve_for_changepoints(
+            penalty=self.min_penalty
+        )
+        max_penalty_change_points = self._solve_for_changepoints(
+            penalty=self.max_penalty
+        )
 
         num_min_penalty_change_points = len(min_penalty_change_points)
         num_max_penalty_change_points = len(max_penalty_change_points)
@@ -443,7 +449,7 @@ class CROPS(BaseChangeDetector):
                     )  # Nudge the penalty to avoid numerical instability.
                 )
 
-                middle_penalty_change_points = self._run_pelt_cpd(
+                middle_penalty_change_points = self._solve_for_changepoints(
                     penalty=middle_penalty
                 )
                 middle_penalty_segmentation_cost = self._cost.evaluate_segmentation(
@@ -472,7 +478,7 @@ class CROPS(BaseChangeDetector):
                         "Number of change points should be greater for the "
                         "middle penalty than for the low penalty. "
                         "Attempt to set the `split_cost` parameter to a "
-                        "non-zero value, or increase `percenct_pruning_margin`."
+                        "non-zero value, or increase `pruning_margin`."
                     )
                 else:
                     # Number of change points for middle penalty is different from both
@@ -506,7 +512,7 @@ class CROPS(BaseChangeDetector):
                 "segmentation_selection": "bic",
                 "min_segment_length": 10,
                 "split_cost": 0.0,
-                "percent_pruning_margin": 0.0,
+                "pruning_margin": 0.0,
                 "middle_penalty_nudge": 1.0e-4,
                 "prune": True,
             },
@@ -517,7 +523,7 @@ class CROPS(BaseChangeDetector):
                 "segmentation_selection": "elbow",
                 "min_segment_length": 2,
                 "split_cost": 0.0,
-                "percent_pruning_margin": 0.0,
+                "pruning_margin": 0.01,
                 "middle_penalty_nudge": 1.0e-4,
                 "prune": False,
             },
