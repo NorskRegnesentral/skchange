@@ -89,7 +89,7 @@ def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
     return np.array(changepoints[-2::-1])  # Remove the artificial changepoint at 0.
 
 
-def run_pelt(
+def _run_pelt(
     cost: BaseCost,
     penalty: float,
     min_segment_length: int,
@@ -697,7 +697,7 @@ class PELT(BaseChangeDetector):
                 percent_pruning_margin=self.percent_pruning_margin,
             )
         else:
-            pelt_result = run_pelt(
+            pelt_result = _run_pelt(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
                 min_segment_length=self.min_segment_length,

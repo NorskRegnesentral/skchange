@@ -35,17 +35,17 @@ def test_pelt_crops():
         min_segment_length=min_segment_length,
     )
     change_point_detector.fit(dataset)
-    results = change_point_detector.run_crops(dataset.values)
+    results = change_point_detector._run_crops(dataset.values)
 
     no_pruning_change_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
         min_segment_length=min_segment_length,
-        drop_pruning=True,
+        prune=True,
     )
     no_pruning_change_detector.fit(dataset)
-    no_pruning_results = no_pruning_change_detector.run_crops(dataset.values)
+    no_pruning_results = no_pruning_change_detector._run_crops(dataset.values)
 
     assert np.all(
         results == no_pruning_results
@@ -68,70 +68,6 @@ def test_pelt_crops_raises_on_wrong_segmentation_selection():
             min_penalty=min_penalty,
             max_penalty=max_penalty,
         )
-
-
-def test_retrieve_change_points_before_predict_raises():
-    """Test retrieve_change_points method raises an error if called before predict."""
-    cost = L2Cost()
-    min_penalty = 1.0
-    max_penalty = 2.0
-
-    change_point_detector = CROPS(
-        cost=cost,
-        min_penalty=min_penalty,
-        max_penalty=max_penalty,
-    )
-
-    # Generate test data:
-    dataset = generate_alternating_data(
-        n_segments=2,
-        segment_length=100,
-        p=1,
-        mean=3.0,
-        variance=4.0,
-        random_state=42,
-    )
-
-    # Fit the change point detector:
-    change_point_detector.fit(dataset)
-
-    # Check that the results are as expected:
-    with pytest.raises(ValueError):
-        change_point_detector.retrieve_change_points(4)
-
-
-def test_retrieve_change_points_non_existing_num_change_point():
-    """Test that the retrieve_change_points method raises
-
-    If that number of change points does not exist.
-    """
-    cost = L2Cost()
-    min_penalty = 1.0
-    max_penalty = 2.0
-
-    change_point_detector = CROPS(
-        cost=cost,
-        min_penalty=min_penalty,
-        max_penalty=max_penalty,
-    )
-
-    # Generate test data:
-    dataset = generate_alternating_data(
-        n_segments=2,
-        segment_length=100,
-        p=1,
-        mean=3.0,
-        variance=4.0,
-        random_state=42,
-    )
-
-    # Fit the change point detector:
-    change_point_detector.fit(dataset)
-    change_point_detector.run_crops(dataset)
-
-    # Check that the results are as expected:
-    with pytest.raises(ValueError):
-        change_point_detector.retrieve_change_points(4)
 
 
 def test_retrieve_change_points():
@@ -158,10 +94,10 @@ def test_retrieve_change_points():
 
     # Fit the change point detector:
     change_point_detector.fit(dataset)
-    change_point_detector.run_crops(dataset)
+    change_point_detector._run_crops(dataset)
 
     # Check that the results are as expected:
-    assert len(change_point_detector.retrieve_change_points(1)) == 1
+    assert len(change_point_detector.change_points_lookup[1]) == 1
 
 
 def test_retrieve_change_points_2():
@@ -189,9 +125,9 @@ def test_retrieve_change_points_2():
 
     # Fit the change point detector:
     change_point_detector.fit(dataset)
-    change_point_detector.run_crops(dataset)
+    change_point_detector._run_crops(dataset)
 
-    refined_change_points = change_point_detector.retrieve_change_points(2)
+    refined_change_points = change_point_detector.change_points_lookup[2]
 
     # Check that the results are as expected:
     assert np.array_equal(
@@ -216,6 +152,6 @@ def test_non_aggregated_cost_raises():
 
     with pytest.raises(
         ValueError,
-        match="CROPS_PELT only supports costs that return a single value per cut",
+        match="CROPS only supports costs that return a single value per cut",
     ):
         crops_cpd.predict(two_dim_data.values)

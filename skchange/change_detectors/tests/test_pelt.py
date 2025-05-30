@@ -11,8 +11,8 @@ from ruptures.base import BaseCost as rpt_BaseCost
 from skchange.change_detectors._pelt import (
     PELT,
     PELTResult,
+    _run_pelt,
     get_changepoints,
-    run_pelt,
     run_pelt_min_segment_length_one,
     run_pelt_with_jump,
 )
@@ -415,7 +415,7 @@ def test_run_optimal_partitioning(
     cost: BaseCost, penalty: float, min_segment_length: int = 1
 ):
     cost.fit(changepoint_data)
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -431,7 +431,7 @@ def test_run_optimal_partitioning(
 
 def test_run_pelt(cost: BaseCost, penalty: float, min_segment_length=1):
     cost.fit(changepoint_data)
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -447,14 +447,14 @@ def test_pelt_with_and_without_pruning_is_the_same(
 ):
     cost.fit(changepoint_data)
 
-    opt_part_results = run_pelt(
+    opt_part_results = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         prune=False,
     )
 
-    pelt_results = run_pelt(
+    pelt_results = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -483,13 +483,13 @@ def test_pelt_on_tricky_data(
     # Original "run_pelt" found 7 changepoints.
     percent_pruning_margin = 0.0
     cost.fit(alternating_sequence[0:signal_end_index])
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         percent_pruning_margin=percent_pruning_margin,
     )
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -525,14 +525,14 @@ def test_pelt_min_segment_lengths(cost: BaseCost, penalty: float, min_segment_le
     Segment length of 30 works again...
     """
     cost.fit(alternating_sequence)
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
 
     cost.fit(alternating_sequence)
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -555,13 +555,13 @@ def test_high_min_segment_length(cost: BaseCost, penalty: float, min_segment_len
     # The PELT implementation (no longer) fails to find the same
     # changepoints as the optimal partitioning for these segment lengths,
     # when the segment length is greater than 30 and the pruning margin is zero.
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
     )
 
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -583,14 +583,14 @@ def test_pelt_agrees_with_opt_part_longer_min_segment_length(
     fails to find the same changepoints as the optimal partitioning.
     """
     cost.fit(long_alternating_sequence)
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
         percent_pruning_margin=0.0,
     )
 
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -616,7 +616,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
     """
     cost.fit(long_alternating_sequence)
 
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -627,7 +627,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         + (len(opt_part_result.changepoints)) * penalty
     )
 
-    skchange_pelt_result = run_pelt(
+    skchange_pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -686,7 +686,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     """
     cost.fit(long_alternating_sequence)
 
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -698,7 +698,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
     )
 
     # Compare with 'improved PELT':
-    skchange_pelt_result = run_pelt(
+    skchange_pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -752,7 +752,7 @@ def test_pelt_dense_changepoints_parametrized(cost: BaseCost, min_segment_length
     increasing_data = np.linspace(0, 1 * seg_len, seg_len).reshape(-1, 1)
     penalty = 0.0
     cost.fit(increasing_data)
-    pelt_result = run_pelt(
+    pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
@@ -890,14 +890,14 @@ def test_old_pelt_failing_with_large_min_segment_length(
 
     # Check that the results are as expected:
     # Optimal start for the final point: Index 101
-    opt_part_result = run_pelt(
+    opt_part_result = _run_pelt(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
         prune=False,
     )
 
-    improved_pelt_result = run_pelt(
+    improved_pelt_result = _run_pelt(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
@@ -954,7 +954,7 @@ def test_pelt_with_fewer_samples_than_min_segment_length_throws():
         ValueError,
         match="The `min_segment_length` cannot be larger than the number of samples",
     ):
-        run_pelt(cost, penalty=1.0, min_segment_length=10)
+        _run_pelt(cost, penalty=1.0, min_segment_length=10)
 
 
 def test_jump_pelt_with_fewer_samples_than_jump_step_throws():
@@ -993,12 +993,12 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
     """Test that PELT with min_segment_length=1 agrees with run_pelt."""
     cost.fit(alternating_sequence)
 
-    regular_pelt_result = run_pelt(
+    regular_pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=1,
     )
-    no_pruning_pelt_result = run_pelt(
+    no_pruning_pelt_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=1,
@@ -1025,9 +1025,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert min_seg_length_one_pelt_result == regular_pelt_result, (
-        "Expected PELT with min_segment_length=1 to agree with regular PELT."
-    )
+    assert (
+        min_seg_length_one_pelt_result == regular_pelt_result
+    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and drop_pruning=True to agree with "
         "regular PELT with drop_pruning=True."
@@ -1064,9 +1064,9 @@ def test_comparing_PELTResult_with_non_PELTResult_returns_false():
         previous_change_points=np.array([0, 1]),
         pruning_fraction=0.0,
     )
-    assert not pelt_result == "not a PELTResult object", (
-        "Expected comparison with non-PELTResult to return False."
-    )
+    assert (
+        not pelt_result == "not a PELTResult object"
+    ), "Expected comparison with non-PELTResult to return False."
 
 
 def test_PELTResult_cannot_be_hashed():

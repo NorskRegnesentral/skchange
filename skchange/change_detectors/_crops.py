@@ -7,7 +7,7 @@ import pandas as pd
 
 from ..base import BaseIntervalScorer
 from ..change_detectors._pelt import (
-    run_pelt,
+    _run_pelt,
 )
 from ..change_scores._continuous_linear_trend_score import (
     lin_reg_cont_piecewise_linear_trend_score,
@@ -207,24 +207,17 @@ def crops_elbow_scores(
 class CROPS(BaseChangeDetector):
     """CROPS algorithm for path solutions to penalized CPD.
 
-    The algorithm can fail when the penalty is low, and the number of
-    change points is high. In such cases, it can help to increase the
-    `percent_pruning_margin` parameter, increasing the `min_penalty`,
-    or increasing the `min_segment_length`.
-    If these changes do not help, one can set `drop_pruning` to True,
-    which will revert to the optimal partitioning algorithm.
-    This will be slower, but can be useful for debugging and testing.
-
+    TODO: Nice documentation of the CROPS algorithm.
     Reference: https://arxiv.org/pdf/1412.3617
 
     Parameters
     ----------
-    cost : BaseCost
+    cost : BaseIntervalScorer
         The cost function to use.
     min_penalty : float
-        The minimum penalty to use.
+        The start of the penalty solution interval.
     max_penalty : float
-        The maximum penalty to use.
+        The end of the penalty solution interval.
     segmentation_selection : str, default="bic"
         The selection criterion to use for selecting the
         best segmentation among the optimal segmentations for
@@ -238,14 +231,17 @@ class CROPS(BaseChangeDetector):
         for all possible splits, 0 <= t < p < s <= len(X) - 1.
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the above inequality.
-    percent_pruning_margin : float, optional, default=0.1
-        The percentage of pruning margin to use. By default set to 0.0.
+    percent_pruning_margin : float, optional, default=0.0
+        The percentage of pruning margin to use. By default set to 10.0.
+        This is used to prune the admissible starts set.
+        The pruning margin can be used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
     middle_penalty_nudge : float, optional, default=1.0e-4
         Size of multiplicative nudge to apply to the middle penalty
         value to avoid numerical instability. By default set to 1.0e-4.
-    drop_pruning: bool, optional
-        If True, drop the pruning step. Reverts to optimal partitioning.
-        Can be useful for debugging and testing.  By default set to False.
+    prune: bool, optional
+        If False, drop the pruning step, reverting to optimal partitioning.
+        Can be useful for debugging and testing. By default set to True.
     """
 
     _tags = {
@@ -264,7 +260,7 @@ class CROPS(BaseChangeDetector):
         split_cost: float = 0.0,
         percent_pruning_margin: float = 0.0,
         middle_penalty_nudge: float = 1.0e-4,
-        drop_pruning: bool = False,
+        prune: bool = True,
     ):
         super().__init__()
         self.cost = cost
@@ -275,13 +271,13 @@ class CROPS(BaseChangeDetector):
         self.split_cost = split_cost
         self.percent_pruning_margin = percent_pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
-        self.drop_pruning = drop_pruning
+        self.prune = prune
 
         self._cost = cost.clone()
         check_interval_scorer(
             self._cost,
             arg_name="cost",
-            caller_name="CROPS_PELT",
+            caller_name="CROPS",
             required_tasks=["cost"],
             allow_penalised=False,
         )
@@ -292,8 +288,8 @@ class CROPS(BaseChangeDetector):
             )
 
         # Storage for the CROPS results:
-        self.change_points_metadata_: pd.DataFrame | None = None
-        self.change_points_lookup_: dict[int, np.ndarray] | None = None
+        self.change_points_metadata: pd.DataFrame | None = None
+        self.change_points_lookup: dict[int, np.ndarray] | None = None
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """Run the CROPS algorithm for path solutions to penalized CPD.
@@ -307,18 +303,29 @@ class CROPS(BaseChangeDetector):
         -------
         np.ndarray
             The change points for the given number of change points.
+
+        Attributes
+        ----------
+        change_points_metadata : pd.DataFrame
+            DataFrame with columns 'num_change_points', 'penalty',
+            and 'segmentation_cost'.
+            Contains metadata about the change points found by the CROPS algorithm.
+        change_points_lookup : dict[int, np.ndarray]
+            Dictionary with number of change points as keys and change points as values.
+            The keys are the number of change points, and the values are arrays with the
+            change point indices for that number of change points.
         """
         if X.ndim > 1 and X.shape[1] > 1 and not self._cost.get_tag("is_aggregated"):
             raise ValueError(
-                "CROPS_PELT only supports costs that return a single value per cut "
+                "CROPS only supports costs that return a single value per cut "
                 "when the input data has more than one column. "
                 "Please use an aggregated cost function."
             )
-        self.run_crops(X=X)
+        self._run_crops(X=X)
 
         if self.segmentation_selection == "elbow":
             # Select the best segmentation using the elbow criterion.
-            change_in_slope_df = self.change_points_metadata_[
+            change_in_slope_df = self.change_points_metadata[
                 ["num_change_points", "optimum_value"]
             ].copy()
 
@@ -328,30 +335,30 @@ class CROPS(BaseChangeDetector):
                 change_in_slope_df["optimum_value"]
                 - change_in_slope_df["optimum_value"].min()
             )
-            self.change_points_metadata_["elbow_score"] = crops_elbow_scores(
+            self.change_points_metadata["elbow_score"] = crops_elbow_scores(
                 change_in_slope_df,
             )
-            best_num_change_points = self.change_points_metadata_.sort_values(
+            best_num_change_points = self.change_points_metadata.sort_values(
                 by="elbow_score", ascending=False
             )["num_change_points"].iloc[0]
 
         elif self.segmentation_selection == "bic":
             # Select the best segmentation using the BIC criterion.
-            self.change_points_metadata_["bic_value"] = self.change_points_metadata_[
+            self.change_points_metadata["bic_value"] = self.change_points_metadata[
                 "num_change_points"
             ].apply(
                 lambda num_change_points: segmentation_bic_value(
                     cost=self._cost,
-                    change_points=self.change_points_lookup_[num_change_points],
+                    change_points=self.change_points_lookup[num_change_points],
                 )
             )
-            best_num_change_points = self.change_points_metadata_.sort_values(
+            best_num_change_points = self.change_points_metadata.sort_values(
                 by="bic_value", ascending=True
             )["num_change_points"].iloc[0]
 
-        return self.change_points_lookup_[best_num_change_points]
+        return self.change_points_lookup[best_num_change_points]
 
-    def run_pelt_cpd(self, penalty: float) -> np.ndarray:
+    def _run_pelt_cpd(self, penalty: float) -> np.ndarray:
         """Run the CROPS algorithm for path solutions to penalized CPD.
 
         Parameters
@@ -366,17 +373,17 @@ class CROPS(BaseChangeDetector):
             as values.
         """
         # Improved PELT with 'deferred' pruning:
-        pelt_result = run_pelt(
+        pelt_result = _run_pelt(
             self._cost,
             penalty=penalty,
             min_segment_length=self.min_segment_length,
             split_cost=self.split_cost,
-            prune=self.drop_pruning,
+            prune=self.prune,
         )
 
         return pelt_result.changepoints
 
-    def run_crops(self, X: np.ndarray):
+    def _run_crops(self, X: np.ndarray):
         """Run the CROPS algorithm for path solutions to penalized CPD.
 
         Parameters
@@ -386,8 +393,8 @@ class CROPS(BaseChangeDetector):
         """
         self._cost.fit(X)
 
-        min_penalty_change_points = self.run_pelt_cpd(penalty=self.min_penalty)
-        max_penalty_change_points = self.run_pelt_cpd(penalty=self.max_penalty)
+        min_penalty_change_points = self._run_pelt_cpd(penalty=self.min_penalty)
+        max_penalty_change_points = self._run_pelt_cpd(penalty=self.max_penalty)
 
         num_min_penalty_change_points = len(min_penalty_change_points)
         num_max_penalty_change_points = len(max_penalty_change_points)
@@ -436,7 +443,9 @@ class CROPS(BaseChangeDetector):
                     )  # Nudge the penalty to avoid numerical instability.
                 )
 
-                middle_penalty_change_points = self.run_pelt_cpd(penalty=middle_penalty)
+                middle_penalty_change_points = self._run_pelt_cpd(
+                    penalty=middle_penalty
+                )
                 middle_penalty_segmentation_cost = self._cost.evaluate_segmentation(
                     middle_penalty_change_points
                 )[0]
@@ -474,55 +483,15 @@ class CROPS(BaseChangeDetector):
                     # Sort the intervals by lower penalty:
                     penalty_search_intervals.sort(key=lambda x: x[0])
 
-        self.store_path_solution(penalty_to_solution_dict)
-        return self.change_points_metadata_
-
-    def store_path_solution(self, penalty_to_solution_dict: list) -> None:
-        """Store the CROPS results in the change point detector.
-
-        Parameters
-        ----------
-        cpd_results : list
-            List of tuples with:
-            - (number of change points, penalty, change points, segmentation cost).
-
-        """
         metadata_df, change_points_dict = format_crops_results(
             penalty_to_solution_dict=penalty_to_solution_dict,
             penalty_nudge=self.middle_penalty_nudge,
         )
-        self.change_points_metadata_ = metadata_df
-        self.change_points_lookup_ = change_points_dict
 
-    def retrieve_change_points(self, num_change_points: int) -> np.ndarray:
-        """Retrieve the change points for a given number of change points.
+        self.change_points_metadata = metadata_df
+        self.change_points_lookup = change_points_dict
 
-        Parameters
-        ----------
-        num_change_points : int
-            The number of change points to retrieve.
-        refine_change_points : bool, default=True
-            Whether to refine the change points using the restricted
-            optimal partitioning algorithm. This may change the number
-            of change points detected.
-            If False, the detected change points will be returned as is,
-            with potential change points only every `min_segment_length`.
-
-        Returns
-        -------
-        np.ndarray
-            The change points for the given number of change points.
-        """
-        if self.change_points_lookup_ is None:
-            raise ValueError("CROPS results have not been computed yet.")
-
-        if num_change_points not in self.change_points_lookup_:
-            raise ValueError(
-                f"Number of change points {num_change_points}"
-                " not found in CROPS results."
-            )
-
-        return self.change_points_lookup_[num_change_points]
+        return self.change_points_metadata
 
     @classmethod
     def get_test_params(cls, parameter_set: str = "default") -> list[dict]:
@@ -539,7 +508,7 @@ class CROPS(BaseChangeDetector):
                 "split_cost": 0.0,
                 "percent_pruning_margin": 0.0,
                 "middle_penalty_nudge": 1.0e-4,
-                "drop_pruning": False,
+                "prune": True,
             },
             {
                 "cost": L2Cost(),
@@ -550,6 +519,6 @@ class CROPS(BaseChangeDetector):
                 "split_cost": 0.0,
                 "percent_pruning_margin": 0.0,
                 "middle_penalty_nudge": 1.0e-4,
-                "drop_pruning": True,
+                "prune": False,
             },
         ]
