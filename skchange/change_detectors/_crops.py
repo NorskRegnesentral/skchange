@@ -5,6 +5,7 @@ import warnings
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..change_detectors._pelt import (
     run_pelt,
 )
@@ -12,6 +13,7 @@ from ..change_scores._continuous_linear_trend_score import (
     lin_reg_cont_piecewise_linear_trend_score,
 )
 from ..costs.base import BaseCost
+from ..utils.validation.interval_scorer import check_interval_scorer
 from .base import BaseChangeDetector
 
 
@@ -254,7 +256,7 @@ class CROPS_PELT(BaseChangeDetector):
 
     def __init__(
         self,
-        cost: BaseCost,
+        cost: BaseIntervalScorer,
         min_penalty: float,
         max_penalty: float,
         segmentation_selection: str = "bic",
@@ -265,9 +267,7 @@ class CROPS_PELT(BaseChangeDetector):
         drop_pruning: bool = False,
     ):
         super().__init__()
-        self.cost: BaseCost = cost
-        self._cost: BaseCost = cost.clone()
-
+        self.cost = cost
         self.min_penalty = min_penalty
         self.max_penalty = max_penalty
         self.segmentation_selection = segmentation_selection
@@ -277,6 +277,14 @@ class CROPS_PELT(BaseChangeDetector):
         self.middle_penalty_nudge = middle_penalty_nudge
         self.drop_pruning = drop_pruning
 
+        self._cost = cost.clone()
+        check_interval_scorer(
+            self._cost,
+            arg_name="cost",
+            caller_name="CROPS_PELT",
+            required_tasks=["cost"],
+            allow_penalised=False,
+        )
         if segmentation_selection not in ["bic", "elbow"]:
             raise ValueError(
                 f"Invalid selection criterion: {segmentation_selection}. "
@@ -443,6 +451,7 @@ class CROPS_PELT(BaseChangeDetector):
                 middle_penalty_matches_low_penalty = len(
                     middle_penalty_change_points
                 ) == len(low_penalty_change_points)
+
                 if middle_penalty_matches_high_penalty:
                     # The same number of change points for penalties in
                     # the interval [middle_penalty, high_penalty].

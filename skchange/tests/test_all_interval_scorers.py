@@ -126,18 +126,12 @@ def test_scorer_invalid_cuts(Scorer: BaseIntervalScorer):
 @pytest.mark.parametrize("Scorer", INTERVAL_SCORERS)
 def test_scorer_min_size(Scorer: BaseIntervalScorer):
     scorer = Scorer.create_test_instance()
-    assert (
-        scorer.min_size is None
-        or (isinstance(scorer.min_size, int) and scorer.min_size >= 1)
-        or (max(scorer.min_size) >= 1)
-    )
+    assert scorer.min_size is None or scorer.min_size >= 1
 
     skip_if_no_test_data(scorer)
     x = generate_anomalous_data()
     scorer.fit(x)
-    assert (isinstance(scorer.min_size, int) and scorer.min_size >= 1) or (
-        max(scorer.min_size) >= 1
-    )
+    assert scorer.min_size >= 1
 
 
 @pytest.mark.parametrize("Scorer", INTERVAL_SCORERS)

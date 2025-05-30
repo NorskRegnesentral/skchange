@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
+from ..base import BaseIntervalScorer
 from ..costs import L2Cost
 from ..costs.base import BaseCost
 from ..penalties import make_bic_penalty
@@ -511,25 +512,31 @@ def run_pelt_with_jump(
 
 
 class PELT(BaseChangeDetector):
-    """Pruned exact linear time changepoint detection.
+    """Pruned exact linear time (PELT) changepoint detection.
 
-    The PELT algorithm [1]_ for changepoint detection.
+    Implements the PELT algorithm [1]_ for changepoint detection.
+    This method solves the penalized optimal partitioning problem,
+    with pruning of the admissible starts set applied to improve performance.
 
     Parameters
     ----------
     cost : BaseIntervalScorer, optional, default=`L2Cost`
-        The cost to use for the changepoint detection.
+        The cost to use for the changepoint detection. Expects a `BaseIntervalScorer`
+        instance that implements the `cost` task. If `None`, defaults to `L2Cost`.
     penalty : float, optional
         The penalty to use for the changepoint detection. It must be non-negative. If
         `None`, the penalty is set to
         `make_bic_penalty(n=X.shape[0], n_params=cost.get_model_size(X.shape[1]))`,
-        where ``X`` is the input data to `predict`.
-    min_segment_length : int, optional, default=2
-        Minimum length of a segment.
-    jump: bool, optional, default=False
-        If True, only indices that are multiples of `min_segment_length` from the
+        where ``X`` is the input data to `predict` changepoints in.
+    min_segment_length : int, optional, default=1
+        Minimum length of a segment. The minimum length of a segment to consider
+        when detecting changepoints. Must be at least 1. If `jump_step` is greater than
+        1, this must be less than or equal to `jump_step`.
+    jump_step: bool, optional, default=False
+        If True, only indices that are multiples of `jump_step` from the
         first data point (index `0`) are considered as potential changepoints.
-        Only used if `min_segment_length >= 2`.
+        Implicitly ensures that `min_segment_length >= jump_step`, but it's
+        an error to specify `min_segment_length` greater than `jump_step`.
     split_cost : float, optional, default=0.0
         The cost of splitting a segment, to ensure that
         cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
@@ -538,6 +545,9 @@ class PELT(BaseChangeDetector):
         log likelihood cost functions to satisfy the above inequality.
     percent_pruning_margin : float, optional, default=0.0
         The percentage of pruning margin to use. By default set to 0.0.
+        This sets the threshold for pruning the admissible starts set,
+        and can be useful if the cost function is imprecise, i.e.
+        based on solving an optimization problem with large tolerance.
     drop_pruning : bool, optional, default=False
         If True, drop the pruning step. Reverts to optimal partitioning.
         Can be useful for debugging and testing. By default set to False.
@@ -567,7 +577,7 @@ class PELT(BaseChangeDetector):
 
     def __init__(
         self,
-        cost: BaseCost | None = None,
+        cost: BaseIntervalScorer | None = None,
         penalty: float | None = None,
         min_segment_length: int = 1,
         jump_step: int = 1,
@@ -599,6 +609,7 @@ class PELT(BaseChangeDetector):
             allow_penalised=False,
         )
         self._cost = _cost.clone()
+        self.pelt_result_: PELTResult | None = None
         self.fitted_cost: BaseCost | None = None
         self.fitted_penalty: float | None = None
 
@@ -656,6 +667,7 @@ class PELT(BaseChangeDetector):
             The fitted penalty value. Either the user-specified value or the fitted BIC
             penalty.
         """
+        self.pelt_result_ = None
         self.fit_cost_and_penalty(X)
 
         if self.jump_step > 1:
@@ -668,7 +680,7 @@ class PELT(BaseChangeDetector):
                 drop_pruning=self.drop_pruning,
             )
         elif self.min_segment_length == 1:
-            # Special case for min_segment_length=1, use the optimized version:
+            # Special case for min_segment_length=1, with less overhead:
             pelt_result = run_pelt_min_segment_length_one(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
@@ -687,6 +699,7 @@ class PELT(BaseChangeDetector):
             )
 
         # Store the scores for introspection without recomputing using transform_scores
+        self.pelt_result_ = pelt_result
         self.scores = pd.Series(pelt_result.optimal_costs, index=X.index, name="score")
         return self._format_sparse_output(pelt_result.changepoints)
 

@@ -105,15 +105,6 @@ def test_evaluate_segmentation(CostClass: type[BaseCost]):
     np_changepoints = np.array([10, 20, 30, 40])
 
     np_2d_segmentation = np_segmentation.reshape(-1, 1)
-    # np_bad_2d_segmentation = np.array(
-    #     [
-    #         [0, 10],
-    #         [20, 30],
-    #         [
-    #             40,
-    #         ],
-    #     ]
-    # )
 
     assert np.array_equal(
         cost.evaluate_segmentation(np_segmentation),
