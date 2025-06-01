@@ -169,7 +169,6 @@ def test_retrieve_change_points_2():
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
-        min_segment_length=10,
     )
 
     # Generate test data:
@@ -186,11 +185,11 @@ def test_retrieve_change_points_2():
     change_point_detector.fit(dataset)
     change_point_detector.predict(dataset)
 
-    refined_change_points = change_point_detector.change_points_lookup[2]
+    specific_change_points = change_point_detector.change_points_lookup[2]
 
     # Check that the results are as expected:
-    assert np.array_equal(refined_change_points, np.array([88, 176])), (
-        f"Expected [88, 176], got {refined_change_points}"
+    assert np.array_equal(specific_change_points, np.array([88, 176])), (
+        f"Expected [88, 176], got {specific_change_points}"
     )
 
 
