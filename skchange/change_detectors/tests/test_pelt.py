@@ -14,7 +14,7 @@ from skchange.change_detectors._pelt import (
     _run_pelt,
     get_changepoints,
     run_pelt_min_segment_length_one,
-    run_pelt_with_jump,
+    run_pelt_with_step_size,
 )
 from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
@@ -780,14 +780,14 @@ def test_invalid_costs():
         PELT(cost=cost)
 
 
-@pytest.mark.parametrize("jump_step", [3, 5, 10])
-def test_pelt_with_jump_step(cost: BaseCost, penalty: float, jump_step: int):
+@pytest.mark.parametrize("step_size", [3, 5, 10])
+def test_pelt_with_step_size(cost: BaseCost, penalty: float, step_size: int):
     """Test PELT with jump parameter enabled and min_segment_length > 2."""
 
-    # Run PELT with jump_step > 1:
+    # Run PELT with step_size > 1:
     jump_pelt_model = PELT(
         cost=cost,
-        jump_step=jump_step,
+        step_size=step_size,
         penalty=penalty,
     )
     jump_pelt_model.fit(alternating_sequence)
@@ -795,10 +795,10 @@ def test_pelt_with_jump_step(cost: BaseCost, penalty: float, jump_step: int):
         "ilocs"
     ].to_numpy()
 
-    assert np.all(pelt_changepoints % jump_step == 0)
+    assert np.all(pelt_changepoints % step_size == 0)
 
     # Compare with ruptures implementation for validation
-    rpt_model = rpt.Pelt(model="l2", min_size=jump_step, jump=jump_step)
+    rpt_model = rpt.Pelt(model="l2", min_size=step_size, jump=step_size)
     rpt_changepoints = np.array(
         rpt_model.fit_predict(alternating_sequence, pen=penalty)[:-1]
     )
@@ -823,21 +823,21 @@ def test_pelt_with_jump_step(cost: BaseCost, penalty: float, jump_step: int):
 def test_jump_pelt_pruning_fraction(cost: BaseCost, penalty: float):
     """Test pruning fraction is zero when not pruning, and < 1.0 when pruning."""
     cost.fit(alternating_sequence)
-    jump_step = 5
+    step_size = 5
 
     # Run with pruning disabled
-    pelt_result_no_pruning = run_pelt_with_jump(
+    pelt_result_no_pruning = run_pelt_with_step_size(
         cost=cost,
         penalty=penalty,
-        jump_step=jump_step,
+        step_size=step_size,
         prune=False,
     )
 
     # Run with pruning enabled
-    pelt_result_with_pruning = run_pelt_with_jump(
+    pelt_result_with_pruning = run_pelt_with_step_size(
         cost=cost,
         penalty=penalty,
-        jump_step=jump_step,
+        step_size=step_size,
     )
 
     # Check that pruning fraction is 1.0 when pruning is disabled
@@ -956,33 +956,33 @@ def test_pelt_with_fewer_samples_than_min_segment_length_throws():
         _run_pelt(cost, penalty=1.0, min_segment_length=10)
 
 
-def test_jump_pelt_with_fewer_samples_than_jump_step_throws():
-    """Test that PELT-jump_step  raises when `n_samples` is less than `jump_step`."""
+def test_jump_pelt_with_fewer_samples_than_step_size_throws():
+    """Test that PELT-step_size  raises when `n_samples` is less than `step_size`."""
     cost = L2Cost()
-    data = np.random.randn(5, 1)  # Less than jump_step of 10
+    data = np.random.randn(5, 1)  # Less than step_size of 10
 
-    # Creating the PELT model with jump_step=10
-    jump_pelt_model = PELT(cost=cost, jump_step=10, penalty=1.0)
+    # Creating the PELT model with step_size=10
+    jump_pelt_model = PELT(cost=cost, step_size=10, penalty=1.0)
 
     with pytest.raises(
         ValueError,
-        match="The `jump_step` cannot be larger than the number of samples",
+        match="The `step_size` cannot be larger than the number of samples",
     ):
         jump_pelt_model.fit(data)
         jump_pelt_model.predict(data)
 
 
-def test_jump_pelt_with_fewer_samples_than_twice_jump_step_returns_single_interval():
-    """Test that PELT-jump_pelt raises when `n_samples` is less than `jump_step`."""
+def test_jump_pelt_with_fewer_samples_than_twice_step_size_returns_single_interval():
+    """Test that PELT-jump_pelt raises when `n_samples` is less than `step_size`."""
     cost = L2Cost()
-    data = np.random.randn(10, 1)  # Less than jump_step of 10
+    data = np.random.randn(10, 1)  # Less than step_size of 10
 
-    # Creating the PELT model with jump_step=6
-    jump_pelt_model = PELT(cost=cost, jump_step=6, penalty=1.0)
+    # Creating the PELT model with step_size=6
+    jump_pelt_model = PELT(cost=cost, step_size=6, penalty=1.0)
 
     jump_pelt_model.fit(data)
     jump_pelt_res = jump_pelt_model.predict(data)
-    # Expect PELT-jump_step to return an empty array when n_samples < 2 * jump_step.
+    # Expect PELT-step_size to return an empty array when n_samples < 2 * step_size.
     np.testing.assert_array_equal(jump_pelt_res["ilocs"].to_numpy(), np.array([]))
 
 
@@ -1079,8 +1079,8 @@ def test_PELTResult_cannot_be_hashed():
         _ = {pelt_result: "value"}  # Attempt to use PELTResult as a dict key
 
 
-def test_PELT_jump_step_less_than_min_segment_length():
-    """Test that PELT with jump_step < min_segment_length raises an error."""
+def test_PELT_step_size_less_than_min_segment_length():
+    """Test that PELT with step_size < min_segment_length raises an error."""
     cost = L2Cost()
     data = np.random.randn(100, 1)  # Enough samples for testing
     cost.fit(data)
@@ -1090,13 +1090,13 @@ def test_PELT_jump_step_less_than_min_segment_length():
         match=(
             re.escape(
                 "PELT `min_segment_length`(=10) cannot be "
-                "greater than the `jump_step`(=5) > 1."
+                "greater than the `step_size`(=5) > 1."
             )
         ),
     ):
         PELT(
             cost=cost,
-            jump_step=5,  # Jump step less than min_segment_length
+            step_size=5,  # Jump step less than min_segment_length
             penalty=1.0,
             min_segment_length=10,  # Min segment length is larger
         ).fit_predict(data)

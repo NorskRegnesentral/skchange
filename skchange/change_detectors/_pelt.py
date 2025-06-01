@@ -379,17 +379,19 @@ def run_pelt_min_segment_length_one(
     return pelt_result
 
 
-def run_pelt_with_jump(
+def run_pelt_with_step_size(
     cost: BaseCost,
     penalty: float,
-    jump_step: int,
+    step_size: int,
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
-    Solves the associated (compressed data) optimization problem exactly.
+    Solves the PELT optimization problem where only indices that are multiples of
+    `step_size` from the start (index `0`) are considered as potential changepoints.
+    This means that the minimum segment length is naturally `step_size`.
 
     Parameters
     ----------
@@ -397,10 +399,10 @@ def run_pelt_with_jump(
         The cost to use.
     penalty : float
         The penalty incurred for adding a changepoint.
-    jump_step : int
-        Only indices that are multiples of `jump_step` from the start (index `0`) are
+    step_size : int
+        Only indices that are multiples of `step_size` from the start (index `0`) are
         considered as potential changepoints. This also means that the minimum segment
-        length is naturally `jump_step`.
+        length is naturally `step_size`.
     split_cost : float, optional
         The cost of splitting a segment, to ensure that
         cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
@@ -424,8 +426,8 @@ def run_pelt_with_jump(
     """
     cost.check_is_fitted()
     n_samples = cost.n_samples()
-    if n_samples < jump_step:
-        raise ValueError("The `jump_step` cannot be larger than the number of samples.")
+    if n_samples < step_size:
+        raise ValueError("The `step_size` cannot be larger than the number of samples.")
 
     # Initialize the optimal costs array:
     opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
@@ -439,11 +441,11 @@ def run_pelt_with_jump(
     eval_starts = np.array([], dtype=np.int64)
 
     observation_interval_starts = np.arange(
-        start=0, stop=n_samples - jump_step + 1, step=jump_step
+        start=0, stop=n_samples - step_size + 1, step=step_size
     )
     observation_interval_ends = np.concatenate(
         (
-            np.arange(start=jump_step - 1, stop=n_samples - jump_step, step=jump_step),
+            np.arange(start=step_size - 1, stop=n_samples - step_size, step=step_size),
             np.array([n_samples - 1]),
         )
     )
@@ -530,13 +532,13 @@ class PELT(BaseChangeDetector):
         where ``X`` is the input data to `predict` changepoints in.
     min_segment_length : int, optional, default=1
         Minimum length of a segment. The minimum length of a segment to consider
-        when detecting changepoints. Must be at least 1. If `jump_step` is greater than
-        1, this must be less than or equal to `jump_step`.
-    jump_step: bool, optional, default=False
-        If True, only indices that are multiples of `jump_step` from the
+        when detecting changepoints. Must be at least 1. If `step_size` is greater than
+        1, this must be less than or equal to `step_size`.
+    step_size: bool, optional, default=False
+        If True, only indices that are multiples of `step_size` from the
         first data point (index `0`) are considered as potential changepoints.
-        Implicitly ensures that `min_segment_length >= jump_step`, but it's
-        an error to specify `min_segment_length` greater than `jump_step`.
+        Implicitly ensures that `min_segment_length >= step_size`, but it's
+        an error to specify `min_segment_length` greater than `step_size`.
     split_cost : float, optional, default=0.0
         The cost of splitting a segment, to ensure that
         cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
@@ -580,7 +582,7 @@ class PELT(BaseChangeDetector):
         cost: BaseIntervalScorer | None = None,
         penalty: float | None = None,
         min_segment_length: int = 1,
-        jump_step: int = 1,
+        step_size: int = 1,
         split_cost: float = 0.0,
         prune: bool = True,
         pruning_margin: float = 0.0,
@@ -588,16 +590,16 @@ class PELT(BaseChangeDetector):
         self.cost = cost
         self.penalty = penalty
         self.min_segment_length = min_segment_length
-        self.jump_step = jump_step
+        self.step_size = step_size
         self.split_cost = split_cost
         self.prune = prune
         self.pruning_margin = pruning_margin
         super().__init__()
 
-        if self.jump_step > 1 and self.min_segment_length > self.jump_step:
+        if self.step_size > 1 and self.min_segment_length > self.step_size:
             raise ValueError(
                 f"PELT `min_segment_length`(={self.min_segment_length}) cannot be "
-                f"greater than the `jump_step`(={self.jump_step}) > 1."
+                f"greater than the `step_size`(={self.step_size}) > 1."
             )
 
         _cost = L2Cost() if cost is None else cost
@@ -671,12 +673,12 @@ class PELT(BaseChangeDetector):
         """
         self._fit_cost_and_penalty(X)
 
-        if self.jump_step > 1:
-            # If jump_step > 1, use the JumpPELT algorithm:
-            pelt_result = run_pelt_with_jump(
+        if self.step_size > 1:
+            # If step_size > 1, use the JumpPELT algorithm:
+            pelt_result = run_pelt_with_step_size(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
-                jump_step=self.jump_step,
+                step_size=self.step_size,
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
@@ -749,6 +751,6 @@ class PELT(BaseChangeDetector):
 
         params = [
             {"cost": L2Cost(), "min_segment_length": 5},
-            {"cost": L2Cost(), "penalty": 0.0, "min_segment_length": 4, "jump_step": 4},
+            {"cost": L2Cost(), "penalty": 0.0, "min_segment_length": 4, "step_size": 4},
         ]
         return params
