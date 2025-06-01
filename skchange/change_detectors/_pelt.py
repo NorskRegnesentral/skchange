@@ -249,7 +249,7 @@ def _run_pelt(
     return pelt_result
 
 
-def run_pelt_min_segment_length_one(
+def _run_pelt_min_segment_length_one(
     cost: BaseCost,
     penalty: float,
     split_cost: float = 0.0,
@@ -379,7 +379,7 @@ def run_pelt_min_segment_length_one(
     return pelt_result
 
 
-def run_pelt_with_step_size(
+def _run_pelt_with_step_size(
     cost: BaseCost,
     penalty: float,
     step_size: int,
@@ -675,7 +675,7 @@ class PELT(BaseChangeDetector):
 
         if self.step_size > 1:
             # If step_size > 1, use the JumpPELT algorithm:
-            pelt_result = run_pelt_with_step_size(
+            pelt_result = _run_pelt_with_step_size(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
                 step_size=self.step_size,
@@ -685,7 +685,7 @@ class PELT(BaseChangeDetector):
             )
         elif self.min_segment_length == 1:
             # Special case for min_segment_length=1, with less overhead:
-            pelt_result = run_pelt_min_segment_length_one(
+            pelt_result = _run_pelt_min_segment_length_one(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
                 split_cost=self.split_cost,

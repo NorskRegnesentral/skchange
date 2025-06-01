@@ -1,8 +1,10 @@
+import re
+
 import numpy as np
 import pytest
 
 from skchange.change_detectors._crops import CROPS
-from skchange.costs import L1Cost, L2Cost
+from skchange.costs import GaussianCost, L1Cost, L2Cost
 from skchange.datasets import generate_alternating_data
 
 
@@ -11,9 +13,9 @@ def test_pelt_crops():
 
     Reference: https://arxiv.org/pdf/1412.3617
     """
-    cost = L2Cost()
-    min_penalty = 0.05
-    max_penalty = 50.0
+    cost = GaussianCost()
+    min_penalty = 0.01
+    max_penalty = 10.0
     min_segment_length = 10
 
     # Generate test data:
@@ -22,8 +24,7 @@ def test_pelt_crops():
         segment_length=100,
         p=1,
         mean=3.0,
-        variance=4.0,
-        # random_state=42,
+        variance=2.0,
         random_state=241,
     )
 
@@ -35,23 +36,81 @@ def test_pelt_crops():
         min_segment_length=min_segment_length,
     )
     change_point_detector.fit(dataset)
-    results = change_point_detector._run_crops(dataset.values)
+    pruning_change_points = change_point_detector.predict(dataset.values)
 
     no_pruning_change_detector = CROPS(
         cost=cost,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
         min_segment_length=min_segment_length,
-        prune=True,
+        prune=False,
     )
     no_pruning_change_detector.fit(dataset)
-    no_pruning_results = no_pruning_change_detector._run_crops(dataset.values)
+    no_pruning_changepoints = no_pruning_change_detector.predict(dataset.values)
 
-    assert np.all(
-        results == no_pruning_results
-    ), f"Expected {no_pruning_results}, got {results}"
+    assert np.all(pruning_change_points == no_pruning_changepoints), (
+        f"Expected {no_pruning_changepoints}, got {pruning_change_points}"
+    )
     # Check that the results are as expected:
-    assert len(results) == 10
+    assert len(pruning_change_points) == 1
+
+    assert no_pruning_change_detector.change_points_metadata.equals(
+        change_point_detector.change_points_metadata
+    ), "Expected change points metadata to be the same for both detectors."
+
+
+def test_pelt_crops_with_elbow_segmentation_selection():
+    """Test the CROPS algorithm for path solutions to penalized CPD.
+
+    Reference: https://arxiv.org/pdf/1412.3617
+    """
+    cost = GaussianCost()
+    min_penalty = 1.0e0
+    max_penalty = 1.0e3
+    step_size = 10
+
+    # Generate test data:
+    dataset = generate_alternating_data(
+        n_segments=2,
+        segment_length=100,
+        p=1,
+        mean=3.0,
+        variance=2.0,
+        random_state=123,
+    )
+
+    # Fit CROPS change point detector:
+    change_point_detector = CROPS(
+        cost=cost,
+        segmentation_selection="elbow",
+        step_size=step_size,
+        min_penalty=min_penalty,
+        max_penalty=max_penalty,
+    )
+    change_point_detector.fit(dataset)
+    pruning_change_points = change_point_detector.predict(dataset.values)
+
+    no_pruning_change_detector = CROPS(
+        cost=cost,
+        segmentation_selection="elbow",
+        step_size=step_size,
+        min_penalty=min_penalty,
+        max_penalty=max_penalty,
+        prune=False,
+    )
+    no_pruning_change_detector.fit(dataset)
+    no_pruning_changepoints = no_pruning_change_detector.predict(dataset.values)
+
+    assert np.all(pruning_change_points == no_pruning_changepoints), (
+        # random_state=42,
+        f"Expected {no_pruning_changepoints}, got {pruning_change_points}"
+    )
+    # Check that the results are as expected:
+    assert len(pruning_change_points) == 1
+
+    assert no_pruning_change_detector.change_points_metadata.equals(
+        change_point_detector.change_points_metadata
+    ), "Expected change points metadata to be the same for both detectors."
 
 
 def test_pelt_crops_raises_on_wrong_segmentation_selection():
@@ -125,14 +184,14 @@ def test_retrieve_change_points_2():
 
     # Fit the change point detector:
     change_point_detector.fit(dataset)
-    change_point_detector._run_crops(dataset)
+    change_point_detector.predict(dataset)
 
     refined_change_points = change_point_detector.change_points_lookup[2]
 
     # Check that the results are as expected:
-    assert np.array_equal(
-        refined_change_points, np.array([88, 176])
-    ), f"Expected [88, 176], got {refined_change_points}"
+    assert np.array_equal(refined_change_points, np.array([88, 176])), (
+        f"Expected [88, 176], got {refined_change_points}"
+    )
 
 
 def test_non_aggregated_cost_raises():
@@ -155,3 +214,26 @@ def test_non_aggregated_cost_raises():
         match="CROPS only supports costs that return a single value per cut",
     ):
         crops_cpd.predict(two_dim_data.values)
+
+
+def test_crops_with_min_segment_length_greater_than_step_size_raises():
+    """Test CROPS raises an error if min_segment_length is greater than step_size."""
+    cost = L2Cost()
+    min_penalty = 1.0
+    max_penalty = 2.0
+    min_segment_length = 10
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "CROPS `min_segment_length`(=10) cannot "
+            "be greater than the `step_size`(=5) > 1."
+        ),
+    ):
+        CROPS(
+            cost=cost,
+            min_penalty=min_penalty,
+            max_penalty=max_penalty,
+            min_segment_length=min_segment_length,
+            step_size=5,  # Step size is less than min_segment_length
+        )

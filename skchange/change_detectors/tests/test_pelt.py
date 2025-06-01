@@ -13,8 +13,8 @@ from skchange.change_detectors._pelt import (
     PELTResult,
     _run_pelt,
     get_changepoints,
-    run_pelt_min_segment_length_one,
-    run_pelt_with_step_size,
+    _run_pelt_min_segment_length_one,
+    _run_pelt_with_step_size,
 )
 from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
@@ -826,7 +826,7 @@ def test_jump_pelt_pruning_fraction(cost: BaseCost, penalty: float):
     step_size = 5
 
     # Run with pruning disabled
-    pelt_result_no_pruning = run_pelt_with_step_size(
+    pelt_result_no_pruning = _run_pelt_with_step_size(
         cost=cost,
         penalty=penalty,
         step_size=step_size,
@@ -834,7 +834,7 @@ def test_jump_pelt_pruning_fraction(cost: BaseCost, penalty: float):
     )
 
     # Run with pruning enabled
-    pelt_result_with_pruning = run_pelt_with_step_size(
+    pelt_result_with_pruning = _run_pelt_with_step_size(
         cost=cost,
         penalty=penalty,
         step_size=step_size,
@@ -1010,11 +1010,11 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         regular_pelt_result.optimal_costs, no_pruning_pelt_result.optimal_costs
     )
 
-    min_seg_length_one_pelt_result = run_pelt_min_segment_length_one(
+    min_seg_length_one_pelt_result = _run_pelt_min_segment_length_one(
         cost,
         penalty=penalty,
     )
-    no_pruning_min_seg_length_one_pelt_result = run_pelt_min_segment_length_one(
+    no_pruning_min_seg_length_one_pelt_result = _run_pelt_min_segment_length_one(
         cost,
         penalty=penalty,
         prune=False,
@@ -1043,7 +1043,7 @@ def test_pelt_min_segment_length_one_throws_if_zero_sample():
         ValueError,
         match="The number of samples for the fitted cost must be at least one.",
     ):
-        run_pelt_min_segment_length_one(cost, penalty=1.0)
+        _run_pelt_min_segment_length_one(cost, penalty=1.0)
 
 
 def test_constructing_PELTResult_with_differing_array_sizes_raises_error():
