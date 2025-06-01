@@ -12,9 +12,9 @@ from skchange.change_detectors._pelt import (
     PELT,
     PELTResult,
     _run_pelt,
-    get_changepoints,
     _run_pelt_min_segment_length_one,
     _run_pelt_with_step_size,
+    get_changepoints,
 )
 from skchange.change_scores import CUSUM
 from skchange.costs import GaussianCost, L2Cost
