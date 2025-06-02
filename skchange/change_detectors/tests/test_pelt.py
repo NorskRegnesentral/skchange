@@ -109,8 +109,8 @@ def old_run_pelt(
     penalty: float,
     min_segment_length: int,
     split_cost: float = 0.0,
-    pruning_margin: float = 0.0,
     prune: bool = True,
+    pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -134,14 +134,14 @@ def old_run_pelt(
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the
         above inequality.
-    pruning_margin : float, optional
-        The percentage of pruning margin to use. By default set to 10.0.
-        This is used to prune the admissible starts set.
-        The pruning margin is used to avoid numerical issues when comparing
-        the candidate optimal costs with the current optimal cost.
     prune: bool, optional
         If False, drop the pruning step, reverting to optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
+    pruning_margin : float, optional
+        The percentage of pruning margin to use. By default set to zero.
+        This is used to prune the admissible starts set.
+        The pruning margin is used to avoid numerical issues when comparing
+        the candidate optimal costs with the current optimal cost.
 
     Returns
     -------
@@ -1024,9 +1024,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert (
-        min_seg_length_one_pelt_result == regular_pelt_result
-    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    assert min_seg_length_one_pelt_result == regular_pelt_result, (
+        "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    )
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and prune=False to agree with "
         "regular PELT with prune=False."
@@ -1063,9 +1063,9 @@ def test_comparing_PELTResult_with_non_PELTResult_returns_false():
         previous_change_points=np.array([0, 1]),
         pruning_fraction=0.0,
     )
-    assert (
-        not pelt_result == "not a PELTResult object"
-    ), "Expected comparison with non-PELTResult to return False."
+    assert not pelt_result == "not a PELTResult object", (
+        "Expected comparison with non-PELTResult to return False."
+    )
 
 
 def test_PELTResult_cannot_be_hashed():
@@ -1100,3 +1100,100 @@ def test_PELT_step_size_less_than_min_segment_length():
             penalty=1.0,
             min_segment_length=10,  # Min segment length is larger
         ).fit_predict(data)
+
+
+def test_run_pelt_with_pruning_margin_decreases_pruning_fraction(
+    cost: BaseCost, penalty: float
+):
+    """Test that increasing pruning margin decreases pruning fraction."""
+    cost.fit(alternating_sequence)
+
+    # Run PELT with a small pruning margin
+    pelt_result_no_margin = _run_pelt(
+        cost,
+        penalty=penalty,
+        min_segment_length=4,
+        pruning_margin=0.0,  # Small margin
+    )
+
+    # Run PELT with a larger pruning margin
+    pelt_result_large_margin = _run_pelt(
+        cost,
+        penalty=penalty,
+        min_segment_length=4,
+        pruning_margin=10.0,  # Larger margin
+    )
+
+    # Check that the pruning fraction decreases with larger margin
+    assert (
+        pelt_result_large_margin.pruning_fraction
+        < pelt_result_no_margin.pruning_fraction
+    ), (
+        "Expected larger pruning margin to decrease pruning fraction, "
+        f"got {pelt_result_large_margin.pruning_fraction} < "
+        f"{pelt_result_no_margin.pruning_fraction}"
+    )
+
+
+def test_run_pelt_min_seglen_one_with_pruning_margin_decreases_pruning_fraction(
+    cost: BaseCost, penalty: float
+):
+    """Test that increasing pruning margin decreases pruning fraction."""
+    cost.fit(alternating_sequence)
+
+    # Run PELT with a small pruning margin
+    pelt_result_no_margin = _run_pelt_min_segment_length_one(
+        cost,
+        penalty=penalty,
+        pruning_margin=0.0,  # Small margin
+    )
+
+    # Run PELT with a larger pruning margin
+    pelt_result_large_margin = _run_pelt_min_segment_length_one(
+        cost,
+        penalty=penalty,
+        pruning_margin=10.0,  # Larger margin
+    )
+
+    # Check that the pruning fraction decreases with larger margin
+    assert (
+        pelt_result_large_margin.pruning_fraction
+        < pelt_result_no_margin.pruning_fraction
+    ), (
+        "Expected larger pruning margin to decrease pruning fraction, "
+        f"got {pelt_result_large_margin.pruning_fraction} < "
+        f"{pelt_result_no_margin.pruning_fraction}"
+    )
+
+
+def test_run_pelt_step_size_with_pruning_margin_decreases_pruning_fraction(
+    cost: BaseCost, penalty: float
+):
+    """Test that increasing pruning margin decreases pruning fraction."""
+    cost.fit(alternating_sequence)
+
+    # Run PELT with a small pruning margin
+    pelt_result_no_margin = _run_pelt_with_step_size(
+        cost,
+        step_size=5,
+        penalty=penalty,
+        pruning_margin=0.0,  # Small margin
+    )
+
+    # Run PELT with a larger pruning margin
+    pelt_result_large_margin = _run_pelt_with_step_size(
+        cost,
+        step_size=5,
+        penalty=penalty,
+        pruning_margin=10.0,  # Larger margin
+    )
+
+    # Check that the pruning fraction decreases with larger margin
+    assert (
+        pelt_result_large_margin.pruning_fraction
+        < pelt_result_no_margin.pruning_fraction
+    ), (
+        "Expected larger pruning margin to decrease pruning fraction, "
+        f"got {pelt_result_large_margin.pruning_fraction} < "
+        f"{pelt_result_no_margin.pruning_fraction}"
+    )

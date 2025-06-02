@@ -125,10 +125,10 @@ def _run_pelt(
         If False, drop the pruning step, reverting to optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
     pruning_margin : float, optional
-        The pruning margin to use. By default set to 0.0.
-        This is used reduce pruning of the admissible starts set.
+        The pruning margin to use. By default set to zero.
+        This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
-        based on solving an optimization problem with large tolerance.
+        based on solving an optimization problem with a large tolerance.
 
     Returns
     -------
@@ -253,8 +253,8 @@ def _run_pelt_min_segment_length_one(
     cost: BaseCost,
     penalty: float,
     split_cost: float = 0.0,
-    pruning_margin: float = 0.0,
     prune: bool = True,
+    pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm, with a minimum segment length of one.
 
@@ -278,14 +278,14 @@ def _run_pelt_min_segment_length_one(
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the
         above inequality.
-    pruning_margin : float, optional
-        The pruning margin to use. By default set to 10.0.
-        This is used to reduce pruning of the admissible starts set.
-        Can be useful if the cost function is imprecise, i.e.
-        based on solving an optimization problem with large tolerance.
     prune: bool, optional
         If False, drop the pruning step, performing optimal partitioning.
         Can be useful for debugging and testing. By default set to True.
+    pruning_margin : float, optional
+        The pruning margin to use. By default set to zero.
+        This is used to reduce pruning of the admissible starts set.
+        Can be useful if the cost function is imprecise, i.e.
+        based on solving an optimization problem with large tolerance.
 
     Returns
     -------
