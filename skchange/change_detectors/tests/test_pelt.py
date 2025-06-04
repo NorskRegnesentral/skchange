@@ -8,6 +8,7 @@ import pytest
 import ruptures as rpt
 from ruptures.base import BaseCost as rpt_BaseCost
 
+from skchange.change_detectors._crops import evaluate_segmentation
 from skchange.change_detectors._pelt import (
     PELT,
     PELTResult,
@@ -622,7 +623,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         prune=False,
     )
     opt_part_min_value = (
-        cost.evaluate_segmentation(opt_part_result.changepoints)
+        evaluate_segmentation(cost, opt_part_result.changepoints)
         + (len(opt_part_result.changepoints)) * penalty
     )
 
@@ -632,7 +633,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         min_segment_length=min_segment_length,
     )
     skchange_pelt_min_value = (
-        cost.evaluate_segmentation(skchange_pelt_result.changepoints)
+        evaluate_segmentation(cost, skchange_pelt_result.changepoints)
         + (len(skchange_pelt_result.changepoints)) * penalty
     )
 
@@ -642,7 +643,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         rpt_model.predict(n_bkps=len(opt_part_result.changepoints))[:-1]
     )
     dyn_num_opt_part_cpts_min_value = (
-        cost.evaluate_segmentation(dyn_rpt_num_opt_part_cpts)
+        evaluate_segmentation(cost, dyn_rpt_num_opt_part_cpts)
         + (len(dyn_rpt_num_opt_part_cpts)) * penalty
     )
 
@@ -652,7 +653,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         )[:-1]
     )
     rpt_pelt_min_value = (
-        cost.evaluate_segmentation(ruptures_pelt_cpts)
+        evaluate_segmentation(cost, ruptures_pelt_cpts)
         + (len(ruptures_pelt_cpts)) * penalty
     )
     assert np.array_equal(
@@ -692,7 +693,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         prune=False,
     )
     opt_part_min_value = (
-        cost.evaluate_segmentation(opt_part_result.changepoints)
+        evaluate_segmentation(cost, opt_part_result.changepoints)
         + (len(opt_part_result.changepoints)) * penalty
     )
 
@@ -703,7 +704,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         min_segment_length=min_segment_length,
     )
     skchange_pelt_min_value = (
-        cost.evaluate_segmentation(skchange_pelt_result.changepoints)
+        evaluate_segmentation(cost, skchange_pelt_result.changepoints)
         + (len(skchange_pelt_result.changepoints)) * penalty
     )
 
@@ -713,7 +714,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         rpt_model.predict(n_bkps=len(opt_part_result.changepoints))[:-1]
     )
     dyn_num_opt_part_cpts_min_value = (
-        cost.evaluate_segmentation(dyn_rpt_num_opt_part_cpts)
+        evaluate_segmentation(cost, dyn_rpt_num_opt_part_cpts)
         + (len(dyn_rpt_num_opt_part_cpts)) * penalty
     )
 
@@ -723,7 +724,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         )[:-1]
     )
     rpt_pelt_min_value = (
-        cost.evaluate_segmentation(ruptures_pelt_cpts)
+        evaluate_segmentation(cost, ruptures_pelt_cpts)
         + (len(ruptures_pelt_cpts)) * penalty
     )
     assert np.array_equal(
@@ -810,7 +811,7 @@ def test_pelt_with_step_size(cost: BaseCost, penalty: float, step_size: int):
     assert np.array_equal(pelt_changepoints, rpt_changepoints)
 
     # Test that the optimal cost at the last observation is correct:
-    pelt_cost = jump_pelt_model.fitted_cost.evaluate_segmentation(pelt_changepoints)
+    pelt_cost = evaluate_segmentation(jump_pelt_model.fitted_cost, pelt_changepoints)
     pelt_min_value = pelt_cost + (len(pelt_changepoints)) * penalty
     assert np.isclose(
         jump_pelt_model.scores.to_numpy()[-1], pelt_min_value, atol=1e-10
@@ -909,16 +910,16 @@ def test_old_pelt_failing_with_large_min_segment_length(
     )
 
     # PELT objective values:
-    opt_part_min_value = cost.evaluate_segmentation(
-        opt_part_result.changepoints
+    opt_part_min_value = evaluate_segmentation(
+        cost, opt_part_result.changepoints
     ) + common_penalty * len(opt_part_result.changepoints)
 
-    improved_pelt_min_value = cost.evaluate_segmentation(
-        improved_pelt_result.changepoints
+    improved_pelt_min_value = evaluate_segmentation(
+        cost, improved_pelt_result.changepoints
     ) + common_penalty * len(improved_pelt_result.changepoints)
 
-    old_pelt_min_value = cost.evaluate_segmentation(
-        old_pelt_result.changepoints
+    old_pelt_min_value = evaluate_segmentation(
+        cost, old_pelt_result.changepoints
     ) + common_penalty * len(old_pelt_result.changepoints)
 
     # Compare results:
@@ -1024,9 +1025,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert (
-        min_seg_length_one_pelt_result == regular_pelt_result
-    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    assert min_seg_length_one_pelt_result == regular_pelt_result, (
+        "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    )
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and prune=False to agree with "
         "regular PELT with prune=False."
@@ -1063,9 +1064,9 @@ def test_comparing_PELTResult_with_non_PELTResult_returns_false():
         previous_change_points=np.array([0, 1]),
         pruning_fraction=0.0,
     )
-    assert (
-        not pelt_result == "not a PELTResult object"
-    ), "Expected comparison with non-PELTResult to return False."
+    assert not pelt_result == "not a PELTResult object", (
+        "Expected comparison with non-PELTResult to return False."
+    )
 
 
 def test_PELTResult_cannot_be_hashed():

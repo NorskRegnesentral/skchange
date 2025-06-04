@@ -94,53 +94,6 @@ def test_cost_evaluation_positive(CostClass: type[BaseCost]):
 
 
 @pytest.mark.parametrize("CostClass", COSTS)
-def test_evaluate_segmentation(CostClass: type[BaseCost]):
-    cost = CostClass.create_test_instance()
-    skip_if_no_test_data(cost)
-    n = 50
-    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
-    cost.fit(df)
-    np_segmentation = np.array([0, 10, 20, 30, 40, 50])
-    pd_segmentation = pd.Series(np_segmentation)
-    np_changepoints = np.array([10, 20, 30, 40])
-
-    np_2d_segmentation = np_segmentation.reshape(-1, 1)
-
-    assert np.array_equal(
-        cost.evaluate_segmentation(np_segmentation),
-        cost.evaluate_segmentation(pd_segmentation),
-    )
-    assert np.array_equal(
-        cost.evaluate_segmentation(np_2d_segmentation),
-        cost.evaluate_segmentation(np_segmentation),
-    )
-    assert np.array_equal(
-        cost.evaluate_segmentation(np_changepoints),
-        cost.evaluate_segmentation(pd_segmentation),
-    )
-
-
-@pytest.mark.parametrize("CostClass", COSTS)
-def test_evaluate_segmentation_raises(CostClass: type[BaseCost]):
-    cost = CostClass.create_test_instance()
-    skip_if_no_test_data(cost)
-    n = 50
-    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
-    cost.fit(df)
-
-    with pytest.raises(
-        ValueError,
-        match="The segmentation must contain strictly increasing entries.",
-    ):
-        # Not strictly increasing segmentation:
-        cost.evaluate_segmentation(np.array([0, 10, 20, 30, 20, 40]))
-
-    with pytest.raises(ValueError, match="The segmentation must univariate"):
-        # Invalid segmentation shape:
-        cost.evaluate_segmentation(np.array([[0, 10], [20, 30], [40, 50]]))
-
-
-@pytest.mark.parametrize("CostClass", COSTS)
 def test_accessing_n_samples_before_fit_raises(
     CostClass: type[BaseCost],
 ):

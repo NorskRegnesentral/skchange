@@ -327,7 +327,7 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
 
     @property
     def min_size(self) -> int:
-        """Minimum number of points on each side to evaluate.
+        """Minimum number of samples required on each side of a split point to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
         To solve for a linear trend, we need at least 2 points on each side

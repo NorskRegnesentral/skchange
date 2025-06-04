@@ -19,7 +19,50 @@ from ..utils.validation.interval_scorer import check_interval_scorer
 from .base import BaseChangeDetector
 
 
-def format_crops_results(
+def evaluate_segmentation(
+    cost: BaseCost, segmentation: np.ndarray | pd.Series
+) -> np.ndarray:
+    """Evaluate the cost of a segmentation.
+
+    Parameters
+    ----------
+    segmentation : np.ndarray
+        A 1D array with the indices of the change points in the input data.
+        Each change point signifies the first index of a new segment.
+
+    Returns
+    -------
+    cost : float
+        The cost of the segmentation.
+    """
+    cost.check_is_fitted()
+
+    if isinstance(segmentation, pd.Series):
+        segmentation = segmentation.to_numpy()
+    if segmentation.ndim != 1 and segmentation.shape[1] != 1:
+        raise ValueError("The segmentation must univariate")
+    else:
+        segmentation = segmentation.reshape(-1)
+
+    # Prepend 0 and append the length of the data to the segmentation:
+    # This is done to ensure that the first and last segments are included.
+    # The segmentation is assumed to be sorted in increasing order.
+    if np.any(np.diff(segmentation) <= 0):
+        raise ValueError("The segmentation must contain strictly increasing entries.")
+    if len(segmentation) == 0:
+        segmentation = np.array([0, cost._X.shape[0]])
+    elif segmentation[0] != 0 and segmentation[-1] != cost._X.shape[0]:
+        segmentation = np.concatenate(
+            (np.array([0]), segmentation, np.array([cost._X.shape[0]]))
+        )
+
+    cuts = np.vstack((segmentation[:-1], segmentation[1:])).T
+
+    # Aggregate the partition intervals into a 1D array of values:
+    return np.sum(cost.evaluate(cuts), axis=0)
+
+
+def _format_crops_results(
     penalty_to_solution_dict: dict[float, tuple[np.ndarray, float]],
     penalty_nudge: float,
 ) -> tuple[pd.DataFrame, dict]:
@@ -140,7 +183,7 @@ def segmentation_bic_value(cost: BaseCost, change_points: np.ndarray) -> float:
     num_parameters = cost.get_model_size(data_dim)
     n_samples = cost.n_samples()
 
-    bic_score = cost.evaluate_segmentation(change_points)[
+    bic_score = evaluate_segmentation(cost, change_points)[
         0
     ] + num_parameters * num_segments * np.log(n_samples)
 
@@ -372,9 +415,9 @@ class CROPS(BaseChangeDetector):
                 )
             )
             optimal_num_change_points, optimal_penalty = (
-                self.change_points_metadata.sort_values(
-                    by="bic_value"
-                )[["num_change_points", "penalty"]].iloc[0]
+                self.change_points_metadata.sort_values(by="bic_value")[
+                    ["num_change_points", "penalty"]
+                ].iloc[0]
             )
 
         self.optimal_penalty = optimal_penalty
@@ -442,11 +485,11 @@ class CROPS(BaseChangeDetector):
         num_min_penalty_change_points = len(min_penalty_change_points)
         num_max_penalty_change_points = len(max_penalty_change_points)
 
-        min_penalty_segmentation_cost = self._cost.evaluate_segmentation(
-            min_penalty_change_points
+        min_penalty_segmentation_cost = evaluate_segmentation(
+            self._cost, min_penalty_change_points
         )[0]
-        max_penalty_segmentation_cost = self._cost.evaluate_segmentation(
-            max_penalty_change_points
+        max_penalty_segmentation_cost = evaluate_segmentation(
+            self._cost, max_penalty_change_points
         )[0]
 
         penalty_to_solution_dict: dict[float, (np.ndarray, float)] = dict()
@@ -489,8 +532,8 @@ class CROPS(BaseChangeDetector):
                 middle_penalty_change_points = self._solve_for_changepoints(
                     penalty=middle_penalty
                 )
-                middle_penalty_segmentation_cost = self._cost.evaluate_segmentation(
-                    middle_penalty_change_points
+                middle_penalty_segmentation_cost = evaluate_segmentation(
+                    self._cost, middle_penalty_change_points
                 )[0]
                 penalty_to_solution_dict[middle_penalty] = (
                     middle_penalty_change_points,
@@ -526,7 +569,7 @@ class CROPS(BaseChangeDetector):
                     # Sort the intervals by lower penalty:
                     penalty_search_intervals.sort(key=lambda x: x[0])
 
-        metadata_df, change_points_dict = format_crops_results(
+        metadata_df, change_points_dict = _format_crops_results(
             penalty_to_solution_dict=penalty_to_solution_dict,
             penalty_nudge=self.middle_penalty_nudge,
         )

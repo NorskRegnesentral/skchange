@@ -60,48 +60,6 @@ class BaseCost(BaseIntervalScorer):
         """
         return param
 
-    def evaluate_segmentation(self, segmentation: np.ndarray | pd.Series) -> np.ndarray:
-        """Evaluate the cost of a segmentation.
-
-        Parameters
-        ----------
-        segmentation : np.ndarray
-            A 1D array with the indices of the change points in the input data.
-            Each change point signifies the first index of a new segment.
-
-        Returns
-        -------
-        cost : float
-            The cost of the segmentation.
-        """
-        self.check_is_fitted()
-        self._X: np.ndarray
-
-        if isinstance(segmentation, pd.Series):
-            segmentation = segmentation.to_numpy()
-        if segmentation.ndim != 1 and segmentation.shape[1] != 1:
-            raise ValueError("The segmentation must univariate")
-        else:
-            segmentation = segmentation.reshape(-1)
-
-        # Prepend 0 and append the length of the data to the segmentation:
-        # This is done to ensure that the first and last segments are included.
-        # The segmentation is assumed to be sorted in increasing order.
-        if np.any(np.diff(segmentation) <= 0):
-            raise ValueError(
-                "The segmentation must contain strictly increasing entries."
-            )
-        if len(segmentation) == 0:
-            segmentation = np.array([0, self._X.shape[0]])
-        elif segmentation[0] != 0 and segmentation[-1] != self._X.shape[0]:
-            segmentation = np.concatenate(
-                (np.array([0]), segmentation, np.array([self._X.shape[0]]))
-            )
-
-        cuts = np.vstack((segmentation[:-1], segmentation[1:])).T
-
-        return np.sum(self.evaluate(cuts), axis=0)
-
     def _evaluate(self, cuts: np.ndarray) -> np.ndarray:
         """Evaluate the cost on a set of intervals.
 

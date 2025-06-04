@@ -611,7 +611,7 @@ class PELT(BaseChangeDetector):
             allow_penalised=False,
         )
         self._cost = _cost.clone()
-        self.pelt_result: PELTResult | None = None
+        self._pelt_result: PELTResult | None = None
         self.fitted_cost: BaseCost | None = None
         self.fitted_penalty: float | None = None
 
@@ -668,8 +668,6 @@ class PELT(BaseChangeDetector):
         fitted_penalty : float
             The fitted penalty value. Either the user-specified value or the fitted BIC
             penalty.
-        pelt_result : PELTResult
-            The result of running the PELT algorithm on the input data `X`.
         """
         self._fit_cost_and_penalty(X)
 
@@ -703,7 +701,7 @@ class PELT(BaseChangeDetector):
             )
 
         # Store the scores for introspection without recomputing using transform_scores
-        self.pelt_result = pelt_result
+        self._pelt_result = pelt_result
         self.scores = pd.Series(pelt_result.optimal_costs, index=X.index, name="score")
         return self._format_sparse_output(pelt_result.changepoints)
 

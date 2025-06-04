@@ -1,10 +1,12 @@
 import re
 
 import numpy as np
+import pandas as pd
 import pytest
 
-from skchange.change_detectors._crops import CROPS
+from skchange.change_detectors._crops import CROPS, evaluate_segmentation
 from skchange.costs import GaussianCost, L1Cost, L2Cost
+from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
 
 
@@ -48,9 +50,9 @@ def test_pelt_crops():
     no_pruning_change_detector.fit(dataset)
     no_pruning_changepoints = no_pruning_change_detector.predict(dataset.values)
 
-    assert np.all(
-        pruning_change_points == no_pruning_changepoints
-    ), f"Expected {no_pruning_changepoints}, got {pruning_change_points}"
+    assert np.all(pruning_change_points == no_pruning_changepoints), (
+        f"Expected {no_pruning_changepoints}, got {pruning_change_points}"
+    )
     # Check that the results are as expected:
     assert len(pruning_change_points) == 1
 
@@ -188,9 +190,9 @@ def test_retrieve_change_points_2():
     specific_change_points = change_point_detector.change_points_lookup[2]
 
     # Check that the results are as expected:
-    assert np.array_equal(
-        specific_change_points, np.array([88, 176])
-    ), f"Expected [88, 176], got {specific_change_points}"
+    assert np.array_equal(specific_change_points, np.array([88, 176])), (
+        f"Expected [88, 176], got {specific_change_points}"
+    )
 
 
 def test_non_aggregated_cost_raises():
@@ -236,3 +238,48 @@ def test_crops_with_min_segment_length_greater_than_step_size_raises():
             min_segment_length=min_segment_length,
             step_size=5,  # Step size is less than min_segment_length
         )
+
+
+@pytest.mark.parametrize("CostClass", [L2Cost, L1Cost, GaussianCost])
+def test_evaluate_segmentation(CostClass: type[BaseCost]):
+    cost = CostClass.create_test_instance()
+    n = 50
+    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
+    cost.fit(df)
+    np_segmentation = np.array([0, 10, 20, 30, 40, 50])
+    pd_segmentation = pd.Series(np_segmentation)
+    np_changepoints = np.array([10, 20, 30, 40])
+
+    np_2d_segmentation = np_segmentation.reshape(-1, 1)
+
+    assert np.array_equal(
+        evaluate_segmentation(cost, np_segmentation),
+        evaluate_segmentation(cost, pd_segmentation),
+    )
+    assert np.array_equal(
+        evaluate_segmentation(cost, np_2d_segmentation),
+        evaluate_segmentation(cost, np_segmentation),
+    )
+    assert np.array_equal(
+        evaluate_segmentation(cost, np_changepoints),
+        evaluate_segmentation(cost, pd_segmentation),
+    )
+
+
+@pytest.mark.parametrize("CostClass", [L2Cost, L1Cost, GaussianCost])
+def test_evaluate_segmentation_raises(CostClass: type[BaseCost]):
+    cost = CostClass.create_test_instance()
+    n = 50
+    df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
+    cost.fit(df)
+
+    with pytest.raises(
+        ValueError,
+        match="The segmentation must contain strictly increasing entries.",
+    ):
+        # Not strictly increasing segmentation:
+        evaluate_segmentation(cost, np.array([0, 10, 20, 30, 20, 40]))
+
+    with pytest.raises(ValueError, match="The segmentation must univariate"):
+        # Invalid segmentation shape:
+        evaluate_segmentation(cost, np.array([[0, 10], [20, 30], [40, 50]]))
