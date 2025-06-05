@@ -285,8 +285,10 @@ class CROPS(BaseChangeDetector):
         Can be useful when the cost function is imprecise, e.g.
         based on solving an optimization problem with large tolerance.
     middle_penalty_nudge : float, optional, default=1.0e-4
-        Size of multiplicative nudge to apply to the middle penalty
-        value to avoid numerical instability. By default set to 1.0e-4.
+        When computing the threshold penalty value separating `PELT `solutions
+        with differing numbers of change points, we need to nudge the penalty
+        upwards in order to solve for the segmentation with fewer change points.
+        By default set to 1.0e-4, which is sufficient for most cases.
     """
 
     _tags = {
@@ -415,9 +417,9 @@ class CROPS(BaseChangeDetector):
                 )
             )
             optimal_num_change_points, optimal_penalty = (
-                self.change_points_metadata.sort_values(by="bic_value")[
-                    ["num_change_points", "penalty"]
-                ].iloc[0]
+                self.change_points_metadata.sort_values(
+                    by="bic_value"
+                )[["num_change_points", "penalty"]].iloc[0]
             )
 
         self.optimal_penalty = optimal_penalty
@@ -513,20 +515,30 @@ class CROPS(BaseChangeDetector):
         while len(penalty_search_intervals) > 0:
             # Pop the interval with the lowest penalty.
             low_penalty, high_penalty = penalty_search_intervals.pop(0)
+
             low_penalty_change_points, low_penalty_segmentation_cost = (
                 penalty_to_solution_dict[low_penalty]
             )
+            num_low_penalty_change_points = len(low_penalty_change_points)
+
             high_penalty_change_points, high_penalty_segmentation_cost = (
                 penalty_to_solution_dict[high_penalty]
             )
-            if len(low_penalty_change_points) > (len(high_penalty_change_points) + 1):
-                # Need to compute the middle penalty value, to explore interval further:
+            num_high_penalty_change_points = len(high_penalty_change_points)
+
+            if num_low_penalty_change_points > (num_high_penalty_change_points + 1):
+                # Compute the threshold penalty value, where the number of change
+                # points decreases.
+                threshold_penalty = (
+                    high_penalty_segmentation_cost - low_penalty_segmentation_cost
+                ) / (num_low_penalty_change_points - num_high_penalty_change_points)
+
+                # Nudge the middle penalty towards the high penalty, to ensure that
+                # the number of change points for the middle penalty is fewer than
+                # for the low penalty.
                 middle_penalty = (
-                    (high_penalty_segmentation_cost - low_penalty_segmentation_cost)
-                    / (len(low_penalty_change_points) - len(high_penalty_change_points))
-                    * (
-                        1.0 + self.middle_penalty_nudge
-                    )  # Nudge the penalty to avoid numerical instability.
+                    threshold_penalty
+                    + (high_penalty - threshold_penalty) * self.middle_penalty_nudge
                 )
 
                 middle_penalty_change_points = self._solve_for_changepoints(

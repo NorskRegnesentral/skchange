@@ -1,7 +1,6 @@
 """Cost functions as interval evaluators."""
 
 import numpy as np
-import pandas as pd
 
 from ..base import BaseIntervalScorer
 
