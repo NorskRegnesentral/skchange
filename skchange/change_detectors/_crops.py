@@ -1,4 +1,4 @@
-"""Implementation of the CROPS algorithm for path solutions to penalized CPD."""
+"""CROPS algorithm for path solutions to the PELT algorithm."""
 
 import warnings
 
@@ -250,10 +250,17 @@ def crops_elbow_scores(
 
 
 class CROPS(BaseChangeDetector):
-    """CROPS algorithm for path solutions to penalized CPD.
+    """CROPS algorithm for path solutions to the PELT algorithm.
 
-    TODO: Nice documentation of the CROPS algorithm.
-    Reference: https://arxiv.org/pdf/1412.3617
+    This change detector solves for all penalized optimal partitionings
+    within the penalty range `[min_penalty, max_penalty]`, using the CROPS
+    algorithm[1]_, which in turn employs the PELT algorithm to repeatedly
+    solve penalized optimal partitioning problems for different penalties.
+
+    When predicting change points through `predict()`, this change detector
+    selects the best segmentation among the optimal partitionings within
+    the penalty range, using the `segmentation_selection` criterion, which
+    can be either "bic" or "elbow".
 
     Parameters
     ----------
@@ -289,6 +296,12 @@ class CROPS(BaseChangeDetector):
         with differing numbers of change points, we need to nudge the penalty
         upwards in order to solve for the segmentation with fewer change points.
         By default set to 1.0e-4, which is sufficient for most cases.
+
+    References
+    ----------
+    .. [1] Haynes, K., Eckley, I. A., & Fearnhead, P. (2017). Computationally efficient
+    changepoint detection for a range of penalties. Journal of Computational and
+    Graphical Statistics, 26(1), 134-143.
     """
 
     _tags = {
@@ -308,7 +321,7 @@ class CROPS(BaseChangeDetector):
         split_cost: float = 0.0,
         prune: bool = True,
         pruning_margin: float = 0.0,
-        middle_penalty_nudge: float = 1.0e-4,
+        middle_penalty_nudge: float = 1.0e-5,
     ):
         super().__init__()
         self.cost = cost
@@ -365,15 +378,7 @@ class CROPS(BaseChangeDetector):
 
         Attributes
         ----------
-        change_points_metadata : pd.DataFrame
-            DataFrame with columns 'num_change_points', 'penalty',
-            and 'segmentation_cost'.
-            Contains metadata about the change points found by the CROPS algorithm.
-        change_points_lookup : dict[int, np.ndarray]
-            Dictionary with number of change points as keys and change points as values.
-            The keys are the number of change points, and the values are arrays with the
-            change point indices for that number of change points.
-        penalty : float
+        optimal_penalty : float
             The penalty value for which the optimal change points were found,
             w.r.t. the `segmentation_selection` criterion.
         """
@@ -474,6 +479,23 @@ class CROPS(BaseChangeDetector):
         ----------
         X : np.ndarray
             Data to search for change points in.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with columns 'num_change_points', 'penalty',
+            and 'segmentation_cost'.
+
+        Attributes
+        ----------
+        change_points_metadata : pd.DataFrame
+            DataFrame with columns 'num_change_points', 'penalty',
+            and 'segmentation_cost'.
+            Contains metadata about the change points found by the CROPS algorithm.
+        change_points_lookup : dict[int, np.ndarray]
+            Dictionary with number of change points as keys and change points as values.
+            The keys are the number of change points, and the values are arrays with the
+            change point indices for that number of change points.
         """
         self._cost.fit(X)
 
@@ -536,9 +558,16 @@ class CROPS(BaseChangeDetector):
                 # Nudge the middle penalty towards the high penalty, to ensure that
                 # the number of change points for the middle penalty is fewer than
                 # for the low penalty.
-                middle_penalty = (
+                additive_nudged_middle_penalty = (
                     threshold_penalty
                     + (high_penalty - threshold_penalty) * self.middle_penalty_nudge
+                )
+                multiplicative_nudged_middle_penalty = threshold_penalty * (
+                    1.0 + self.middle_penalty_nudge
+                )
+                # Middle penalty is the minimum of the two nudged values:
+                middle_penalty = min(
+                    additive_nudged_middle_penalty, multiplicative_nudged_middle_penalty
                 )
 
                 middle_penalty_change_points = self._solve_for_changepoints(

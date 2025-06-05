@@ -520,6 +520,15 @@ class PELT(BaseChangeDetector):
     This method solves the penalized optimal partitioning problem,
     with pruning of the admissible starts set applied to improve performance.
 
+    One can specify a minimum segment length for the partitions considered
+    when detecting changepoints through the `min_segment_length` parameter,
+    and when the minimum segment length is greater than one we use deferred
+    pruning of the admissible starts[2]_ to ensure exact solutions.
+
+    Additionally, one can specify a step size through the `step_size` parameter,
+    which coarsens the search space for changepoints, allowing for faster detection
+    at the cost of change point location granularity.
+
     Parameters
     ----------
     cost : BaseIntervalScorer, optional, default=`L2Cost`
@@ -559,6 +568,10 @@ class PELT(BaseChangeDetector):
     .. [1] Killick, R., Fearnhead, P., & Eckley, I. A. (2012). Optimal detection of
     changepoints with a linear computational cost. Journal of the American Statistical
     Association, 107(500), 1590-1598.
+    .. [2] Bakka, Kristin Benedicte (2018). Changepoint model selection in Gaussian data
+    by maximization of approximate Bayes Factors with the Pruned Exact Linear Time
+    algorithm. Master's thesis, Norwegian University of Science and Technology (NTNU).
+    URL: https://ntnuopen.ntnu.no/ntnu-xmlui/handle/11250/2558597.
 
     Examples
     --------
