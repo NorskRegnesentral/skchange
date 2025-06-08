@@ -39,6 +39,46 @@ def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
 
 
 @njit
+def row_cumsum(x: np.ndarray, init_zero=False, inplace=False) -> np.ndarray:
+    """
+    Compute the cumulative sum of each row in a 2D array.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        The input 2D array.
+    init_zero : bool
+        If True, prepend a column of zeros to the output.
+    inplace : bool
+        If True, modify the input array in place. If False, return a new array.
+
+    Returns
+    -------
+    np.ndarray
+        A 2D array where each row contains the cumulative sum of the corresponding row ¨
+        in the input array.
+    """
+    if x.ndim != 2:
+        raise ValueError("Input must be a 2D array.")
+    n, p = x.shape
+
+    # Construct the result array based on the init_zero and inplace flags:
+    if inplace and not init_zero:
+        result_array = x
+    elif init_zero:
+        result_array = np.zeros((n, p + 1), dtype=x.dtype)
+        result_array[:, 1:] = x
+    else:
+        result_array = x.copy()
+
+    for row in range(n):
+        for col in range(1, result_array.shape[1]):
+            result_array[row, col] += result_array[row, col - 1]
+
+    return result_array
+
+
+@njit
 def col_median(x: np.ndarray, output_array: np.ndarray | None = None) -> np.ndarray:
     """Calculate the median of each column in a 2D array.
 
