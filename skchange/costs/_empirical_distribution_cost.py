@@ -334,9 +334,9 @@ class EmpiricalDistributionCost(BaseCost):
     """
     Empirical Distribution Cost.
 
-    This cost function computes an approximate empirical distribution cost.
-    It uses the integrated log-likelihood of the empirical distribution function (EDF)
-    to evaluate the cost for each segment defined by the cuts.
+    Computationally efficient approximate empirical distribution cost[1]_.
+    Uses the integrated log-likelihood of the empirical distribution function (EDF)
+    to evaluate the cost for each segment defined by the cuts, in a non-parametric way.
 
     Parameters
     ----------
@@ -349,6 +349,12 @@ class EmpiricalDistributionCost(BaseCost):
     num_approximation_quantiles : int or None, optional (default=None)
         Number of quantiles to use for approximating the empirical distribution.
         If None, it will be set to 4 * log(n_samples) during fitting.
+
+    References
+    ----------
+    .. [1] Haynes, K., Fearnhead, P. & Eckley, I.A. A computationally efficient
+    nonparametric approach for changepoint detection. Stat Comput 27, 1293-1305 (2017).
+    https://doi.org/10.1007/s11222-016-9687-5
     """
 
     _tags = {
@@ -504,7 +510,5 @@ class EmpiricalDistributionCost(BaseCost):
         """
         # Define two different parameter sets for testing
         params1 = {"use_cache": True, "num_approximation_quantiles": 10}
-
         params2 = {"use_cache": False, "num_approximation_quantiles": None}
-
         return [params1, params2]
