@@ -11,10 +11,13 @@ from skchange.costs._empirical_distribution_cost import (
     make_edf_cost_approximation_cache,
     pre_cached_k_term_empirical_distribution_cost_approximation,
 )
+from skchange.utils.numba import numba_available
 
 
 # %%
-def direct_empirical_distribution_cost(xs: np.ndarray, cuts: np.ndarray) -> np.ndarray:
+def direct_empirical_distribution_cost(
+    xs: np.ndarray, segment_starts: np.ndarray, segment_ends: np.ndarray
+) -> np.ndarray:
     """
     Compute the empirical distribution cost for a sequence of values
     given a set of changepoints.
@@ -23,8 +26,10 @@ def direct_empirical_distribution_cost(xs: np.ndarray, cuts: np.ndarray) -> np.n
     ----------
     xs : np.ndarray
         The input data array.
-    cuts : np.ndarray
-        The cut intervals to evaluate the empirical distribution cost on.
+    segment_starts : np.ndarray
+        The start indices of the segments.
+    segment_ends : np.ndarray
+        The end indices of the segments.
 
     Returns
     -------
@@ -38,10 +43,7 @@ def direct_empirical_distribution_cost(xs: np.ndarray, cuts: np.ndarray) -> np.n
         * np.arange(len(xs) - 1, 1, -1, dtype=np.float64)
     )
 
-    segment_costs = np.zeros(len(cuts), dtype=np.float64)
-    segment_starts = cuts[:, 0]
-    segment_ends = cuts[:, 1]
-
+    segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
         segment_data = xs[segment_start:segment_end]
@@ -136,14 +138,17 @@ def test_evaluate_edf_from_cache():
 
 def test_k_term_empirical_distribution_cost_approximation():
     xs = np.array([1, 2, 3, 4, 5])
-    cuts = np.array([[0, 2], [2, 5]])
-    k = 3
-    approx_cost = approximate_empirical_distribution_cost(xs, cuts, k)
-    direct_cost = direct_empirical_distribution_cost(xs, cuts)
-    approx_cost_cache = make_edf_cost_approximation_cache(xs, k)
+    segment_starts = np.array([0, 2])
+    segment_ends = np.array([2, 5])
+    num_approx_quantiles = 3
+    approx_cost = approximate_empirical_distribution_cost(
+        xs, segment_starts, segment_ends, num_approx_quantiles
+    )
+    direct_cost = direct_empirical_distribution_cost(xs, segment_starts, segment_ends)
+    approx_cost_cache = make_edf_cost_approximation_cache(xs, num_approx_quantiles)
     pre_cached_approx_cost = (
         pre_cached_k_term_empirical_distribution_cost_approximation(
-            approx_cost_cache, cuts
+            approx_cost_cache, segment_starts, segment_ends
         )
     )
     print(f"Direct cost: {direct_cost}")
@@ -152,32 +157,43 @@ def test_k_term_empirical_distribution_cost_approximation():
 
     # Add more tests with different data and changepoints
     xs2 = np.array([1, 1, 2, 2, 3, 3])
-    cuts2 = np.array([[0, 3], [3, 6]])
+    segment_starts2 = np.array([0, 3])
+    segment_ends2 = np.array([3, 6])
     k2 = 2
-    approx_cost2 = approximate_empirical_distribution_cost(xs2, cuts2, k2)
+    approx_cost2 = approximate_empirical_distribution_cost(
+        xs2, segment_starts2, segment_ends2, k2
+    )
     approx_cost_cache_2 = make_edf_cost_approximation_cache(xs2, k2)
     pre_cached_approx_cost2 = (
         pre_cached_k_term_empirical_distribution_cost_approximation(
-            approx_cost_cache_2, cuts2
+            approx_cost_cache_2, segment_starts2, segment_ends2
         )
     )
-    direct_cost2 = direct_empirical_distribution_cost(xs2, cuts2)
+    direct_cost2 = direct_empirical_distribution_cost(
+        xs2, segment_starts2, segment_ends2
+    )
 
     print(f"Direct cost for xs2: {direct_cost2}")
     print(f"Approximate cost for xs2: {approx_cost2}")
     print(f"Pre-cached approximate cost for xs2: {pre_cached_approx_cost2}")
 
     no_change_cuts = np.array([[0, len(xs)]])
+    no_change_starts = no_change_cuts[:, 0]
+    no_change_ends = no_change_cuts[:, 1]
     no_change_approx_cost = approximate_empirical_distribution_cost(
-        xs, no_change_cuts, k
+        xs, no_change_starts, no_change_ends, num_approx_quantiles
     )
-    no_change_approx_cost_cache = make_edf_cost_approximation_cache(xs, k)
+    no_change_approx_cost_cache = make_edf_cost_approximation_cache(
+        xs, num_approx_quantiles
+    )
     no_change_approx_cost_pre_cached = (
         pre_cached_k_term_empirical_distribution_cost_approximation(
-            no_change_approx_cost_cache, no_change_cuts
+            no_change_approx_cost_cache, no_change_starts, no_change_ends
         )
     )
-    no_change_direct_cost = direct_empirical_distribution_cost(xs, no_change_cuts)
+    no_change_direct_cost = direct_empirical_distribution_cost(
+        xs, no_change_starts, no_change_ends
+    )
     print(f"No change direct cost: {no_change_direct_cost}")
     print(f"No change approximate cost: {no_change_approx_cost}")
     print(f"No change pre-cached approximate cost: {no_change_approx_cost_pre_cached}")
@@ -194,16 +210,21 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
     )  # Shifted mean for the second segment
     xs = np.concatenate([first_segment, second_segment])
 
-    correct_cuts = np.array([[0, n_samples], [n_samples, len(xs)]])
-    no_change_cuts = np.array([[0, len(xs)]])
+    correct_segment_starts = np.array([0, n_samples])
+    correct_segment_ends = np.array([n_samples, len(xs)])
+    no_change_segment_starts = np.array([0])
+    no_change_segment_ends = np.array([len(xs)])
+    # no_change_cuts = np.array([[0, len(xs)]])
 
     # Suggested value based on the length of xs:
     num_quantiles = int(4 * np.log(len(xs)))
 
     one_change_approx_costs = approximate_empirical_distribution_cost(
-        xs, correct_cuts, num_quantiles
+        xs, correct_segment_starts, correct_segment_ends, num_quantiles=num_quantiles
     )
-    one_change_direct_costs = direct_empirical_distribution_cost(xs, correct_cuts)
+    one_change_direct_costs = direct_empirical_distribution_cost(
+        xs, correct_segment_starts, correct_segment_ends
+    )
 
     relative_differences = np.abs(
         (one_change_approx_costs - one_change_direct_costs) / one_change_direct_costs
@@ -215,9 +236,14 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
     # print(f"Approximate cost on longer data: {one_change_approx_costs}")
 
     single_segment_approx_cost = approximate_empirical_distribution_cost(
-        xs, no_change_cuts, num_quantiles
+        xs,
+        no_change_segment_starts,
+        no_change_segment_ends,
+        num_quantiles=num_quantiles,
     )
-    single_segment_direct_cost = direct_empirical_distribution_cost(xs, no_change_cuts)
+    single_segment_direct_cost = direct_empirical_distribution_cost(
+        xs, no_change_segment_starts, no_change_segment_ends
+    )
     single_segment_relative_difference = np.abs(
         (single_segment_approx_cost[0] - single_segment_direct_cost[0])
         / single_segment_direct_cost[0]
@@ -245,27 +271,35 @@ def test_approximate_vs_precached_approximate_cost(rel_tol: float, n_samples: in
     first_segment = np.random.normal(size=n_samples)
     second_segment = np.random.normal(size=n_samples, loc=5)
     xs = np.concatenate([first_segment, second_segment])
+    num_quantiles = int(4 * np.log(len(xs)))
 
     correct_cuts = np.array([[0, n_samples], [n_samples, len(xs)]])
+    correct_segment_starts = correct_cuts[:, 0]
+    correct_segment_ends = correct_cuts[:, 1]
+
     no_change_cuts = np.array([[0, len(xs)]])
-    num_quantiles = int(4 * np.log(len(xs)))
+    no_change_segment_starts = no_change_cuts[:, 0]
+    no_change_segment_ends = no_change_cuts[:, 1]
 
     # Compare approximate vs precached on correct cuts
     approx_costs = approximate_empirical_distribution_cost(
-        xs, correct_cuts, num_quantiles
+        xs, correct_segment_starts, correct_segment_ends, num_quantiles=num_quantiles
     )
     approx_cost_cache = make_edf_cost_approximation_cache(xs, num_quantiles)
     precached_costs = pre_cached_k_term_empirical_distribution_cost_approximation(
-        approx_cost_cache, correct_cuts
+        approx_cost_cache, correct_segment_starts, correct_segment_ends
     )
     np.testing.assert_allclose(approx_costs, precached_costs, rtol=rel_tol)
 
     # Compare on single segment
     single_approx_cost = approximate_empirical_distribution_cost(
-        xs, no_change_cuts, num_quantiles
+        xs,
+        no_change_segment_starts,
+        no_change_segment_ends,
+        num_quantiles=num_quantiles,
     )
     single_precached_cost = pre_cached_k_term_empirical_distribution_cost_approximation(
-        approx_cost_cache, no_change_cuts
+        approx_cost_cache, no_change_segment_starts, no_change_segment_ends
     )
     np.testing.assert_allclose(single_approx_cost, single_precached_cost, rtol=rel_tol)
 
@@ -276,12 +310,18 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     per_hundred_step_cuts = np.array(
         [[i * 100, (i + 1) * 100] for i in range(len(xs) // 100)]
     )
+    per_hundred_step_segment_starts = per_hundred_step_cuts[:, 0]
+    per_hundred_step_segment_ends = per_hundred_step_cuts[:, 1]
     num_approx_quantiles = int(4 * np.log(n_samples))
 
     # Call once in case of JIT compilation overhead:
-    direct_cost = direct_empirical_distribution_cost(xs, per_hundred_step_cuts)
+    direct_cost = direct_empirical_distribution_cost(
+        xs, per_hundred_step_segment_starts, per_hundred_step_segment_ends
+    )
     start_time = time.perf_counter()
-    direct_cost = direct_empirical_distribution_cost(xs, per_hundred_step_cuts)
+    direct_cost = direct_empirical_distribution_cost(
+        xs, per_hundred_step_segment_starts, per_hundred_step_segment_ends
+    )
     end_time = time.perf_counter()
     direct_cost_eval_time = end_time - start_time
     total_direct_cost = np.sum(direct_cost)
@@ -296,18 +336,25 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     ### Approximate evaluation:
     # Call once in case of JIT compilation overhead:
     approximate_empirical_distribution_cost(
-        xs, per_hundred_step_cuts, num_approx_quantiles
+        xs,
+        per_hundred_step_segment_starts,
+        per_hundred_step_segment_ends,
+        num_quantiles=num_approx_quantiles,
     )
     start_time = time.perf_counter()
     approx_cost = approximate_empirical_distribution_cost(
-        xs, per_hundred_step_cuts, num_approx_quantiles
+        xs,
+        per_hundred_step_segment_starts,
+        per_hundred_step_segment_ends,
+        num_quantiles=num_approx_quantiles,
     )
     end_time = time.perf_counter()
     approximate_cost_eval_time = end_time - start_time
     total_approx_cost = np.sum(approx_cost)
 
     # print(
-    #     f"Total approximate cost: {total_approx_cost}, Time taken: {approximate_cost_eval_time:.4e} sec."
+    #     f"Total approximate cost: {total_approx_cost}, "
+    #     f"Time taken: {approximate_cost_eval_time:.4e} sec."
     # )
     assert approximate_cost_eval_time < 1.0e-2, (
         "Approximate evaluation time should be less than 0.01 sec."
@@ -317,7 +364,9 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     # Call once in case of JIT compilation overhead:
     approx_cost_cache = make_edf_cost_approximation_cache(xs, num_approx_quantiles)
     pre_cached_k_term_empirical_distribution_cost_approximation(
-        approx_cost_cache, per_hundred_step_cuts
+        approx_cost_cache,
+        per_hundred_step_segment_starts,
+        per_hundred_step_segment_ends,
     )
 
     cache_start_time = time.perf_counter()
@@ -327,7 +376,9 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
 
     start_time = time.perf_counter()
     pre_cached_cost = pre_cached_k_term_empirical_distribution_cost_approximation(
-        approx_cost_cache, per_hundred_step_cuts
+        approx_cost_cache,
+        per_hundred_step_segment_starts,
+        per_hundred_step_segment_ends,
     )
     end_time = time.perf_counter()
     pre_cached_eval_time = end_time - start_time
@@ -338,11 +389,18 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     #     f"Total pre-cached approximate cost: {total_pre_cached_cost}, "
     #     f"Time taken: {pre_cached_eval_time:.4e} seconds"
     # )
-    assert cache_creation_time < 1.0e-2, (
-        "Cache creation time should be less than 0.01 seconds."
+    if numba_available:
+        max_cache_creation_time = 1.0e-2
+        max_pre_cached_eval_time = 5.0e-4
+    else:
+        max_cache_creation_time = 5.0e-1
+        max_pre_cached_eval_time = 5.0e-2
+
+    assert cache_creation_time < max_cache_creation_time, (
+        f"Cache creation should take less than {max_cache_creation_time:.2e} seconds."
     )
-    assert pre_cached_eval_time < 5.0e-4, (
-        "Pre-cached evaluation time should be less than 0.5 ms."
+    assert pre_cached_eval_time < max_pre_cached_eval_time, (
+        f"Pre-cached eval. should take less than {max_pre_cached_eval_time:.2e} sec."
     )
 
     assert np.isclose(total_pre_cached_cost, total_approx_cost, rtol=1.0e-4), (

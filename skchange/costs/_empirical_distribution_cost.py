@@ -70,7 +70,10 @@ def evaluate_empirical_distribution_function(
 
 
 def approximate_empirical_distribution_cost(
-    xs: np.ndarray, cuts: np.ndarray, num_quantiles: int
+    xs: np.ndarray,
+    segment_starts: np.ndarray,
+    segment_ends: np.ndarray,
+    num_quantiles: int,
 ) -> np.ndarray:
     """Compute approximate empirical distribution cost.
 
@@ -111,9 +114,6 @@ def approximate_empirical_distribution_cost(
     )
     quantile_values = np.quantile(xs, quantiles)
 
-    segment_starts = cuts[:, 0]
-    segment_ends = cuts[:, 1]
-
     segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
@@ -144,6 +144,8 @@ def approximate_empirical_distribution_cost(
                 )
             )
         )
+
+        # Store the negative integrated log-likelihood as the cost:
         segment_costs[i] = -segment_ll_at_mle
 
     return segment_costs
@@ -247,7 +249,8 @@ def make_cumulative_edf_cache(
 @njit
 def pre_cached_k_term_empirical_distribution_cost_approximation(
     cumulative_edf_quantiles: np.ndarray,
-    cuts: np.ndarray,
+    segment_starts: np.ndarray,
+    segment_ends: np.ndarray,
 ) -> np.ndarray:
     """
     Compute approximate empirical distribution cost from cumulative edf quantiles.
@@ -262,11 +265,10 @@ def pre_cached_k_term_empirical_distribution_cost_approximation(
     cumulative_edf_quantiles : np.ndarray
         A 2D array containing the cumulative empirical distribution function values
         for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
-    cuts : np.ndarray
-        The cut intervals to consider, where each row contains the start and end indices
-        of a segment.
-        Each row should be of the form [start_index, end_index].
-        The start index is inclusive, and the end index is exclusive.
+    segment_starts : np.ndarray
+        The start indices of the segments.
+    segment_ends : np.ndarray
+        The end indices of the segments.
 
     Returns
     -------
@@ -287,10 +289,9 @@ def pre_cached_k_term_empirical_distribution_cost_approximation(
 
     c = -np.log(2 * n_samples - 1)  # Constant term for the approximation
 
-    segment_costs = np.zeros(len(cuts), dtype=np.float64)
-    segment_starts = cuts[:, 0]
-    segment_ends = cuts[:, 1]
+    segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
 
+    # Iterate over each segment defined by the starts and ends:
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
         if segment_length <= 0:
@@ -334,10 +335,168 @@ class EmpiricalDistributionCost(BaseCost):
     This cost function computes an approximate empirical distribution cost.
     It uses the integrated log-likelihood of the empirical distribution function (EDF)
     to evaluate the cost for each segment defined by the cuts.
+
+    Parameters
+    ----------
+    param : any, optional (default=None)
+        If None, the cost is evaluated for an interval-optimised parameter, often the
+        maximum likelihood estimate. If not None, the cost is evaluated for the
+        specified fixed parameter.
+    use_cache : bool, optional (default=True)
+        If True, precompute the empirical distribution function for faster evaluation.
+    num_approximation_quantiles : int or None, optional (default=None)
+        Number of quantiles to use for approximating the empirical distribution.
+        If None, it will be set to 4 * log(n_samples) during fitting.
     """
 
-    def __init__(self, num_quantiles: int = 100):
-        self.num_quantiles = num_quantiles
+    _tags = {
+        "authors": ["johannvk"],
+        "maintainers": "johannvk",
+        "distribution_type": "None",
+        "is_conditional": False,
+        "is_aggregated": False,
+        "supports_fixed_params": False,
+    }
 
-    def compute_cost(self, xs: np.ndarray, cuts: np.ndarray) -> np.ndarray:
-        return approximate_empirical_distribution_cost(xs, cuts, self.num_quantiles)
+    def __init__(
+        self,
+        param=None,
+        use_cache=True,
+        num_approximation_quantiles=None,
+    ):
+        # Initialize the base class
+        super().__init__(param)
+
+        # Store parameters:
+        self.use_cache = use_cache
+        self.num_approximation_quantiles = num_approximation_quantiles
+
+        self.num_approximation_quantiles_ = None  # Will be set during fitting
+        self._edf_cache = None  # Cache for empirical distribution function
+
+    def _fit(self, X: np.ndarray, y=None):
+        """Fit the cost.
+
+        Precomputes cumulative empirical distribution function if caching is enabled.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Data to evaluate. Must be a 2D array.
+        y: None
+            Ignored. Included for API consistency by convention.
+        """
+        self._param = self._check_param(self.param, X)
+        self._X = X
+
+        if self.use_cache:
+            n_samples = X.shape[0]
+
+            # Calculate num_approximation_quantiles if not provided
+            if self.num_approximation_quantiles is None:
+                self.num_approximation_quantiles_ = np.ceil(4 * np.log(n_samples))
+            else:
+                self.num_approximation_quantiles_ = self.num_approximation_quantiles
+
+            # Compute empirical distribution function cache for each column of data:
+            self._edf_cache = [
+                make_cumulative_edf_cache(
+                    self._X[:, col], self.num_approximation_quantiles_
+                )
+                for col in range(self._X.shape[1])
+            ]
+
+        return self
+
+    def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
+        """Evaluate the cost using empirical distribution.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            A 2D array of costs. One row for each interval.
+        """
+        n_intervals = len(starts)
+        n_cols = self._X.shape[1]
+        costs = np.zeros((n_intervals, n_cols))
+
+        for col in range(n_cols):
+            if self.use_cache:
+                # Use precomputed cumulative EDF values from the cache
+                costs[:, col] = (
+                    pre_cached_k_term_empirical_distribution_cost_approximation(
+                        self._edf_cache[col], segment_starts=starts, segment_ends=ends
+                    )
+                )
+            else:
+                costs[:, col] = approximate_empirical_distribution_cost(
+                    self._X[:, col],
+                    segment_starts=starts,
+                    segment_ends=ends,
+                    num_quantiles=self.num_approximation_quantiles_,
+                )
+
+        return costs
+
+    @property
+    def min_size(self) -> int:
+        """Minimum size of the interval to evaluate.
+
+        Returns
+        -------
+        int
+            The minimum valid size of an interval to evaluate.
+        """
+        # For EDF, we need at least 2 samples to compute a meaningful distribution
+        if self.num_approximation_quantiles is not None:
+            return self.num_approximation_quantiles + 2
+        else:
+            # If not fitted and no n_quantiles specified, assume a default:
+            # For 12 data points, we get 10 quantiles, (ceil(4 * log(12)) = 10),
+            # so we respect the requirement of having at least 2 samples
+            # more than the number of quantiles.
+            return 12
+
+    def get_model_size(self, p: int) -> int:
+        """Get the number of parameters in the cost function.
+
+        Parameters
+        ----------
+        p : int
+            Number of variables in the data.
+
+        Returns
+        -------
+        int
+            Number of parameters in the cost function.
+        """
+        # For the EDF, the model size depends on the number of quantiles?
+        return self.num_approximation_quantiles_ + 2
+
+    @classmethod
+    def get_test_params(cls, parameter_set="default"):
+        """Return testing parameter settings for the estimator.
+
+        Parameters
+        ----------
+        parameter_set : str, default="default"
+            Name of the set of test parameters to return.
+
+        Returns
+        -------
+        params : dict or list of dict, default = {}
+            Parameters to create testing instances of the class
+        """
+        # Define two different parameter sets for testing
+        params1 = {"use_cache": True, "num_approximation_quantiles": 10}
+
+        params2 = {"use_cache": False, "num_approximation_quantiles": None}
+
+        return [params1, params2]
