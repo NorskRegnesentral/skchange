@@ -5,6 +5,78 @@ from skchange.utils.numba import njit, numba_available
 from skchange.utils.numba.stats import row_cumsum
 
 
+def direct_empirical_distribution_cost(
+    xs: np.ndarray,
+    segment_starts: np.ndarray,
+    segment_ends: np.ndarray,
+    apply_continuity_correction: bool = False,
+) -> np.ndarray:
+    """Compute exact empirical distribution cost.
+
+    This function computes the empirical distribution cost for a sequence `xs` with
+    given segment cuts defined by `segment_starts` and `segment_ends`. The cost is
+    computed as the integrated log-likelihood of the empirical distribution function
+    (EDF) for each segment. The EDF is evaluated at the sorted values of `xs`, excluding
+    the first and last samples to avoid boundary effects.
+
+    Parameters
+    ----------
+    xs : np.ndarray
+        The input data array.
+    segment_starts : np.ndarray
+        The start indices of the segments.
+    segment_ends : np.ndarray
+        The end indices of the segments.
+
+    Returns
+    -------
+    np.ndarray
+        1D array of empirical distribution costs for each segment defined by `cuts`.
+    """
+    assert xs.ndim == 1, "Input data must be a 1D array."
+    edf_eval_points = np.sort(xs)[1:-1]  # Exclude the first and last samples
+    segment_edf_per_sample = np.zeros(len(xs) - 2, dtype=np.float64)
+    reciprocal_full_data_cdf_weights = len(xs) / (
+        np.arange(2, len(xs), dtype=np.float64)
+        * np.arange(len(xs) - 1, 1, -1, dtype=np.float64)
+    )
+
+    segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
+    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
+        segment_length = segment_end - segment_start
+        segment_data = xs[segment_start:segment_end]
+
+        segment_edf_per_sample[:] = evaluate_empirical_distribution_function(
+            segment_data,
+            edf_eval_points,
+        )
+
+        if apply_continuity_correction:
+            segment_edf_per_sample -= 1 / (2 * segment_length)
+
+        # Clip to avoid log(0) issues:
+        segment_edf_per_sample = np.clip(segment_edf_per_sample, 1e-10, 1 - 1e-10)
+        one_minus_segment_empirical_distribution_per_sample = (
+            1.0 - segment_edf_per_sample
+        )
+
+        integrated_ll_at_mle = segment_length * (
+            np.sum(
+                (
+                    segment_edf_per_sample * np.log(segment_edf_per_sample)
+                    + one_minus_segment_empirical_distribution_per_sample
+                    * np.log(one_minus_segment_empirical_distribution_per_sample)
+                )
+                * reciprocal_full_data_cdf_weights
+            )
+        )
+
+        # The cost is the negative integrated log-likelihood:
+        segment_costs[i] = -integrated_ll_at_mle
+
+    return segment_costs
+
+
 @njit
 def evaluate_edf_of_sorted_data(
     sorted_data: np.ndarray,
@@ -74,6 +146,7 @@ def approximate_empirical_distribution_cost(
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
     num_quantiles: int,
+    apply_continuity_correction: bool = False,
 ) -> np.ndarray:
     """Compute approximate empirical distribution cost.
 
@@ -126,8 +199,8 @@ def approximate_empirical_distribution_cost(
             quantile_values,
         )
 
-        # Apply continuity correction:
-        segment_edf_at_quantiles -= 1 / (2 * segment_length)
+        if apply_continuity_correction:
+            segment_edf_at_quantiles -= 1 / (2 * segment_length)
 
         # Clip to within (0, 1) to avoid log(0) issues:
         segment_edf_at_quantiles = np.clip(segment_edf_at_quantiles, 1e-10, 1 - 1e-10)
@@ -251,6 +324,7 @@ def pre_cached_k_term_empirical_distribution_cost_approximation(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
+    apply_continuity_correction: bool = False,
 ) -> np.ndarray:
     """
     Compute approximate empirical distribution cost from cumulative edf quantiles.
@@ -303,8 +377,8 @@ def pre_cached_k_term_empirical_distribution_cost_approximation(
             - cumulative_edf_quantiles[:, 1 + segment_start - 1]
         ) / segment_length
 
-        # Apply continuity correction:
-        segment_edf_at_quantiles -= 1 / (2 * segment_length)
+        if apply_continuity_correction:
+            segment_edf_at_quantiles -= 1 / (2 * segment_length)
 
         # Clip to within (0, 1) to avoid log(0) issues:
         segment_edf_at_quantiles = np.clip(segment_edf_at_quantiles, 1e-10, 1 - 1e-10)
@@ -355,7 +429,7 @@ class EmpiricalDistributionCost(BaseCost):
         "distribution_type": "None",
         "is_conditional": False,
         "is_aggregated": False,
-        "supports_fixed_params": False,
+        "supports_fixed_param": False,
     }
 
     def __init__(
@@ -363,6 +437,7 @@ class EmpiricalDistributionCost(BaseCost):
         param=None,
         use_cache=True,
         num_approximation_quantiles=None,
+        n_samples_approximation_threshold=250,
     ):
         # Initialize the base class
         super().__init__(param)
@@ -370,6 +445,7 @@ class EmpiricalDistributionCost(BaseCost):
         # Store parameters:
         self.use_cache = use_cache
         self.num_approximation_quantiles = num_approximation_quantiles
+        self.n_samples_approximation_threshold = n_samples_approximation_threshold
 
         self.num_approximation_quantiles_ = None  # Will be set during fitting
         self._edf_cache = None  # Cache for empirical distribution function
@@ -387,11 +463,9 @@ class EmpiricalDistributionCost(BaseCost):
             Ignored. Included for API consistency by convention.
         """
         self._param = self._check_param(self.param, X)
-        self._X = X
+        n_samples = X.shape[0]
 
-        if self.use_cache:
-            n_samples = X.shape[0]
-
+        if self.use_cache and n_samples >= self.n_samples_approximation_threshold:
             # Calculate num_approximation_quantiles if not provided
             if self.num_approximation_quantiles is None:
                 self.num_approximation_quantiles_ = np.ceil(4 * np.log(n_samples))
@@ -400,7 +474,7 @@ class EmpiricalDistributionCost(BaseCost):
 
             # Compute empirical distribution function cache for each column of data:
             self._edf_cache = [
-                make_cumulative_edf_cache(
+                make_edf_cost_approximation_cache(
                     self._X[:, col], self.num_approximation_quantiles_
                 )
                 for col in range(self._X.shape[1])
@@ -424,11 +498,20 @@ class EmpiricalDistributionCost(BaseCost):
             A 2D array of costs. One row for each interval.
         """
         n_intervals = len(starts)
-        n_cols = self._X.shape[1]
+        n_samples, n_cols = self._X.shape
+
         costs = np.zeros((n_intervals, n_cols))
 
         for col in range(n_cols):
-            if self.use_cache:
+            if n_samples < self.n_samples_approximation_threshold:
+                # For small datasets, compute the empirical distribution
+                # cost directly, as it is more accurate and fast enough:
+                costs[:, col] = direct_empirical_distribution_cost(
+                    self._X[:, col],
+                    segment_starts=starts,
+                    segment_ends=ends,
+                )
+            elif self.use_cache:
                 # Use precomputed cumulative EDF values from the cache
                 costs[:, col] = (
                     pre_cached_k_term_empirical_distribution_cost_approximation(
@@ -478,7 +561,14 @@ class EmpiricalDistributionCost(BaseCost):
             Number of parameters in the cost function.
         """
         # For the EDF, the model size depends on the number of quantiles?
-        return self.num_approximation_quantiles_ + 2
+        if self.is_fitted and self.num_approximation_quantiles_ is not None:
+            return self.num_approximation_quantiles_ + 2
+        elif self.num_approximation_quantiles is not None:
+            return self.num_approximation_quantiles + 2
+        else:
+            # If not fitted or no num_approximation_quantiles specified,
+            # assume a default value of 10 quantiles:
+            return 10 + 2
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):

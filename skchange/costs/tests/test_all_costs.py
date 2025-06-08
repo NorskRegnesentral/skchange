@@ -85,7 +85,7 @@ def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
     cost.fit(df)
-    starts = np.arange(n - 10)
+    starts = np.arange(n - 15)
     ends = np.repeat(n - 1, len(starts))
     intervals = np.column_stack((starts, ends))
     costs = cost.evaluate(intervals)

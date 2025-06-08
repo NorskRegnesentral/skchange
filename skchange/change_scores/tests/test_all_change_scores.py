@@ -10,7 +10,9 @@ from skchange.datasets import generate_alternating_data
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
 COST_INSTANCES = [
-    to_change_score(create_fixed_cost_test_instance(cost)) for cost in COSTS
+    to_change_score(create_fixed_cost_test_instance(cost))
+    for cost in COSTS
+    if cost.create_test_instance().get_tag("supports_fixed_param")
 ]
 SCORE_INSTANCES = [score.create_test_instance() for score in CHANGE_SCORES]
 PENALISED_SCORE_INSTANCES = [

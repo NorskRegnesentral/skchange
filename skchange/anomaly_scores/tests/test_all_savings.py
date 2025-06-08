@@ -8,7 +8,11 @@ from skchange.costs.tests.test_all_costs import create_fixed_cost_test_instance
 from skchange.datasets import generate_alternating_data
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
-COST_INSTANCES = [to_saving(create_fixed_cost_test_instance(cost)) for cost in COSTS]
+COST_INSTANCES = [
+    to_saving(create_fixed_cost_test_instance(cost))
+    for cost in COSTS
+    if cost.create_test_instance().get_tag("supports_fixed_param")
+]
 SAVING_INSTANCES = [saving.create_test_instance() for saving in SAVINGS]
 PENALISED_SAVING_INSTANCES = [
     PenalisedScore(saving)

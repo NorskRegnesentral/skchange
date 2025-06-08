@@ -12,7 +12,7 @@ from ._multivariate_t_cost import MultivariateTCost
 from ._poisson_cost import PoissonCost
 
 COSTS = [
-    # EmpiricalDistributionCost,
+    EmpiricalDistributionCost,
     MultivariateGaussianCost,
     MultivariateTCost,
     GaussianCost,
