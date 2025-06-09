@@ -31,7 +31,7 @@ def test_saving_values(saving):
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
     saving.fit(df)
 
-    starts = np.arange(n - 10)
+    starts = np.arange(n - 15)
     ends = np.repeat(n - 1, len(starts))
     intervals = np.column_stack((starts, ends))
     saving_values = saving.evaluate(intervals)

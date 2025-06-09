@@ -68,7 +68,7 @@ def test_saving_evaluate(CostClass: type[BaseCost]):
     skip_if_no_test_data(saving)
     X = np.random.randn(100, 1)
     saving.fit(X)
-    intervals = np.array([[0, 10], [10, 20], [20, 30]])
+    intervals = np.array([[0, 15], [10, 25], [25, 40]])
     savings = saving.evaluate(intervals)
     assert savings.shape == (3, 1)
 
@@ -135,7 +135,7 @@ def test_local_anomaly_score_evaluate(CostClass: type[BaseCost]):
 
     X = np.random.randn(100, 4)  # Need to be 4 columns for LinearRegressionCost.
     local_anomaly_score.fit(X)
-    cuts = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
+    cuts = np.array([[0, 15, 30, 45], [5, 20, 35, 50], [10, 25, 40, 55]])
     scores = local_anomaly_score.evaluate(cuts)
     assert scores.shape[0] == 3
 

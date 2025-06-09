@@ -31,7 +31,7 @@ def test_scores(change_score: BaseIntervalScorer):
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=2, random_state=5)
     change_score.fit(df)
-    splits = np.arange(10, n - 10, dtype=int).reshape(-1, 1)
+    splits = np.arange(15, n - 15, dtype=int).reshape(-1, 1)
     cuts = np.column_stack(
         (np.zeros(splits.shape, dtype=int), splits, np.full(splits.shape, n, dtype=int))
     )

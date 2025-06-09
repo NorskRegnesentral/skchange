@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import ArrayLike
 
 from skchange.costs.base import BaseCost
 from skchange.utils.numba import njit, numba_available
@@ -69,7 +70,175 @@ def evaluate_empirical_distribution_function(
     return segment_edf_values
 
 
-def approximate_empirical_distribution_cost(
+@njit
+def compute_finite_difference_derivatives(ts: np.ndarray, ys: np.ndarray) -> np.ndarray:
+    """
+    Compute second-order finite difference derivatives.
+
+    Without assuming uniform sampling, this function computes the second-order
+    derivatives of y(t) using a finite difference approximation of the derivative.
+
+    Parameters
+    ----------
+    ts : np.ndarray
+        The sampling points at which to compute the derivatives. Assumed to be sorted.
+    ys : np.ndarray
+        The values of the function at the sampling points.
+
+    Returns
+    -------
+    np.ndarray
+        The approximated second-order derivatives of y(t) at the sampling points.
+    """
+    if len(ts) < 3:
+        raise ValueError("At least three quantiles are required.")
+
+    diff_weights = np.zeros((len(ts), len(ts)), dtype=np.float64)
+    steps = ts[1:] - ts[:-1]
+
+    # Second-order forward finite difference weights for the first quantile:
+    first_steps_sum = steps[0] + steps[1]
+    diff_weights[0, 0] = (-2 * steps[0] - steps[1]) / (steps[0] * first_steps_sum)
+    diff_weights[0, 1] = first_steps_sum / (steps[0] * steps[1])
+    diff_weights[0, 2] = -steps[0] / (steps[1] * first_steps_sum)
+
+    # Central second-order finite difference weights:
+    for i in range(1, len(ts) - 1):
+        steps_sum = steps[i - 1] + steps[i]
+
+        # For uniform steps, current_weight == 0.
+        prev_weight = -steps[i] / (steps_sum * steps[i - 1])
+        current_weight = (steps[i] - steps[i - 1]) / (steps[i] * steps[i - 1])
+        next_weight = steps[i - 1] / (steps_sum * steps[i])
+
+        diff_weights[i, i - 1] = prev_weight
+        diff_weights[i, i] = current_weight
+        diff_weights[i, i + 1] = next_weight
+
+    # Second-order backward finite difference weights for the last quantile:
+    last_steps_sum = steps[-2] + steps[-1]
+    diff_weights[-1, -3] = (steps[-1]) / (steps[-2] * last_steps_sum)
+    diff_weights[-1, -2] = (-last_steps_sum) / (steps[-2] * steps[-1])
+    diff_weights[-1, -1] = (steps[-1] + last_steps_sum) / (steps[-1] * last_steps_sum)
+
+    derivatives = np.dot(diff_weights, ys)
+
+    return derivatives
+
+
+@njit
+def make_fixed_cdf_cost_cache(
+    fixed_quantiles: np.ndarray,
+    one_minus_fixed_quantiles: np.ndarray,
+    fixed_ts: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Cache the fixed CDF quantiles and their derivatives.
+
+    This function computes the second-order finite difference derivatives of the
+    empirical distribution function (EDF) at the specified fixed quantiles.
+
+    Parameters
+    ----------
+    fixed_quantiles : np.ndarray
+        The quantiles at which to compute the EDF.
+    fixed_ts : np.ndarray
+        The values corresponding to the quantiles.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        A tuple containing the fixed quantiles and their second-order derivatives.
+    """
+    if len(fixed_quantiles) < 3:
+        raise ValueError("At least three fixed quantile values are required.")
+
+    reciprocal_fixed_cdf_weights = 1.0 / (fixed_quantiles * one_minus_fixed_quantiles)
+    fixed_quantile_derivatives = compute_finite_difference_derivatives(
+        ts=fixed_ts,
+        ys=fixed_quantiles,
+    )
+    quantile_integration_weights = (
+        reciprocal_fixed_cdf_weights * fixed_quantile_derivatives
+    )
+
+    return quantile_integration_weights
+
+
+def pre_cached_fixed_cdf_empirical_distribution_cost(
+    xs: np.ndarray,
+    segment_starts: np.ndarray,
+    segment_ends: np.ndarray,
+    fixed_ts: np.ndarray,
+    fixed_quantiles: np.ndarray,
+    one_minus_fixed_quantiles: np.ndarray,
+    quantile_integration_weights: np.ndarray,
+    apply_continuity_correction: bool = False,
+) -> np.ndarray:
+    """Compute the empirical distribution cost on a refernce cdf.
+
+    This function computes the empirical distribution cost for a sequence `xs` with
+    given segment cuts defined by `segment_starts` and `segment_ends`. The cost is
+    computed as the integrated log-likelihood of the empirical distribution function
+    (EDF) for each segment, approximated by a sum over the provided quantiles.
+
+    Parameters
+    ----------
+    xs : np.ndarray
+        The input data array.
+    segment_starts : np.ndarray
+        The start indices of the segments.
+    segment_ends : np.ndarray
+        The end indices of the segments.
+
+    Returns
+    -------
+    np.ndarray
+        1D array of empirical distribution cost evaluated for fixed cdf.
+    """
+    assert xs.ndim == 1, "Input data must be a 1D array."
+
+    # Compute the integrals weights by approximating the derivative of the fixed CDF:
+    if len(fixed_quantiles) < 3:
+        raise ValueError("At least three fixed quantile values are required.")
+
+    segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
+    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
+        segment_length = segment_end - segment_start
+        segment_data = xs[segment_start:segment_end]
+
+        segment_edf_per_sample = evaluate_empirical_distribution_function(
+            segment_data,
+            fixed_ts,
+        )
+
+        if apply_continuity_correction:
+            segment_edf_per_sample -= 1 / (2 * segment_length)
+
+        # Clip to avoid log(0) issues:
+        segment_edf_per_sample = np.clip(segment_edf_per_sample, 1e-10, 1 - 1e-10)
+        one_minus_segment_empirical_distribution_per_sample = (
+            1.0 - segment_edf_per_sample
+        )
+
+        integrated_ll_at_fixed_cdf = segment_length * (
+            np.sum(
+                (
+                    segment_edf_per_sample * np.log(fixed_quantiles)
+                    + one_minus_segment_empirical_distribution_per_sample
+                    * np.log(one_minus_fixed_quantiles)
+                )
+                * quantile_integration_weights
+            )
+        )
+
+        # The cost equals twice the negative integrated log-likelihood:
+        segment_costs[i] = -2.0 * integrated_ll_at_fixed_cdf
+
+    return segment_costs
+
+
+def approximate_mle_edf_cost(
     xs: np.ndarray,
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
@@ -97,6 +266,7 @@ def approximate_empirical_distribution_cost(
     np.ndarray
         1D array of empirical distribution costs for each segment defined by `cuts`.
     """
+    assert xs.ndim == 1, "Input data must be a 1D array."
     # This is a placeholder for the actual implementation.
     # In practice, this function would compute the cost based on the
     # first num_quantiles terms.
@@ -152,7 +322,9 @@ def approximate_empirical_distribution_cost(
     return segment_costs
 
 
-def make_edf_cost_approximation_cache(xs: np.ndarray, num_quantiles: int) -> np.ndarray:
+def make_approximate_mle_edf_cost_cache(
+    xs: np.ndarray, num_quantiles: int
+) -> np.ndarray:
     """
     Create a cache for the empirical distribution function (EDF) cost approximation.
 
@@ -248,7 +420,7 @@ def make_cumulative_edf_cache(
 
 
 @njit
-def pre_cached_k_term_empirical_distribution_cost_approximation(
+def pre_cached_approximate_mle_edf_cost(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
@@ -363,14 +535,14 @@ class EmpiricalDistributionCost(BaseCost):
         "distribution_type": "None",
         "is_conditional": False,
         "is_aggregated": False,
-        "supports_fixed_param": False,
+        "supports_fixed_param": True,
     }
 
     def __init__(
         self,
-        param=None,
-        use_cache=True,
-        num_approximation_quantiles=None,
+        param: tuple[ArrayLike, ArrayLike] | None = None,
+        num_approximation_quantiles: int | None = None,
+        use_cache: bool = True,
     ):
         # Initialize the base class
         super().__init__(param)
@@ -381,6 +553,12 @@ class EmpiricalDistributionCost(BaseCost):
 
         self.num_approximation_quantiles_ = None  # Will be set during fitting
         self._edf_cache = None  # Cache for empirical distribution function
+
+        self.fixed_samples_: np.ndarray | None = None
+        self.fixed_quantiles_: np.ndarray | None = None
+
+        self._one_minus_fixed_quantiles: np.ndarray | None = None
+        self._quantile_integration_weights: np.ndarray | None = None
 
     def _fit(self, X: np.ndarray, y=None):
         """Fit the cost.
@@ -397,7 +575,7 @@ class EmpiricalDistributionCost(BaseCost):
         self._param = self._check_param(self.param, X)
         n_samples = X.shape[0]
 
-        if self.use_cache:
+        if self.use_cache and self._param is None:
             # Calculate num_approximation_quantiles if not provided
             if self.num_approximation_quantiles is None:
                 self.num_approximation_quantiles_ = np.ceil(4 * np.log(n_samples))
@@ -406,13 +584,72 @@ class EmpiricalDistributionCost(BaseCost):
 
             # Compute empirical distribution function cache for each column of data:
             self._edf_cache = [
-                make_edf_cost_approximation_cache(
+                make_approximate_mle_edf_cost_cache(
                     self._X[:, col], self.num_approximation_quantiles_
                 )
                 for col in range(self._X.shape[1])
             ]
+        elif self._param is not None:
+            self.fixed_samples_, self.fixed_quantiles_ = self._param
+            self._one_minus_fixed_quantiles = 1.0 - self.fixed_quantiles_
+
+            # Store the quantile integration weights for each column:
+            self._quantile_integration_weights = np.zeros(self.fixed_quantiles_.shape)
+            for col in range(self.fixed_quantiles_.shape[1]):
+                self._quantile_integration_weights[:, col] = make_fixed_cdf_cost_cache(
+                    self.fixed_quantiles_[:, col],
+                    self._one_minus_fixed_quantiles[:, col],
+                    self.fixed_samples_[:, col],
+                )
 
         return self
+
+    def _check_fixed_param(self, param: tuple[np.ndarray, np.ndarray], X: np.ndarray):
+        fixed_samples, fixed_cdf_quantiles = param
+
+        if not (fixed_samples.shape == fixed_cdf_quantiles.shape):
+            raise ValueError("All samples must have a corresponding fixed quantile.")
+
+        # Standardize the shapes of fixed samples and quantiles:
+        if fixed_samples.ndim == 1:
+            fixed_samples = fixed_samples.reshape(-1, 1)
+        elif fixed_cdf_quantiles.ndim > 2:
+            raise ValueError(
+                "Fixed samples must be 1D or 2D arrays, "
+                f"but got shape {fixed_samples.shape}."
+            )
+        if fixed_cdf_quantiles.ndim == 1:
+            fixed_cdf_quantiles = fixed_cdf_quantiles.reshape(-1, 1)
+        elif fixed_cdf_quantiles.ndim > 2:
+            raise ValueError(
+                "Fixed quantiles must be 1D or 2D arrays, "
+                f"but got shape {fixed_cdf_quantiles.shape}."
+            )
+
+        if not np.all(np.diff(fixed_samples, axis=0) > 0):
+            raise ValueError("Fixed samples must be sorted, and strictly increasing.")
+
+        if not np.all(np.diff(fixed_cdf_quantiles, axis=0) > 0):
+            raise ValueError(
+                "Fixed CDF quantiles must be sorted, and strictly increasing."
+            )
+
+        if not (
+            np.all(0 <= fixed_cdf_quantiles) and np.all(fixed_cdf_quantiles <= 1.0)
+        ):
+            raise ValueError(
+                "Fixed quantiles must be within the closed interval [0, 1]"
+            )
+
+        # Clip fixed quantiles to avoid log(0) issues:
+        fixed_cdf_quantiles = np.clip(fixed_cdf_quantiles, 1.0e-10, 1.0 - 1.0e-10)
+
+        # Repeat the fixed samples and quantiles to match the number of columns in X:
+        if fixed_samples.shape[1] == 1:
+            fixed_samples = np.tile(fixed_samples, (1, X.shape[1]))
+            fixed_cdf_quantiles = np.tile(fixed_cdf_quantiles, (1, X.shape[1]))
+
+        return fixed_samples, fixed_cdf_quantiles
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
         """Evaluate the cost using empirical distribution.
@@ -430,25 +667,39 @@ class EmpiricalDistributionCost(BaseCost):
             A 2D array of costs. One row for each interval.
         """
         n_intervals = len(starts)
-        n_samples, n_cols = self._X.shape
+        n_cols = self._X.shape[1]
 
         costs = np.zeros((n_intervals, n_cols))
-
         for col in range(n_cols):
             if self.use_cache:
-                # Use precomputed cumulative EDF values from the cache
-                costs[:, col] = (
-                    pre_cached_k_term_empirical_distribution_cost_approximation(
-                        self._edf_cache[col], segment_starts=starts, segment_ends=ends
-                    )
+                costs[:, col] = pre_cached_approximate_mle_edf_cost(
+                    self._edf_cache[col], segment_starts=starts, segment_ends=ends
                 )
             else:
-                costs[:, col] = approximate_empirical_distribution_cost(
+                costs[:, col] = approximate_mle_edf_cost(
                     self._X[:, col],
                     segment_starts=starts,
                     segment_ends=ends,
                     num_quantiles=self.num_approximation_quantiles_,
                 )
+
+        return costs
+
+    def _evaluate_fixed_param(self, starts: np.ndarray, ends: np.ndarray):
+        n_intervals = len(starts)
+        n_cols = self._X.shape[1]
+
+        costs = np.zeros((n_intervals, n_cols))
+        for col in range(n_cols):
+            costs[:, col] = pre_cached_fixed_cdf_empirical_distribution_cost(
+                xs=self._X[:, col],
+                segment_starts=starts,
+                segment_ends=ends,
+                fixed_ts=self.fixed_samples_[:, col],
+                fixed_quantiles=self.fixed_quantiles_[:, col],
+                one_minus_fixed_quantiles=self._one_minus_fixed_quantiles[:, col],
+                quantile_integration_weights=self._quantile_integration_weights[:, col],
+            )
 
         return costs
 
@@ -508,7 +759,27 @@ class EmpiricalDistributionCost(BaseCost):
         params : dict or list of dict, default = {}
             Parameters to create testing instances of the class
         """
+        fixed_samples = np.array(
+            [
+                -1.95996398,
+                -1.64485363,
+                -1.03643339,
+                -0.52440051,
+                0.0,
+                0.52440051,
+                1.03643339,
+                1.64485363,
+                1.95996398,
+            ]
+        )
+        fixed_quantiles = np.array(
+            [0.025, 0.05, 0.15, 0.3, 0.5, 0.7, 0.85, 0.95, 0.975]
+        )
         # Define two different parameter sets for testing
-        params1 = {"use_cache": True, "num_approximation_quantiles": 10}
-        params2 = {"use_cache": False, "num_approximation_quantiles": None}
+        params1 = {"param": None, "use_cache": True, "num_approximation_quantiles": 10}
+        params2 = {
+            "param": (fixed_samples, fixed_quantiles),
+            "use_cache": True,
+            "num_approximation_quantiles": None,
+        }
         return [params1, params2]
