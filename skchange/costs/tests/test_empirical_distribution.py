@@ -448,9 +448,9 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
     relative_differences = np.abs(
         (one_change_approx_costs - one_change_direct_costs) / one_change_direct_costs
     )
-    assert np.all(relative_differences < tolerance), (
-        f"Relative differences exceed {tolerance * 100}%: {relative_differences}"
-    )
+    assert np.all(
+        relative_differences < tolerance
+    ), f"Relative differences exceed {tolerance * 100}%: {relative_differences}"
     # print(f"Direct cost on longer data: {one_change_direct_costs}")
     # print(f"Approximate cost on longer data: {one_change_approx_costs}")
 
@@ -472,12 +472,12 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
         f"{single_segment_relative_difference}"
     )
 
-    assert single_segment_approx_cost - np.sum(one_change_approx_costs) > 0, (
-        "Approximate cost for no change should be greater than for two segments."
-    )
-    assert single_segment_direct_cost - np.sum(one_change_direct_costs) > 0, (
-        "Direct cost for no change should be greater than for two segments."
-    )
+    assert (
+        single_segment_approx_cost - np.sum(one_change_approx_costs) > 0
+    ), "Approximate cost for no change should be greater than for two segments."
+    assert (
+        single_segment_direct_cost - np.sum(one_change_direct_costs) > 0
+    ), "Direct cost for no change should be greater than for two segments."
     # print(f"Direct cost for single segment: {single_segment_direct_cost}")
     # print(f"Approximate cost for single segment: {single_segment_approx_cost}")
 
@@ -549,9 +549,9 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     #     f"Total direct cost: {total_direct_cost},"
     #     f" Time taken: {direct_cost_eval_time:.4e} seconds"
     # )
-    assert direct_cost_eval_time < 5.0e-2, (
-        "Direct evaluation time should be less than 0.05 seconds."
-    )
+    assert (
+        direct_cost_eval_time < 5.0e-2
+    ), "Direct evaluation time should be less than 0.05 seconds."
 
     ### Approximate evaluation:
     # Call once in case of JIT compilation overhead:
@@ -576,9 +576,9 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     #     f"Total approximate cost: {total_approx_cost}, "
     #     f"Time taken: {approximate_cost_eval_time:.4e} sec."
     # )
-    assert approximate_cost_eval_time < 1.0e-2, (
-        "Approximate evaluation time should be less than 0.01 sec."
-    )
+    assert (
+        approximate_cost_eval_time < 1.0e-2
+    ), "Approximate evaluation time should be less than 0.01 sec."
 
     ### Pre-caching the approximation:
     # Call once in case of JIT compilation overhead:
@@ -616,19 +616,19 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
         max_cache_creation_time = 5.0e-1
         max_pre_cached_eval_time = 5.0e-2
 
-    assert cache_creation_time < max_cache_creation_time, (
-        f"Cache creation should take less than {max_cache_creation_time:.2e} seconds."
-    )
-    assert pre_cached_eval_time < max_pre_cached_eval_time, (
-        f"Pre-cached eval. should take less than {max_pre_cached_eval_time:.2e} sec."
-    )
+    assert (
+        cache_creation_time < max_cache_creation_time
+    ), f"Cache creation should take less than {max_cache_creation_time:.2e} seconds."
+    assert (
+        pre_cached_eval_time < max_pre_cached_eval_time
+    ), f"Pre-cached eval. should take less than {max_pre_cached_eval_time:.2e} sec."
 
-    assert np.isclose(total_pre_cached_cost, total_approx_cost, rtol=1.0e-4), (
-        "Pre-cached approximate cost does not match approximate cost within tolerance."
-    )
-    assert np.isclose(total_direct_cost, total_pre_cached_cost, rtol=5.0e-2), (
-        "Approximate cost does not match direct cost within tolerance."
-    )
+    assert np.isclose(
+        total_pre_cached_cost, total_approx_cost, rtol=1.0e-4
+    ), "Pre-cached approximate cost does not match approximate cost within tolerance."
+    assert np.isclose(
+        total_direct_cost, total_pre_cached_cost, rtol=5.0e-2
+    ), "Approximate cost does not match direct cost within tolerance."
 
 
 @pytest.mark.parametrize("apply_continuity_correction", [True, False])
@@ -718,13 +718,13 @@ def test_difficult_case(apply_continuity_correction: bool):
     )
     print(f"Change scores for difficult case: {direct_change_scores}")
     if apply_continuity_correction:
-        assert np.all(direct_change_scores < 0), (
-            "Change scores are all negative in this case with continuity correction."
-        )
+        assert np.all(
+            direct_change_scores < 0
+        ), "Change scores are all negative in this case with continuity correction."
     else:
-        assert np.all(direct_change_scores >= 0), (
-            "Change scores should be non-negative in this case."
-        )
+        assert np.all(
+            direct_change_scores >= 0
+        ), "Change scores should be non-negative in this case."
 
     # Suggested value based on the length of data
     num_approx_quantiles = np.ceil(4 * np.log(len(signal)))
@@ -760,9 +760,9 @@ def test_difficult_case(apply_continuity_correction: bool):
             "continuity correction."
         )
     else:
-        assert np.all(approx_change_scores >= 0), (
-            "Approximate change scores should be non-negative in this case."
-        )
+        assert np.all(
+            approx_change_scores >= 0
+        ), "Approximate change scores should be non-negative in this case."
 
     cumulative_edf_cache = make_approximate_mle_edf_cost_cache(
         signal, num_quantiles=num_approx_quantiles
@@ -798,6 +798,6 @@ def test_difficult_case(apply_continuity_correction: bool):
             "continuity correction."
         )
     else:
-        assert np.all(pre_cached_approx_change_scores >= 0), (
-            "Pre-cached approximate change scores should be non-negative in this case."
-        )
+        assert np.all(
+            pre_cached_approx_change_scores >= 0
+        ), "Pre-cached approximate change scores should be non-negative in this case."
