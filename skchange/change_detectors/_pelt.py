@@ -80,7 +80,8 @@ def run_pelt(
     non_changepoint_intervals = np.column_stack(
         (non_changepoint_starts, non_changepoint_ends)
     )
-    costs = cost.evaluate(non_changepoint_intervals)
+    costs = cost.evaluate(non_changepoint_intervals, validate_cuts=False)
+
     agg_costs = np.sum(costs, axis=1)
     opt_cost[min_segment_length : 2 * min_segment_length] = agg_costs
 
@@ -101,7 +102,7 @@ def run_pelt(
         cost_eval_starts = np.concatenate((cost_eval_starts, latest_start))
         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        costs = cost.evaluate(cost_eval_intervals)
+        costs = cost.evaluate(cost_eval_intervals, validate_cuts=False)
         agg_costs = np.sum(costs, axis=1)
 
         candidate_opt_costs = opt_cost[cost_eval_starts] + agg_costs + penalty
