@@ -13,7 +13,7 @@ from skchange.costs._empirical_distribution_cost import (
     evaluate_empirical_distribution_function,
     make_approximate_mle_edf_cost_cache,
     make_cumulative_edf_cache,
-    make_fixed_cdf_cost_cache,
+    make_fixed_cdf_cost_integration_weights,
     pre_cached_approximate_mle_edf_cost,
     pre_cached_fixed_cdf_empirical_distribution_cost,
 )
@@ -219,7 +219,7 @@ def test_fixed_cdf_empirical_distribution_cost_vs_direct_cost():
     )
 
     one_minus_fixed_quantiles = 1 - quantiles
-    fixed_cdf_quantile_weights = make_fixed_cdf_cost_cache(
+    fixed_cdf_quantile_weights = make_fixed_cdf_cost_integration_weights(
         fixed_quantiles=quantiles,
         one_minus_fixed_quantiles=one_minus_fixed_quantiles,
         fixed_ts=quantile_ts,

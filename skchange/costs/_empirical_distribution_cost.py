@@ -127,7 +127,7 @@ def compute_finite_difference_derivatives(ts: np.ndarray, ys: np.ndarray) -> np.
 
 
 @njit
-def make_fixed_cdf_cost_cache(
+def make_fixed_cdf_cost_integration_weights(
     fixed_quantiles: np.ndarray,
     one_minus_fixed_quantiles: np.ndarray,
     fixed_ts: np.ndarray,
@@ -704,6 +704,8 @@ class EmpiricalDistributionCost(BaseCost):
                 )
                 for col in range(self._X.shape[1])
             ]
+
+            # Memory used during the evaluation of the cost:
             self.scratch_array = np.zeros(
                 (3, self.num_approximation_quantiles_),
                 dtype=np.float64,
@@ -716,10 +718,12 @@ class EmpiricalDistributionCost(BaseCost):
             # Store the quantile integration weights for each column:
             self._quantile_integration_weights = np.zeros(self.fixed_quantiles_.shape)
             for col in range(self.fixed_quantiles_.shape[1]):
-                self._quantile_integration_weights[:, col] = make_fixed_cdf_cost_cache(
-                    self.fixed_quantiles_[:, col],
-                    self._one_minus_fixed_quantiles[:, col],
-                    self.fixed_samples_[:, col],
+                self._quantile_integration_weights[:, col] = (
+                    make_fixed_cdf_cost_integration_weights(
+                        self.fixed_quantiles_[:, col],
+                        self._one_minus_fixed_quantiles[:, col],
+                        self.fixed_samples_[:, col],
+                    )
                 )
 
         return self
