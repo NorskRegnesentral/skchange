@@ -250,17 +250,16 @@ def crops_elbow_scores(
 
 
 class CROPS(BaseChangeDetector):
-    """CROPS algorithm for path solutions to the PELT algorithm.
+    """CROPS algorithm for path solutions to the `PELT` algorithm.
 
     This change detector solves for all penalized optimal partitionings
     within the penalty range `[min_penalty, max_penalty]`, using the CROPS
-    algorithm[1]_, which in turn employs the PELT algorithm to repeatedly
+    algorithm[1]_, which in turn employs the `PELT` algorithm to repeatedly
     solve penalized optimal partitioning problems for different penalties.
 
     When predicting change points through `predict()`, this change detector
     selects the best segmentation among the optimal partitionings within
-    the penalty range, using the `segmentation_selection` criterion, which
-    can be either "bic" or "elbow".
+    the penalty range, using the `selection_method` criterion.
 
     Parameters
     ----------
@@ -270,11 +269,20 @@ class CROPS(BaseChangeDetector):
         The start of the penalty solution interval.
     max_penalty : float
         The end of the penalty solution interval.
-    segmentation_selection : str, default="bic"
-        The selection criterion to use for selecting the
-        best segmentation among the optimal segmentations for
-        the penalty range `[min_penalty, max_penalty]`.
-        Options: ["bic", "elbow"].
+    selection_method : str, default="bic"
+        The selection method to use when selecting the
+        best segmentation among the optimal segmentations found
+        within the penalty range `[min_penalty, max_penalty]`.
+        The options are:
+
+        * ``"bic"``: Select the segmentation with the lowest Bayesian Information
+          criterion, defined as `segmentation_cost + model_size_per_segment *
+          log(n_samples)`.
+        * ``"elbow"``: Select the segmentation with the highest elbow score.
+          Defined as the improvement in squared residuals when allowing
+          a change in slope of segmentation cost regressed on the number
+          of change points, at each intermediate number of change points.
+
     min_segment_length : int, default=1
         The minimum segment length to use.
     split_cost : float, optional, default=0.0
