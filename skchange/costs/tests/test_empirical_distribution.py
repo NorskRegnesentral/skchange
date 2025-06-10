@@ -1,13 +1,10 @@
-# %%
 import time
 
 import numpy as np
 import pytest
 from scipy import stats
 
-from skchange.change_detectors import PELT
 from skchange.costs._empirical_distribution_cost import (
-    EmpiricalDistributionCost,
     approximate_mle_edf_cost,
     compute_finite_difference_derivatives,
     evaluate_empirical_distribution_function,
@@ -20,29 +17,6 @@ from skchange.costs._empirical_distribution_cost import (
 from skchange.utils.numba import numba_available
 
 
-# %%
-# Generate 10_000 samples from two different normal distributions, concatenate them,
-# and use them as input data for testing the empirical distribution cost within PELT.
-def generate_test_data(n_samples: int = 1_000) -> np.ndarray:
-    """Generate test data for empirical distribution cost evaluation."""
-    np.random.seed(42)  # For reproducibility
-    first_segment = np.random.normal(size=n_samples)
-    second_segment = np.random.normal(size=n_samples, loc=5)  # Shifted mean
-    return np.concatenate([first_segment, second_segment])
-
-
-# test_data = generate_test_data(2_000)
-# cost = EmpiricalDistributionCost(num_approximation_quantiles=10, use_cache=True)
-# change_detector = PELT(cost=cost, min_segment_length=15)
-# change_detector.fit(test_data)
-# results = change_detector.predict(test_data)
-
-# %%
-# %%timeit
-# change_detector.predict(test_data)
-
-
-# %%
 def direct_mle_edf_cost(
     xs: np.ndarray,
     segment_starts: np.ndarray,
@@ -334,7 +308,6 @@ def test_fixed_cdf_empirical_distribution_cost():
     )
 
 
-# %%
 def test_evaluate_empirical_distribution_function():
     xs = np.array([1, 2, 3, 4, 5])
 
@@ -548,7 +521,6 @@ def test_approximate_vs_precached_approximate_cost(rel_tol: float, n_samples: in
     np.testing.assert_allclose(single_approx_cost, single_precached_cost, rtol=rel_tol)
 
 
-# %%
 def test_direct_vs_approximation_runtime(n_samples=10_000):
     xs = np.random.normal(size=n_samples)
     per_hundred_step_cuts = np.array(
