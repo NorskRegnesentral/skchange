@@ -76,6 +76,7 @@ class BaseIntervalScorer(BaseEstimator):
     def __init__(self):
         self._is_fitted = False
         self._X = None
+        self._required_cut_size: int | None = None
 
         super().__init__()
 
@@ -107,6 +108,10 @@ class BaseIntervalScorer(BaseEstimator):
 
         self._fit(X=self._X, y=y)
         self._is_fitted = True
+        # Store "required cut size", as its faster than looking
+        # it up through a tag every time `evaluate` is called.
+        self._required_cut_size = self._get_required_cut_size()
+
         return self
 
     def _fit(self, X: np.ndarray, y=None):
@@ -258,7 +263,7 @@ class BaseIntervalScorer(BaseEstimator):
         return check_cuts_array(
             cuts,
             min_size=self.min_size,
-            last_dim_size=self._get_required_cut_size(),
+            last_dim_size=self._required_cut_size,
         )
 
     def check_is_penalised(self):

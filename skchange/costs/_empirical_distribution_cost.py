@@ -3,7 +3,7 @@ from numpy.typing import ArrayLike
 
 from skchange.costs.base import BaseCost
 from skchange.utils.numba import njit, numba_available
-from skchange.utils.numba.stats import col_cumsum, row_cumsum
+from skchange.utils.numba.stats import col_cumsum
 
 
 @njit
@@ -469,22 +469,16 @@ def cached_approximate_mle_edf_cost(
         if segment_length <= 0:
             raise ValueError("Invalid segment length.")
 
-        # Shifted by 1 to account for the column of zeros added earlier:
-        # segment_edf_at_quantiles = (
-        #     cumulative_edf_quantiles[:, 1 + segment_end - 1]
-        #     - cumulative_edf_quantiles[:, 1 + segment_start - 1]
-        # ) / segment_length, :
-        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[1 + segment_end - 1, :]
-        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[
-            1 + segment_start - 1, :
-        ]
-        segment_edf_at_quantiles /= float(segment_length)
+        # Shifted by 1 to account for the row of zeros at the start:
+        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
+        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
+        segment_edf_at_quantiles[:] /= float(segment_length)
 
         if apply_continuity_correction:
             segment_edf_at_quantiles -= 1 / (2 * segment_length)
 
         # Clip to within (0, 1) to avoid log(0) issues:
-        segment_edf_at_quantiles = np.clip(segment_edf_at_quantiles, 1e-10, 1 - 1e-10)
+        segment_edf_at_quantiles = np.clip(segment_edf_at_quantiles, 1e-10, 1.0 - 1e-10)
         one_minus_segment_edf_at_quantiles = 1 - segment_edf_at_quantiles
 
         segment_ll_at_mle = (
@@ -567,12 +561,10 @@ def pre_cached_approximate_mle_edf_cost_optimized(
         if segment_length <= 0:
             raise ValueError("Invalid segment length.")
 
-        # Shifted by 1 to account for the column of zeros added earlier:
-        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[1 + segment_end - 1, :]
-        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[
-            1 + segment_start - 1, :
-        ]
-        segment_edf_at_quantiles /= float(segment_length)
+        # Shifted by 1 to account for the row of zeros at the start:
+        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
+        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
+        segment_edf_at_quantiles[:] /= float(segment_length)
 
         if apply_continuity_correction:
             segment_edf_at_quantiles -= 1 / (2 * segment_length)
@@ -580,8 +572,9 @@ def pre_cached_approximate_mle_edf_cost_optimized(
         # Clip to within (0, 1) to avoid log(0) issues: Write to last argument
         np.clip(segment_edf_at_quantiles, 1e-10, 1 - 1e-10, segment_edf_at_quantiles)
 
-        # Store result in log_segment_edf_at_quantiles:
+        # Compute the first term: sum(F(t))*log(F(t))
         np.log(segment_edf_at_quantiles, log_segment_edf_at_quantiles)
+
         # Multiply together, storing in one_minus_segment_edf_at_quantiles:
         np.multiply(
             segment_edf_at_quantiles,
@@ -591,9 +584,10 @@ def pre_cached_approximate_mle_edf_cost_optimized(
         segment_ll_at_mle = 0.0
         segment_ll_at_mle += np.sum(one_minus_segment_edf_at_quantiles)
 
-        # Compute the second term (1 F(t))*log(1 - F(t)):
+        # Compute the second term: sum(1 - F(t))*log(1 - F(t))
         one_minus_segment_edf_at_quantiles[:] = 1 - segment_edf_at_quantiles
         np.log(one_minus_segment_edf_at_quantiles, log_segment_edf_at_quantiles)
+
         # Multiply together, storing in segment_edf_at_quantiles:
         np.multiply(
             one_minus_segment_edf_at_quantiles,
