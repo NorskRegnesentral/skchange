@@ -133,7 +133,7 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return self
 
-    def evaluate(self, cuts: ArrayLike) -> np.ndarray:
+    def evaluate(self, cuts: ArrayLike, validate_cuts: bool = True) -> np.ndarray:
         """Evaluate the score according to a set of cuts.
 
         Parameters
@@ -154,8 +154,9 @@ class BaseIntervalScorer(BaseEstimator):
             A 2D array of scores. One row for each row in cuts.
         """
         self.check_is_fitted()
-        cuts = as_2d_array(cuts, vector_as_column=False)
-        cuts = self._check_cuts(cuts)
+        if validate_cuts:
+            cuts = as_2d_array(cuts, vector_as_column=False)
+            cuts = self._check_cuts(cuts)
 
         values = self._evaluate(cuts)
         return values
