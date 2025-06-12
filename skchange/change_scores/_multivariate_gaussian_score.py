@@ -172,7 +172,7 @@ class MultivariateGaussianScore(BaseIntervalScorer):
         self.apply_bartlett_correction = apply_bartlett_correction
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum size of the interval to evaluate."""
         if self._is_fitted:
             return self._cost.min_size

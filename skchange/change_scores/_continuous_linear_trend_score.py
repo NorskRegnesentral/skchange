@@ -64,7 +64,12 @@ def lin_reg_cont_piecewise_linear_trend_score(
         split_interval_linreg_res = np.linalg.lstsq(
             split_interval_trend_data, X[start:end, :]
         )
-        split_interval_squared_residuals = split_interval_linreg_res[1]
+        if (end - start) == 3 and split_interval_linreg_res[2] == 3:
+            # If the interval is only 3 points long (the minimum),
+            # and the model matrix is full rank, the residuals are zero.
+            split_interval_squared_residuals = np.zeros((n_columns,))
+        else:
+            split_interval_squared_residuals = split_interval_linreg_res[1]
 
         # By only regressing onto the first two columns, we can calculate the cost
         # without allowing for a change in slope at the split point.
@@ -96,9 +101,9 @@ def continuous_piecewise_linear_trend_squared_contrast(
     # Assume 'start' is the first index of the data, perform inner product with the
     # desired segment of the data to get the cost.
     assert (
-        first_interval_inclusive_start + 1
+        first_interval_inclusive_start
         < second_interval_inclusive_start
-        < non_inclusive_end
+        < non_inclusive_end - 1
     )
 
     ## Translate named parameters to the NOT-paper sytax.
@@ -322,17 +327,24 @@ class ContinuousLinearTrendScore(BaseIntervalScorer):
 
     @property
     def min_size(self) -> int:
-        """Minimum size of the interval to evaluate.
+        """Minimum number of samples required on each side of a split point to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
-        To solve for a linear trend, we need at least 2 points.
+        To solve for a linear trend, we need at least 2 points on each side
+        of the split point. Due to the construction of the score where we
+        enfore continuity continuity at the split point, we need at least 1 point
+        on the left side of the split point and 1 points on the right side of the
+        split point. The minimum size of the total interval is therefore 3.
 
         Returns
         -------
         int
             The minimum valid size of an interval to evaluate.
         """
-        return 2  # Need at least 2 points to define a line
+        # Need at least a difference of 1 between the start and split
+        # indices to evaluate the cost, and at least a difference of 2
+        # between the split and end indices to evaluate the cost.
+        return 2
 
     def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.

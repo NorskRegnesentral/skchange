@@ -90,3 +90,13 @@ def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     intervals = np.column_stack((starts, ends))
     costs = cost.evaluate(intervals)
     assert np.all(costs >= 0.0)
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_accessing_n_samples_before_fit_raises(
+    CostClass: type[BaseCost],
+):
+    """Test that accessing n_samples before fitting raises an error."""
+    cost = CostClass.create_test_instance()
+    with pytest.raises(ValueError, match="The cost has not been fitted yet."):
+        cost.n_samples()

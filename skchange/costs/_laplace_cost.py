@@ -238,7 +238,7 @@ class LaplaceCost(BaseCost):
         return means, scales
 
     @property
-    def min_size(self) -> int | None:
+    def min_size(self) -> int:
         """Minimum size of the interval to evaluate.
 
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
