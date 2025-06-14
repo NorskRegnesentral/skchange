@@ -610,6 +610,8 @@ class EmpiricalDistributionCost(BaseCost):
         param: tuple[ArrayLike, ArrayLike] | None = None,
         num_approximation_quantiles: int | None = None,
         use_cache: bool = True,
+        use_binomial_ll_lookup: bool = True,
+        binomial_ll_lookup_size: int = 2_500,
     ):
         # Initialize the base class
         super().__init__(param)
@@ -617,26 +619,30 @@ class EmpiricalDistributionCost(BaseCost):
         # Store parameters:
         self.use_cache = use_cache
         self.num_approximation_quantiles = num_approximation_quantiles
+        self.use_binomial_ll_lookup = use_binomial_ll_lookup
+        self.binomial_ll_lookup_size = binomial_ll_lookup_size
 
         self.num_quantiles_ = None  # Will be set during fitting
-
         self._edf_cache = None  # Cache for empirical distribution function
 
-        # TODO: Make x*log(x) + (1-x)*log(1-x) on [0.0, 1.0] a lookup table!
-        self._binomial_ll_lookup_size = 1000
-        binomial_ll_lookup_step_size = 1.0 / self._binomial_ll_lookup_size
-        binomial_ll_lookup_points = np.linspace(
-            binomial_ll_lookup_step_size,
-            1.0 - binomial_ll_lookup_step_size,
-            num=self._binomial_ll_lookup_size - 2,
-            endpoint=True,
-        )
-        self._binomial_ll_lookup = np.zeros(
-            self._binomial_ll_lookup_size, dtype=np.float64
-        )
-        self._binomial_ll_lookup[1:-1] = binomial_ll_lookup_points * np.log(
-            binomial_ll_lookup_points
-        ) + (1.0 - binomial_ll_lookup_points) * np.log(1.0 - binomial_ll_lookup_points)
+        if self.use_binomial_ll_lookup:
+            binomial_ll_lookup_step_size = 1.0 / self.binomial_ll_lookup_size
+            binomial_ll_lookup_points = np.linspace(
+                binomial_ll_lookup_step_size,
+                1.0 - binomial_ll_lookup_step_size,
+                num=self.binomial_ll_lookup_size - 2,
+                endpoint=True,
+            )
+            self._binomial_ll_lookup = np.zeros(
+                self.binomial_ll_lookup_size, dtype=np.float64
+            )
+            self._binomial_ll_lookup[1:-1] = binomial_ll_lookup_points * np.log(
+                binomial_ll_lookup_points
+            ) + (1.0 - binomial_ll_lookup_points) * np.log(
+                1.0 - binomial_ll_lookup_points
+            )
+        else:
+            self._binomial_ll_lookup = None
 
         # Storage for fixed samples and quantiles:
         self.quantile_points_: np.ndarray | None = None
@@ -778,20 +784,21 @@ class EmpiricalDistributionCost(BaseCost):
 
         costs = np.zeros((n_intervals, n_cols))
         for col in range(n_cols):
-            if self.use_cache:
-                # optimized_approximate_mle_edf_cost_cached_edf(
-                #     self._edf_cache[col],
-                #     segment_starts=starts,
-                #     segment_ends=ends,
-                #     scratch_array=self._scratch_array,
-                #     segment_costs=costs[:, col],
-                # )
+            if self.use_cache and self.use_binomial_ll_lookup:
                 int_approximate_mle_edf_cost_cached_edf(
                     self._int_edf_cache[col],
                     self._binomial_ll_lookup,
                     segment_starts=starts,
                     segment_ends=ends,
                     scratch_array=self._int_scratch_array,
+                    segment_costs=costs[:, col],
+                )
+            elif self.use_cache:
+                optimized_approximate_mle_edf_cost_cached_edf(
+                    self._edf_cache[col],
+                    segment_starts=starts,
+                    segment_ends=ends,
+                    scratch_array=self._scratch_array,
                     segment_costs=costs[:, col],
                 )
             else:
