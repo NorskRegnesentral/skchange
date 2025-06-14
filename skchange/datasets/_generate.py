@@ -6,7 +6,51 @@ from numbers import Number
 
 import numpy as np
 import pandas as pd
-from scipy.stats import multivariate_normal
+from scipy.stats import multivariate_normal, rv_continuous, rv_discrete
+
+
+def generate_piecewise_data(
+    distributions: list[rv_continuous] | list[rv_discrete],
+    lengths: int | list[int],
+    random_state: int | None = None,
+) -> pd.DataFrame:
+    """Generate data with a piecewise constant distribution.
+
+    Parameters
+    ----------
+    distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`
+        List of distributions for each segment, where each distribution is expected
+        to be a scipy distribution object (e.g., `scipy.stats.norm`,
+        `scipy.stats.uniform`). See `scipy.stats <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+        for a list of all available distributions. However, the function will run as
+        long as the distribution objects support an
+        `rvs(size: int, random_state: int | None)` method.
+    lengths : int or list of int
+        List of lengths for each segment. If a single integer is provided,
+        it will be used for all segments.
+    random_state : int, optional
+        Seed for the random number generator. The random state per distribution is set
+        to random_state + i, where i is the index of the distribution in the list.
+
+    Returns
+    -------
+    pd.DataFrame
+        Data frame with generated data.
+    """
+    if isinstance(lengths, Number):
+        lengths = [lengths] * len(distributions)
+
+    if len(distributions) != len(lengths):
+        raise ValueError("Length of distributions and lengths must match.")
+
+    data = []
+    for i, (distribution, length) in enumerate(zip(distributions, lengths)):
+        seed = random_state + i if random_state is not None else None
+        random_values = distribution.rvs(size=length, random_state=seed)
+        data.append(random_values)
+
+    data = np.concatenate(data, axis=0)
+    return pd.DataFrame(data)
 
 
 def generate_changing_data(
