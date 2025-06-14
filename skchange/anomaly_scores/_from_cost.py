@@ -82,7 +82,7 @@ class Saving(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum valid size of the interval to evaluate."""
         if self.is_fitted:
             return self.optimised_cost_.min_size
@@ -251,7 +251,7 @@ class LocalAnomalyScore(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum valid size of the interval to evaluate."""
         if self.is_fitted:
             return self.interval_cost_.min_size

@@ -74,7 +74,7 @@ class BaseDetector(_BaseDetector):
         "capability:multivariate": True,
         "capability:missing_values": False,
         "capability:update": False,
-        "capability:identify_variables": False,
+        "capability:variable_identification": False,
         "distribution_type": "None",
         "X_inner_mtype": "pd.DataFrame",
         "fit_is_empty": False,
