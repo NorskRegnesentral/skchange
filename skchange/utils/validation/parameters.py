@@ -36,7 +36,7 @@ def check_none(value: Number, name: str, allow_none: bool = False) -> Number:
 def check_larger_than(
     min_value: Number, value: Number, name: str, allow_none: bool = False
 ) -> Number:
-    """Check if value is non-negative.
+    """Check if `value` is larger than or equal to `min_value`.
 
     Parameters
     ----------
@@ -57,7 +57,7 @@ def check_larger_than(
     Raises
     ------
     ValueError
-        If value is negative.
+        If value is `not None` and smaller than `min_value`.
     """
     check_none(value, name, allow_none)
     if value is not None and value < min_value:

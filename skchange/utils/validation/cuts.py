@@ -5,7 +5,7 @@ import numpy as np
 
 def check_cuts_array(
     cuts: np.ndarray,
-    min_size: int = 1,
+    min_size: int | None = None,
     last_dim_size: int = 2,
 ) -> np.ndarray:
     """Check array type cuts.
@@ -29,6 +29,9 @@ def check_cuts_array(
     ValueError
         If the cuts does not meet the requirements.
     """
+    if min_size is None:
+        min_size = 1
+
     if cuts.ndim != 2:
         raise ValueError("The cuts must be a 2D array.")
 
