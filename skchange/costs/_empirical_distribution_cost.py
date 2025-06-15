@@ -487,6 +487,87 @@ def optimized_approximate_mle_edf_cost_cached_edf(
 
 
 @njit
+def optimized_approximate_mle_edf_cost_cached_edf_v2(
+    cumulative_edf_quantiles: np.ndarray,
+    segment_starts: np.ndarray,
+    segment_ends: np.ndarray,
+    scratch_array: np.ndarray | None = None,
+    segment_costs: np.ndarray | None = None,
+) -> np.ndarray:
+    """
+    Compute approximate empirical distribution cost from cumulative edf quantiles.
+
+    Using `num_quantiles` quantile values to approximate the empirical distribution cost
+    for a sequence `xs` with given segment cuts. The cost is computed as the integrated
+    log-likelihood of the empirical distribution function (EDF), approximated by
+    evaluating the EDF at `num_quantiles` specific quantiles.
+
+    Parameters
+    ----------
+    cumulative_edf_quantiles : np.ndarray
+        A 2D array containing the cumulative empirical distribution function values
+        for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
+    segment_starts : np.ndarray
+        The start indices of the segments.
+    segment_ends : np.ndarray
+        The end indices of the segments.
+
+    Returns
+    -------
+    np.ndarray
+        A 1D array of empirical distribution costs for each segment defined by `cuts`.
+    """
+    n_samples, num_quantiles = cumulative_edf_quantiles.shape
+
+    # This is a placeholder for the actual implementation.
+    # In practice, this function would compute the cost based on the
+    # first num_quantiles terms.
+    if num_quantiles <= 0:
+        raise ValueError("num_quantiles must be a positive integer.")
+    if num_quantiles > n_samples - 2:
+        raise ValueError(
+            "num_quantiles should not be greater than the number of samples minus 2."
+        )
+
+    if segment_costs is None:
+        segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
+
+    if scratch_array is None:
+        segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
+    else:
+        segment_edf_at_quantiles = scratch_array[0, :]
+
+    # Constant scaling term from the approximation of the integrated log-likelihood:
+    edf_integration_scale = -np.log(2 * n_samples - 1)
+
+    # Iterate over each segment defined by the starts and ends:
+    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
+        segment_length = segment_end - segment_start
+        if segment_length <= 0:
+            raise ValueError("Invalid segment length.")
+
+        # Shifted by 1 to account for the row of zeros at the start:
+        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
+        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
+        segment_edf_at_quantiles[:] /= float(segment_length)
+
+        ### Begin computing integrated log-likelihood for the segment ###
+        segment_ll_at_mle = 0.0
+        for quantile in segment_edf_at_quantiles:
+            segment_ll_at_mle += _approx_binomial_ll_term(quantile)
+
+        segment_ll_at_mle *= (
+            -2.0 * edf_integration_scale / num_quantiles
+        ) * segment_length
+        ### Done computing integrated log-likelihood for the segment ###
+
+        # The cost equals twice the negative integrated log-likelihood:
+        segment_costs[i] = (-2.0) * segment_ll_at_mle
+
+    return segment_costs
+
+
+@njit
 def int_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     binomial_ll_lookup: np.ndarray,
@@ -569,6 +650,58 @@ def int_approximate_mle_edf_cost_cached_edf(
     return segment_costs
 
 
+@njit
+def _approx_binomial_ll_term(x: float):
+    """Approximate the binomial log-likelihood term.
+
+    This function computes an approximation of the binomial log-likelihood term
+    x * log(x) + (1 - x) * log(1 - x) for a given value of x.
+    Accurate to within 1.0e-3 for x in the interval [0.0, 1.0].
+
+    Parameters
+    ----------
+    x : float
+        The value for which to compute the binomial log-likelihood term.
+        Should be in the range [0, 1].
+    """
+    if x > 0.5:
+        # Use symmetry of the binomial log-likelihood term
+        # about x=0.5 to reduce the domain to [0, 0.5]:
+        x = 1.0 - x
+
+    if x < 1.0e-10:
+        approx_value = 0.0
+    elif x < 1.0e-3:
+        # Use the asymptotic approximation for small x:
+        approx_value = x * (np.log(x) - 1.0)
+    elif x < 2.5e-2:
+        # Order 4 Chebyshev polynomial approximation for x in [1.0e-3, 2.5e-2]:
+        approx_value = (
+            ((64513.836017426785 * x - 4953.1045740538023) * x + 165.63025883607173) * x
+            - 6.6788171711997532
+        ) * x - 0.001595547798836829
+    else:
+        # Order 6 Chebyshev polynomial approximation for x in [2.5e-2, 0.5]:
+        approx_value = (
+            (
+                (
+                    (
+                        (77.090688768185299 * x - 150.53171218228055) * x
+                        + 121.14810452648542
+                    )
+                    * x
+                    - 52.803665581025601
+                )
+                * x
+                + 15.822708801920289
+            )
+            * x
+            - 4.1977300027245929
+        ) * x - 0.02172852238504564
+
+    return approx_value
+
+
 class EmpiricalDistributionCost(BaseCost):
     """
     Empirical Distribution Cost.
@@ -624,6 +757,12 @@ class EmpiricalDistributionCost(BaseCost):
 
         self.num_quantiles_ = None  # Will be set during fitting
         self._edf_cache = None  # Cache for empirical distribution function
+
+        # TODO: Use smarter lookup for binomial log-likelihood:
+        # - Rational Padé approximation
+        # - Polynomial approximation
+        # - Chebyshev polynomial approximation
+        # - Symmetric about x = 0.5.
 
         if self.use_binomial_ll_lookup:
             binomial_ll_lookup_step_size = 1.0 / self.binomial_ll_lookup_size
@@ -794,7 +933,8 @@ class EmpiricalDistributionCost(BaseCost):
                     segment_costs=costs[:, col],
                 )
             elif self.use_cache:
-                optimized_approximate_mle_edf_cost_cached_edf(
+                optimized_approximate_mle_edf_cost_cached_edf_v2(
+                    # optimized_approximate_mle_edf_cost_cached_edf(
                     self._edf_cache[col],
                     segment_starts=starts,
                     segment_ends=ends,
