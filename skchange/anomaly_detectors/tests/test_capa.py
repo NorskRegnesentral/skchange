@@ -12,10 +12,10 @@ from skchange.change_scores import ChangeScore
 from skchange.compose.penalised_score import PenalisedScore
 from skchange.costs import (
     COSTS,
+    EmpiricalDistributionCost,
     L1Cost,
     L2Cost,
     MultivariateGaussianCost,
-    EmpiricalDistributionCost,
 )
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import find_fixed_param_combination
