@@ -65,7 +65,8 @@ class BaseCost(BaseIntervalScorer):
         Parameters
         ----------
         cuts : np.ndarray
-            A 2D array with two columns of integer location-based intervals to evaluate.
+            A 2D array with two columns of integer location-based
+            intervals to evaluate the cost on.
             The subsets ``X[cuts[i, 0]:cuts[i, 1]]`` for
             ``i = 0, ..., len(cuts)`` are evaluated.
 
@@ -127,3 +128,10 @@ class BaseCost(BaseIntervalScorer):
             the corresponding input data column.
         """
         raise NotImplementedError("abstract method")
+
+    def n_samples(self) -> int:
+        """Return the number of samples in the input data."""
+        if self._X is None:
+            raise ValueError("The cost has not been fitted yet.")
+        else:
+            return self._X.shape[0]
