@@ -7,10 +7,12 @@ from scipy import stats
 from skchange.costs._empirical_distribution_cost import (
     _approx_binomial_ll_term,
     compute_finite_difference_derivatives,
-    fixed_cdf_cost_cached_edf,
+    numba_fixed_cdf_cost_cached_edf,
     make_approximate_mle_edf_cost_quantile_points,
     make_cumulative_edf_cache,
     make_fixed_cdf_cost_quantile_weights,
+    numba_approximate_mle_edf_cost_cached_edf,
+    numpy_approximate_mle_edf_cost_cached_edf,
 )
 from skchange.utils.numba import njit, numba_available
 
@@ -473,6 +475,40 @@ def make_approximate_mle_cost_edf_cache(
     return cumulative_edf_quantiles
 
 
+def test_numba_vs_numpy_approximate_mle_edf_cost_cached_edf():
+    """Test the performance of Numba vs NumPy implementations of the approximate MLE EDF cost."""
+    xs = np.random.randn(10_000).reshape(-1, 1)
+    segment_starts = np.linspace(0, len(xs) - 52, 95, dtype=int)
+    segment_ends = np.linspace(52, len(xs), 95, dtype=int)
+    num_quantiles = 25
+
+    # Create a cache for the empirical distribution function (EDF) cost approximation:
+    approx_cost_cache = make_approximate_mle_cost_edf_cache(xs, num_quantiles)
+
+    # Test Numba implementation:
+    # Run once to compile the Numba function:
+    numba_approximate_mle_edf_cost_cached_edf(
+        approx_cost_cache, segment_starts, segment_ends
+    )
+    start_time_numba = time.perf_counter()
+    numba_costs = numba_approximate_mle_edf_cost_cached_edf(
+        approx_cost_cache, segment_starts, segment_ends
+    )
+    end_time_numba = time.perf_counter()
+
+    # Test NumPy implementation:
+    start_time_numpy = time.perf_counter()
+    numpy_costs = numpy_approximate_mle_edf_cost_cached_edf(
+        approx_cost_cache, segment_starts, segment_ends
+    )
+    end_time_numpy = time.perf_counter()
+
+    print(f"Numba time taken: {end_time_numba - start_time_numba:.4e} sec.")
+    print(f"NumPy time taken: {end_time_numpy - start_time_numpy:.4e} sec.")
+
+    np.testing.assert_allclose(numba_costs, numpy_costs, rtol=1.0e-3)
+
+
 def test_approx_binomial_ll_term():
     """Test the binomial log-likelihood term computation."""
     # Test with a simple case
@@ -562,7 +598,7 @@ def test_fixed_cdf_empirical_distribution_cost_vs_direct_cost():
     log_nudged_fixed_quantiles = np.log(nudged_fixed_quantiles)
     log_one_minus_fixed_nudged_quantiles = np.log(nudged_one_minus_fixed_quantiles)
 
-    fixed_nudged_cdf_cost_cached_v2 = fixed_cdf_cost_cached_edf(
+    fixed_nudged_cdf_cost_cached_v2 = numba_fixed_cdf_cost_cached_edf(
         fixed_cdf_cumulative_edf_cache,
         segment_starts=segment_starts,
         segment_ends=segment_ends,

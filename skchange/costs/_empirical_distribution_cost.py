@@ -69,7 +69,7 @@ def make_fixed_cdf_cost_quantile_weights(
 
 
 @njit
-def fixed_cdf_cost_cached_edf(
+def numba_fixed_cdf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
@@ -141,6 +141,95 @@ def fixed_cdf_cost_cached_edf(
 
     return out_segment_costs
 
+@njit
+def numpy_fixed_cdf_cost_cached_edf(
+    cumulative_edf_quantiles: np.ndarray,
+    segment_starts: np.ndarray,
+    segment_ends: np.ndarray,
+    log_fixed_quantiles: np.ndarray,
+    log_one_minus_fixed_quantiles: np.ndarray,
+    quantile_weights: np.ndarray,
+    scratch_array: np.ndarray | None = None,
+    out_segment_costs: np.ndarray | None = None,
+) -> np.ndarray:
+    """Compute the empirical distribution cost on a refernce cdf.
+
+    This function computes the empirical distribution cost for a sequence `xs` with
+    given segment cuts defined by `segment_starts` and `segment_ends`. The cost is
+    computed as the integrated log-likelihood of the empirical distribution function
+    (EDF) for each segment, approximated by a sum over the provided quantiles.
+
+    Parameters
+    ----------
+    xs : np.ndarray
+        The input data array.
+    segment_starts : np.ndarray
+        The start indices of the segments.
+    segment_ends : np.ndarray
+        The end indices of the segments.
+
+    Returns
+    -------
+    np.ndarray
+        1D array of empirical distribution cost evaluated for fixed cdf.
+    """
+    num_quantiles = cumulative_edf_quantiles.shape[1]
+
+    # Compute the integrals weights by approximating the derivative of the fixed CDF:
+    if num_quantiles < 3:
+        raise ValueError("At least three fixed quantile values are required.")
+
+    if out_segment_costs is None:
+        out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
+
+    if scratch_array is None:
+        segment_quantiles = np.zeros(num_quantiles, dtype=np.float64)
+        one_minus_segment_quantiles = np.zeros(num_quantiles, dtype=np.float64)
+    else:
+        segment_quantiles = scratch_array[0, :]
+        one_minus_segment_quantiles = scratch_array[1, :]
+
+    segment_edfs_at_quantiles = (
+        cumulative_edf_quantiles[segment_ends, :]
+        - cumulative_edf_quantiles[segment_starts, :]
+    ) / (segment_ends - segment_starts).reshape(-1, 1)
+    one_minus_segment_edfs_at_quantiles = 1.0 - segment_edfs_at_quantiles
+
+    integrated_lls_at_fixed_cdf = (segment_ends - segment_starts) * np.sum(
+        (
+            segment_edfs_at_quantiles * log_fixed_quantiles
+            + one_minus_segment_edfs_at_quantiles * log_one_minus_fixed_quantiles
+        )
+        * quantile_weights[None, :],
+        axis=1,
+    )
+
+    out_segment_costs_2 = -2.0 * integrated_lls_at_fixed_cdf
+
+    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
+        segment_length = segment_end - segment_start
+
+        # Shifted by 1 to account for the row of zeros at the start:
+        segment_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
+        segment_quantiles -= cumulative_edf_quantiles[segment_start, :]
+        segment_quantiles /= float(segment_length)
+
+        one_minus_segment_quantiles[:] = 1.0 - segment_quantiles[:]
+
+        integrated_ll_at_fixed_cdf = segment_length * (
+            np.sum(
+                (
+                    segment_quantiles * log_fixed_quantiles
+                    + one_minus_segment_quantiles * log_one_minus_fixed_quantiles
+                )
+                * quantile_weights
+            )
+        )
+
+        # The cost equals twice the negative integrated log-likelihood:
+        out_segment_costs[i] = -2.0 * integrated_ll_at_fixed_cdf
+
+    return out_segment_costs
 
 @njit
 def make_cumulative_edf_cache(
@@ -224,65 +313,28 @@ def numpy_approximate_mle_edf_cost_cached_edf(
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
 
-    if scratch_array is None:
-        segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-        one_minus_segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-        log_segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-    else:
-        segment_edf_at_quantiles = scratch_array[0, :]
-        one_minus_segment_edf_at_quantiles = scratch_array[1, :]
-        log_segment_edf_at_quantiles = scratch_array[2, :]
-
     # Constant scaling term from the approximation of the integrated log-likelihood:
     edf_integration_scale = -np.log(2 * n_samples - 1)
 
-    # Iterate over each segment defined by the starts and ends:
-    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
-        segment_length = segment_end - segment_start
-        if segment_length <= 0:
-            raise ValueError("Invalid segment length.")
+    segment_edfs_at_quantiles = (
+        cumulative_edf_quantiles[segment_ends, :]
+        - cumulative_edf_quantiles[segment_starts, :]
+    ) / (segment_ends - segment_starts).reshape(-1, 1)
 
-        # Shifted by 1 to account for the row of zeros at the start:
-        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
-        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
-        segment_edf_at_quantiles[:] /= float(segment_length)
+    # Clip quantiles to within (0, 1) to avoid log(0) issues:
+    np.clip(segment_edfs_at_quantiles, 1e-10, 1 - 1e-10, segment_edfs_at_quantiles)
+    one_minus_segment_edfs_at_quantiles = 1.0 - segment_edfs_at_quantiles
 
-        # Clip quantiles to within (0, 1) to avoid log(0) issues: Write to last argument
-        np.clip(segment_edf_at_quantiles, 1e-10, 1 - 1e-10, segment_edf_at_quantiles)
-
-        ### Begin computing integrated log-likelihood for the segment ###
-        segment_ll_at_mle = 0.0
-
-        # Compute the first term: sum(F(t)*log(F(t)))
-        np.log(segment_edf_at_quantiles, log_segment_edf_at_quantiles)
-
-        # Multiply together, storing in one_minus_segment_edf_at_quantiles:
-        np.multiply(
-            segment_edf_at_quantiles,
-            log_segment_edf_at_quantiles,
-            one_minus_segment_edf_at_quantiles,
-        )
-        segment_ll_at_mle += np.sum(one_minus_segment_edf_at_quantiles)
-
-        # Compute the second term: sum((1 - F(t))*log(1 - F(t)))
-        one_minus_segment_edf_at_quantiles[:] = 1 - segment_edf_at_quantiles
-        np.log(one_minus_segment_edf_at_quantiles, log_segment_edf_at_quantiles)
-
-        # Multiply together, storing in segment_edf_at_quantiles:
-        np.multiply(
-            one_minus_segment_edf_at_quantiles,
-            log_segment_edf_at_quantiles,
-            segment_edf_at_quantiles,
-        )
-        segment_ll_at_mle += np.sum(segment_edf_at_quantiles)
-
-        segment_ll_at_mle *= (
-            -2.0 * edf_integration_scale / num_quantiles
-        ) * segment_length
-        ### Done computing integrated log-likelihood for the segment ###
-
-        # The cost equals twice the negative integrated log-likelihood:
-        out_segment_costs[i] = (-2.0) * segment_ll_at_mle
+    segments_ll_at_mle = np.sum(
+        segment_edfs_at_quantiles * np.log(segment_edfs_at_quantiles)
+        + one_minus_segment_edfs_at_quantiles
+        * np.log(one_minus_segment_edfs_at_quantiles),
+        axis=1,
+    )
+    segments_ll_at_mle *= (-2.0 * edf_integration_scale / num_quantiles) * (
+        segment_ends - segment_starts
+    )
+    out_segment_costs[:] = -2.0 * segments_ll_at_mle[:]
 
     return out_segment_costs
 
@@ -363,86 +415,6 @@ def numba_approximate_mle_edf_cost_cached_edf(
         out_segment_costs[i] = (-2.0) * segment_ll_at_mle
 
     return out_segment_costs
-
-
-@njit
-def int_approximate_mle_edf_cost_cached_edf(
-    cumulative_edf_quantiles: np.ndarray,
-    binomial_ll_lookup: np.ndarray,
-    segment_starts: np.ndarray,
-    segment_ends: np.ndarray,
-    scratch_array: np.ndarray | None = None,
-    segment_costs: np.ndarray | None = None,
-) -> np.ndarray:
-    """
-    Compute approximate empirical distribution cost from cumulative edf quantiles.
-
-    Using `num_quantiles` quantile values to approximate the empirical distribution cost
-    for a sequence `xs` with given segment cuts. The cost is computed as the integrated
-    log-likelihood of the empirical distribution function (EDF), approximated by
-    evaluating the EDF at `num_quantiles` specific quantiles.
-
-    Parameters
-    ----------
-    cumulative_edf_quantiles : np.ndarray
-        A 2D array containing the cumulative empirical distribution function values
-        for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
-    segment_starts : np.ndarray
-        The start indices of the segments.
-    segment_ends : np.ndarray
-        The end indices of the segments.
-
-    Returns
-    -------
-    np.ndarray
-        A 1D array of empirical distribution costs for each segment defined by `cuts`.
-    """
-    n_samples, num_quantiles = cumulative_edf_quantiles.shape
-    lookup_size = len(binomial_ll_lookup)
-
-    if num_quantiles <= 0:
-        raise ValueError("num_quantiles must be a positive integer.")
-    if num_quantiles > n_samples - 2:
-        raise ValueError(
-            "num_quantiles should not be greater than the number of samples minus 2."
-        )
-
-    if segment_costs is None:
-        segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
-
-    if scratch_array is None:
-        segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.int32)
-    else:
-        segment_edf_at_quantiles = scratch_array[0, :]
-
-    # Constant scaling term from the approximation of the integrated log-likelihood:
-    edf_integration_scale = -np.log(2 * n_samples - 1)
-
-    # Iterate over each segment defined by the starts and ends:
-    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
-        segment_length = segment_end - segment_start
-        # if segment_length <= 0:
-        #     raise ValueError("Invalid segment length.")
-
-        # Shifted by 1 to account for the row of zeros at the start:
-        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
-        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
-
-        # Map [0, 1] to lookup indices [0, lookup_size - 1]:
-        segment_edf_at_quantiles[:] *= lookup_size - 1
-
-        # (Integer) Divide by segment length: (rounding down)
-        segment_edf_at_quantiles[:] //= segment_length
-
-        segment_ll_at_mle = np.sum(binomial_ll_lookup[segment_edf_at_quantiles])
-        segment_ll_at_mle *= (
-            -2.0 * edf_integration_scale / num_quantiles
-        ) * segment_length
-
-        # The cost equals twice the negative integrated log-likelihood:
-        segment_costs[i] = (-2.0) * segment_ll_at_mle
-
-    return segment_costs
 
 
 @njit
@@ -679,8 +651,8 @@ class EmpiricalDistributionCost(BaseCost):
         n_cols = self._X.shape[1]
 
         costs = np.zeros((n_intervals, n_cols))
-        for col in range(n_cols):
-            if numba_available:
+        if numba_available:
+            for col in range(n_cols):
                 numba_approximate_mle_edf_cost_cached_edf(
                     self._edf_cache[col],
                     segment_starts=starts,
@@ -688,7 +660,8 @@ class EmpiricalDistributionCost(BaseCost):
                     scratch_array=self._scratch_array,
                     out_segment_costs=costs[:, col],
                 )
-            else:
+        else:
+            for col in range(n_cols):
                 numpy_approximate_mle_edf_cost_cached_edf(
                     self._edf_cache[col],
                     segment_starts=starts,
@@ -704,19 +677,34 @@ class EmpiricalDistributionCost(BaseCost):
         n_cols = self._X.shape[1]
 
         costs = np.zeros((n_intervals, n_cols))
-        for col in range(n_cols):
-            costs[:, col] = fixed_cdf_cost_cached_edf(
-                cumulative_edf_quantiles=self._edf_cache[col],
-                segment_starts=starts,
-                segment_ends=ends,
-                log_fixed_quantiles=self._log_fixed_quantiles[:, col],
-                log_one_minus_fixed_quantiles=self._log_one_minus_fixed_quantiles[
-                    :, col
-                ],
-                quantile_weights=self._quantile_weights[:, col],
-                scratch_array=self._scratch_array,
-                out_segment_costs=costs[:, col],
-            )
+        if numba_available:
+            for col in range(n_cols):
+                costs[:, col] = numba_fixed_cdf_cost_cached_edf(
+                    cumulative_edf_quantiles=self._edf_cache[col],
+                    segment_starts=starts,
+                    segment_ends=ends,
+                    log_fixed_quantiles=self._log_fixed_quantiles[:, col],
+                    log_one_minus_fixed_quantiles=self._log_one_minus_fixed_quantiles[
+                        :, col
+                    ],
+                    quantile_weights=self._quantile_weights[:, col],
+                    scratch_array=self._scratch_array,
+                    out_segment_costs=costs[:, col],
+                )
+        else:
+            for col in range(n_cols):
+                costs[:, col] = numpy_fixed_cdf_cost_cached_edf(
+                    cumulative_edf_quantiles=self._edf_cache[col],
+                    segment_starts=starts,
+                    segment_ends=ends,
+                    log_fixed_quantiles=self._log_fixed_quantiles[:, col],
+                    log_one_minus_fixed_quantiles=self._log_one_minus_fixed_quantiles[
+                        :, col
+                    ],
+                    quantile_weights=self._quantile_weights[:, col],
+                    scratch_array=self._scratch_array,
+                    out_segment_costs=costs[:, col],
+                )
 
         return costs
 
