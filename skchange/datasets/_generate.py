@@ -281,7 +281,8 @@ def generate_piecewise_normal_data(
     proportion_affected: float, optional (default=1.0)
         Proportion of variables 1, ..., p that are affected by each change. This is
         used to determine how many variables are affected by the change in means and
-        variances. By default all variables are affected.
+        variances. By default all variables are affected. Only relevant for unspecified
+        `means` or `variances`.
     random_state : int, optional
         Seed for the random number generator. The random_state is used as a basis for
         random generation of all random entities, including the change points, means and
