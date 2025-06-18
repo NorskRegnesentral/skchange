@@ -295,12 +295,30 @@ def generate_piecewise_normal_data(
 
     Returns
     -------
-    pd.DataFrame or tuple
-        If `return_params` is False, returns a DataFrame with the generated data.
-        If `return_params` is True, returns a tuple containing the DataFrame and a
-        dictionary of parameters used to generate the data. The dictionary contains
-        the keys `change_points`, `means`, and `variances`, which correspond to the
-        change points, means, and variances used in the generation process.
+    pd.DataFrame
+        DataFrame with generated data. The DataFrame has `n` rows and `p` columns.
+
+    dict
+        A dictionary containing the parameters used to generate the data. It has
+        keys `change_points`, `means`, and `variances`. It is returned only if
+        `return_params` is True.
+
+    Examples
+    --------
+    >>> from skchange.datasets import generate_piecewise_normal_data
+    >>> df = generate_piecewise_normal_data(n=10, change_points = 5, means=[0, 5])
+    >>> df
+              0
+    0  0.614884
+    1  0.266904
+    2  0.812941
+    3  1.300181
+    4 -0.506429
+    5  6.441842
+    6  6.069931
+    7  5.449876
+    8  3.924228
+    9  5.514109
     """
     if n < 1:
         raise ValueError("Number of samples n must be at least 1.")
@@ -333,9 +351,9 @@ def generate_piecewise_normal_data(
         )
     n_affected = int(np.ceil(p * proportion_affected))
     affected_variables = [
-        np.random.default_rng(random_state + 1).choice(
-            p, size=n_affected, replace=False
-        )
+        np.random.default_rng(
+            random_state + 1 if random_state is not None else None
+        ).choice(p, size=n_affected, replace=False)
         for _ in range(n_segments)
     ]
 
