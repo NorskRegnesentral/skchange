@@ -321,11 +321,11 @@ def generate_piecewise_normal_data(
     9  5.514109
     """
     if n < 1:
-        raise ValueError("Number of samples n must be at least 1.")
+        raise ValueError(f"Number of samples n must be at least 1. Got n={n}.")
     if p < 1:
-        raise ValueError("Number of variables p must be at least 1.")
+        raise ValueError(f"Number of variables p must be at least 1. Got p={p}.")
 
-    if change_points:
+    if change_points is not None:
         n_change_points = 1 if isinstance(change_points, Number) else len(change_points)
 
     if n_change_points is None:
