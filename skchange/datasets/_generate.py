@@ -209,6 +209,7 @@ def generate_piecewise_normal_data(
     means: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
     variances: float | np.ndarray | list[float] | list[np.ndarray] | None = 1.0,
     random_state: int = None,
+    return_params: bool = False,
 ) -> pd.DataFrame:
     """Generate piecewise multivariate normal data.
 
@@ -228,12 +229,18 @@ def generate_piecewise_normal_data(
         Means for each segment. If None, random means are generated according to a
         normal distribution with mean 0 and standard deviation 2.
     variances : float or list of float or list of np.ndarray, optional (default=1.0)
-        Variances for each segment. If None, random variances are generated according to
-        an inverse gamma distribution with shape parameter 1.0.
+        Variances or covariance matrices for each segment. Vectors are treated as
+        diagonal covariance matrices. If None, random variance vectors are generated
+        according to an inverse gamma distribution with shape parameter 1.0.
     random_state : int, optional
         Seed for the random number generator. The random_state is used as a basis for
         random generation of all random entities, including the change points, means and
         variances (if specified). If None, the random state is not set.
+    return_params: bool, optional (default=False)
+        If True, the function returns a tuple of the generated DataFrame and a
+        dictionary with the parameters used to generate the data, including
+        `change_points`, `means`, and `variances`. If False, only the DataFrame is
+        returned.
     """
     if n < 1:
         raise ValueError("Number of samples n must be at least 1.")
@@ -271,11 +278,11 @@ def generate_piecewise_normal_data(
             )
             for i in range(n_segments)
         ]
-    covariances = _check_variances(variances, p, change_points)
+    variances = _check_variances(variances, p, change_points)
 
     distributions = [
-        scipy.stats.multivariate_normal(mean=mean, cov=covariance)
-        for mean, covariance in zip(means, covariances)
+        scipy.stats.multivariate_normal(mean=mean, cov=cov)
+        for mean, cov in zip(means, variances)
     ]
     lengths = np.diff(np.concatenate(([0], change_points, [n]))).astype(int)
     df = generate_piecewise_data(
@@ -283,7 +290,16 @@ def generate_piecewise_normal_data(
         lengths=lengths,
         random_state=random_state,
     )
-    return df
+
+    if return_params:
+        params = {
+            "change_points": change_points,
+            "means": means,
+            "variances": variances,
+        }
+        return df, params
+    else:
+        return df
 
 
 def generate_changing_data(
