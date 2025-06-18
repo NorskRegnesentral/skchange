@@ -323,7 +323,9 @@ def generate_piecewise_normal_data(
         )
     n_affected = int(np.ceil(p * proportion_affected))
     affected_variables = [
-        np.random.default_rng(random_state).choice(p, size=n_affected, replace=False)
+        np.random.default_rng(random_state + 1).choice(
+            p, size=n_affected, replace=False
+        )
         for _ in range(n_segments)
     ]
 
