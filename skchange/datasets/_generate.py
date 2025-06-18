@@ -284,6 +284,7 @@ def generate_piecewise_normal_data(
     if variances is None:
         variances = [
             # Change the random state for each segment to ensure different variances.
+            # chi2(2) is used to get a reasonable spread of variances.
             scipy.stats.chi2(2).rvs(
                 size=p,
                 random_state=random_state + i if random_state is not None else None,
