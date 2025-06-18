@@ -8,6 +8,7 @@ from ._generate import (
     generate_changing_data,
     generate_continuous_piecewise_linear_signal,
     generate_piecewise_data,
+    generate_piecewise_normal_data,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "generate_continuous_piecewise_linear_signal",
     "load_hvac_system_data",
     "generate_piecewise_data",
+    "generate_piecewise_normal_data",
 ]

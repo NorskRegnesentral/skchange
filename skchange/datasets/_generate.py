@@ -6,11 +6,152 @@ from numbers import Number
 
 import numpy as np
 import pandas as pd
-from scipy.stats import multivariate_normal, rv_continuous, rv_discrete
+import scipy.stats
+
+
+def _check_change_points(change_points: int | list[int], n: int) -> list[int]:
+    """Check if change points are valid.
+
+    Parameters
+    ----------
+    change_points : list of int
+        List of change points.
+    n : int
+        Total number of observations.
+
+    Raises
+    ------
+    ValueError
+        If any change point is out of bounds.
+    """
+    if isinstance(change_points, Number):
+        change_points = [change_points]
+
+    change_points = sorted(change_points)
+    if any([cpt > n - 1 or cpt < 0 for cpt in change_points]):
+        raise ValueError(
+            "Change points must be within the range of the data."
+            f" Got n={n}, max(change_points)={change_points} and"
+            f" min(change_points)={min(change_points)}."
+        )
+    if len(change_points) >= 2 and min(np.diff(change_points)) < 1:
+        raise ValueError(
+            "Change points must be at least 1 apart."
+            f" Got change_points={change_points}."
+        )
+
+    return change_points
+
+
+def _check_means(
+    means: float | np.ndarray | list[float] | list[np.ndarray],
+    p: int,
+    change_points: list[int],
+) -> list[np.ndarray]:
+    """Check if means are valid and convert to numpy arrays.
+
+    Parameters
+    ----------
+    means : float or list of float or list of np.ndarray
+        Means for each segment.
+    p : int
+        Number of variables in the data.
+    change_points : list[int]
+        List of change points.
+
+    Returns
+    -------
+    list[np.ndarray]
+        List of means as numpy arrays.
+    """
+    n_segments = len(change_points) + 1
+    if isinstance(means, (Number, np.ndarray)):
+        means = [means] * n_segments
+
+    _means = []
+    for mean in means:
+        if isinstance(mean, Number):
+            _mean = np.full(p, mean)
+        else:
+            _mean = np.asarray(mean).reshape(-1)
+
+        if _mean.shape[0] != p:
+            raise ValueError(
+                "Mean vector must have the same length as the number of variables p."
+                f" Got mean={_mean} with shape {_mean.shape} and p={p}."
+            )
+        _means.append(_mean)
+
+    if len(_means) != n_segments:
+        raise ValueError(
+            "Number of means must match number of segments."
+            f" Got {len(_means)} means and {n_segments} segments."
+        )
+
+    return _means
+
+
+def _check_variances(
+    variances: float | np.ndarray | list[float] | list[np.ndarray],
+    p: int,
+    change_points: list[int],
+) -> list[np.ndarray]:
+    """Check if variances are valid and return as 2D covariance matrices.
+
+    Parameters
+    ----------
+    variances : float or list of float or list of np.ndarray
+        Variances or covariance matrices for each segment.
+    p : int
+        Number of variables in the data.
+    change_points : list[int]
+        List of change points.
+
+    Returns
+    -------
+    list[np.ndarray]
+        List of covariance matrices as 2D numpy arrays.
+    """
+    n_segments = len(change_points) + 1
+    if isinstance(variances, (Number, np.ndarray)):
+        variances = [variances] * n_segments
+
+    covariances = []
+    for variance in variances:
+        if isinstance(variance, Number):
+            _variance = np.full(p, variance)
+        else:
+            _variance = np.asarray(variance)
+
+        if _variance.ndim == 0:
+            cov = np.diag([_variance])
+        elif _variance.ndim == 1:
+            cov = np.diag(_variance)
+        elif _variance.ndim == 2:
+            if _variance.shape[0] != _variance.shape[1]:
+                raise ValueError("Covariance matrix must be square.")
+            cov = _variance
+        else:
+            raise ValueError("Variance input must be scalar, 1D, or 2D array.")
+
+        if cov.shape[0] != p or cov.shape[1] != p:
+            raise ValueError(
+                "Covariance matrix must have the shape (p, p)."
+                f" Got covariance matrix with shape {cov.shape} and p={p}."
+            )
+        covariances.append(cov)
+
+    if len(variances) != n_segments:
+        raise ValueError(
+            "Number of variances must match number of segments."
+            f" Got {len(variances)} variances and {n_segments} segments."
+        )
+
+    return covariances
 
 
 def generate_piecewise_data(
-    distributions: list[rv_continuous] | list[rv_discrete],
+    distributions: list[scipy.stats.rv_continuous] | list[scipy.stats.rv_discrete],
     lengths: int | list[int],
     random_state: int | None = None,
 ) -> pd.DataFrame:
@@ -40,6 +181,9 @@ def generate_piecewise_data(
     if isinstance(lengths, Number):
         lengths = [lengths] * len(distributions)
 
+    if any([length <= 0 for length in lengths]):
+        raise ValueError("All lengths must be positive integers.")
+
     if len(distributions) != len(lengths):
         raise ValueError("Length of distributions and lengths must match.")
 
@@ -47,10 +191,99 @@ def generate_piecewise_data(
     for i, (distribution, length) in enumerate(zip(distributions, lengths)):
         seed = random_state + i if random_state is not None else None
         random_values = distribution.rvs(size=length, random_state=seed)
+        if length == 1:
+            p = random_values.size
+        else:
+            p = random_values.shape[1] if random_values.ndim > 1 else 1
+        random_values = random_values.reshape(length, p)
         data.append(random_values)
 
     data = np.concatenate(data, axis=0)
     return pd.DataFrame(data)
+
+
+def generate_piecewise_normal_data(
+    n: int = 100,
+    p: int = 1,
+    change_points: int | list[int] | np.ndarray | None = None,
+    means: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
+    variances: float | np.ndarray | list[float] | list[np.ndarray] | None = 1.0,
+    random_state: int = None,
+) -> pd.DataFrame:
+    """Generate piecewise multivariate normal data.
+
+    Parameters
+    ----------
+    n : int, optional (default=100)
+        Number of samples.
+    p : int, optional (default=1)
+        Number of variables.
+    change_points : int or list of int or np.ndarray, optional (default=None)
+        Change points in the data. If None, change points are randomly generated as
+        follows: The number of change points is drawn from a binomial distribution with
+        parameters `n` and `p=min(0.5, 5 / n)`. This gives 5 change points on average.
+        Given the number of change points, the change point locations are then randomly
+        generated from the range `[1, n-1]` without replacement.
+    means : float or list of float or list of np.ndarray, optional (default=None)
+        Means for each segment. If None, random means are generated according to a
+        normal distribution with mean 0 and standard deviation 2.
+    variances : float or list of float or list of np.ndarray, optional (default=1.0)
+        Variances for each segment. If None, random variances are generated according to
+        an inverse gamma distribution with shape parameter 1.0.
+    random_state : int, optional
+        Seed for the random number generator. The random_state is used as a basis for
+        random generation of all random entities, including the change points, means and
+        variances (if specified). If None, the random state is not set.
+    """
+    if n < 1:
+        raise ValueError("Number of samples n must be at least 1.")
+    if p < 1:
+        raise ValueError("Number of variables p must be at least 1.")
+
+    if change_points is None:
+        mean_n_cpts = 5
+        binom_prob = min(0.5, mean_n_cpts / n)
+        n_cpts = scipy.stats.binom(n, binom_prob).rvs(size=1, random_state=random_state)
+        change_points = np.random.default_rng(random_state).choice(
+            np.arange(1, n), size=n_cpts, replace=False
+        )
+    change_points = _check_change_points(change_points, n)
+    n_segments = len(change_points) + 1
+
+    if means is None:
+        means = [
+            # Change the random state for each segment to ensure different means
+            # std = 2 to get a reasonable spread of means.
+            scipy.stats.norm(0, 2).rvs(
+                size=p,
+                random_state=random_state + i if random_state is not None else None,
+            )
+            for i in range(n_segments)
+        ]
+    means = _check_means(means, p, change_points)
+
+    if variances is None:
+        variances = [
+            # Change the random state for each segment to ensure different variances.
+            scipy.stats.invgamma(1).rvs(
+                size=p,
+                random_state=random_state + i if random_state is not None else None,
+            )
+            for i in range(n_segments)
+        ]
+    covariances = _check_variances(variances, p, change_points)
+
+    distributions = [
+        scipy.stats.multivariate_normal(mean=mean, cov=covariance)
+        for mean, covariance in zip(means, covariances)
+    ]
+    lengths = np.diff(np.concatenate(([0], change_points, [n]))).astype(int)
+    df = generate_piecewise_data(
+        distributions=distributions,
+        lengths=lengths,
+        random_state=random_state,
+    )
+    return df
 
 
 def generate_changing_data(
@@ -109,7 +342,7 @@ def generate_changing_data(
         )
 
     p = len(means[0])
-    x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
+    x = scipy.stats.multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
     changepoints = [0] + changepoints + [n]
     for prev_cpt, next_cpt, mean, variance in zip(
         changepoints[:-1], changepoints[1:], means, variances
@@ -175,7 +408,7 @@ def generate_anomalous_data(
         raise ValueError("Anomalies must be within the range of the data.")
 
     p = len(means[0])
-    x = multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
+    x = scipy.stats.multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
     for anomaly, mean, variance in zip(anomalies, means, variances):
         start, end = anomaly
         x[start:end] = mean + np.sqrt(variance) * x[start:end]
