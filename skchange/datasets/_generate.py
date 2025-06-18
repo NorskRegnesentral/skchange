@@ -205,6 +205,7 @@ def generate_piecewise_data(
 def generate_piecewise_normal_data(
     n: int = 100,
     p: int = 1,
+    n_change_points: int | None = None,
     change_points: int | list[int] | np.ndarray | None = None,
     means: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
     variances: float | np.ndarray | list[float] | list[np.ndarray] | None = 1.0,
@@ -219,19 +220,21 @@ def generate_piecewise_normal_data(
         Number of samples.
     p : int, optional (default=1)
         Number of variables.
+    n_change_points : int, optional (default=None)
+        Number of change points to generate. If None, the number of change points is
+        randomly generated from a binomial distribution with parameters `n` and
+        `p=min(0.5, 5 / n)`, which gives 5 change points on average.
+        `n_change_points` is ignored if `change_points` is provided.
     change_points : int or list of int or np.ndarray, optional (default=None)
-        Change points in the data. If None, change points are randomly generated as
-        follows: The number of change points is drawn from a binomial distribution with
-        parameters `n` and `p=min(0.5, 5 / n)`. This gives 5 change points on average.
-        Given the number of change points, the change point locations are then randomly
-        generated from the range `[1, n-1]` without replacement.
+        Change points in the data. If None, `n_change_points` change points locations
+        are randomly drawn from the range `[1, n-1]` without replacement.
     means : float or list of float or list of np.ndarray, optional (default=None)
         Means for each segment. If None, random means are generated according to a
         normal distribution with mean 0 and standard deviation 2.
     variances : float or list of float or list of np.ndarray, optional (default=1.0)
         Variances or covariance matrices for each segment. Vectors are treated as
         diagonal covariance matrices. If None, random variance vectors are generated
-        according to an inverse gamma distribution with shape parameter 1.0.
+        according to a chi-squared distribution with 2 degrees of freedom.
     random_state : int, optional
         Seed for the random number generator. The random_state is used as a basis for
         random generation of all random entities, including the change points, means and
@@ -247,12 +250,21 @@ def generate_piecewise_normal_data(
     if p < 1:
         raise ValueError("Number of variables p must be at least 1.")
 
-    if change_points is None:
+    if change_points:
+        n_change_points = 1 if isinstance(change_points, Number) else len(change_points)
+
+    if n_change_points is None:
         mean_n_cpts = 5
         binom_prob = min(0.5, mean_n_cpts / n)
-        n_cpts = scipy.stats.binom(n, binom_prob).rvs(size=1, random_state=random_state)
+        n_change_points = scipy.stats.binom(n, binom_prob).rvs(
+            size=1, random_state=random_state
+        )
+    if n_change_points < 0:
+        raise ValueError("Number of change points must be non-negative.")
+
+    if change_points is None:
         change_points = np.random.default_rng(random_state).choice(
-            np.arange(1, n), size=n_cpts, replace=False
+            np.arange(1, n), size=n_change_points, replace=False
         )
     change_points = _check_change_points(change_points, n)
     n_segments = len(change_points) + 1
@@ -272,7 +284,7 @@ def generate_piecewise_normal_data(
     if variances is None:
         variances = [
             # Change the random state for each segment to ensure different variances.
-            scipy.stats.invgamma(1).rvs(
+            scipy.stats.chi2(2).rvs(
                 size=p,
                 random_state=random_state + i if random_state is not None else None,
             )
