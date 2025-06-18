@@ -292,6 +292,15 @@ def generate_piecewise_normal_data(
         dictionary with the parameters used to generate the data, including
         `change_points`, `means`, and `variances`. If False, only the DataFrame is
         returned.
+
+    Returns
+    -------
+    pd.DataFrame or tuple
+        If `return_params` is False, returns a DataFrame with the generated data.
+        If `return_params` is True, returns a tuple containing the DataFrame and a
+        dictionary of parameters used to generate the data. The dictionary contains
+        the keys `change_points`, `means`, and `variances`, which correspond to the
+        change points, means, and variances used in the generation process.
     """
     if n < 1:
         raise ValueError("Number of samples n must be at least 1.")
