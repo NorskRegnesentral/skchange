@@ -144,8 +144,8 @@ def _check_variances(
             raise ValueError("Covariance matrix must be symmetric.")
 
         eigvals = np.linalg.eigvalsh(cov)
-        if np.any(eigvals < -1e-8):
-            raise ValueError("Covariance matrix must be semi-positive definite.")
+        if np.any(eigvals <= 0):
+            raise ValueError("Covariance matrix must be positive definite.")
 
         covariances.append(cov)
 
