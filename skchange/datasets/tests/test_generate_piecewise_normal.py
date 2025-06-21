@@ -121,7 +121,6 @@ def test_generate_piecewise_normal_data_invalid_means():
     [
         1,
         2,
-        np.array(1),
         np.array([1, 2]),
         np.diag([1, 2]),
         [1, 2],

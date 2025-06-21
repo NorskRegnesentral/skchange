@@ -123,9 +123,7 @@ def _check_variances(
         else:
             _variance = np.asarray(variance)
 
-        if _variance.ndim == 0:
-            cov = np.diag([_variance])
-        elif _variance.ndim == 1:
+        if _variance.ndim == 1:
             cov = np.diag(_variance)
         elif _variance.ndim == 2:
             if _variance.shape[0] != _variance.shape[1]:
