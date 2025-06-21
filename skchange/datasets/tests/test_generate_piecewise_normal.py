@@ -162,3 +162,23 @@ def test_generate_piecewise_normal_data_invalid_variances():
     with pytest.raises(ValueError):
         singular_cov = np.array([[1, 0], [0, 0]])
         generate_piecewise_normal_data(n=10, p=2, variances=singular_cov)
+
+
+def test_generate_piecewise_normal_data_valid_proportion_affected():
+    """Test that the function generates data with the correct proportion_affected."""
+    n = 20
+    p = 4
+    proportion_affected = 0.5
+    df, params = generate_piecewise_normal_data(
+        n=n, p=p, proportion_affected=proportion_affected, return_params=True
+    )
+    for mean in params["means"]:
+        assert np.count_nonzero(mean) == int(p * proportion_affected)
+
+
+def test_generate_piecewise_normal_data_invalid_proportion_affected():
+    """Test that the function raises ValueError for invalid proportion_affected."""
+    with pytest.raises(ValueError):
+        generate_piecewise_normal_data(n=10, p=2, proportion_affected=-0.1)
+    with pytest.raises(ValueError):
+        generate_piecewise_normal_data(n=10, p=2, proportion_affected=1.1)
