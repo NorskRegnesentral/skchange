@@ -158,9 +158,9 @@ def _check_variances(
 
 def _generate_1d_array(
     p: int,
-    baseline_value: float = 0.0,
-    affected_variables: np.ndarray | list[int] | None = None,
-    distribution: scipy.stats.rv_continuous = None,
+    baseline_value: float,
+    affected_variables: np.ndarray | list[int],
+    distribution: scipy.stats.rv_continuous,
     random_state: int | None = None,
 ) -> np.ndarray:
     """Generate a random 1D array.
@@ -185,12 +185,6 @@ def _generate_1d_array(
     np.ndarray
         Mean vector of shape (p,).
     """
-    if affected_variables is None:
-        affected_variables = np.arange(p)
-
-    if distribution is None:
-        distribution = scipy.stats.norm(0, 1)
-
     out_array = np.full(p, baseline_value, dtype=float)
     out_array[affected_variables] = distribution.rvs(
         size=len(affected_variables), random_state=random_state
