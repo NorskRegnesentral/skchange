@@ -45,7 +45,7 @@ def test_generate_piecewise_data_invalid_distributions():
     with pytest.raises(ValueError):
         generate_piecewise_data(
             distributions=[norm],
-            lengths=[100, 50],  # Mismatched lengths
+            lengths=[100, 50],
             random_state=42,
         )
 
@@ -54,8 +54,7 @@ def test_generate_piecewise_data_invalid_lengths():
     with pytest.raises(ValueError):
         generate_piecewise_data(
             distributions=[norm],
-            lengths=[100, 50],  # Mismatched lengths
-            random_state=42,
+            lengths=[-1, 2],  # Mismatched lengths
         )
 
 
