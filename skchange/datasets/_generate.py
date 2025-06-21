@@ -329,6 +329,16 @@ def generate_piecewise_normal_data(
     if p < 1:
         raise ValueError(f"Number of variables p must be at least 1. Got p={p}.")
 
+    if (
+        isinstance(means, list)
+        and isinstance(variances, list)
+        and len(means) != len(variances)
+    ):
+        raise ValueError(
+            f"Number of means and variances must match."
+            f" Got {len(means)} means and {len(variances)} variances."
+        )
+
     if change_points is not None:
         n_change_points = 1 if isinstance(change_points, Number) else len(change_points)
 
@@ -397,12 +407,6 @@ def generate_piecewise_normal_data(
             for i in range(n_segments)
         ]
     variances = _check_variances(variances, p, change_points)
-
-    if len(means) != len(variances):
-        raise ValueError(
-            f"Number of means and variances must match."
-            f" Got {len(means)} means and {len(variances)} variances."
-        )
 
     distributions = [
         scipy.stats.multivariate_normal(mean=mean, cov=cov)
