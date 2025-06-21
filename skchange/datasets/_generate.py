@@ -272,20 +272,24 @@ def generate_piecewise_normal_data(
     p : int, optional (default=1)
         Number of variables.
     n_change_points : int, optional (default=None)
-        Number of change points to generate. If None, the number of change points is
+        Number of change points to generate. Ignored if `change_points` is provided.
+        If None, the number of change points is
         randomly generated from a binomial distribution with parameters `n` and
         `p=min(0.5, 5 / n)`, which gives 5 change points on average.
-        `n_change_points` is ignored if `change_points` is provided.
     change_points : int or list of int or np.ndarray, optional (default=None)
         Change points in the data. If None, `n_change_points` change points locations
         are randomly drawn from the range `[1, n-1]` without replacement.
     means : float or list of float or list of np.ndarray, optional (default=None)
         Means for each segment. If None, random means are generated according to a
-        normal distribution with mean 0 and standard deviation 2.
+        normal distribution with mean 0 and standard deviation 2. If specified and
+        `n_change_points` or `change_points` is not provided, the number of means or
+        govern the number of segments.
     variances : float or list of float or list of np.ndarray, optional (default=1.0)
         Variances or covariance matrices for each segment. Vectors are treated as
         diagonal covariance matrices. If None, random variance vectors are generated
         according to a chi-squared distribution with 2 degrees of freedom.
+        If specified and `n_change_points` or `change_points` is not provided, the
+        number of variances or covariance matrices govern the number of segments.
     proportion_affected: float, optional (default=1.0)
         Proportion of variables 1, ..., p that are affected by each change. This is
         used to determine how many variables are affected by the change in means and
@@ -314,7 +318,7 @@ def generate_piecewise_normal_data(
     Examples
     --------
     >>> from skchange.datasets import generate_piecewise_normal_data
-    >>> df = generate_piecewise_normal_data(n=10, change_points = 5, means=[0, 5])
+    >>> df = generate_piecewise_normal_data(n=10, change_points = [5], means=[0, 5])
     >>> df
               0
     0  0.614884
@@ -336,12 +340,19 @@ def generate_piecewise_normal_data(
     if change_points is not None:
         n_change_points = 1 if isinstance(change_points, Number) else len(change_points)
 
+    if (means is not None or variances is not None) and n_change_points is None:
+        n_change_points = max(
+            len(means) - 1 if isinstance(means, list) else 0,
+            len(variances) - 1 if isinstance(variances, list) else 0,
+        )
+
     if n_change_points is None:
         mean_n_cpts = 5
         binom_prob = min(0.5, mean_n_cpts / n)
         n_change_points = scipy.stats.binom(n, binom_prob).rvs(
             size=1, random_state=random_state
         )
+
     if n_change_points < 0:
         raise ValueError("Number of change points must be non-negative.")
 
