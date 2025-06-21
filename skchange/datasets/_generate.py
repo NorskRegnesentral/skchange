@@ -395,6 +395,12 @@ def generate_piecewise_normal_data(
         ]
     variances = _check_variances(variances, p, change_points)
 
+    if len(means) != len(variances):
+        raise ValueError(
+            f"Number of means and variances must match."
+            f" Got {len(means)} means and {len(variances)} variances."
+        )
+
     distributions = [
         scipy.stats.multivariate_normal(mean=mean, cov=cov)
         for mean, cov in zip(means, variances)
