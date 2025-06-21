@@ -139,6 +139,14 @@ def _check_variances(
                 "Covariance matrix must have the shape (p, p)."
                 f" Got covariance matrix with shape {cov.shape} and p={p}."
             )
+
+        if not np.allclose(cov, cov.T, atol=1e-8):
+            raise ValueError("Covariance matrix must be symmetric.")
+
+        eigvals = np.linalg.eigvalsh(cov)
+        if np.any(eigvals < -1e-8):
+            raise ValueError("Covariance matrix must be semi-positive definite.")
+
         covariances.append(cov)
 
     if len(variances) != n_segments:
