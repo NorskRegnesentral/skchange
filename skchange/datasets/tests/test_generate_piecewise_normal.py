@@ -121,6 +121,7 @@ def test_generate_piecewise_normal_data_invalid_means():
     [
         1,
         2,
+        np.array(1),
         np.array([1, 2]),
         np.diag([1, 2]),
         [1, 2],
@@ -162,6 +163,12 @@ def test_generate_piecewise_normal_data_invalid_variances():
     with pytest.raises(ValueError):
         singular_cov = np.array([[1, 0], [0, 0]])
         generate_piecewise_normal_data(n=10, p=2, variances=singular_cov)
+    with pytest.raises(ValueError):
+        non_square_cov = np.array([[1, 0], [0, 1], [0, 0]])
+        generate_piecewise_normal_data(n=10, p=2, variances=non_square_cov)
+    with pytest.raises(ValueError):
+        cov_3d = np.array([[[1, 0, 0], [0, 1, 0], [0, 0, 1]]])
+        generate_piecewise_normal_data(n=10, p=2, variances=cov_3d)
 
 
 def test_generate_piecewise_normal_data_valid_proportion_affected():
