@@ -156,7 +156,7 @@ def _check_variances(
     return covariances
 
 
-def _generate_1d_array(
+def _generate_random_1d_array(
     p: int,
     baseline_value: float,
     affected_variables: np.ndarray | list[int],
@@ -183,7 +183,7 @@ def _generate_1d_array(
     Returns
     -------
     np.ndarray
-        Mean vector of shape (p,).
+        Vector of shape (p,).
     """
     out_array = np.full(p, baseline_value, dtype=float)
     out_array[affected_variables] = distribution.rvs(
@@ -382,7 +382,7 @@ def generate_piecewise_normal_data(
         means = [
             # Change the random state for each segment to ensure different means
             # std = 2 to get a reasonable spread of means.
-            _generate_1d_array(
+            _generate_random_1d_array(
                 p=p,
                 baseline_value=0.0,
                 affected_variables=affected_variables[i],
@@ -397,7 +397,7 @@ def generate_piecewise_normal_data(
         variances = [
             # Change the random state for each segment to ensure different variances.
             # chi2(2) is used to get a reasonable spread of variances.
-            _generate_1d_array(
+            _generate_random_1d_array(
                 p=p,
                 baseline_value=1.0,
                 affected_variables=affected_variables[i],
