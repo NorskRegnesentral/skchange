@@ -562,29 +562,6 @@ def generate_anomalous_data(
     return df
 
 
-def add_linspace_outliers(df, n_outliers, outlier_size):
-    """
-    Add outliers to a DataFrame at evenly spaced positions.
-
-    Parameters
-    ----------
-    df : `pd.DataFrame`
-        DataFrame to add outliers to.
-    n_outliers : int
-        Number of outliers to add.
-    outlier_size : float
-        Size of the outliers.
-
-    Returns
-    -------
-    `pd.DataFrame`
-        DataFrame with outliers added.
-    """
-    outlier_positions = np.linspace(0, df.size - 1, n_outliers, dtype=int)
-    df.iloc[outlier_positions] += outlier_size
-    return df
-
-
 def generate_alternating_data(
     n_segments: int,
     segment_length: int,
