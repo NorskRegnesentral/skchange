@@ -185,6 +185,157 @@ def _check_variances(
     return covariances
 
 
+def _check_distributions(
+    distributions: (
+        scipy.stats.rv_continuous
+        | scipy.stats.rv_discrete
+        | list[scipy.stats.rv_continuous]
+        | list[scipy.stats.rv_discrete]
+    ),
+) -> tuple[list[scipy.stats.rv_continuous | scipy.stats.rv_discrete], int, np.dtype]:
+    """Check if distributions are valid and return as a list.
+
+    Parameters
+    ----------
+    distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`
+        List of distributions for each segment.
+
+    Returns
+    -------
+    list[scipy.stats.rv_continuous | scipy.stats.rv_discrete]
+        List of distributions for each segment, where each distribution is guarnteed
+        to have a `rvs(size: int, random_state: int | None)` method that returns
+        a numpy array or scalar of the same size, and the output size is either
+        1 or `p`.
+    int
+        Output size of the distributions, which is either 1 or `p`.
+    """
+    if not isinstance(distributions, list):
+        distributions = [distributions]
+
+    output_sizes = []
+    output_dtypes = []
+    for dist in distributions:
+        try:
+            output = dist.rvs(size=1)
+            output_sizes.append(output.size)
+            output_dtypes.append(output.dtype)
+        except Exception:
+            output_sizes.append(None)
+
+    if any(size is None for size in output_sizes):
+        raise ValueError(
+            "All distributions must support the 'rvs' method with a 'size' argument,"
+            " where the output is a numpy.array or numpy scalar."
+            " Ensure that all distributions are valid scipy.stats distributions."
+        )
+
+    if len(set(output_sizes)) > 1:
+        raise ValueError(
+            f"All distributions must produce samples with the same number of variables."
+            f" Got distribution.rvs(size=1).size outputs: {output_sizes}."
+        )
+
+    if len(set(output_dtypes)) > 1:
+        raise ValueError(
+            "All distributions must produce samples with the same data type."
+            f" Got distribution.rvs(size=1).dtype outputs: {output_dtypes}."
+        )
+
+    return distributions, output_sizes[0], output_dtypes[0]
+
+
+def _check_proportion_affected(
+    proportion_affected: float | list[float] | np.ndarray,
+    change_points: list[int],
+) -> list[float]:
+    """Check if the proportion of affected variables is valid.
+
+    Parameters
+    ----------
+    proportion_affected : float | list[float] | np.ndarray
+        Proportion of affected variables.
+    change_points : list[int]
+        List of change points.
+
+    Returns
+    -------
+    list[float]
+        List of validated proportions for each segment.
+    """
+    n_segments = len(change_points) + 1
+    if isinstance(proportion_affected, Number):
+        proportion_affected = [proportion_affected] * n_segments
+
+    if len(proportion_affected) != n_segments:
+        raise ValueError(
+            "Number of proportions must match number of segments."
+            f" Got {len(proportion_affected)} proportions and {n_segments} segments."
+        )
+
+    for prop in proportion_affected:
+        if not (0 < prop <= 1):
+            raise ValueError(
+                "Proportion of affected variables must be between (0, 1]."
+                f" Got proportion_affected={prop}."
+            )
+
+    return proportion_affected
+
+
+def _check_affected_variables(
+    affected_variables: np.ndarray | list[np.ndarray | list[int]],
+    p: int,
+    change_points: list[int],
+) -> list[np.ndarray]:
+    """Check if affected variables are valid.
+
+    Parameters
+    ----------
+    affected_variables : list of np.ndarray
+        List of arrays with indices of affected variables for each segment.
+    p : int
+        Number of variables in the data.
+    change_points : list[int]
+        List of change points.
+
+    Returns
+    -------
+    list[np.ndarray]
+        List of validated affected variable indices for each segment.
+    """
+    n_segments = len(change_points) + 1
+
+    if not isinstance(affected_variables, list):
+        affected_variables = [affected_variables] * n_segments
+
+    if len(affected_variables) != n_segments:
+        raise ValueError(
+            "Number of affected variable arrays must match number of segments."
+            f" Got {len(affected_variables)} arrays and {n_segments} segments."
+        )
+
+    for i, affected in enumerate(affected_variables):
+        if not isinstance(affected, (np.ndarray, list)):
+            raise ValueError(
+                f"Affected variables for segment {i} must be a numpy array or list."
+                f" Got {type(affected)}."
+            )
+        if np.any(affected < 0) or np.any(affected >= p):
+            raise ValueError(
+                f"Affected variable indices for segment {i} must be in the range"
+                f" [0, {p})."
+                f" Got affected={affected}."
+            )
+        if len(set(affected)) != len(affected):
+            raise ValueError(
+                f"Affected variable indices for segment {i} must be unique."
+                f" Got affected={affected}."
+            )
+
+    return affected_variables
+
+
 def _generate_random_1d_array(
     p: int,
     baseline_value: float,
