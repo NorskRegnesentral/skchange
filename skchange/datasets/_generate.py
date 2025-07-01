@@ -9,6 +9,35 @@ import pandas as pd
 import scipy.stats
 
 
+def _check_random_state(
+    random_state: int | np.random.Generator | None,
+) -> np.random.Generator:
+    """Check and return a random state.
+
+    Parameters
+    ----------
+    random_state : int or np.random.Generator or None
+        Seed for the random number generator. If None, a new random state is created.
+        If an int, a new Generator is created with that seed.
+
+    Returns
+    -------
+    np.random.Generator
+        Random state to use for random number generation.
+    """
+    if random_state is None:
+        return np.random.default_rng()
+    elif isinstance(random_state, int):
+        return np.random.default_rng(random_state)
+    elif isinstance(random_state, np.random.Generator):
+        return random_state
+    else:
+        raise ValueError(
+            "random_state must be an int or a numpy random Generator instance."
+            f" Got {type(random_state)}."
+        )
+
+
 def _check_change_points(change_points: int | list[int], n: int) -> list[int]:
     """Check if change points are valid.
 
