@@ -423,6 +423,26 @@ def generate_piecewise_data(
         * `"starts"` : list of start indices (inclusive) for each segment.
         * `"ends"` : list of end indices (exclusive) for each segment.
         * `"n_samples"` : total number of samples generated.
+
+    Examples
+    --------
+    >>> from skchange.datasets import generate_piecewise_data
+    >>> from scipy.stats import norm
+    >>> generate_piecewise_data(
+        distributions=[norm(loc=0, scale=1), norm(loc=10, scale=0.1)],
+        lengths=[7, 3],
+    )
+               0
+    0   2.849620
+    1   0.480488
+    2  -0.470981
+    3   2.533054
+    4  -1.109915
+    5   0.139459
+    6  -0.809931
+    7  10.134794
+    8  10.023471
+    9  10.028445
     """
     random_state = _check_random_state(random_state)
 
