@@ -933,3 +933,200 @@ def generate_continuous_piecewise_linear_signal(
     df = pd.DataFrame({"signal": signal})
 
     return df
+
+
+def _segment_label_matrix_from_change_points(
+    n: int,
+    p: int,
+    change_points: np.ndarray | list[int],
+    affected_variables: list[np.ndarray],
+):
+    """Create a segment label matrix from change points."""
+    segment_labels = np.zeros((n, p), dtype=int)
+    for i, (cpt, affected) in enumerate(zip(change_points, affected_variables)):
+        segment_labels[cpt:, affected] = i + 1
+    return segment_labels
+
+
+def _segment_label_matrix_from_anomalies(
+    n: int,
+    p: int,
+    anomalies: np.ndarray | list[tuple[int, int]],
+    affected_variables: list[np.ndarray],
+):
+    """Create a segment label matrix from anomalies."""
+    segment_labels = np.zeros((n, p), dtype=int)
+    for i, ((start, end), affected) in enumerate(zip(anomalies, affected_variables)):
+        segment_labels[start:end, affected] = i + 1
+    return segment_labels
+
+
+def generate_piecewise_data_new(
+    n: int = 100,
+    p: int = 1,
+    distributions: (
+        scipy.stats.rv_continuous
+        | scipy.stats.rv_discrete
+        | list[scipy.stats.rv_continuous]
+        | list[scipy.stats.rv_discrete]
+        | None
+    ) = None,
+    change_points: int | list[int] | np.ndarray | None = None,
+    proportion_affected: float | list[float] | np.ndarray | None = None,
+    affected_variables: np.ndarray | list[np.ndarray | list[int]] | None = None,
+    random_state: int | np.random.Generator | None = None,
+    return_params: bool = False,
+) -> pd.DataFrame:
+    """Generate piecewise data.
+
+    Parameters
+    ----------
+    n : int, optional (default=100)
+        Number of samples.
+    p : int, optional (default=1)
+        Number of variables.
+    n_change_points : int, optional (default=None)
+        Number of change points to generate. Ignored if `change_points` or
+        `distributions` is provided. If None, the number of change points is
+        randomly generated from a binomial distribution with parameters `n` and
+        `p=min(0.5, 5 / n)`, which gives 5 change points on average.
+    change_points : int or list of int or np.ndarray, optional (default=None)
+        Change points in the data. If None, `n_change_points` change points locations
+        are randomly drawn from the range `[1, n-1]` without replacement.
+    distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`, optional (default=None)
+        List of distributions for each segment, where each distribution is expected
+        to be a scipy distribution object (e.g., `scipy.stats.norm`,
+        `scipy.stats.uniform`). See `scipy.stats
+        <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
+        for a list of all available distributions. However, the function will run as
+        long as the distribution objects support an
+        `rvs(size: int, random_state: int | None)` method.
+    proportion_affected: float, optional (default=1.0)
+        Proportion of variables 1, ..., p that are affected by each change. This is
+        used to determine how many variables are affected by the change in means and
+        variances. By default all variables are affected. Only relevant for unspecified
+        `means` or `variances`.
+    random_state : int, optional
+        Seed for the random number generator. The random_state is used as a basis for
+        random generation of all random entities, including the change points, means and
+        variances (if specified). If None, the random state is not set.
+    return_params: bool, optional (default=False)
+        If True, the function returns a tuple of the generated DataFrame and a
+        dictionary with the parameters used to generate the data, including
+        `change_points`, `means`, and `variances`. If False, only the DataFrame is
+        returned.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with generated data. The DataFrame has `n` rows and `p` columns.
+
+    dict
+        A dictionary containing the parameters used to generate the data. It has
+        keys `change_points`, `means`, and `variances`. It is returned only if
+        `return_params` is True.
+
+    Examples
+    --------
+    >>> from skchange.datasets import generate_piecewise_normal_data
+    >>> df = generate_piecewise_normal_data(n=10, change_points = [5], means=[0, 5])
+    >>> df
+              0
+    0  0.614884
+    1  0.266904
+    2  0.812941
+    3  1.300181
+    4 -0.506429
+    5  6.441842
+    6  6.069931
+    7  5.449876
+    8  3.924228
+    9  5.514109
+    """  # noqa: E501
+    random_state = _check_random_state(random_state)
+
+    if n < 1:
+        raise ValueError(f"Number of samples n must be at least 1. Got n={n}.")
+    if p < 1:
+        raise ValueError(f"Number of variables p must be at least 1. Got p={p}.")
+
+    if change_points is not None:
+        n_change_points = 1 if isinstance(change_points, Number) else len(change_points)
+    if distributions is not None and n_change_points is None:
+        n_change_points = (
+            len(distributions) - 1 if isinstance(distributions, list) else 0
+        )
+    if n_change_points is None:
+        mean_n_cpts = 5
+        binom_prob = min(0.1, mean_n_cpts / n)
+        n_change_points = scipy.stats.binom(n, binom_prob).rvs(
+            size=1, random_state=random_state
+        )
+    if n_change_points < 0:
+        raise ValueError("Number of change points must be non-negative.")
+
+    if change_points is None:
+        change_points = random_state.choice(
+            np.arange(1, n), size=n_change_points, replace=False
+        )
+    change_points = _check_change_points(change_points, n)
+    n_segments = len(change_points) + 1
+
+    if distributions is None:
+        means = scipy.stats.norm(0, 2).rvs(n_segments, random_state=random_state)
+        distributions = [scipy.stats.norm(mean) for mean in means]
+
+    # n_variables_distribution is guaranteed to be 1 or p.
+    distributions, n_variables_distribution, dtype_distribution = _check_distributions(
+        distributions, p, change_points
+    )
+
+    if affected_variables is None:
+        if proportion_affected is None:
+            proportion_affected = scipy.stats.uniform(1e-8, 1).rvs(
+                size=n_segments, random_state=random_state
+            )
+        proportion_affected = _check_proportion_affected(
+            proportion_affected, change_points
+        )
+        affected_variables = [
+            np.sort(random_state.choice(p, size=int(np.ceil(p * prop)), replace=False))
+            for prop in proportion_affected
+        ]
+    affected_variables = _check_affected_variables(affected_variables, p, change_points)
+
+    generated_data = np.empty((n, p), dtype=dtype_distribution)
+    if n_variables_distribution == p:
+        starts = np.concatenate(([0], change_points))
+        ends = np.concatenate((change_points, [n]))
+        for start, end, distribution in zip(starts, ends, distributions):
+            generated_data[start:end, :] = distribution.rvs(
+                size=end - start, random_state=random_state
+            )
+        # affected_variables not used in this case. None will be returned in the params
+        # dictionary if return_params is True.
+        affected_variables = None
+    else:
+        labels = _segment_label_matrix_from_change_points(
+            n=n,
+            p=p,
+            change_points=change_points,
+            affected_variables=affected_variables,
+        )
+        for i, distribution in enumerate(distributions):
+            label_mask = labels == i
+            generated_data[label_mask] = distribution.rvs(
+                size=np.sum(label_mask), random_state=random_state
+            )
+
+    df = pd.DataFrame(generated_data)
+
+    if return_params:
+        params = {
+            "change_points": change_points,
+            "distributions": distributions,
+            "affected_variables": affected_variables,
+        }
+        return df, params
+    else:
+        return df
