@@ -513,9 +513,9 @@ def generate_piecewise_data(
     _n_samples = np.sum(lengths)
     generated_values = np.empty((_n_samples, n_variables), dtype=dtype)
     for distribution, start, end in zip(distributions, starts, ends):
-        generated_values[start:end, :] = distribution.rvs(
-            size=end - start, random_state=random_state
-        ).reshape(end - start, n_variables)
+        length = end - start
+        values = distribution.rvs(size=length, random_state=random_state)
+        generated_values[start:end, :] = values.reshape(length, n_variables)
 
     generated_df = pd.DataFrame(generated_values)
 
