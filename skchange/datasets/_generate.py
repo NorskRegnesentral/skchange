@@ -381,7 +381,7 @@ def generate_piecewise_data(
     n_samples: int = 100,
     random_state: int | np.random.Generator | None = None,
     return_params: bool = False,
-) -> pd.DataFrame:
+) -> pd.DataFrame | tuple[pd.DataFrame, dict]:
     """Generate data with a piecewise constant distribution.
 
     Parameters
