@@ -420,8 +420,8 @@ def generate_piecewise_data(
         * `"distributions"` : list of `scipy.stats.rv_continuous` or
           `scipy.stats.rv_discrete` with the distributions used for each segment.
         * `"lengths"` : list of lengths for each segment.
-        * `"starts"` : list of start indices (inclusive) for each segment.
-        * `"ends"` : list of end indices (exclusive) for each segment.
+        * `"change_points"` : list of change points, which are the starting indices
+          of each segment in the data.
         * `"n_samples"` : total number of samples generated.
 
     Examples
@@ -485,8 +485,7 @@ def generate_piecewise_data(
         return generated_df, {
             "distributions": distributions,
             "lengths": lengths,
-            "starts": starts,
-            "ends": ends,
+            "change_points": starts[1:],
             "n_samples": _n_samples,
         }
 
