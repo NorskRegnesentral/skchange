@@ -426,23 +426,61 @@ def generate_piecewise_data(
 
     Examples
     --------
+    >>> # Example 1: Two normal segments
     >>> from skchange.datasets import generate_piecewise_data
     >>> from scipy.stats import norm
     >>> generate_piecewise_data(
-        distributions=[norm(loc=0, scale=1), norm(loc=10, scale=0.1)],
-        lengths=[7, 3],
-    )
+    ...     distributions=[norm(0, 1), norm(10, 0.1)],
+    ...     lengths=[7, 3],
+    ...     random_state=1,
+    ... )
                0
-    0   2.849620
-    1   0.480488
-    2  -0.470981
-    3   2.533054
-    4  -1.109915
-    5   0.139459
-    6  -0.809931
-    7  10.134794
-    8  10.023471
-    9  10.028445
+    0   0.345584
+    1   0.821618
+    2   0.330437
+    3  -1.303157
+    4   0.905356
+    5   0.446375
+    6  -0.536953
+    7  10.058112
+    8  10.036457
+    9  10.029413
+
+    >>> # Example 2: Two Poisson segments
+    >>> from scipy.stats import poisson
+    >>> generate_piecewise_data(
+    ...     distributions=[poisson(1), poisson(10)],
+    ...     lengths=[5, 5],
+    ...     random_state=2,
+    ... )
+        0
+    0   0
+    1   0
+    2   1
+    3   2
+    4   0
+    5   8
+    6  11
+    7   9
+    8   9
+    9   9
+
+
+    >>> # Example 3: Specify only n_samples and distributions, random segment lengths
+    >>> generate_piecewise_data(
+    ...     distributions=[norm(0), norm(5)],
+    ...     n_samples=8,
+    ...     random_state=3,
+    ... )
+              0
+    0 -2.555665
+    1  0.418099
+    2 -0.567770
+    3 -0.452649
+    4 -0.215597
+    5 -2.019986
+    6  4.768068
+    7  4.134787
     """
     random_state = _check_random_state(random_state)
 
