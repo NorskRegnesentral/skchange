@@ -521,12 +521,13 @@ def generate_piecewise_data(
     generated_df = pd.DataFrame(generated_values)
 
     if return_params:
-        return generated_df, {
+        params = {
             "distributions": distributions,
             "lengths": lengths,
             "change_points": starts[1:],
             "n_samples": _n_samples,
         }
+        return generated_df, params
 
     return generated_df
 
