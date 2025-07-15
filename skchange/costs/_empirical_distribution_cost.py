@@ -166,7 +166,6 @@ def make_cumulative_edf_cache(
         A 2D array where each row corresponds to a quantile value and contains the
         cumulative counts of values less than or equal to that quantile.
     """
-    # Cache cumulative sums of the empirical distribution function (EDF):
     lte_quantile_point_mask = (xs[:, None] < quantile_points[None, :]).astype(
         np.float64
     )
@@ -211,9 +210,6 @@ def numpy_approximate_mle_edf_cost_cached_edf(
     """
     n_samples, num_quantiles = cumulative_edf_quantiles.shape
 
-    # This is a placeholder for the actual implementation.
-    # In practice, this function would compute the cost based on the
-    # first num_quantiles terms.
     if num_quantiles <= 0:
         raise ValueError("num_quantiles must be a positive integer.")
     if num_quantiles > n_samples - 2:
@@ -248,31 +244,33 @@ def numpy_approximate_mle_edf_cost_cached_edf(
         segment_edf_at_quantiles[:] /= float(segment_length)
 
         # Clip quantiles to within (0, 1) to avoid log(0) issues: Write to last argument
-        np.clip(segment_edf_at_quantiles, 1e-10, 1 - 1e-10, segment_edf_at_quantiles)
+        np.clip(
+            segment_edf_at_quantiles, 1e-10, 1 - 1e-10, out=segment_edf_at_quantiles
+        )
 
         ### Begin computing integrated log-likelihood for the segment ###
         segment_ll_at_mle = 0.0
 
         # Compute the first term: sum(F(t)*log(F(t)))
-        np.log(segment_edf_at_quantiles, log_segment_edf_at_quantiles)
+        np.log(segment_edf_at_quantiles, out=log_segment_edf_at_quantiles)
 
         # Multiply together, storing in one_minus_segment_edf_at_quantiles:
         np.multiply(
             segment_edf_at_quantiles,
             log_segment_edf_at_quantiles,
-            one_minus_segment_edf_at_quantiles,
+            out=one_minus_segment_edf_at_quantiles,
         )
         segment_ll_at_mle += np.sum(one_minus_segment_edf_at_quantiles)
 
         # Compute the second term: sum((1 - F(t))*log(1 - F(t)))
         one_minus_segment_edf_at_quantiles[:] = 1 - segment_edf_at_quantiles
-        np.log(one_minus_segment_edf_at_quantiles, log_segment_edf_at_quantiles)
+        np.log(one_minus_segment_edf_at_quantiles, out=log_segment_edf_at_quantiles)
 
         # Multiply together, storing in segment_edf_at_quantiles:
         np.multiply(
             one_minus_segment_edf_at_quantiles,
             log_segment_edf_at_quantiles,
-            segment_edf_at_quantiles,
+            out=segment_edf_at_quantiles,
         )
         segment_ll_at_mle += np.sum(segment_edf_at_quantiles)
 
@@ -363,86 +361,6 @@ def numba_approximate_mle_edf_cost_cached_edf(
         out_segment_costs[i] = (-2.0) * segment_ll_at_mle
 
     return out_segment_costs
-
-
-@njit
-def int_approximate_mle_edf_cost_cached_edf(
-    cumulative_edf_quantiles: np.ndarray,
-    binomial_ll_lookup: np.ndarray,
-    segment_starts: np.ndarray,
-    segment_ends: np.ndarray,
-    scratch_array: np.ndarray | None = None,
-    segment_costs: np.ndarray | None = None,
-) -> np.ndarray:
-    """
-    Compute approximate empirical distribution cost from cumulative edf quantiles.
-
-    Using `num_quantiles` quantile values to approximate the empirical distribution cost
-    for a sequence `xs` with given segment cuts. The cost is computed as the integrated
-    log-likelihood of the empirical distribution function (EDF), approximated by
-    evaluating the EDF at `num_quantiles` specific quantiles.
-
-    Parameters
-    ----------
-    cumulative_edf_quantiles : np.ndarray
-        A 2D array containing the cumulative empirical distribution function values
-        for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
-    segment_starts : np.ndarray
-        The start indices of the segments.
-    segment_ends : np.ndarray
-        The end indices of the segments.
-
-    Returns
-    -------
-    np.ndarray
-        A 1D array of empirical distribution costs for each segment defined by `cuts`.
-    """
-    n_samples, num_quantiles = cumulative_edf_quantiles.shape
-    lookup_size = len(binomial_ll_lookup)
-
-    if num_quantiles <= 0:
-        raise ValueError("num_quantiles must be a positive integer.")
-    if num_quantiles > n_samples - 2:
-        raise ValueError(
-            "num_quantiles should not be greater than the number of samples minus 2."
-        )
-
-    if segment_costs is None:
-        segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
-
-    if scratch_array is None:
-        segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.int32)
-    else:
-        segment_edf_at_quantiles = scratch_array[0, :]
-
-    # Constant scaling term from the approximation of the integrated log-likelihood:
-    edf_integration_scale = -np.log(2 * n_samples - 1)
-
-    # Iterate over each segment defined by the starts and ends:
-    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
-        segment_length = segment_end - segment_start
-        # if segment_length <= 0:
-        #     raise ValueError("Invalid segment length.")
-
-        # Shifted by 1 to account for the row of zeros at the start:
-        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
-        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
-
-        # Map [0, 1] to lookup indices [0, lookup_size - 1]:
-        segment_edf_at_quantiles[:] *= lookup_size - 1
-
-        # (Integer) Divide by segment length: (rounding down)
-        segment_edf_at_quantiles[:] //= segment_length
-
-        segment_ll_at_mle = np.sum(binomial_ll_lookup[segment_edf_at_quantiles])
-        segment_ll_at_mle *= (
-            -2.0 * edf_integration_scale / num_quantiles
-        ) * segment_length
-
-        # The cost equals twice the negative integrated log-likelihood:
-        segment_costs[i] = (-2.0) * segment_ll_at_mle
-
-    return segment_costs
 
 
 @njit
@@ -547,7 +465,7 @@ class EmpiricalDistributionCost(BaseCost):
         self.quantile_values_: np.ndarray | None = None
 
         # Cache for empirical distribution function
-        self._edf_cache: np.ndarray | None = None
+        self._edf_cache: list[np.ndarray] | None = None
 
         # Storage for fixed samples and quantiles:
         self._quantile_weights: np.ndarray | None = None
