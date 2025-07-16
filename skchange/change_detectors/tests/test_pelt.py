@@ -154,8 +154,7 @@ def old_run_pelt(
         - `changepoints`: The final set of changepoints.
     """
     cost.check_is_fitted()
-    # n_samples = cost._X.shape[0]
-    n_samples = cost.n_samples()
+    n_samples = cost.n_samples
     min_segment_shift = min_segment_length - 1
 
     # Redefine Opt_cost[0] to start at 0.0, as done in 2014 PELT.
@@ -298,7 +297,7 @@ def run_pelt_masked(
         The optimal costs, the changepoints, and cost evaluation time.
     """
     cost.check_is_fitted()
-    n_samples = cost.n_samples()
+    n_samples = cost.n_samples
     min_segment_shift = min_segment_length - 1
 
     # Explicitly set the first element to 0.

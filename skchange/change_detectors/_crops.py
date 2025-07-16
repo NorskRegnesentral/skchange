@@ -50,10 +50,10 @@ def evaluate_segmentation(
     if np.any(np.diff(segmentation) <= 0):
         raise ValueError("The segmentation must contain strictly increasing entries.")
     if len(segmentation) == 0:
-        segmentation = np.array([0, cost._X.shape[0]])
-    elif segmentation[0] != 0 and segmentation[-1] != cost._X.shape[0]:
+        segmentation = np.array([0, cost.n_samples])
+    elif segmentation[0] != 0 and segmentation[-1] != cost.n_samples:
         segmentation = np.concatenate(
-            (np.array([0]), segmentation, np.array([cost._X.shape[0]]))
+            (np.array([0]), segmentation, np.array([cost.n_samples]))
         )
 
     cuts = np.vstack((segmentation[:-1], segmentation[1:])).T
@@ -179,9 +179,9 @@ def segmentation_bic_value(cost: BaseCost, change_points: np.ndarray) -> float:
     """
     cost.check_is_fitted()
     num_segments = len(change_points) + 1
-    data_dim = cost._X.shape[1]
+    data_dim = cost.n_variables
     num_parameters = cost.get_model_size(data_dim)
-    n_samples = cost.n_samples()
+    n_samples = cost.n_samples
 
     bic_score = evaluate_segmentation(cost, change_points)[
         0
@@ -430,9 +430,9 @@ class CROPS(BaseChangeDetector):
                 )
             )
             optimal_num_change_points, optimal_penalty = (
-                self.change_points_metadata.sort_values(
-                    by="bic_value"
-                )[["num_change_points", "penalty"]].iloc[0]
+                self.change_points_metadata.sort_values(by="bic_value")[
+                    ["num_change_points", "penalty"]
+                ].iloc[0]
             )
 
         self.optimal_penalty = optimal_penalty

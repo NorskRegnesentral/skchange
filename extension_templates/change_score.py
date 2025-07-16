@@ -202,7 +202,7 @@ class MyChangeScore(BaseIntervalScorer):
         #
         # For example for a covariance matrix score:
         # if self.is_fitted:
-        #     return self._X.shape[1] + 1
+        #     return self.n_variables + 1
         # else:
         #     return None
 
