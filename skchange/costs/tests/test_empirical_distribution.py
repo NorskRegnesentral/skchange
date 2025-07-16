@@ -6,13 +6,15 @@ from scipy import stats
 
 from skchange.costs._empirical_distribution_cost import (
     _approx_binomial_ll_term,
-    compute_finite_difference_derivatives,
     fixed_cdf_cost_cached_edf,
     make_approximate_mle_edf_cost_quantile_points,
     make_cumulative_edf_cache,
     make_fixed_cdf_cost_quantile_weights,
+    numba_approximate_mle_edf_cost_cached_edf,
+    numpy_approximate_mle_edf_cost_cached_edf,
 )
 from skchange.utils.numba import njit, numba_available
+from skchange.utils.numba.general import compute_finite_difference_derivatives
 
 
 @njit
@@ -176,9 +178,6 @@ def approximate_mle_edf_cost(
     n_samples = len(xs)
     num_quantiles = len(quantile_points)
 
-    # This is a placeholder for the actual implementation.
-    # In practice, this function would compute the cost based on the
-    # first num_quantiles terms.
     if num_quantiles <= 0:
         raise ValueError("num_quantiles must be a positive integer.")
     if num_quantiles > len(xs) - 2:
@@ -247,85 +246,6 @@ def approximate_mle_edf_cost(
             -2.0 * edf_integration_scale / num_quantiles
         ) * segment_length
         ### Done computing integrated log-likelihood for the segment ###
-
-        # The cost equals twice the negative integrated log-likelihood:
-        segment_costs[i] = -2.0 * segment_ll_at_mle
-
-    return segment_costs
-
-
-@njit
-def cached_edf_approximate_mle_edf_cost(
-    cumulative_edf_quantiles: np.ndarray,
-    segment_starts: np.ndarray,
-    segment_ends: np.ndarray,
-) -> np.ndarray:
-    """
-    Compute approximate empirical distribution cost from cumulative edf quantiles.
-
-    Using `num_quantiles` quantile values to approximate the empirical distribution cost
-    for a sequence `xs` with given segment cuts. The cost is computed as the integrated
-    log-likelihood of the empirical distribution function (EDF), approximated by
-    evaluating the EDF at `num_quantiles` specific quantiles.
-
-    Parameters
-    ----------
-    cumulative_edf_quantiles : np.ndarray
-        A 2D array containing the cumulative empirical distribution function values
-        for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
-    segment_starts : np.ndarray
-        The start indices of the segments.
-    segment_ends : np.ndarray
-        The end indices of the segments.
-
-    Returns
-    -------
-    np.ndarray
-        A 1D array of empirical distribution costs for each segment defined by `cuts`.
-    """
-    n_samples, num_quantiles = cumulative_edf_quantiles.shape
-
-    # This is a placeholder for the actual implementation.
-    # In practice, this function would compute the cost based on the
-    # first num_quantiles terms.
-    if num_quantiles <= 0:
-        raise ValueError("num_quantiles must be a positive integer.")
-    if num_quantiles > n_samples - 2:
-        raise ValueError(
-            "num_quantiles should not be greater than the number of samples minus 2."
-        )
-
-    c = -np.log(2 * n_samples - 1)  # Constant term for the approximation
-
-    segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
-    segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-
-    # Iterate over each segment defined by the starts and ends:
-    for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
-        segment_length = segment_end - segment_start
-        if segment_length <= 0:
-            raise ValueError("Invalid segment length.")
-
-        # Shifted by 1 to account for the row of zeros at the start:
-        segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
-        segment_edf_at_quantiles[:] -= cumulative_edf_quantiles[segment_start, :]
-        segment_edf_at_quantiles[:] /= float(segment_length)
-
-        # Clip to within (0, 1) to avoid log(0) issues:
-        segment_edf_at_quantiles = np.clip(segment_edf_at_quantiles, 1e-10, 1.0 - 1e-10)
-        one_minus_segment_edf_at_quantiles = 1 - segment_edf_at_quantiles
-
-        segment_ll_at_mle = (
-            (-2.0 * c / num_quantiles)
-            * segment_length
-            * (
-                np.sum(
-                    segment_edf_at_quantiles * np.log(segment_edf_at_quantiles)
-                    + one_minus_segment_edf_at_quantiles
-                    * np.log(one_minus_segment_edf_at_quantiles)
-                )
-            )
-        )
 
         # The cost equals twice the negative integrated log-likelihood:
         segment_costs[i] = -2.0 * segment_ll_at_mle
@@ -411,50 +331,6 @@ def fixed_cdf_empirical_distribution_cost(
         segment_costs[i] = -2.0 * integrated_ll_at_mle
 
     return segment_costs
-
-
-def make_approximate_mle_cost_edf_cache(
-    xs: np.ndarray, num_quantiles: int
-) -> np.ndarray:
-    """
-    Create a cache for the empirical distribution function (EDF) cost approximation.
-
-    Parameters
-    ----------
-    xs : np.ndarray
-        The input data array.
-    num_quantiles : int
-        The number of quantiles to use in the approximation.
-
-    Returns
-    -------
-    np.ndarray
-        A 2D array where each row corresponds to a quantile and contains the cumulative
-        EDF values for the entire dataset.
-    """
-    if num_quantiles <= 0:
-        raise ValueError("num_quantiles must be a positive integer.")
-    if num_quantiles > len(xs) - 2:
-        raise ValueError(
-            "num_quantiles should not be greater than the number of samples minus 2."
-        )
-
-    n_samples = len(xs)
-    c = -np.log(2 * n_samples - 1)  # Constant term for the approximation
-
-    full_sample_quantiles = 1.0 / (
-        1 + np.exp(c * ((2 * np.arange(1, num_quantiles + 1) - 1) / num_quantiles - 1))
-    )
-
-    # Computing quantiles (which involves sorting) is slow with Numba:
-    full_sample_quantile_values = np.quantile(xs, full_sample_quantiles)
-
-    # Create a cache for cumulative empirical distribution function (EDF) values:
-    cumulative_edf_quantiles = make_cumulative_edf_cache(
-        xs[:, 0], full_sample_quantile_values
-    )
-
-    return cumulative_edf_quantiles
 
 
 def test_approx_binomial_ll_term():
@@ -718,77 +594,6 @@ def test_evaluate_edf_from_cache():
     )
 
 
-def test_k_term_empirical_distribution_cost_approximation():
-    xs = np.array([1, 2, 3, 4, 5]).reshape(-1, 1)
-    segment_starts = np.array([0, 2])
-    segment_ends = np.array([2, 5])
-    num_approx_quantiles = 3
-
-    approx_quantile_points, _ = make_approximate_mle_edf_cost_quantile_points(
-        xs, num_approx_quantiles
-    )
-    approx_cost = approximate_mle_edf_cost(
-        xs[:, 0],
-        quantile_points=approx_quantile_points[:, 0],
-        segment_starts=segment_starts,
-        segment_ends=segment_ends,
-    )
-    direct_cost = direct_mle_edf_cost(xs[:, 0], segment_starts, segment_ends)
-    approx_cost_cache = make_approximate_mle_cost_edf_cache(xs, num_approx_quantiles)
-    pre_cached_approx_cost = cached_edf_approximate_mle_edf_cost(
-        approx_cost_cache, segment_starts, segment_ends
-    )
-    print(f"Direct cost: {direct_cost}")
-    print(f"Approximate cost: {approx_cost}")
-    print(f"Pre-cached approximate cost: {pre_cached_approx_cost}")
-
-    # Add more tests with different data and changepoints
-    xs2 = np.array([1, 1, 2, 2, 3, 3]).reshape(-1, 1)
-    segment_starts2 = np.array([0, 3])
-    segment_ends2 = np.array([3, 6])
-    k2 = 2
-
-    approx_quantile_points2, _ = make_approximate_mle_edf_cost_quantile_points(xs2, k2)
-    approx_cost2 = approximate_mle_edf_cost(
-        xs2[:, 0],
-        quantile_points=approx_quantile_points2[:, 0],
-        segment_starts=segment_starts2,
-        segment_ends=segment_ends2,
-    )
-    approx_cost_cache_2 = make_approximate_mle_cost_edf_cache(xs2, k2)
-    pre_cached_approx_cost2 = cached_edf_approximate_mle_edf_cost(
-        approx_cost_cache_2, segment_starts2, segment_ends2
-    )
-    direct_cost2 = direct_mle_edf_cost(xs2[:, 0], segment_starts2, segment_ends2)
-
-    print(f"Direct cost for xs2: {direct_cost2}")
-    print(f"Approximate cost for xs2: {approx_cost2}")
-    print(f"Pre-cached approximate cost for xs2: {pre_cached_approx_cost2}")
-
-    no_change_cuts = np.array([[0, len(xs)]])
-    no_change_starts = no_change_cuts[:, 0]
-    no_change_ends = no_change_cuts[:, 1]
-
-    no_change_approx_cost = approximate_mle_edf_cost(
-        xs[:, 0],
-        quantile_points=approx_quantile_points[:, 0],
-        segment_starts=no_change_starts,
-        segment_ends=no_change_ends,
-    )
-    no_change_approx_cost_cache = make_approximate_mle_cost_edf_cache(
-        xs, num_approx_quantiles
-    )
-    no_change_approx_cost_pre_cached = cached_edf_approximate_mle_edf_cost(
-        no_change_approx_cost_cache, no_change_starts, no_change_ends
-    )
-    no_change_direct_cost = direct_mle_edf_cost(
-        xs[:, 0], no_change_starts, no_change_ends
-    )
-    print(f"No change direct cost: {no_change_direct_cost}")
-    print(f"No change approximate cost: {no_change_approx_cost}")
-    print(f"No change pre-cached approximate cost: {no_change_approx_cost_pre_cached}")
-
-
 @pytest.mark.parametrize(
     ["tolerance", "n_samples"], [(0.10, 60), (0.05, 120), (0.025, 1000)]
 )
@@ -808,8 +613,8 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
     # Suggested value based on the length of xs:
     num_quantiles = int(4 * np.log(len(xs)))
 
-    approx_quantile_points, approx_quantile_values = (
-        make_approximate_mle_edf_cost_quantile_points(xs, num_quantiles)
+    approx_quantile_points, _ = make_approximate_mle_edf_cost_quantile_points(
+        xs, num_quantiles
     )
 
     one_change_approx_costs = approximate_mle_edf_cost(
@@ -828,8 +633,6 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
     assert np.all(relative_differences < tolerance), (
         f"Relative differences exceed {tolerance * 100}%: {relative_differences}"
     )
-    # print(f"Direct cost on longer data: {one_change_direct_costs}")
-    # print(f"Approximate cost on longer data: {one_change_approx_costs}")
 
     single_segment_approx_cost = approximate_mle_edf_cost(
         xs[:, 0],
@@ -855,21 +658,29 @@ def test_approximate_vs_direct_cost_on_longer_data(tolerance: float, n_samples: 
     assert single_segment_direct_cost - np.sum(one_change_direct_costs) > 0, (
         "Direct cost for no change should be greater than for two segments."
     )
-    # print(f"Direct cost for single segment: {single_segment_direct_cost}")
-    # print(f"Approximate cost for single segment: {single_segment_approx_cost}")
 
 
 @pytest.mark.parametrize(
-    ["rel_tol", "n_samples"], [(5.0e-2, 60), (1.0e-3, 120), (1.0e-4, 1000)]
+    "cached_approx_cost_func",
+    [
+        numba_approximate_mle_edf_cost_cached_edf,
+        numpy_approximate_mle_edf_cost_cached_edf,
+    ],
 )
-def test_approximate_vs_precached_approximate_cost(rel_tol: float, n_samples: int):
+@pytest.mark.parametrize(
+    ["rel_tol", "n_samples"], [(5.0e-2, 60), (1.0e-3, 120), (1.0e-4, 1600)]
+)
+def test_approximate_vs_precached_approximate_cost(
+    cached_approx_cost_func, rel_tol: float, n_samples: int
+):
     np.random.seed(42)  # For reproducibility
     first_segment = np.random.normal(size=n_samples)
     second_segment = np.random.normal(size=n_samples, loc=5)
     xs = np.concatenate([first_segment, second_segment]).reshape(-1, 1)
     num_quantiles = int(4 * np.log(len(xs)))
-    approx_quantile_points, approx_quantile_values = (
-        make_approximate_mle_edf_cost_quantile_points(xs, num_quantiles)
+
+    approx_quantile_points, _ = make_approximate_mle_edf_cost_quantile_points(
+        xs, num_quantiles
     )
 
     correct_cuts = np.array([[0, n_samples], [n_samples, len(xs)]])
@@ -887,8 +698,8 @@ def test_approximate_vs_precached_approximate_cost(rel_tol: float, n_samples: in
         segment_starts=correct_segment_starts,
         segment_ends=correct_segment_ends,
     )
-    approx_cost_edf_cache = make_approximate_mle_cost_edf_cache(xs, num_quantiles)
-    precached_costs = cached_edf_approximate_mle_edf_cost(
+    approx_cost_edf_cache = make_cumulative_edf_cache(xs, approx_quantile_points)
+    precached_costs = cached_approx_cost_func(
         approx_cost_edf_cache, correct_segment_starts, correct_segment_ends
     )
     np.testing.assert_allclose(approx_costs, precached_costs, rtol=rel_tol)
@@ -900,9 +711,10 @@ def test_approximate_vs_precached_approximate_cost(rel_tol: float, n_samples: in
         segment_starts=no_change_segment_starts,
         segment_ends=no_change_segment_ends,
     )
-    single_precached_cost = cached_edf_approximate_mle_edf_cost(
+    single_precached_cost = cached_approx_cost_func(
         approx_cost_edf_cache, no_change_segment_starts, no_change_segment_ends
     )
+
     np.testing.assert_allclose(single_approx_cost, single_precached_cost, rtol=rel_tol)
 
 
@@ -914,8 +726,9 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     per_hundred_step_segment_starts = per_hundred_step_cuts[:, 0]
     per_hundred_step_segment_ends = per_hundred_step_cuts[:, 1]
     num_approx_quantiles = int(4 * np.log(n_samples))
-    approx_quantile_points, approx_quantile_values = (
-        make_approximate_mle_edf_cost_quantile_points(xs, num_approx_quantiles)
+
+    approx_quantile_points, _ = make_approximate_mle_edf_cost_quantile_points(
+        xs, num_approx_quantiles
     )
 
     # - Call once in case of JIT compilation overhead:
@@ -930,10 +743,6 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     direct_cost_eval_time = end_time - start_time
     total_direct_cost = np.sum(direct_cost)
 
-    # print(
-    #     f"Total direct cost: {total_direct_cost},"
-    #     f" Time taken: {direct_cost_eval_time:.4e} seconds"
-    # )
     assert direct_cost_eval_time < 5.0e-2, (
         "Direct evaluation time should be less than 0.05 seconds."
     )
@@ -957,47 +766,48 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     approximate_cost_eval_time = end_time - start_time
     total_approx_cost = np.sum(approx_cost)
 
-    # print(
-    #     f"Total approximate cost: {total_approx_cost}, "
-    #     f"Time taken: {approximate_cost_eval_time:.4e} sec."
-    # )
     assert approximate_cost_eval_time < 1.0e-2, (
         "Approximate evaluation time should be less than 0.01 sec."
     )
 
     # Pre-caching the approximation:
     # - Call once in case of JIT compilation overhead:
-    approx_cost_edf_cache = make_approximate_mle_cost_edf_cache(
-        xs, num_approx_quantiles
+    approx_cost_edf_cache = make_cumulative_edf_cache(
+        xs, quantile_points=approx_quantile_points
     )
-    cached_edf_approximate_mle_edf_cost(
+    numba_approximate_mle_edf_cost_cached_edf(
         approx_cost_edf_cache,
         per_hundred_step_segment_starts,
         per_hundred_step_segment_ends,
     )
 
     cache_start_time = time.perf_counter()
-    approx_cost_edf_cache = make_approximate_mle_cost_edf_cache(
-        xs, num_approx_quantiles
+    approx_cost_edf_cache = make_cumulative_edf_cache(
+        xs, quantile_points=approx_quantile_points
     )
     cache_end_time = time.perf_counter()
     cache_creation_time = cache_end_time - cache_start_time
 
-    start_time = time.perf_counter()
-    pre_cached_cost = cached_edf_approximate_mle_edf_cost(
-        approx_cost_edf_cache,
-        per_hundred_step_segment_starts,
-        per_hundred_step_segment_ends,
-    )
-    end_time = time.perf_counter()
+    if numba_available:
+        start_time = time.perf_counter()
+        pre_cached_cost = numba_approximate_mle_edf_cost_cached_edf(
+            approx_cost_edf_cache,
+            per_hundred_step_segment_starts,
+            per_hundred_step_segment_ends,
+        )
+        end_time = time.perf_counter()
+    else:
+        start_time = time.perf_counter()
+        pre_cached_cost = numpy_approximate_mle_edf_cost_cached_edf(
+            approx_cost_edf_cache,
+            per_hundred_step_segment_starts,
+            per_hundred_step_segment_ends,
+        )
+        end_time = time.perf_counter()
+
     pre_cached_eval_time = end_time - start_time
     total_pre_cached_cost = np.sum(pre_cached_cost)
 
-    # print(f"Cache creation time: {cache_creation_time:.4e} seconds")
-    # print(
-    #     f"Total pre-cached approximate cost: {total_pre_cached_cost}, "
-    #     f"Time taken: {pre_cached_eval_time:.4e} seconds"
-    # )
     if numba_available:
         max_cache_creation_time = 5.0e-2
         max_pre_cached_eval_time = 1.0e-3

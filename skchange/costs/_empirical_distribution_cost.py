@@ -31,6 +31,42 @@ def make_approximate_mle_edf_cost_quantile_points(
 
 
 @njit
+def make_cumulative_edf_cache(
+    xs: np.ndarray, quantile_points: np.ndarray
+) -> np.ndarray:
+    """Create a cache for cumulative empirical distribution function (EDF) values.
+
+    This function computes the cumulative counts of values less than or equal to each
+    quantile value in the input array `xs`. It returns a 2D array where each row
+    corresponds to a quantile value and contains the cumulative counts of values
+    less than or equal to that quantile.
+
+    Parameters
+    ----------
+    xs : np.ndarray
+        The input data array.
+    quantile_points : np.ndarray
+        The quantile values at which to compute the cumulative counts.
+
+    Returns
+    -------
+    np.ndarray
+        A 2D array where each row corresponds to a quantile value and contains the
+        cumulative counts of values less than or equal to that quantile.
+    """
+    lte_quantile_point_mask = (xs[:, None] < quantile_points[None, :]).astype(
+        np.float64
+    )
+
+    # Add 0.5 to the count for samples equal to the quantile values:
+    lte_quantile_point_mask += 0.5 * (xs[:, None] == quantile_points[None, :])
+
+    cumulative_edf_quantiles = col_cumsum(lte_quantile_point_mask, init_zero=True)
+
+    return cumulative_edf_quantiles
+
+
+@njit
 def make_fixed_cdf_cost_quantile_weights(
     fixed_quantiles: np.ndarray,
     quantile_points: np.ndarray,
@@ -142,42 +178,6 @@ def fixed_cdf_cost_cached_edf(
     return out_segment_costs
 
 
-@njit
-def make_cumulative_edf_cache(
-    xs: np.ndarray, quantile_points: np.ndarray
-) -> np.ndarray:
-    """Create a cache for cumulative empirical distribution function (EDF) values.
-
-    This function computes the cumulative counts of values less than or equal to each
-    quantile value in the input array `xs`. It returns a 2D array where each row
-    corresponds to a quantile value and contains the cumulative counts of values
-    less than or equal to that quantile.
-
-    Parameters
-    ----------
-    xs : np.ndarray
-        The input data array.
-    quantile_points : np.ndarray
-        The quantile values at which to compute the cumulative counts.
-
-    Returns
-    -------
-    np.ndarray
-        A 2D array where each row corresponds to a quantile value and contains the
-        cumulative counts of values less than or equal to that quantile.
-    """
-    lte_quantile_point_mask = (xs[:, None] < quantile_points[None, :]).astype(
-        np.float64
-    )
-
-    # Add 0.5 to the count for samples equal to the quantile values:
-    lte_quantile_point_mask += 0.5 * (xs[:, None] == quantile_points[None, :])
-
-    cumulative_edf_quantiles = col_cumsum(lte_quantile_point_mask, init_zero=True)
-
-    return cumulative_edf_quantiles
-
-
 def numpy_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
@@ -286,6 +286,58 @@ def numpy_approximate_mle_edf_cost_cached_edf(
 
 
 @njit
+def _approx_binomial_ll_term(x: float):
+    """Approximate the binomial log-likelihood term.
+
+    This function computes an approximation of the binomial log-likelihood term
+    x * log(x) + (1 - x) * log(1 - x) for a given value of x.
+    Accurate to within 1.0e-3 for x in the interval [0.0, 1.0].
+
+    Parameters
+    ----------
+    x : float
+        The value for which to compute the binomial log-likelihood term.
+        Should be in the range [0, 1].
+    """
+    if x > 0.5:
+        # Use symmetry of the binomial log-likelihood term
+        # about x=0.5 to reduce the domain to [0, 0.5]:
+        x = 1.0 - x
+
+    if x < 1.0e-10:
+        approx_value = 0.0
+    elif x < 1.0e-3:
+        # Use the asymptotic approximation for small x:
+        approx_value = x * (np.log(x) - 1.0)
+    elif x < 2.5e-2:
+        # Order 4 Chebyshev polynomial approximation for x in [1.0e-3, 2.5e-2]:
+        approx_value = (
+            ((64513.836017426785 * x - 4953.1045740538023) * x + 165.63025883607173) * x
+            - 6.6788171711997532
+        ) * x - 0.001595547798836829
+    else:
+        # Order 6 Chebyshev polynomial approximation for x in [2.5e-2, 0.5]:
+        approx_value = (
+            (
+                (
+                    (
+                        (77.090688768185299 * x - 150.53171218228055) * x
+                        + 121.14810452648542
+                    )
+                    * x
+                    - 52.803665581025601
+                )
+                * x
+                + 15.822708801920289
+            )
+            * x
+            - 4.1977300027245929
+        ) * x - 0.02172852238504564
+
+    return approx_value
+
+
+@njit
 def numba_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
@@ -363,77 +415,24 @@ def numba_approximate_mle_edf_cost_cached_edf(
     return out_segment_costs
 
 
-@njit
-def _approx_binomial_ll_term(x: float):
-    """Approximate the binomial log-likelihood term.
-
-    This function computes an approximation of the binomial log-likelihood term
-    x * log(x) + (1 - x) * log(1 - x) for a given value of x.
-    Accurate to within 1.0e-3 for x in the interval [0.0, 1.0].
-
-    Parameters
-    ----------
-    x : float
-        The value for which to compute the binomial log-likelihood term.
-        Should be in the range [0, 1].
-    """
-    if x > 0.5:
-        # Use symmetry of the binomial log-likelihood term
-        # about x=0.5 to reduce the domain to [0, 0.5]:
-        x = 1.0 - x
-
-    if x < 1.0e-10:
-        approx_value = 0.0
-    elif x < 1.0e-3:
-        # Use the asymptotic approximation for small x:
-        approx_value = x * (np.log(x) - 1.0)
-    elif x < 2.5e-2:
-        # Order 4 Chebyshev polynomial approximation for x in [1.0e-3, 2.5e-2]:
-        approx_value = (
-            ((64513.836017426785 * x - 4953.1045740538023) * x + 165.63025883607173) * x
-            - 6.6788171711997532
-        ) * x - 0.001595547798836829
-    else:
-        # Order 6 Chebyshev polynomial approximation for x in [2.5e-2, 0.5]:
-        approx_value = (
-            (
-                (
-                    (
-                        (77.090688768185299 * x - 150.53171218228055) * x
-                        + 121.14810452648542
-                    )
-                    * x
-                    - 52.803665581025601
-                )
-                * x
-                + 15.822708801920289
-            )
-            * x
-            - 4.1977300027245929
-        ) * x - 0.02172852238504564
-
-    return approx_value
-
-
 class EmpiricalDistributionCost(BaseCost):
     """
     Empirical Distribution Cost.
 
     Computationally efficient approximate empirical distribution cost[1]_.
-    Uses the integrated log-likelihood of the empirical distribution function (EDF)
-    to evaluate the cost for each segment defined by the cuts, in a non-parametric way.
+    Uses the integrated log-likelihood of the empirical cumulative distribution
+    function (EDF) to evaluate the cost for each segment defined by the cuts,
+    in a non-parametric way.
 
     Parameters
     ----------
     param : any, optional (default=None)
-        If None, the cost is evaluated for an interval-optimised parameter, often the
-        maximum likelihood estimate. If not None, the cost is evaluated for the
-        specified fixed parameter.
-    use_cache : bool, optional (default=True)
-        If True, precompute the empirical distribution function for faster evaluation.
+        If None, the cost is evaluated on the empirical CDF estimate, i.e. the
+        maximum likelihood estimate of the CDF. If not None, the interval
+        empirical distributions are evaluated against the provided CDF.
     num_approximation_quantiles : int or None, optional (default=None)
         Number of quantiles to use for approximating the empirical distribution.
-        If None, it will be set to 4 * log(n_samples) during fitting.
+        If None, it will be set to `floor(4 * log(n_samples))` during fitting.
 
     References
     ----------
