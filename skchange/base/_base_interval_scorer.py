@@ -269,7 +269,7 @@ class BaseIntervalScorer(BaseEstimator):
     def n_samples(self) -> int:
         """Return the number of samples in the input data."""
         if self._X is None:
-            raise ValueError("The cost has not been fitted to data yet.")
+            raise RuntimeError("The cost has not been fitted to data yet.")
         else:
             return self._X.shape[0]
 
@@ -277,6 +277,6 @@ class BaseIntervalScorer(BaseEstimator):
     def n_variables(self) -> int:
         """Return the number of variables in the input data."""
         if self._X is None:
-            raise ValueError("The cost has not been fitted to data yet.")
+            raise RuntimeError("The cost has not been fitted to data yet.")
         else:
             return self._X.shape[1]

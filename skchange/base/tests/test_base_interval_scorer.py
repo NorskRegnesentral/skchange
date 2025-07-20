@@ -64,3 +64,14 @@ def test_task_tag_not_set():
     evaluator = InvalidConcreteIntervalEvaluator()
     with pytest.raises(RuntimeError):
         evaluator._get_required_cut_size()
+
+
+def test_not_fitted_n_samples_raises():
+    evaluator = BaseIntervalScorer()
+    with pytest.raises(RuntimeError):
+        evaluator.n_samples
+
+def test_not_fitted_n_variables_raises():
+    evaluator = BaseIntervalScorer()
+    with pytest.raises(RuntimeError):
+        evaluator.n_variables
