@@ -98,5 +98,15 @@ def test_accessing_n_samples_before_fit_raises(
 ):
     """Test that accessing n_samples before fitting raises an error."""
     cost = CostClass.create_test_instance()
-    with pytest.raises(ValueError, match="The cost has not been fitted to data yet."):
+    with pytest.raises(RuntimeError, match="The cost has not been fitted to data yet."):
         cost.n_samples
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_accessing_n_variables_before_fit_raises(
+    CostClass: type[BaseCost],
+):
+    """Test that accessing n_variables before fitting raises an error."""
+    cost = CostClass.create_test_instance()
+    with pytest.raises(RuntimeError, match="The cost has not been fitted to data yet."):
+        cost.n_variables
