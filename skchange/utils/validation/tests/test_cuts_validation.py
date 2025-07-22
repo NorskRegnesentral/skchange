@@ -39,10 +39,12 @@ def test_check_cuts_array_invalid_min_size():
     with pytest.raises(ValueError):
         check_cuts_array(intervals, n_samples=9, min_size=3)
 
+
 def test_check_cuts_array_negative_values():
     intervals = np.array([[1, 3], [-1, 6], [7, 9]])
     with pytest.raises(ValueError, match="All cuts must be non-negative"):
         check_cuts_array(intervals, n_samples=9)
+
 
 def test_check_cuts_array_out_of_bounds():
     intervals = np.array([[1, 3], [4, 10], [7, 9]])
