@@ -63,9 +63,7 @@ def test_dense_to_sparse_invalid_columns():
 def test_stat_threshold_anomaliser_raises_stat_lower_above_stat_upper():
     """Test StatThresholdAnomaliser with valid parameters."""
     change_detector = MovingWindow(bandwidth=3)
-    with pytest.raises(
-        ValueError, match="must be less than or equal to stat_upper"
-    ):
+    with pytest.raises(ValueError, match="must be less than or equal to stat_upper"):
         StatThresholdAnomaliser(
             change_detector=change_detector, stat_lower=0.5, stat_upper=0.4
         )
