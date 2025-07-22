@@ -465,7 +465,7 @@ class CROPS(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
-                validate_cuts=self.validate_cuts
+                validate_cuts=self.validate_cuts,
             )
         elif self.min_segment_length == 1:
             pelt_result = _run_pelt_min_segment_length_one(
@@ -474,7 +474,7 @@ class CROPS(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
-                validate_cuts=self.validate_cuts
+                validate_cuts=self.validate_cuts,
             )
         else:
             pelt_result = _run_pelt(
@@ -484,7 +484,7 @@ class CROPS(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
-                validate_cuts=self.validate_cuts
+                validate_cuts=self.validate_cuts,
             )
 
         return pelt_result.changepoints
