@@ -61,6 +61,7 @@ def run_capa(
     min_segment_length: int,
     max_segment_length: int,
     find_affected_components: bool = False,
+    validate_cuts: bool = True,
 ) -> tuple[np.ndarray, list[tuple[int, int]], list[tuple[int, int]]]:
     segment_penalised_saving.check_is_penalised()
     segment_penalised_saving.check_is_fitted()
@@ -88,7 +89,9 @@ def run_capa(
         starts = np.concatenate((starts, t_array - min_segment_length + 1))
         ends = np.repeat(t + 1, len(starts))
         intervals = np.column_stack((starts, ends))
-        segment_savings = segment_penalised_saving.evaluate(intervals).flatten()
+        segment_savings = segment_penalised_saving.evaluate(
+            intervals, validate_cuts=validate_cuts
+        ).flatten()
         candidate_savings = opt_savings[starts] + segment_savings
         candidate_argmax = np.argmax(candidate_savings)
         opt_segment_saving = candidate_savings[candidate_argmax]
@@ -96,7 +99,9 @@ def run_capa(
 
         # Point anomalies
         point_interval = np.column_stack((t_array, t_array + 1))
-        point_savings = point_penalised_saving.evaluate(point_interval).flatten()
+        point_savings = point_penalised_saving.evaluate(
+            point_interval, validate_cuts=validate_cuts
+        ).flatten()
         opt_point_saving = opt_savings[t] + point_savings[0]
 
         # Combine and store results
@@ -203,6 +208,10 @@ class CAPA(BaseSegmentAnomalyDetector):
         If ``True``, the affected components for each segment anomaly are returned in
         the `predict` output. This is only relevant for multivariate data in combination
         with a penalty array.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     References
     ----------
@@ -246,6 +255,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         max_segment_length: int = 1000,
         ignore_point_anomalies: bool = False,
         find_affected_components: bool = False,
+        validate_cuts: bool = True,
     ):
         self.segment_saving = segment_saving
         self.segment_penalty = segment_penalty
@@ -255,6 +265,7 @@ class CAPA(BaseSegmentAnomalyDetector):
         self.max_segment_length = max_segment_length
         self.ignore_point_anomalies = ignore_point_anomalies
         self.find_affected_components = find_affected_components
+        self.validate_cuts = validate_cuts
         super().__init__()
 
         _segment_score = L2Saving() if segment_saving is None else segment_saving
@@ -352,6 +363,7 @@ class CAPA(BaseSegmentAnomalyDetector):
             min_segment_length=self.min_segment_length,
             max_segment_length=self.max_segment_length,
             find_affected_components=self.find_affected_components,
+            validate_cuts=self.validate_cuts,
         )
         self.scores = pd.Series(opt_savings, index=X.index, name="score")
 

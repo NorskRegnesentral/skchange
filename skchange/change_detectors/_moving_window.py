@@ -43,6 +43,7 @@ def make_extended_moving_window_cuts(
 def transform_moving_window(
     penalised_score: BaseIntervalScorer,
     bandwidth: int,
+    validate_cuts: bool,
 ) -> np.ndarray:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
@@ -52,18 +53,23 @@ def transform_moving_window(
         n_samples, bandwidth, penalised_score.min_size
     )
     scores = np.repeat(np.nan, n_samples)
-    scores[cuts[:, 1]] = penalised_score.evaluate(cuts).reshape(-1)
+    scores[cuts[:, 1]] = penalised_score.evaluate(
+        cuts, validate_cuts=validate_cuts
+    ).reshape(-1)
     return scores
 
 
 def transform_multiple_moving_window(
     penalised_score: BaseIntervalScorer,
     bandwidths: np.ndarray,
+    validate_cuts: bool,
 ) -> np.ndarray:
     n_samples = penalised_score._X.shape[0]
     scores = np.full((n_samples, len(bandwidths)), np.nan)
     for i, bw in enumerate(bandwidths):
-        scores[:, i] = transform_moving_window(penalised_score, bw)
+        scores[:, i] = transform_moving_window(
+            penalised_score, bw, validate_cuts=validate_cuts
+        )
     return scores
 
 
@@ -206,6 +212,10 @@ class MovingWindow(BaseChangeDetector):
     local_optimum_fraction : float, default=0.4
         The size of the neighbourhood around a candidate change-point used in the
         ``"local_optimum"`` selection method. Must be larger than or equal to ``0``.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     References
     ----------
@@ -241,6 +251,7 @@ class MovingWindow(BaseChangeDetector):
         selection_method: str = "local_optimum",
         min_detection_fraction: float = 0.2,
         local_optimum_fraction: float = 0.4,
+        validate_cuts: bool = True,
     ):
         self.change_score = change_score
         self.penalty = penalty
@@ -248,6 +259,7 @@ class MovingWindow(BaseChangeDetector):
         self.selection_method = selection_method
         self.min_detection_fraction = min_detection_fraction
         self.local_optimum_fraction = local_optimum_fraction
+        self.validate_cuts = validate_cuts
         super().__init__()
 
         _score = CUSUM() if change_score is None else change_score
@@ -334,6 +346,7 @@ class MovingWindow(BaseChangeDetector):
         scores = transform_multiple_moving_window(
             self.fitted_score,
             self._bandwidth,
+            validate_cuts=self.validate_cuts
         )
         formatted_scores = pd.DataFrame(
             scores,

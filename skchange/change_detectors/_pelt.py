@@ -96,6 +96,7 @@ def _run_pelt(
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
+    validate_cuts: bool = True,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -129,6 +130,10 @@ def _run_pelt(
         This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with a large tolerance.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     Returns
     -------
@@ -167,7 +172,9 @@ def _run_pelt(
     )
 
     # TODO: Only allow aggregated costs in to "PELT"? User decides aggregation method.
-    non_changepoint_costs = np.sum(cost.evaluate(non_changepoint_intervals), axis=1)
+    non_changepoint_costs = np.sum(
+        cost.evaluate(non_changepoint_intervals, validate_cuts=validate_cuts), axis=1
+    )
     opt_cost[min_segment_length:non_changepoint_slice_end] = non_changepoint_costs
 
     num_pelt_cost_evals += len(non_changepoint_starts)
@@ -202,7 +209,9 @@ def _run_pelt(
         cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))
         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        interval_costs = np.sum(cost.evaluate(cost_eval_intervals), axis=1)
+        interval_costs = np.sum(
+            cost.evaluate(cost_eval_intervals, validate_cuts=validate_cuts), axis=1
+        )
 
         num_pelt_cost_evals += len(cost_eval_starts)
 
@@ -255,6 +264,7 @@ def _run_pelt_min_segment_length_one(
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
+    validate_cuts: bool = True,
 ) -> PELTResult:
     """Run the PELT algorithm, with a minimum segment length of one.
 
@@ -286,6 +296,10 @@ def _run_pelt_min_segment_length_one(
         This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with large tolerance.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     Returns
     -------
@@ -308,7 +322,7 @@ def _run_pelt_min_segment_length_one(
     opt_cost = np.concatenate((np.array([-penalty]), np.zeros(n_samples)))
 
     # Compute the cost for the first observation directly:
-    opt_cost[1] = cost.evaluate(np.array([[0, 1]]))[0, 0]
+    opt_cost[1] = cost.evaluate(np.array([[0, 1]]), validate_cuts=validate_cuts)[0, 0]
 
     # Aggregate number of cost evaluations:
     num_pelt_cost_evals = 1
@@ -334,7 +348,9 @@ def _run_pelt_min_segment_length_one(
         eval_starts = np.concatenate((eval_starts, np.array([current_obs_ind])))
         eval_ends = np.repeat(current_obs_ind + 1, len(eval_starts))
         eval_intervals = np.column_stack((eval_starts, eval_ends))
-        interval_costs = np.sum(cost.evaluate(eval_intervals), axis=1)
+        interval_costs = np.sum(
+            cost.evaluate(eval_intervals, validate_cuts=validate_cuts), axis=1
+        )
 
         num_pelt_cost_evals += len(eval_starts)
 
@@ -386,6 +402,7 @@ def _run_pelt_with_step_size(
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
+    validate_cuts: bool = True,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -418,6 +435,10 @@ def _run_pelt_with_step_size(
         This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with large tolerance.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     Returns
     -------
@@ -464,7 +485,9 @@ def _run_pelt_with_step_size(
         eval_starts = np.concatenate((eval_starts, np.array([obs_interval_start])))
         eval_ends = np.repeat(obs_interval_end + 1, len(eval_starts))
         eval_intervals = np.column_stack((eval_starts, eval_ends))
-        interval_costs = np.sum(cost.evaluate(eval_intervals), axis=1)
+        interval_costs = np.sum(
+            cost.evaluate(eval_intervals, validate_cuts=validate_cuts), axis=1
+        )
 
         pelt_cost_evals += len(eval_starts)
 
@@ -562,6 +585,10 @@ class PELT(BaseChangeDetector):
         This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with large tolerance.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     References
     ----------
@@ -599,6 +626,7 @@ class PELT(BaseChangeDetector):
         split_cost: float = 0.0,
         prune: bool = True,
         pruning_margin: float = 0.0,
+        validate_cuts: bool = True,
     ):
         self.cost = cost
         self.penalty = penalty
@@ -607,6 +635,7 @@ class PELT(BaseChangeDetector):
         self.split_cost = split_cost
         self.prune = prune
         self.pruning_margin = pruning_margin
+        self.validate_cuts = validate_cuts
         super().__init__()
 
         if self.step_size > 1 and self.min_segment_length > self.step_size:
@@ -693,6 +722,7 @@ class PELT(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
+                validate_cuts=self.validate_cuts,
             )
         elif self.min_segment_length == 1:
             # Special case for min_segment_length=1, with less overhead:
@@ -702,6 +732,7 @@ class PELT(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
+                validate_cuts=self.validate_cuts,
             )
         else:
             pelt_result = _run_pelt(
@@ -711,6 +742,7 @@ class PELT(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
+                validate_cuts=self.validate_cuts,
             )
 
         # Store the scores for introspection without recomputing using transform_scores

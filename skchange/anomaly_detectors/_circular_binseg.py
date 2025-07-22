@@ -64,6 +64,7 @@ def run_circular_binseg(
     min_segment_length: int,
     max_interval_length: int,
     growth_factor: float,
+    validate_cuts: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
@@ -92,7 +93,7 @@ def run_circular_binseg(
                 np.repeat(end, anomaly_start_candidates.size),
             )
         )
-        scores = penalised_score.evaluate(intervals)
+        scores = penalised_score.evaluate(intervals, validate_cuts=validate_cuts)
         agg_scores = np.sum(scores, axis=1)
         argmax = np.argmax(agg_scores)
         anomaly_scores[i] = agg_scores[argmax]
@@ -156,6 +157,10 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         of overlap between intervals of the same length, as the start of each interval
         is shifted by a factor of ``1 + 1 / growth_factor``. Must be a float in
         ``(1, 2]``.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     References
     ----------
@@ -196,12 +201,14 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         min_segment_length: int = 5,
         max_interval_length: int = 1000,
         growth_factor: float = 1.5,
+        validate_cuts: bool = True,
     ):
         self.anomaly_score = anomaly_score
         self.penalty = penalty
         self.min_segment_length = min_segment_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
+        self.validate_cuts = validate_cuts
         super().__init__()
 
         _score = L2Cost() if anomaly_score is None else anomaly_score
@@ -277,6 +284,7 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
             min_segment_length=self.min_segment_length,
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
+            validate_cuts=self.validate_cuts,
         )
 
         self.scores = pd.DataFrame(

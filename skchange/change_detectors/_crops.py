@@ -304,6 +304,10 @@ class CROPS(BaseChangeDetector):
         with differing numbers of change points, we need to nudge the penalty
         upwards in order to solve for the segmentation with fewer change points.
         By default set to 1.0e-4, which is sufficient for most cases.
+    validate_cuts : bool, optional, default=True
+        If ``True``, validate the cut arrays passed to the cost function.
+        This ensures that the cuts are valid for the cost function used,
+        at the cost of some performance overhead.
 
     References
     ----------
@@ -330,6 +334,7 @@ class CROPS(BaseChangeDetector):
         prune: bool = True,
         pruning_margin: float = 0.0,
         middle_penalty_nudge: float = 1.0e-5,
+        validate_cuts: bool = True,
     ):
         super().__init__()
         self.cost = cost
@@ -342,6 +347,7 @@ class CROPS(BaseChangeDetector):
         self.pruning_margin = pruning_margin
         self.middle_penalty_nudge = middle_penalty_nudge
         self.prune = prune
+        self.validate_cuts = validate_cuts
 
         self._cost = cost.clone()
         check_interval_scorer(
@@ -459,6 +465,7 @@ class CROPS(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
+                validate_cuts=self.validate_cuts
             )
         elif self.min_segment_length == 1:
             pelt_result = _run_pelt_min_segment_length_one(
@@ -467,6 +474,7 @@ class CROPS(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
+                validate_cuts=self.validate_cuts
             )
         else:
             pelt_result = _run_pelt(
@@ -476,6 +484,7 @@ class CROPS(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
+                validate_cuts=self.validate_cuts
             )
 
         return pelt_result.changepoints
