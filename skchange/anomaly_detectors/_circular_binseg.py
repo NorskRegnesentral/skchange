@@ -158,8 +158,8 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
         is shifted by a factor of ``1 + 1 / growth_factor``. Must be a float in
         ``(1, 2]``.
     validate_cuts : bool, optional, default=True
-        If ``True``, validate the cut arrays passed to the cost function.
-        This ensures that the cuts are valid for the cost function used,
+        If ``True``, validate the cut arrays passed to the anomaly score.
+        This ensures that the cuts are valid for the anomaly score used,
         at the cost of some performance overhead.
 
     References

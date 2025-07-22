@@ -177,8 +177,8 @@ class SeededBinarySegmentation(BaseChangeDetector):
           intervals that contain the detected changepoint, and repeats these two steps
           until no intervals are left with a score above the threshold.
     validate_cuts : bool, optional, default=True
-        If ``True``, validate the cut arrays passed to the cost function.
-        This ensures that the cuts are valid for the cost function used,
+        If ``True``, validate the cut arrays passed to the change score.
+        This ensures that the cuts are valid for the change score used,
         at the cost of some performance overhead.
 
     References

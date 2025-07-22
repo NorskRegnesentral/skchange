@@ -209,8 +209,8 @@ class CAPA(BaseSegmentAnomalyDetector):
         the `predict` output. This is only relevant for multivariate data in combination
         with a penalty array.
     validate_cuts : bool, optional, default=True
-        If ``True``, validate the cut arrays passed to the cost function.
-        This ensures that the cuts are valid for the cost function used,
+        If ``True``, validate the cut arrays passed to the savings.
+        This ensures that the cuts are valid for the savings used,
         at the cost of some performance overhead.
 
     References

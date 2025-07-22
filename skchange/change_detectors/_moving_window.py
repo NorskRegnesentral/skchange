@@ -213,8 +213,8 @@ class MovingWindow(BaseChangeDetector):
         The size of the neighbourhood around a candidate change-point used in the
         ``"local_optimum"`` selection method. Must be larger than or equal to ``0``.
     validate_cuts : bool, optional, default=True
-        If ``True``, validate the cut arrays passed to the cost function.
-        This ensures that the cuts are valid for the cost function used,
+        If ``True``, validate the cut arrays passed to the change score.
+        This ensures that the cuts are valid for the change score used,
         at the cost of some performance overhead.
 
     References
