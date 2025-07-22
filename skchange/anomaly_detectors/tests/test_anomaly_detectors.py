@@ -3,8 +3,12 @@
 import pandas as pd
 import pytest
 
-from skchange.anomaly_detectors import COLLECTIVE_ANOMALY_DETECTORS
+from skchange.anomaly_detectors import (
+    COLLECTIVE_ANOMALY_DETECTORS,
+    StatThresholdAnomaliser,
+)
 from skchange.anomaly_detectors.base import BaseSegmentAnomalyDetector
+from skchange.change_detectors import MovingWindow
 from skchange.datasets import generate_anomalous_data
 
 true_anomalies = [(30, 35), (70, 75)]
@@ -54,3 +58,14 @@ def test_dense_to_sparse_invalid_columns():
     invalid_df = pd.DataFrame({"invalid_column": [0, 1, 0, 1]})
     with pytest.raises(ValueError):
         BaseSegmentAnomalyDetector.dense_to_sparse(invalid_df)
+
+
+def test_stat_threshold_anomaliser_raises_stat_lower_above_stat_upper():
+    """Test StatThresholdAnomaliser with valid parameters."""
+    change_detector = MovingWindow(bandwidth=3)
+    with pytest.raises(
+        ValueError, match="must be less than or equal to stat_upper"
+    ):
+        StatThresholdAnomaliser(
+            change_detector=change_detector, stat_lower=0.5, stat_upper=0.4
+        )
