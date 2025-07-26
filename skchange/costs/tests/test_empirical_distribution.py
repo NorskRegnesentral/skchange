@@ -928,7 +928,7 @@ def test_empirical_distribution_cost_check_fixed_param_errors():
 
 
 def test_empirical_distribution_cost_get_model_size_raises():
-    """Test that get_model_size raises an error when the cost is not fitted and no quantiles are specified."""
+    """Test get_model_size raises when cost not fitted, no quantiles specified."""
     cost = EmpiricalDistributionCost(param=None, num_approximation_quantiles=None)
     with pytest.raises(
         ValueError,
@@ -938,7 +938,7 @@ def test_empirical_distribution_cost_get_model_size_raises():
 
 
 def test_empirical_distribution_cost_check_fixed_param_ndim_error():
-    """Test _check_fixed_param raises when fixed_cdf_quantiles or fixed_samples have ndim > 2."""
+    """Test _check_fixed_param raises, fixed_cdf_quantiles or fixed_samples ndim > 2."""
     cost = EmpiricalDistributionCost()
     X = np.random.normal(size=(100, 2))  # Example input data
 
