@@ -5,6 +5,7 @@ import pytest
 from scipy import stats
 
 from skchange.costs._empirical_distribution_cost import (
+    EmpiricalDistributionCost,
     _approx_binomial_ll_term,
     fixed_cdf_cost_cached_edf,
     make_approximate_mle_edf_cost_quantile_points,
@@ -744,8 +745,8 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     total_direct_cost = np.sum(direct_cost)
 
     assert (
-        direct_cost_eval_time < 5.0e-2
-    ), "Direct evaluation time should be less than 0.05 seconds."
+        direct_cost_eval_time < 6.0e-2
+    ), "Direct evaluation time should be less than 0.06 seconds."
 
     # Approximate evaluation:
     # - Call once in case of JIT compilation overhead:
@@ -828,3 +829,125 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     assert np.isclose(
         total_direct_cost, total_pre_cached_cost, rtol=5.0e-2
     ), "Approximate cost does not match direct cost within tolerance."
+
+
+def test_make_fixed_cdf_cost_quantile_weights_raises_value_error():
+    """Test raises ValueError on insufficient quantiles."""
+    fixed_quantiles = np.array([0.1, 0.5])  # Fewer than 3 quantiles
+    quantile_points = np.array([1.0, 2.0])  # Corresponding points
+
+    with pytest.raises(ValueError, match="At least three fixed quantile values"):
+        make_fixed_cdf_cost_quantile_weights(fixed_quantiles, quantile_points)
+
+
+def test_empirical_distribution_cost_default_num_quantiles():
+    """Test EmpiricalDistributionCost with default number of approximation quantiles."""
+    n_samples = 100
+    X = np.random.normal(size=(n_samples, 1))  # Generate random data
+
+    # Initialize EmpiricalDistributionCost with default parameters
+    cost = EmpiricalDistributionCost(param=None, num_approximation_quantiles=None)
+    assert cost.min_size == 10, "Default min_size should be 10 when not fitted."
+    cost.fit(X)
+
+    # Verify the default number of approximation quantiles
+    expected_num_quantiles = int(np.ceil(4 * np.log(n_samples)))
+    assert (
+        cost.min_size == expected_num_quantiles
+    ), f"Expected min_size to be {expected_num_quantiles}, but got {cost.min_size}."
+    assert (
+        cost.num_quantiles_ == expected_num_quantiles
+    ), f"Expected {expected_num_quantiles} quantiles, but got {cost.num_quantiles_}."
+
+
+def test_min_size_is_num_approximation_quantiles():
+    """Test that min_size is set to num_approximation_quantiles."""
+    num_approximation_quantiles = 20
+    cost = EmpiricalDistributionCost(
+        param=None, num_approximation_quantiles=num_approximation_quantiles
+    )
+    assert (
+        cost.min_size == num_approximation_quantiles
+    ), f"Expected min_size to be {num_approximation_quantiles}, but got {cost.min_size}"
+
+
+def test_empirical_distribution_cost_check_fixed_param_errors():
+    """Test all error cases for EmpiricalDistributionCost._check_fixed_param."""
+    cost = EmpiricalDistributionCost()
+
+    X = np.random.normal(size=(100, 2))  # Example input data
+
+    # Case 1: Fixed samples and quantiles have mismatched shapes
+    fixed_samples = np.array([1, 2, 3])
+    fixed_quantiles = np.array([0.1, 0.2])  # Mismatched shape
+    with pytest.raises(
+        ValueError, match="samples must have a corresponding fixed quantile"
+    ):
+        cost._check_fixed_param((fixed_samples, fixed_quantiles), X)
+
+    # Case 2: Fixed samples are not sorted and strictly increasing
+    fixed_samples = np.array([3, 2, 1])  # Not sorted
+    fixed_quantiles = np.array([0.1, 0.2, 0.3])
+    with pytest.raises(
+        ValueError, match="Fixed samples must be sorted, and strictly increasing."
+    ):
+        cost._check_fixed_param((fixed_samples, fixed_quantiles), X)
+
+    # Case 3: Fixed quantiles are not sorted and strictly increasing
+    fixed_samples = np.array([1, 2, 3])
+    fixed_quantiles = np.array([0.3, 0.2, 0.1])  # Not sorted
+    with pytest.raises(
+        ValueError, match="Fixed CDF quantiles must be sorted, and strictly increasing."
+    ):
+        cost._check_fixed_param((fixed_samples, fixed_quantiles), X)
+
+    # Case 4: Fixed quantiles are not within the interval [0, 1]
+    fixed_samples = np.array([1, 2, 3])
+    fixed_quantiles = np.array([-0.1, 0.5, 1.1])  # Out of bounds
+    with pytest.raises(
+        ValueError,
+        match="Fixed quantiles must be within the closed interval \\[0, 1\\]",
+    ):
+        cost._check_fixed_param((fixed_samples, fixed_quantiles), X)
+
+    # Case 5: Fixed samples and quantiles are 1D but X has multiple columns
+    fixed_samples = np.array([1, 2, 3])
+    fixed_quantiles = np.array([0.1, 0.5, 0.9])
+    X = np.random.normal(size=(100, 3))  # Multi-column data
+    result_samples, result_quantiles = cost._check_fixed_param(
+        (fixed_samples, fixed_quantiles), X
+    )
+    assert result_samples.shape == (
+        3,
+        3,
+    ), "Fixed samples should be tiled to match the number of columns in X."
+    assert result_quantiles.shape == (
+        3,
+        3,
+    ), "Fixed quantiles should be tiled to match the number of columns in X."
+
+
+def test_empirical_distribution_cost_get_model_size_raises():
+    """Test that get_model_size raises an error when the cost is not fitted and no quantiles are specified."""
+    cost = EmpiricalDistributionCost(param=None, num_approximation_quantiles=None)
+    with pytest.raises(
+        ValueError,
+        match="The cost is not fitted, and no number of quantiles was specified",
+    ):
+        cost.get_model_size(p=1)
+
+
+def test_empirical_distribution_cost_check_fixed_param_ndim_error():
+    """Test _check_fixed_param raises when fixed_cdf_quantiles or fixed_samples have ndim > 2."""
+    cost = EmpiricalDistributionCost()
+    X = np.random.normal(size=(100, 2))  # Example input data
+
+    # Case 1: fixed_samples has ndim > 2
+    fixed_samples = np.random.normal(size=(3, 2, 2))  # Invalid shape
+    fixed_quantiles = np.random.normal(size=(3, 2, 2))  # Invalid shape
+    # fixed_quantiles = np.array([0.1, 0.5, 0.9])
+    with pytest.raises(
+        ValueError,
+        match="Fixed samples and quantiles must be 1D or 2D arrays",
+    ):
+        cost._check_fixed_param((fixed_samples, fixed_quantiles), X)

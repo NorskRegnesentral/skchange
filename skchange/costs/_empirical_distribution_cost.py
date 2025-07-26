@@ -1,10 +1,11 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from skchange.costs.base import BaseCost
-from skchange.utils.numba import njit, numba_available
-from skchange.utils.numba.general import compute_finite_difference_derivatives
-from skchange.utils.numba.stats import col_cumsum
+from ..costs.base import BaseCost
+from ..utils.numba import njit, numba_available
+from ..utils.numba.general import compute_finite_difference_derivatives
+from ..utils.numba.stats import col_cumsum
+from ..utils.validation.parameters import check_larger_than
 
 
 def make_approximate_mle_edf_cost_quantile_points(
@@ -138,10 +139,6 @@ def fixed_cdf_cost_cached_edf(
     """
     num_quantiles = cumulative_edf_quantiles.shape[1]
 
-    # Compute the integrals weights by approximating the derivative of the fixed CDF:
-    if num_quantiles < 3:
-        raise ValueError("At least three fixed quantile values are required.")
-
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
 
@@ -210,13 +207,6 @@ def numpy_approximate_mle_edf_cost_cached_edf(
     """
     n_samples, num_quantiles = cumulative_edf_quantiles.shape
 
-    if num_quantiles <= 0:
-        raise ValueError("num_quantiles must be a positive integer.")
-    if num_quantiles > n_samples - 2:
-        raise ValueError(
-            "num_quantiles should not be greater than the number of samples minus 2."
-        )
-
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
 
@@ -235,8 +225,6 @@ def numpy_approximate_mle_edf_cost_cached_edf(
     # Iterate over each segment defined by the starts and ends:
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
-        if segment_length <= 0:
-            raise ValueError("Invalid segment length.")
 
         # Shifted by 1 to account for the row of zeros at the start:
         segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
@@ -370,13 +358,6 @@ def numba_approximate_mle_edf_cost_cached_edf(
     """
     n_samples, num_quantiles = cumulative_edf_quantiles.shape
 
-    if num_quantiles <= 0:
-        raise ValueError("num_quantiles must be a positive integer.")
-    if num_quantiles > n_samples - 2:
-        raise ValueError(
-            "num_quantiles should not be greater than the number of samples minus 2."
-        )
-
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
 
@@ -391,8 +372,6 @@ def numba_approximate_mle_edf_cost_cached_edf(
     # Iterate over each segment defined by the starts and ends:
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
-        if segment_length <= 0:
-            raise ValueError("Invalid segment length.")
 
         # Shifted by 1 to account for the row of zeros at the start:
         segment_edf_at_quantiles[:] = cumulative_edf_quantiles[segment_end, :]
@@ -459,7 +438,14 @@ class EmpiricalDistributionCost(BaseCost):
         super().__init__(param)
         self.num_approximation_quantiles = num_approximation_quantiles
 
-        self.num_quantiles_ = None  # Will be set during fitting
+        check_larger_than(
+            min_value=3,
+            value=self.num_approximation_quantiles,
+            name="num_approximation_quantiles",
+            allow_none=True,
+        )
+
+        self.num_quantiles_: int = 0  # Will be set during fitting
         self.quantile_points_: np.ndarray | None = None
         self.quantile_values_: np.ndarray | None = None
 
@@ -535,22 +521,17 @@ class EmpiricalDistributionCost(BaseCost):
 
         if not (fixed_samples.shape == fixed_cdf_quantiles.shape):
             raise ValueError("All samples must have a corresponding fixed quantile.")
+        if fixed_cdf_quantiles.ndim > 2:
+            raise ValueError(
+                "Fixed samples and quantiles must be 1D or 2D arrays, "
+                f"but got shapes {fixed_samples.shape} and {fixed_cdf_quantiles.shape}."
+            )
 
         # Standardize the shapes of fixed samples and quantiles:
         if fixed_samples.ndim == 1:
             fixed_samples = fixed_samples.reshape(-1, 1)
-        elif fixed_cdf_quantiles.ndim > 2:
-            raise ValueError(
-                "Fixed samples must be 1D or 2D arrays, "
-                f"but got shape {fixed_samples.shape}."
-            )
         if fixed_cdf_quantiles.ndim == 1:
             fixed_cdf_quantiles = fixed_cdf_quantiles.reshape(-1, 1)
-        elif fixed_cdf_quantiles.ndim > 2:
-            raise ValueError(
-                "Fixed quantiles must be 1D or 2D arrays, "
-                f"but got shape {fixed_cdf_quantiles.shape}."
-            )
 
         if not np.all(np.diff(fixed_samples, axis=0) > 0):
             raise ValueError("Fixed samples must be sorted, and strictly increasing.")
@@ -646,15 +627,12 @@ class EmpiricalDistributionCost(BaseCost):
         int
             The minimum valid size of an interval to evaluate.
         """
-        # For EDF, we need at least 2 samples to compute a meaningful distribution
+        if self.is_fitted:
+            return self.num_quantiles_
         if self.num_approximation_quantiles is not None:
-            return self.num_approximation_quantiles + 2
+            return self.num_approximation_quantiles
         else:
-            # If not fitted and no n_quantiles specified, assume a default:
-            # For 12 data points, we get 10 quantiles, (ceil(4 * log(12)) = 10),
-            # so we respect the requirement of having at least 2 samples
-            # more than the number of quantiles.
-            return 12
+            return 10
 
     def get_model_size(self, p: int) -> int:
         """Get the number of parameters in the cost function.
@@ -670,14 +648,15 @@ class EmpiricalDistributionCost(BaseCost):
             Number of parameters in the cost function.
         """
         # For the EDF, the model size depends on the number of quantiles?
-        if self.is_fitted and self.num_quantiles_ is not None:
-            return self.num_quantiles_ + 2
+        if self.is_fitted:
+            return 2 * self.num_quantiles_
         elif self.num_approximation_quantiles is not None:
-            return self.num_approximation_quantiles + 2
+            return 2 * self.num_approximation_quantiles
         else:
-            # If not fitted or no num_approximation_quantiles specified,
-            # assume a default value of 10 quantiles:
-            return 10 + 2
+            raise ValueError(
+                "The cost is not fitted, and no number of quantiles was specified "
+                "for the approximation of the ECDF at initialization."
+            )
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
@@ -718,6 +697,6 @@ class EmpiricalDistributionCost(BaseCost):
         params1 = {"param": None, "num_approximation_quantiles": 10}
         params2 = {
             "param": (fixed_samples, fixed_quantiles),
-            "num_approximation_quantiles": None,
+            "num_approximation_quantiles": len(fixed_quantiles),
         }
         return [params1, params2]
