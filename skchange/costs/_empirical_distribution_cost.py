@@ -329,9 +329,11 @@ def numba_approximate_mle_edf_cost_cached_edf(
         ### Begin computing integrated log-likelihood for the segment ###
         segment_ll_at_mle = 0.0
         for quantile in segment_edf_at_quantiles:
-            segment_ll_at_mle += quantile * np.log(quantile)
+            if quantile > 1.0e-10:
+                segment_ll_at_mle += quantile * np.log(quantile)
             one_minus_quantile = 1.0 - quantile
-            segment_ll_at_mle += one_minus_quantile * np.log(one_minus_quantile)
+            if one_minus_quantile > 1.0e-10:
+                segment_ll_at_mle += one_minus_quantile * np.log(one_minus_quantile)
 
         segment_ll_at_mle *= (
             -2.0 * edf_integration_scale / num_quantiles
