@@ -6,7 +6,6 @@ from scipy import stats
 
 from skchange.costs._empirical_distribution_cost import (
     EmpiricalDistributionCost,
-    _binomial_ll_rational_approximation,
     fixed_cdf_cost_cached_edf,
     make_approximate_mle_edf_cost_quantile_points,
     make_cumulative_edf_cache,
@@ -332,34 +331,6 @@ def fixed_cdf_empirical_distribution_cost(
         segment_costs[i] = -2.0 * integrated_ll_at_mle
 
     return segment_costs
-
-
-def test_approx_binomial_ll_term():
-    """Test the binomial log-likelihood term computation."""
-    # Test with a simple case
-    test_points = np.linspace(1.0e-10, 1.0 - 1.0e-10, 50_000)
-    approx_bin_ll_values = np.zeros(len(test_points), dtype=np.float64)
-    for i, x in enumerate(test_points):
-        # approx_bin_ll_values[i] = _approx_binomial_ll_term(x)
-        approx_bin_ll_values[i] = _binomial_ll_rational_approximation(x)
-
-    actual_bin_ll_values = test_points * np.log(test_points) + (
-        1.0 - test_points
-    ) * np.log(1.0 - test_points)
-
-    # Assert that the approxmation is good to within 0.05% relative error:
-    np.testing.assert_allclose(
-        approx_bin_ll_values,
-        actual_bin_ll_values,
-        atol=5.0e-5,
-    )
-
-    # Approximation also good to the first four decimal places:
-    np.testing.assert_array_almost_equal(
-        approx_bin_ll_values,
-        actual_bin_ll_values,
-        decimal=4,
-    )
 
 
 def test_fixed_cdf_empirical_distribution_cost_vs_direct_cost():

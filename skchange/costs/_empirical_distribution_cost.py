@@ -273,93 +273,6 @@ def numpy_approximate_mle_edf_cost_cached_edf(
     return out_segment_costs
 
 
-# Hardcoded approximation values for the binomial log-likelihood term:
-# f(x) = x * log(x) + (1 - x) * log(1 - x)
-_approx_binomial_ll_nodes = np.array(
-    [
-        1.0e-6,
-        0.4687500625,
-        0.10817386057692306,
-        0.3605772019230769,
-        0.015454265796703295,
-        0.23437553125,
-        0.03863416449175824,
-    ]
-)
-_approx_binomial_ll_values = np.array(
-    [
-        -1.5517790144607076e-5,
-        -0.6911935049380544,
-        -0.34268085739665216,
-        -0.6537488460248047,
-        -0.0797761181588953,
-        -0.5445100429123435,
-        -0.16357865509633585,
-    ]
-)
-_approx_binomial_ll_weights = np.array(
-    [
-        -1.0999505151015887e-5,
-        -0.23735582012834763,
-        0.14439779404793204,
-        0.5477863386252506,
-        0.005147979430598484,
-        -0.42606505448747667,
-        -0.032409696073244586,
-    ]
-)
-_approx_binomial_ll_weight_times_values = (
-    _approx_binomial_ll_weights * _approx_binomial_ll_values
-)
-
-
-@njit(fastmath=True)
-def _binomial_ll_rational_approximation(x: float) -> float:
-    """
-    Approximation to the binomial log-likelihood term x * log(x) + (1 - x) * log(1 - x).
-
-    Accurate to within 5.0e-5 for x in the interval [0.0, 1.0].
-
-    Parameters
-    ----------
-    x : float
-        The point at which to evaluate the approximation
-
-    Returns
-    -------
-    float
-        The approximate value of the binomial log-likelihood term at x.
-    """
-    if x > 0.5:
-        # Use symmetry of the binomial log-likelihood term
-        # about x=0.5 to reduce the domain to [0, 0.5]:
-        x = 1.0 - x
-
-    if x < 1.0e-10:
-        return 0.0
-    elif x < 1.0e-5:
-        # Use asymptotic approximation for small x:
-        return x * (np.log(x) - 1.0)
-    else:
-        # For values in the range [1.0e-5, 0.5], use the barycentric approximation:
-        # Check if x is at a node (within a tolerance):
-        tolerance = 1e-8
-        for i in range(len(_approx_binomial_ll_nodes)):
-            if abs(x - _approx_binomial_ll_nodes[i]) < tolerance:
-                return _approx_binomial_ll_values[i]
-
-        numerator = 0.0
-        denominator = 0.0
-
-        # General case: not at a node
-        for i in range(len(_approx_binomial_ll_nodes)):
-            C_i = 1.0 / (x - _approx_binomial_ll_nodes[i])
-            numerator += C_i * _approx_binomial_ll_weight_times_values[i]
-            denominator += C_i * _approx_binomial_ll_weights[i]
-
-        return numerator / denominator
-
-
 @njit(fastmath=True)
 def numba_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
@@ -416,7 +329,6 @@ def numba_approximate_mle_edf_cost_cached_edf(
         ### Begin computing integrated log-likelihood for the segment ###
         segment_ll_at_mle = 0.0
         for quantile in segment_edf_at_quantiles:
-            # segment_ll_at_mle += _binomial_ll_rational_approximation(quantile)
             segment_ll_at_mle += quantile * np.log(quantile)
             one_minus_quantile = 1.0 - quantile
             segment_ll_at_mle += one_minus_quantile * np.log(one_minus_quantile)
