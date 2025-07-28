@@ -747,10 +747,12 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     approx_cost_edf_cache = make_cumulative_edf_cache(
         xs, quantile_points=approx_quantile_points
     )
+    scratch_array = np.zeros((3, len(approx_quantile_points)), dtype=np.float64)
     numba_approximate_mle_edf_cost_cached_edf(
         approx_cost_edf_cache,
         per_hundred_step_segment_starts,
         per_hundred_step_segment_ends,
+        scratch_array=scratch_array,
     )
 
     cache_start_time = time.perf_counter()
@@ -766,6 +768,7 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
             approx_cost_edf_cache,
             per_hundred_step_segment_starts,
             per_hundred_step_segment_ends,
+            scratch_array=scratch_array,
         )
         end_time = time.perf_counter()
     else:
@@ -774,6 +777,7 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
             approx_cost_edf_cache,
             per_hundred_step_segment_starts,
             per_hundred_step_segment_ends,
+            scratch_array=scratch_array,
         )
         end_time = time.perf_counter()
 

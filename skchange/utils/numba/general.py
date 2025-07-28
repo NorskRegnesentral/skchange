@@ -120,7 +120,7 @@ def compute_finite_difference_derivatives(ts: np.ndarray, ys: np.ndarray) -> np.
         The approximated second-order derivatives of y(t) at the sampling points.
     """
     if len(ts) < 3:
-        raise ValueError("At least three quantiles are required.")
+        raise ValueError("At least three data points are required.")
 
     diff_weights = np.zeros((len(ts), len(ts)), dtype=np.float64)
     steps = ts[1:] - ts[:-1]
