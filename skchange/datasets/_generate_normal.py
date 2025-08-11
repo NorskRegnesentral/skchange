@@ -376,7 +376,7 @@ def generate_piecewise_normal_data(
             "n_segments": n_segments,
             "n_samples": _params["n_samples"],
             "means": means,
-            "variances": variances,
+            "variances": covs,
             "lengths": _params["lengths"],
             "change_points": _params["change_points"],
             "affected_variables": affected_variables,
