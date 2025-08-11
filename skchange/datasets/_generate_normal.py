@@ -325,7 +325,10 @@ def generate_piecewise_normal_data(
     {'n_segments': 2,
     'n_samples': np.int64(10),
     'means': [array([-2.60631446,  1.81071173]), array([0.89274914, 1.81071173])],
-    'variances': 1.0,
+    'variances': [array([[1., 0.],
+            [0., 1.]]),
+    array([[1., 0.],
+            [0., 1.]])],
     'lengths': array([3, 7]),
     'change_points': array([3]),
     'affected_variables': [array([0, 1]), array([0])]}
