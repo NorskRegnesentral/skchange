@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from skbase._exceptions import NotFittedError
 
 from skchange.base import BaseIntervalScorer
 
@@ -68,11 +69,11 @@ def test_task_tag_not_set():
 
 def test_not_fitted_n_samples_raises():
     evaluator = BaseIntervalScorer()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(NotFittedError):
         evaluator.n_samples
 
 
 def test_not_fitted_n_variables_raises():
     evaluator = BaseIntervalScorer()
-    with pytest.raises(RuntimeError):
+    with pytest.raises(NotFittedError):
         evaluator.n_variables
