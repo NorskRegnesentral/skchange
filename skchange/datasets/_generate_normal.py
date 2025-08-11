@@ -184,6 +184,9 @@ def _get_covs(
                 f" Got covariance matrix with shape {_var.shape} and p={n_variables}."
             )
 
+        if not np.allclose(_cov, _cov.T, atol=1e-8):
+            raise ValueError("Covariance matrix must be symmetric.")
+
         eigvals = np.linalg.eigvalsh(_cov)
         if np.any(eigvals <= 0):
             raise ValueError("Covariance matrix must be positive definite.")
