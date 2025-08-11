@@ -42,6 +42,9 @@ def _get_n_segments(
         return len(lengths)
 
     if n_segments is None:
+        if n_samples < 1:
+            raise ValueError("`n_samples` must be at least 1.")
+
         mean_n_cpts = 4
         binom_prob = min(0.1, mean_n_cpts / n_samples)
         n_change_points = scipy.stats.binom(n_samples, binom_prob).rvs(
@@ -113,6 +116,7 @@ def _get_means(
             f" Got {len(means)} means and {n_segments} segments."
         )
 
+    n_variables = int(n_variables)
     _means = [np.zeros(n_variables)]  # Initialize for the loop to work. Remove later.
     for mean, affected in zip(means, affected_variables):
         prev_mean = _means[-1].copy()
@@ -129,7 +133,7 @@ def _get_means(
         else:
             _mean = np.asarray(mean).reshape(-1)
 
-        if _mean.shape[0] != n_variables:
+        if _mean.shape[0] != int(n_variables):
             raise ValueError(
                 "Mean vector must have the same length as the number of variables."
                 f" Got mean={_mean} with shape {_mean.shape}"
@@ -157,6 +161,7 @@ def _get_covs(
             f" Got {len(covs)} variances and {n_segments} segments."
         )
 
+    n_variables = int(n_variables)
     _vars = [np.ones(n_variables)]  # Initialize for the loop to work. Remove later.
     _covs = []
     for cov, affected in zip(covs, affected_variables):
@@ -334,6 +339,9 @@ def generate_piecewise_normal_data(
     'affected_variables': [array([0, 1]), array([0])]}
     """
     random_state = check_random_state(random_state)
+    if n_variables < 1:
+        raise ValueError("n_variables must be at least 1.")
+
     n_segments = _get_n_segments(
         means,
         variances,
