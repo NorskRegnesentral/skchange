@@ -228,7 +228,6 @@ def numpy_fixed_cdf_cost_cached_edf(
 
     return out_segment_costs
 
-
 def numpy_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
@@ -594,7 +593,6 @@ class EmpiricalDistributionCost(BaseCost):
                         :, col
                     ],
                     quantile_weights=self._quantile_weights[:, col],
-                    scratch_array=self._scratch_array,
                     out_segment_costs=costs[:, col],
                 )
 
