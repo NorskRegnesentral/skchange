@@ -136,7 +136,7 @@ def _run_pelt(
         Container for the results of the PELT algorithm run.
     """
     cost.check_is_fitted()
-    n_samples = cost.n_samples()
+    n_samples = cost.n_samples
 
     if min_segment_length > n_samples:
         raise ValueError(
@@ -297,8 +297,7 @@ def _run_pelt_min_segment_length_one(
         - `changepoints`: The final set of changepoints.
     """
     cost.check_is_fitted()
-    # n_samples = cost._X.shape[0]
-    n_samples = cost.n_samples()
+    n_samples = cost.n_samples
     if n_samples < 1:
         raise ValueError(
             "The number of samples for the fitted cost must be at least one. "
@@ -425,7 +424,7 @@ def _run_pelt_with_step_size(
         Container for the results of the PELT algorithm run.
     """
     cost.check_is_fitted()
-    n_samples = cost.n_samples()
+    n_samples = cost.n_samples
     if n_samples < step_size:
         raise ValueError("The `step_size` cannot be larger than the number of samples.")
 

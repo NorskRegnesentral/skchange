@@ -67,7 +67,7 @@ def run_circular_binseg(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
-    n_samples = penalised_score._X.shape[0]
+    n_samples = penalised_score.n_samples
 
     starts, ends = make_seeded_intervals(
         n_samples,
@@ -107,8 +107,8 @@ def run_circular_binseg(
 
 def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_bic_penalty(score.get_model_size(p), n, additional_cpts=2)
 
 

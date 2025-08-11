@@ -218,7 +218,7 @@ class MultivariateGaussianCost(BaseCost):
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
         """
         if self.is_fitted:
-            return self._X.shape[1] + 1
+            return self.n_variables + 1
         else:
             return None
 
