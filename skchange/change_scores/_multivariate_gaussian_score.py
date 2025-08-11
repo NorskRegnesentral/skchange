@@ -245,7 +245,7 @@ class MultivariateGaussianScore(BaseIntervalScorer):
             bartlett_corrections = compute_bartlett_corrections(
                 sequence_lengths=segment_lengths,
                 cut_points=segment_splits,
-                dimension=self._X.shape[1],
+                dimension=self.n_variables,
             )
             return bartlett_corrections * raw_scores
         else:

@@ -28,8 +28,8 @@ def make_nonlinear_chi2_penalty_from_score(
     score: BaseIntervalScorer,
 ) -> np.ndarray:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_nonlinear_chi2_penalty(score.get_model_size(p), n, p)
 
 
