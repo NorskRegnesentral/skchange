@@ -790,7 +790,6 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
             approx_cost_edf_cache,
             per_hundred_step_segment_starts,
             per_hundred_step_segment_ends,
-            scratch_array=scratch_array,
         )
         end_time = time.perf_counter()
 
