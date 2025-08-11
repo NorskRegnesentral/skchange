@@ -91,7 +91,6 @@ def run_seeded_binseg(
     max_interval_length: int,
     growth_factor: float,
     selection_method: str = "greedy",
-    validate_cuts: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
@@ -113,7 +112,7 @@ def run_seeded_binseg(
         intervals = np.column_stack(
             (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
         )
-        scores = penalised_score.evaluate(intervals, validate_cuts=validate_cuts)
+        scores = penalised_score.evaluate(intervals)
         argmax = np.argmax(scores)
         max_scores[i] = scores[argmax, 0]  # index 0 to get a scalar value
         argmax_scores[i] = splits[0] + argmax
@@ -176,10 +175,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
           and selects the one with the narrowest interval. It then removes all
           intervals that contain the detected changepoint, and repeats these two steps
           until no intervals are left with a score above the threshold.
-    validate_cuts : bool, optional, default=True
-        If ``True``, validate the cut arrays passed to the change score.
-        This ensures that the cuts are valid for the change score used,
-        at the cost of some performance overhead.
 
     References
     ----------
@@ -217,14 +212,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
         max_interval_length: int = 200,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
-        validate_cuts: bool = True,
     ):
         self.change_score = change_score
         self.penalty = penalty
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         self.selection_method = selection_method
-        self.validate_cuts = validate_cuts
         super().__init__()
 
         _score = CUSUM() if change_score is None else change_score
@@ -299,7 +292,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
             max_interval_length=self.max_interval_length,
             growth_factor=self.growth_factor,
             selection_method=self.selection_method,
-            validate_cuts=self.validate_cuts,
         )
         self.scores = pd.DataFrame(
             {"start": starts, "end": ends, "argmax": maximizers, "max": scores}
