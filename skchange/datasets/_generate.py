@@ -113,7 +113,7 @@ def generate_piecewise_data(
     Parameters
     ----------
     distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`
-        List of distributions for each segment, where each distribution is expected
+        The distribution for each segment. Each distribution is expected
         to be a scipy distribution object (e.g., `scipy.stats.norm`,
         `scipy.stats.uniform`). See
         `scipy.stats <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
@@ -121,7 +121,7 @@ def generate_piecewise_data(
         long as the distribution objects support an
         `rvs(size: int, random_state: int | None)` method.
     lengths : int, list of int or np.ndarray, optional (default=None)
-        List of lengths for each segment. If a list or array, it must be of the same
+        Lengths of each segment. If a list or array, it must be of the same
         length as `distributions`. If an integer is provided, all segments will be
         of this length.
     n_samples : int (default=100)
