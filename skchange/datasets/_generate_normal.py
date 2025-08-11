@@ -181,7 +181,7 @@ def _get_covs(
         else:
             raise ValueError(
                 "Covariance matrix must be a square matrix with shape (p, p)."
-                f" Got covariance matrix with shape {_cov.shape} and p={n_variables}."
+                f" Got covariance matrix with shape {_var.shape} and p={n_variables}."
             )
 
         eigvals = np.linalg.eigvalsh(_cov)
