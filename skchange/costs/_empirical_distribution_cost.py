@@ -228,6 +228,7 @@ def numpy_fixed_cdf_cost_cached_edf(
 
     return out_segment_costs
 
+
 def numpy_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
