@@ -230,8 +230,8 @@ class CAPA(BaseSegmentAnomalyDetector):
     >>> detector = CAPA()
     >>> detector.fit_predict(df)
             ilocs  labels
-        0  [100, 120)       1
-        1  [220, 230)       2
+    0  [100, 120)       1
+    1  [220, 230)       2
     """
 
     _tags = {
