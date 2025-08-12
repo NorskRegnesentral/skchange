@@ -215,72 +215,68 @@ def generate_piecewise_normal_data(
 ) -> pd.DataFrame:
     """Generate piecewise multivariate normal data.
 
-    This function generates piecewise multivariate normal data, where unspecified
-    distributional parameters are randomly generated according to described mechanisms.
+    Generates piecewise multivariate normal data, where unspecified
+    distributional parameters are randomly generated according to the mechanisms
+    described below.
 
-    The desired number of segments is determined according to the following priority:
+    The number of segments in the data is determined in the following order:
 
     1. The length of `means`, if `means` is a list.
     2. The length of `variances`, if `variances` is a list.
     3. The length of `lengths`, if `lengths` is a list or array.
     4. The value of `n_segments`, if specified.
-    5. The outcome of a random binomial distribution with parameters n=`n_samples` and
-       prob=`min(0.1, 4/n_samples)`. This gives a mean of 5 segments for
-       `n_samples >= 40`.
-
+    5. Otherwise, a random binomial distribution with parameters n=`n_samples` and
+       prob=`min(0.1, 4/n_samples)` is used. This gives a mean of 5 segments for
+       `n_samples > 40`.
 
     Parameters
     ----------
-    means : float or list of float or list of np.ndarray, optional (default=None)
-        Means for each segment. If not a list, the means will be duplicated to match
-        the number of segments (described above). If None, random means are generated
-        according to a normal distribution with mean 0 and standard deviation 2. Floats
-        will be duplicated to match the number of variables given by `n_variables`.
-    variances : float or list of float or list of np.ndarray, optional (default=1.0)
+    means : float, list of float, or list of np.ndarray, optional (default=None)
+        Means for each segment. If not a list, the mean is duplicated to match
+        the number of segments (see above). If None, random means are generated
+        from a normal distribution with mean 0 and standard deviation 2. Floats
+        are duplicated to match the number of variables given by `n_variables`.
+    variances : float, list of float, or list of np.ndarray, optional (default=1.0)
         Variances or covariance matrices for each segment. Vectors are treated as
-        diagonal covariance matrices. If not a list, the variances will be duplicated
-        to match the number of segments (described above). If None, random variances
-        are generated according to a chi-squared distribution with 2 degrees of freedom.
-        Floats will be duplicated to match the number of variables given by
-        `n_variables`.
-    lengths : int, list of int or np.ndarray, optional (default=None)
-        Lengths for each segment. If a list or array, it must be of the same
+        diagonal covariance matrices. If not a list, the variance is duplicated
+        to match the number of segments. If None, random variances are generated
+        from a chi-squared distribution with 2 degrees of freedom. Floats
+        are duplicated to match the number of variables given by `n_variables`.
+    lengths : int, list of int, or np.ndarray, optional (default=None)
+        Lengths for each segment. If a list or array, it must be the same
         length as `means` or `variances`. If an integer is provided, all segments will
-        be of this length.
+        have this length.
     n_samples : int (default=100)
         Total number of samples to generate if `lengths` is not specified.
-        In this case, `lengths` are randomly generated in the following way:
+        In this case, `lengths` are randomly generated as follows:
 
-        1. The determined number of segments (described above) - 1 change points are
+        1. The determined number of segments (see above) minus 1 change points are
            sampled uniformly from the range `1:n_samples` without replacement.
         2. `lengths` are then computed as the differences between these change points.
 
     n_segments : int, optional (default=None)
         Number of segments to generate if neither `means`, `variances`, nor
-        `lengths` are specified. See the description above for how the number of
-        segments is determined.
+        `lengths` are specified. See above for how the number of segments is determined.
     n_variables : int, optional (default=1)
         Number of variables (columns) in the generated data.
-    proportion_affected: float, list of float or np.ndarray, optional (default=None)
-        Proportion of variables that are affected by each change.
-        I.e., the proportion of non-zero elements in the differences between adjacent
+    proportion_affected: float, list of float, or np.ndarray, optional (default=None)
+        Proportion of variables affected by each change.
+        That is, the proportion of non-zero elements in the differences between adjacent
         means or variances.
-        Must be numbers in (0, 1].
-        Only applicable for `means` and `variances` that are None or floats.
+        Must be in (0, 1].
+        Only applicable when `means` and `variances` are None or floats.
         If None, a random proportion of variables is affected.
-        If a list or np.ndarray, it must have length equal to the number of segments
-        (described above).
+        If a list or np.ndarray, it must have length equal to the number of segments.
         The number of affected variables is determined as
         `int(np.ceil(n_variables * proportion_affected))`.
     randomise_affected_variables : bool, optional (default=False)
         If True, the affected variables are randomly selected for each change point.
         If False, the first variables are affected.
     random_state : int, optional
-        Seed for the random number generator. The random_state is used as a basis for
-        random generation of all random quantities. If None, the random state is not
-        set.
+        Seed for the random number generator. Used for all random quantities.
+        If None, the random state is not set.
     return_params: bool, optional (default=False)
-        If True, the function returns a tuple of the generated DataFrame and a
+        If True, returns a tuple of the generated DataFrame and a
         dictionary with the parameters used to generate the data, including
         `change_points`, `means`, and `variances`. If False, only the DataFrame is
         returned.
@@ -291,20 +287,20 @@ def generate_piecewise_normal_data(
         DataFrame with generated data.
 
     dict
-        A dictionary containing the parameters used to generate the data.
-        It has keys `"n_segments"`, `"n_samples"`, `"means"`, `"variances"`,
+        Dictionary containing the parameters used to generate the data.
+        Keys: `"n_segments"`, `"n_samples"`, `"means"`, `"variances"`,
         `"lengths"`, `"change_points"` (the start indices of each segment), and
         `"affected_variables"` (which variables among 0:n_variables are affected by
         each change).
-        The dictionary is returned only if `return_params` is True.
+        Returned only if `return_params` is True.
 
     Examples
     --------
     >>> # Example 1: Two segments with specified means
     >>> from skchange.datasets import generate_piecewise_normal_data
     >>> df = generate_piecewise_normal_data(
-            means=[0, 5], lengths=5, n_variables=1, random_state=0
-        )
+    ...     means=[0, 5], lengths=5, n_variables=1, random_state=0
+    ... )
     >>> df
               0
     0  0.640423
@@ -320,8 +316,8 @@ def generate_piecewise_normal_data(
 
     >>> # Example 2: Unspecified means, variances and lengths
     >>> df, params = generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, random_state=1, return_params=True
-        )
+    ...     n_samples=10, n_variables=2, random_state=1, return_params=True
+    ... )
     >>> df
               0         1
     0 -2.025196  2.175284
