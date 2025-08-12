@@ -11,12 +11,28 @@ from ..utils.validation.parameters import check_larger_than
 def make_approximate_mle_edf_cost_quantile_points(
     X: np.ndarray, num_quantiles: int
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Compute quantile points for the approximation of EDF integral."""
+    """
+    Compute transformed quantile points for approximating the EDF integral.
+
+    Parameters
+    ----------
+    X : np.ndarray
+        Input data array, shape (n_samples, n_features).
+    num_quantiles : int
+        Number of quantiles to use for approximation.
+
+    Returns
+    -------
+    quantile_points : np.ndarray
+        Quantile points for each feature, shape (num_quantiles, n_features).
+    quantile_values : np.ndarray
+        Quantile values for each feature, shape (num_quantiles, n_features).
+    """
     n_samples = X.shape[0]
 
     integrated_edf_scaling = -np.log(2 * n_samples - 1)
     quantiles_range = np.arange(1, num_quantiles + 1)
-    integration_quantiles = 1.0 / (
+    integration_quantiles: np.ndarray = 1.0 / (
         1
         + np.exp(
             integrated_edf_scaling * ((2 * quantiles_range - 1) / num_quantiles - 1)
@@ -35,25 +51,22 @@ def make_approximate_mle_edf_cost_quantile_points(
 def make_cumulative_edf_cache(
     xs: np.ndarray, quantile_points: np.ndarray
 ) -> np.ndarray:
-    """Create a cache for cumulative empirical distribution function (EDF) values.
-
-    This function computes the cumulative counts of values less than or equal to each
-    quantile value in the input array `xs`. It returns a 2D array where each row
-    corresponds to a quantile value and contains the cumulative counts of values
-    less than or equal to that quantile.
+    """
+    Create a cache for cumulative empirical distribution function (EDF) values.
 
     Parameters
     ----------
     xs : np.ndarray
-        The input data array.
+        Input data array, shape (n_samples,).
     quantile_points : np.ndarray
-        The quantile values at which to compute the cumulative counts.
+        Quantile values at which to compute the cumulative counts.
+        shape: (num_quantiles,).
 
     Returns
     -------
-    np.ndarray
-        A 2D array where each row corresponds to a quantile value and contains the
-        cumulative counts of values less than or equal to that quantile.
+    cumulative_edf_quantiles : np.ndarray
+        2D array of cumulative counts for each quantile.
+        Shape: (n_samples + 1, num_quantiles).
     """
     lte_quantile_point_mask = (xs[:, None] < quantile_points[None, :]).astype(
         np.float64
@@ -73,22 +86,19 @@ def make_fixed_cdf_cost_quantile_weights(
     quantile_points: np.ndarray,
 ) -> np.ndarray:
     """
-    Cache the fixed CDF quantiles and their derivatives.
-
-    This function computes the second-order finite difference derivatives of the
-    empirical distribution function (EDF) at the specified fixed quantiles.
+    Compute quantile integration weights for fixed CDF cost.
 
     Parameters
     ----------
     fixed_quantiles : np.ndarray
-        The quantiles at which to compute the EDF.
+        Quantiles at which to compute the EDF, shape (num_quantiles,).
     quantile_points : np.ndarray
-        The pre-image of the fixed quantiles.
+        Pre-image of the fixed quantiles, shape (num_quantiles,).
 
     Returns
     -------
-    np.ndarray
-        The quantile integration weights for the fixed CDF cost.
+    quantile_integration_weights : np.ndarray
+        Quantile integration weights for the fixed CDF cost, shape (num_quantiles,).
     """
     if len(fixed_quantiles) < 3:
         raise ValueError("At least three fixed quantile values are required.")
@@ -113,41 +123,38 @@ def numba_fixed_cdf_cost_cached_edf(
     log_fixed_quantiles: np.ndarray,
     log_one_minus_fixed_quantiles: np.ndarray,
     quantile_weights: np.ndarray,
-    scratch_array: np.ndarray | None = None,
     out_segment_costs: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Compute the empirical distribution cost on a refernce cdf.
-
-    This function computes the empirical distribution cost for a sequence `xs` with
-    given segment cuts defined by `segment_starts` and `segment_ends`. The cost is
-    computed as the integrated log-likelihood of the empirical distribution function
-    (EDF) for each segment, approximated by a sum over the provided quantiles.
+    """Compute the empirical distribution cost for segments using a reference CDF.
 
     Parameters
     ----------
-    xs : np.ndarray
-        The input data array.
+    cumulative_edf_quantiles : np.ndarray
+        Cumulative EDF values, shape (n_samples + 1, num_quantiles).
     segment_starts : np.ndarray
-        The start indices of the segments.
+        Start indices of segments, shape (n_segments,).
     segment_ends : np.ndarray
-        The end indices of the segments.
+        End indices of segments, shape (n_segments,).
+    log_fixed_quantiles : np.ndarray
+        Logarithm of fixed quantiles, shape (num_quantiles,).
+    log_one_minus_fixed_quantiles : np.ndarray
+        Logarithm of one minus fixed quantiles, shape (num_quantiles,).
+    quantile_weights : np.ndarray
+        Quantile integration weights, shape (num_quantiles,).
+    out_segment_costs : np.ndarray or None, optional
+        Output array for costs, shape (n_segments,). If None, a new array is created.
 
     Returns
     -------
-    np.ndarray
-        1D array of empirical distribution cost evaluated for fixed cdf.
+    out_segment_costs : np.ndarray
+        Array of empirical distribution costs for each segment, shape (n_segments,).
     """
     num_quantiles = cumulative_edf_quantiles.shape[1]
+    segment_quantiles = np.zeros(num_quantiles, dtype=np.float64)
+    one_minus_segment_quantiles = np.zeros(num_quantiles, dtype=np.float64)
 
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
-
-    if scratch_array is None:
-        segment_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-        one_minus_segment_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-    else:
-        segment_quantiles = scratch_array[0, :]
-        one_minus_segment_quantiles = scratch_array[1, :]
 
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
@@ -185,26 +192,29 @@ def numpy_fixed_cdf_cost_cached_edf(
     quantile_weights: np.ndarray,
     out_segment_costs: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Compute the empirical distribution cost on a refernce cdf.
-
-    This function computes the empirical distribution cost for a sequence `xs` with
-    given segment cuts defined by `segment_starts` and `segment_ends`. The cost is
-    computed as the integrated log-likelihood of the empirical distribution function
-    (EDF) for each segment, approximated by a sum over the provided quantiles.
+    """Compute the empirical distribution cost for segments using a reference CDF.
 
     Parameters
     ----------
-    xs : np.ndarray
-        The input data array.
+    cumulative_edf_quantiles : np.ndarray
+        Cumulative EDF values, shape (n_samples + 1, num_quantiles).
     segment_starts : np.ndarray
-        The start indices of the segments.
+        Start indices of segments, shape (n_segments,).
     segment_ends : np.ndarray
-        The end indices of the segments.
+        End indices of segments, shape (n_segments,).
+    log_fixed_quantiles : np.ndarray
+        Logarithm of fixed quantiles, shape (num_quantiles,).
+    log_one_minus_fixed_quantiles : np.ndarray
+        Logarithm of one minus fixed quantiles, shape (num_quantiles,).
+    quantile_weights : np.ndarray
+        Quantile integration weights, shape (num_quantiles,).
+    out_segment_costs : np.ndarray or None, optional
+        Output array for costs, shape (n_segments,). If None, a new array is created.
 
     Returns
     -------
-    np.ndarray
-        1D array of empirical distribution cost evaluated for fixed cdf.
+    out_segment_costs : np.ndarray
+        Array of empirical distribution costs for each segment, shape (n_segments,).
     """
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
@@ -235,28 +245,23 @@ def numpy_approximate_mle_edf_cost_cached_edf(
     segment_ends: np.ndarray,
     out_segment_costs: np.ndarray | None = None,
 ) -> np.ndarray:
-    """
-    Compute approximate empirical distribution cost from cumulative edf quantiles.
-
-    Using `num_quantiles` quantile values to approximate the empirical distribution cost
-    for a sequence `xs` with given segment cuts. The cost is computed as the integrated
-    log-likelihood of the empirical distribution function (EDF), approximated by
-    evaluating the EDF at `num_quantiles` specific quantiles.
+    """Compute approximate empirical distribution cost from cumulative EDF quantiles.
 
     Parameters
     ----------
     cumulative_edf_quantiles : np.ndarray
-        A 2D array containing the cumulative empirical distribution function values
-        for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
+        Cumulative EDF values, shape (n_samples + 1, num_quantiles).
     segment_starts : np.ndarray
-        The start indices of the segments.
+        Start indices of segments, shape (n_segments,).
     segment_ends : np.ndarray
-        The end indices of the segments.
+        End indices of segments, shape (n_segments,).
+    out_segment_costs : np.ndarray or None, optional
+        Output array for costs, shape (n_segments,). If None, a new array is created.
 
     Returns
     -------
-    np.ndarray
-        A 1D array of empirical distribution costs for each segment defined by `cuts`.
+    out_segment_costs : np.ndarray
+        Array of empirical distribution costs for each segment, shape (n_segments,).
     """
     n_samples, num_quantiles = cumulative_edf_quantiles.shape
 
@@ -294,41 +299,31 @@ def numba_approximate_mle_edf_cost_cached_edf(
     cumulative_edf_quantiles: np.ndarray,
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
-    scratch_array: np.ndarray | None = None,
     out_segment_costs: np.ndarray | None = None,
 ) -> np.ndarray:
-    """
-    Compute approximate empirical distribution cost from cumulative edf quantiles.
-
-    Using `num_quantiles` quantile values to approximate the empirical distribution cost
-    for a sequence `xs` with given segment cuts. The cost is computed as the integrated
-    log-likelihood of the empirical distribution function (EDF), approximated by
-    evaluating the EDF at `num_quantiles` specific quantiles.
+    """Compute approximate empirical distribution cost from cumulative EDF quantiles.
 
     Parameters
     ----------
     cumulative_edf_quantiles : np.ndarray
-        A 2D array containing the cumulative empirical distribution function values
-        for the entire dataset, pre-computed from `make_edf_cost_approximation_cache`.
+        Cumulative EDF values, shape (n_samples + 1, num_quantiles).
     segment_starts : np.ndarray
-        The start indices of the segments.
+        Start indices of segments, shape (n_segments,).
     segment_ends : np.ndarray
-        The end indices of the segments.
+        End indices of segments, shape (n_segments,).
+    out_segment_costs : np.ndarray or None, optional
+        Output array for costs, shape (n_segments,). If None, a new array is created.
 
     Returns
     -------
-    np.ndarray
-        A 1D array of empirical distribution costs for each segment defined by `cuts`.
+    out_segment_costs : np.ndarray
+        Array of empirical distribution costs for each segment, shape (n_segments,).
     """
     n_samples, num_quantiles = cumulative_edf_quantiles.shape
+    segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
 
     if out_segment_costs is None:
         out_segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
-
-    if scratch_array is None:
-        segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-    else:
-        segment_edf_at_quantiles = scratch_array[0, :]
 
     # Constant scaling term from the approximation of the integrated log-likelihood:
     edf_integration_scale = -np.log(2 * n_samples - 1)
@@ -427,7 +422,8 @@ class EmpiricalDistributionCost(BaseCost):
         self._log_one_minus_fixed_quantiles: np.ndarray | None = None
 
     def _fit(self, X: np.ndarray, y=None):
-        """Fit the cost.
+        """
+        Fit the cost.
 
         Precomputes cumulative empirical distribution function if caching is enabled.
 
@@ -435,8 +431,13 @@ class EmpiricalDistributionCost(BaseCost):
         ----------
         X : np.ndarray
             Data to evaluate. Must be a 2D array.
-        y: None
+        y : None, optional
             Ignored. Included for API consistency by convention.
+
+        Returns
+        -------
+        self : EmpiricalDistributionCost
+            Fitted cost instance.
         """
         self._param = self._check_param(self.param, X)
         n_samples, n_columns = X.shape
@@ -476,15 +477,24 @@ class EmpiricalDistributionCost(BaseCost):
             for col in range(n_columns)
         ]
 
-        # Memory re-used during the evaluation of the cost:
-        self._scratch_array = np.zeros(
-            (3, self.num_quantiles_),
-            dtype=np.float64,
-        )
-
         return self
 
     def _check_fixed_param(self, param: tuple[np.ndarray, np.ndarray], X: np.ndarray):
+        """
+        Validate and standardize fixed samples and quantiles.
+
+        Parameters
+        ----------
+        param : tuple[np.ndarray, np.ndarray]
+            Tuple of (fixed_samples, fixed_cdf_quantiles).
+        X : np.ndarray
+            Data to evaluate. Used to match shapes.
+
+        Returns
+        -------
+        tuple[np.ndarray, np.ndarray]
+            Standardized fixed_samples and fixed_cdf_quantiles.
+        """
         fixed_samples, fixed_cdf_quantiles = param
 
         if not (fixed_samples.shape == fixed_cdf_quantiles.shape):
@@ -527,7 +537,8 @@ class EmpiricalDistributionCost(BaseCost):
         return fixed_samples, fixed_cdf_quantiles
 
     def _evaluate_optim_param(self, starts: np.ndarray, ends: np.ndarray) -> np.ndarray:
-        """Evaluate the cost using empirical distribution.
+        """
+        Evaluate the cost using empirical distribution.
 
         Parameters
         ----------
@@ -539,7 +550,7 @@ class EmpiricalDistributionCost(BaseCost):
         Returns
         -------
         costs : np.ndarray
-            A 2D array of costs. One row for each interval.
+            A 2D array of costs. One row per interval, one column per variable.
         """
         n_intervals = len(starts)
         n_cols = self._X.shape[1]
@@ -565,6 +576,21 @@ class EmpiricalDistributionCost(BaseCost):
         return costs
 
     def _evaluate_fixed_param(self, starts: np.ndarray, ends: np.ndarray):
+        """
+        Evaluate the cost using fixed quantile parameters.
+
+        Parameters
+        ----------
+        starts : np.ndarray
+            Start indices of the intervals (inclusive).
+        ends : np.ndarray
+            End indices of the intervals (exclusive).
+
+        Returns
+        -------
+        costs : np.ndarray
+            A 2D array of costs. One row per interval, one column per variable.
+        """
         n_intervals = len(starts)
         n_cols = self._X.shape[1]
 
@@ -580,7 +606,6 @@ class EmpiricalDistributionCost(BaseCost):
                         :, col
                     ],
                     quantile_weights=self._quantile_weights[:, col],
-                    scratch_array=self._scratch_array,
                     out_segment_costs=costs[:, col],
                 )
         else:
@@ -601,7 +626,8 @@ class EmpiricalDistributionCost(BaseCost):
 
     @property
     def min_size(self) -> int:
-        """Minimum size of the interval to evaluate.
+        """
+        Minimum size of the interval to evaluate.
 
         Returns
         -------
@@ -616,7 +642,8 @@ class EmpiricalDistributionCost(BaseCost):
             return 10
 
     def get_model_size(self, p: int) -> int:
-        """Get the number of parameters in the cost function.
+        """
+        Get the number of parameters in the cost function.
 
         Parameters
         ----------
@@ -641,7 +668,8 @@ class EmpiricalDistributionCost(BaseCost):
 
     @classmethod
     def get_test_params(cls, parameter_set="default"):
-        """Return testing parameter settings for the estimator.
+        """
+        Return testing parameter settings for the estimator.
 
         Parameters
         ----------
@@ -650,8 +678,8 @@ class EmpiricalDistributionCost(BaseCost):
 
         Returns
         -------
-        params : dict or list of dict, default = {}
-            Parameters to create testing instances of the class
+        params : dict or list of dict
+            Parameters to create testing instances of the class.
         """
         # Fixed Standard Normal Quantiles:
         # fmt: off

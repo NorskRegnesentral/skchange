@@ -152,7 +152,6 @@ def approximate_mle_edf_cost(
     segment_starts: np.ndarray,
     segment_ends: np.ndarray,
     segment_costs: np.ndarray | None = None,
-    scratch_array: np.ndarray | None = None,
 ) -> np.ndarray:
     """Compute approximate empirical distribution cost.
 
@@ -193,14 +192,9 @@ def approximate_mle_edf_cost(
     if segment_costs is None:
         segment_costs = np.zeros(len(segment_starts), dtype=np.float64)
 
-    if scratch_array is None:
-        segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-        one_minus_segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-        log_segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
-    else:
-        segment_edf_at_quantiles = scratch_array[0, :]
-        one_minus_segment_edf_at_quantiles = scratch_array[1, :]
-        log_segment_edf_at_quantiles = scratch_array[2, :]
+    segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
+    one_minus_segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
+    log_segment_edf_at_quantiles = np.zeros(num_quantiles, dtype=np.float64)
 
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         segment_length = segment_end - segment_start
@@ -760,12 +754,10 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
     approx_cost_edf_cache = make_cumulative_edf_cache(
         xs, quantile_points=approx_quantile_points
     )
-    scratch_array = np.zeros((3, len(approx_quantile_points)), dtype=np.float64)
     numba_approximate_mle_edf_cost_cached_edf(
         approx_cost_edf_cache,
         per_hundred_step_segment_starts,
         per_hundred_step_segment_ends,
-        scratch_array=scratch_array,
     )
 
     cache_start_time = time.perf_counter()
@@ -781,7 +773,6 @@ def test_direct_vs_approximation_runtime(n_samples=10_000):
             approx_cost_edf_cache,
             per_hundred_step_segment_starts,
             per_hundred_step_segment_ends,
-            scratch_array=scratch_array,
         )
         end_time = time.perf_counter()
     else:
