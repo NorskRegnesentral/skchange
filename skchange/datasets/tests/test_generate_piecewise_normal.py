@@ -3,7 +3,11 @@
 import numpy as np
 import pytest
 
-from skchange.datasets import generate_piecewise_normal_data
+from skchange.datasets import (
+    generate_anomalous_data,
+    generate_changing_data,
+    generate_piecewise_normal_data,
+)
 
 
 def test_generate_piecewise_normal_data_default_params():
@@ -230,4 +234,97 @@ def test_generate_piecewise_normal_data_invalid_proportion_affected(
             n_variables=2,
             n_segments=2,
             proportion_affected=proportion_affected,
+        )
+
+
+def test_generate_changing_data():
+    n = 100
+    generate_changing_data(
+        n=n,
+        changepoints=[25, 50],
+        means=[3.0, 0.0, 5.0],
+        variances=[1.0, 2.0, 3.0],
+    )
+
+    generate_changing_data(
+        n,
+        changepoints=40,
+    )
+
+    generate_changing_data(
+        n=n,
+        changepoints=[],
+        means=1.0,
+        variances=5.0,
+    )
+
+
+def test_generate_changing_data_with_multiple_changepoints():
+    n = 100
+    changepoints = [10, 30]  # 3 segements
+    means = [1.0, 3.0]  # 2 means -> 3 is required.
+    variances = [1.0, 3.0]  # 2 variances -> 3 is required.
+    random_state = 1
+    with pytest.raises(ValueError):
+        generate_changing_data(
+            n=n,
+            changepoints=changepoints,
+            means=means,
+            variances=variances,
+            random_state=random_state,
+        )
+
+
+def test_generate_changing_data_invalid_changepoints():
+    with pytest.raises(ValueError):
+        generate_changing_data(
+            n=100,
+            changepoints=110,  # Invalid changepoint.
+        )
+    with pytest.raises(ValueError):
+        generate_changing_data(
+            n=100,
+            changepoints=[10, 20, 20],  # Negative changepoint.
+        )
+
+
+def test_generate_changing_data_mismatched_lengths():
+    n = 100
+    changepoints = [10, 20]
+    means = [1.0, 2.0, 3.0]
+    variances = [1.0, 2.0]  # Mismatched length
+    random_state = 1
+    with pytest.raises(ValueError):
+        generate_changing_data(
+            n=n,
+            changepoints=changepoints,
+            means=means,
+            variances=variances,
+            random_state=random_state,
+        )
+
+
+@pytest.mark.parametrize(
+    "anomalies",
+    [
+        (10, 20, 30),  # Need to be a 2-tuple or list of 2-tuples
+        (30, 20),  # Start must be less than end
+        (-3, 10),  # Start must be non-negative
+        (50, 110),  # End must be less than n
+    ],
+)
+def test_generate_anomalous_data_invalid_anomalies(anomalies: tuple | list[tuple]):
+    """Test that the function raises ValueError for invalid anomalies."""
+    with pytest.raises(ValueError):
+        generate_anomalous_data(
+            n=100,
+            means=[10],
+            anomalies=anomalies,
+        )
+    with pytest.raises(ValueError):
+        generate_anomalous_data(
+            n=100,
+            means=[10, 20],
+            variances=[1, 2],
+            anomalies=[(10, 20)],
         )
