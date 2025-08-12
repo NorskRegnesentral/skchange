@@ -33,7 +33,7 @@ SCIPY_DISTRIBUTIONS = [
 def test_generate_piecewise_data(distribution: rv_continuous | rv_discrete):
     length = 10
     df = generate_piecewise_data(
-        distributions=[distribution],
+        distributions=distribution,
         lengths=[length],
         random_state=42,
     )
@@ -48,13 +48,46 @@ def test_generate_piecewise_data_invalid_distributions():
             lengths=[100, 50],
             random_state=42,
         )
-
-
-def test_generate_piecewise_data_invalid_lengths():
     with pytest.raises(ValueError):
         generate_piecewise_data(
-            distributions=[norm],
-            lengths=[-1, 2],  # Mismatched lengths
+            distributions=["haha", norm],  # Does not have an rvs method.
+            lengths=[100],
+            random_state=0,
+        )
+    with pytest.raises(ValueError):
+        generate_piecewise_data(
+            distributions=[
+                norm,
+                multivariate_normal(mean=[0, 1]),
+            ],  # Does not have an rvs method.
+            lengths=[100],
+            random_state=0,
+        )
+    with pytest.raises(ValueError):
+        generate_piecewise_data(
+            distributions=[
+                norm,
+                binom(n=10, p=0.5),
+            ],  # Mismatching dtypes.
+            lengths=[100],
+            random_state=0,
+        )
+
+
+@pytest.mark.parametrize(
+    "lengths",
+    [
+        [10, 20],
+        [-1],
+        None,  # Fails since n_samples is 2, < n_segments = 3.
+    ],
+)
+def test_generate_piecewise_data_invalid_lengths(lengths: list):
+    with pytest.raises(ValueError):
+        generate_piecewise_data(
+            distributions=[norm, norm(2), norm(5)],
+            lengths=lengths,
+            n_samples=2,
         )
 
 
