@@ -261,11 +261,20 @@ def generate_piecewise_normal_data(
         segments is determined.
     n_variables : int, optional (default=1)
         Number of variables (columns) in the generated data.
-    proportion_affected: float, optional (default=1.0)
-        Proportion of variables 1, ..., `n_variables` that are affected by each change.
-        This is used to determine how many variables are affected by each change in
-        means and variances. By default all variables are affected. Only relevant for
-        `means` and `variances` that are None or floats.
+    proportion_affected: float, list of float or np.ndarray, optional (default=None)
+        Proportion of variables that are affected by each change.
+        I.e., the proportion of non-zero elements in the differences between adjacent
+        means or variances.
+        Must be numbers in (0, 1].
+        Only applicable for `means` and `variances` that are None or floats.
+        If None, a random proportion of variables is affected.
+        If a list or np.ndarray, it must have length equal to the number of segments
+        (described above).
+        The number of affected variables is determined as
+        `int(np.ceil(n_variables * proportion_affected))`.
+    randomise_affected_variables : bool, optional (default=False)
+        If True, the affected variables are randomly selected for each change point.
+        If False, the first variables are affected.
     random_state : int, optional
         Seed for the random number generator. The random_state is used as a basis for
         random generation of all random quantities. If None, the random state is not
