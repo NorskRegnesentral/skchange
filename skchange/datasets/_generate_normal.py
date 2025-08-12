@@ -544,6 +544,8 @@ def generate_anomalous_data(
         raise ValueError("Anomalies must be of length 2.")
     if any([anomaly[1] <= anomaly[0] for anomaly in anomalies]):
         raise ValueError("The start of an anomaly must be before its end.")
+    if any([anomaly[0] < 0 for anomaly in anomalies]):
+        raise ValueError("Anomalies must start at a non-negative index.")
     if any([anomaly[1] > n for anomaly in anomalies]):
         raise ValueError("Anomalies must be within the range of the data.")
 
