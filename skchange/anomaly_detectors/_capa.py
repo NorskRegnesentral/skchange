@@ -66,8 +66,8 @@ def run_capa(
     segment_penalised_saving.check_is_fitted()
     point_penalised_saving.check_is_penalised()
     point_penalised_saving.check_is_fitted()
-    n_samples = segment_penalised_saving._X.shape[0]
-    if not n_samples == point_penalised_saving._X.shape[0]:
+    n_samples = segment_penalised_saving.n_samples
+    if not n_samples == point_penalised_saving.n_samples:
         raise ValueError(
             "The segment and point saving costs must span the same number of samples."
         )
@@ -129,15 +129,15 @@ def run_capa(
 
 def _make_chi2_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_chi2_penalty(score.get_model_size(p), n)
 
 
 def _make_linear_chi2_penalty_from_score(score: BaseIntervalScorer) -> np.ndarray:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_linear_chi2_penalty(score.get_model_size(p), n, p)
 
 
@@ -416,8 +416,8 @@ class CAPA(BaseSegmentAnomalyDetector):
             score: BaseIntervalScorer,
         ) -> np.ndarray:
             score.check_is_fitted()
-            n = score._X.shape[0]
-            p = score._X.shape[1]
+            n = score.n_samples
+            p = score.n_variables
             return make_nonlinear_chi2_penalty(score.get_model_size(p), n, p)
 
         params = [
