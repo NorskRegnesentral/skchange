@@ -189,7 +189,10 @@ def test_generate_piecewise_normal_data_invalid_n_variables(n_variables: int):
         generate_piecewise_normal_data(n_samples=10, n_variables=n_variables)
 
 
-def test_generate_piecewise_normal_data_valid_proportion_affected():
+@pytest.mark.parametrize("randomise_affected_variables", [True, False])
+def test_generate_piecewise_normal_data_valid_proportion_affected(
+    randomise_affected_variables: bool,
+):
     """Test that the function generates data with the correct proportion_affected."""
     n_samples = 20
     n_variables = 4
@@ -197,20 +200,34 @@ def test_generate_piecewise_normal_data_valid_proportion_affected():
     df, params = generate_piecewise_normal_data(
         n_samples=n_samples,
         n_variables=n_variables,
+        n_segments=4,
         proportion_affected=proportion_affected,
+        randomise_affected_variables=randomise_affected_variables,
         return_params=True,
     )
-    for mean in params["means"]:
-        assert np.count_nonzero(mean) == int(n_variables * proportion_affected)
+
+    expected_nonzero_changed_mean = int(np.ceil(n_variables * proportion_affected))
+    for prev_mean, curr_mean in zip(params["means"][:-1], params["means"][1:]):
+        assert np.count_nonzero(curr_mean - prev_mean) == expected_nonzero_changed_mean
 
 
-def test_generate_piecewise_normal_data_invalid_proportion_affected():
+@pytest.mark.parametrize(
+    "proportion_affected",
+    [
+        -0.1,
+        1.1,
+        2,
+        [0.1, 0.2, 0.3],  # invalid since n_segments = 2
+    ],
+)
+def test_generate_piecewise_normal_data_invalid_proportion_affected(
+    proportion_affected: float | str | None,
+):
     """Test that the function raises ValueError for invalid proportion_affected."""
     with pytest.raises(ValueError):
         generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, proportion_affected=-0.1
-        )
-    with pytest.raises(ValueError):
-        generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, proportion_affected=1.1
+            n_samples=10,
+            n_variables=2,
+            n_segments=2,
+            proportion_affected=proportion_affected,
         )

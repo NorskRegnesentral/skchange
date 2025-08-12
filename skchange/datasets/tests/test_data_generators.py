@@ -14,7 +14,11 @@ from scipy.stats import (
     uniform,
 )
 
-from skchange.datasets import generate_changing_data, generate_piecewise_data
+from skchange.datasets import (
+    generate_anomalous_data,
+    generate_changing_data,
+    generate_piecewise_data,
+)
 
 SCIPY_DISTRIBUTIONS = [
     norm(),
@@ -125,6 +129,11 @@ def test_generate_changing_data_invalid_changepoints():
             n=100,
             changepoints=110,  # Invalid changepoint.
         )
+    with pytest.raises(ValueError):
+        generate_changing_data(
+            n=100,
+            changepoints=[10, 20, 20],  # Negative changepoint.
+        )
 
 
 def test_generate_changing_data_mismatched_lengths():
@@ -140,4 +149,30 @@ def test_generate_changing_data_mismatched_lengths():
             means=means,
             variances=variances,
             random_state=random_state,
+        )
+
+
+@pytest.mark.parametrize(
+    "anomalies",
+    [
+        (10, 20, 30),  # Need to be a 2-tuple or list of 2-tuples
+        (30, 20),  # Start must be less than end
+        (-3, 10),  # Start must be non-negative
+        (50, 110),  # End must be less than n
+    ],
+)
+def test_generate_anomalous_data_invalid_anomalies(anomalies: tuple | list[tuple]):
+    """Test that the function raises ValueError for invalid anomalies."""
+    with pytest.raises(ValueError):
+        generate_anomalous_data(
+            n=100,
+            means=[10],
+            anomalies=anomalies,
+        )
+    with pytest.raises(ValueError):
+        generate_anomalous_data(
+            n=100,
+            means=[10, 20],
+            variances=[1, 2],
+            anomalies=[(10, 20)],
         )
