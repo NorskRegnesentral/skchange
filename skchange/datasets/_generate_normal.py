@@ -236,16 +236,19 @@ def generate_piecewise_normal_data(
         the number of segments (see above). If None, random means are generated
         from a normal distribution with mean 0 and standard deviation 2. Floats
         are duplicated to match the number of variables given by `n_variables`.
+
     variances : float, list of float, or list of np.ndarray, optional (default=1.0)
         Variances or covariance matrices for each segment. Vectors are treated as
         diagonal covariance matrices. If not a list, the variance is duplicated
         to match the number of segments. If None, random variances are generated
         from a chi-squared distribution with 2 degrees of freedom. Floats
         are duplicated to match the number of variables given by `n_variables`.
+
     lengths : int, list of int, or np.ndarray, optional (default=None)
         Lengths for each segment. If a list or array, it must be the same
         length as `means` or `variances`. If an integer is provided, all segments will
         have this length.
+
     n_samples : int (default=100)
         Total number of samples to generate if `lengths` is not specified.
         In this case, `lengths` are randomly generated as follows:
@@ -257,8 +260,10 @@ def generate_piecewise_normal_data(
     n_segments : int, optional (default=None)
         Number of segments to generate if neither `means`, `variances`, nor
         `lengths` are specified. See above for how the number of segments is determined.
+
     n_variables : int, optional (default=1)
         Number of variables (columns) in the generated data.
+
     proportion_affected: float, list of float, or np.ndarray, optional (default=None)
         Proportion of variables affected by each change.
         That is, the proportion of non-zero elements in the differences between adjacent
@@ -269,12 +274,15 @@ def generate_piecewise_normal_data(
         If a list or np.ndarray, it must have length equal to the number of segments.
         The number of affected variables is determined as
         `int(np.ceil(n_variables * proportion_affected))`.
+
     randomise_affected_variables : bool, optional (default=False)
         If True, the affected variables are randomly selected for each change point.
         If False, the first variables are affected.
+
     random_state : int, optional
         Seed for the random number generator. Used for all random quantities.
         If None, the random state is not set.
+
     return_params: bool, optional (default=False)
         If True, returns a tuple of the generated DataFrame and a
         dictionary with the parameters used to generate the data, including
