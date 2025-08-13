@@ -85,6 +85,8 @@ def generate_piecewise_regression_data(
 
     if isinstance(lengths, numbers.Integral):
         lengths = [lengths]
+    if any([length <= 0 for length in lengths]):
+        raise ValueError("All segment lengths must be positive integers.")
 
     n_segments = len(lengths)
     if n_segments < 1:
