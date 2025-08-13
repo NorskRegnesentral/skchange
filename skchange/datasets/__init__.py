@@ -11,6 +11,7 @@ from ._generate_normal import (
     generate_changing_data,
     generate_piecewise_normal_data,
 )
+from ._generate_regression import generate_piecewise_regression_data
 
 __all__ = [
     "generate_anomalous_data",
@@ -20,4 +21,5 @@ __all__ = [
     "load_hvac_system_data",
     "generate_piecewise_data",
     "generate_piecewise_normal_data",
+    "generate_piecewise_regression_data",
 ]
