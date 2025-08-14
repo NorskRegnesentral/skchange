@@ -91,6 +91,8 @@ def check_segment_lengths(
     elif isinstance(lengths, numbers.Integral):
         lengths = [lengths] * n_segments
     elif isinstance(lengths, (list, np.ndarray)):
+        if len(lengths) == 0:
+            raise ValueError("lengths must not be an empty list or array.")
         lengths = np.asarray(lengths, dtype=int)
         if lengths.ndim != 1:
             raise ValueError("lengths must be a 1d array.")
