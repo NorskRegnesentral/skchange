@@ -92,21 +92,25 @@ def generate_piecewise_data(
     | list[scipy.stats.rv_discrete]
     | None = None,
     lengths: int | list[int] | np.ndarray | None = None,
+    *,
     n_segments: int = 3,
     n_samples: int = 100,
-    *,
     seed: int | np.random.Generator | None = None,
     return_params: bool = False,
 ) -> pd.DataFrame | tuple[pd.DataFrame, dict]:
     """Generate data with a piecewise constant distribution.
 
+    Generate piecewise segments of data from `scipy.stats` distributions, where
+    unspecified parameters are randomly generated.
+
     Parameters
     ----------
     distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`, optional (default=None)
-        The distributions for generating piecewise data. They are recycled to match
-        the number of segments specified by `lengths` or `n_segments`. If None,
-        alternating segments of `scipy.stats.norm()` and `scipy.stats.norm(5)` are used.
-        Each distribution is expected to be a scipy distribution instance
+        The distributions for generating piecewise data.
+        They are recycled to match the number of segments specified by `lengths` or
+        `n_segments`.
+        If None, alternating segments of `scipy.stats.norm()` and `scipy.stats.norm(5)`
+        are used. Each distribution is expected to be a scipy distribution instance
         (e.g., `scipy.stats.norm`, `scipy.stats.uniform`). See
         `scipy.stats <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
         for a list of all available distributions.
@@ -126,8 +130,8 @@ def generate_piecewise_data(
         Total number of samples to generate if `lengths` is not specified.
 
     seed : np.random.Generator | int | None, optional
-        Seed for the random number generator. The random state per distribution is set
-        to random_state + i, where i is the index of the distribution in the list.
+        Seed for the random number generator or a numpy random generator instance.
+        If specified, this ensures reproducible output across multiple calls.
 
     return_params : bool, optional (default=False)
         If True, the function returns a tuple of the generated DataFrame and a
@@ -142,12 +146,13 @@ def generate_piecewise_data(
         A dictionary containing the parameters used to generate the data. Only returned
         if `return_params` is True. It has the following keys:
 
+        * `"n_segments"` : number of segments generated.
+        * `"n_samples"` : total number of samples generated.
         * `"distributions"` : list of `scipy.stats.rv_continuous` or
           `scipy.stats.rv_discrete` with the distributions used for each segment.
         * `"lengths"` : list of lengths for each segment.
         * `"change_points"` : list of change points, which are the starting indices
           of each segment in the data.
-        * `"n_samples"` : total number of samples generated.
 
     Examples
     --------
@@ -229,10 +234,11 @@ def generate_piecewise_data(
 
     if return_params:
         params = {
+            "n_segments": n_segments,
+            "n_samples": n_samples,
             "lengths": lengths,
             "distributions": distributions,
             "change_points": starts[1:],
-            "n_samples": n_samples,
         }
         return generated_df, params
 
