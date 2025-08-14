@@ -15,7 +15,64 @@ from scipy.stats import (
     uniform,
 )
 
-from skchange.datasets import generate_piecewise_data
+from skchange.datasets import (
+    generate_piecewise_data,
+    generate_piecewise_normal_data,
+    generate_piecewise_regression_data,
+)
+
+generators = [
+    generate_piecewise_data,
+    generate_piecewise_normal_data,
+    generate_piecewise_regression_data,
+]
+
+
+@pytest.mark.parametrize("generate", generators)
+def test_generate_piecewise_data_expected_output_lengths(generate):
+    def get_df_and_params(output: tuple):
+        df = None
+        params = None
+        for item in output:
+            if isinstance(item, pd.DataFrame):
+                df = item
+            if isinstance(item, dict):
+                params = item
+        return df, params
+
+    lengths = [10, 20]
+    n_segments = 5
+    n_samples = 100
+
+    output = generate(
+        lengths=lengths,
+        n_segments=n_segments,
+        n_samples=n_samples,
+        return_params=True,
+    )
+    df, params = get_df_and_params(output)
+    assert df.shape[0] == params["n_samples"]
+    assert df.shape[0] == np.sum(lengths)
+
+    output = generate(
+        n_segments=n_segments,
+        n_samples=n_samples,
+        return_params=True,
+    )
+    df, params = get_df_and_params(output)
+    assert df.shape[0] == params["n_samples"]
+    assert df.shape[0] == n_samples
+
+    output = generate(
+        lengths=lengths[0],
+        n_segments=n_segments,
+        n_samples=n_samples,
+        return_params=True,
+    )
+    df, params = get_df_and_params(output)
+    assert df.shape[0] == params["n_samples"]
+    assert df.shape[0] == lengths[0] * n_segments
+
 
 SCIPY_DISTRIBUTIONS = [
     norm(),
