@@ -175,17 +175,21 @@ def generate_piecewise_normal_data(
     Parameters
     ----------
     means : float, list of float, or list of np.ndarray, optional (default=None)
-        Means for each segment. If not a list, the mean is duplicated to match
-        the number of segments (see above). If None, random means are generated
-        from a normal distribution with mean 0 and standard deviation 2. Floats
-        are duplicated to match the number of variables given by `n_variables`.
+        Means for each segment.
+        They are recycled to match the number of segments specified by `lengths` or
+        `n_segments`.
+        If floats, they are used for all affected variables (see `proportion_affected`)
+        If None, random means are generated from a normal distribution with mean 0
+        and standard deviation 2.
 
     variances : float, list of float, or list of np.ndarray, optional (default=1.0)
         Variances or covariance matrices for each segment. Vectors are treated as
-        diagonal covariance matrices. If not a list, the variance is duplicated
-        to match the number of segments. If None, random variances are generated
-        from a chi-squared distribution with 2 degrees of freedom. Floats
-        are duplicated to match the number of variables given by `n_variables`.
+        diagonal covariance matrices.
+        They are recycled to match the number of segments specified by `lengths` or
+        `n_segments`.
+        If floats, they are used for all affected variables (see `proportion_affected`)
+        If None, random variances are generated from a chi-squared distribution with
+        2 degrees of freedom.
 
     lengths : int, list of int or np.ndarray, optional (default=None)
         The segment lengths. There are three possible cases:
@@ -206,14 +210,16 @@ def generate_piecewise_normal_data(
 
     proportion_affected: float, list of float, or np.ndarray, optional (default=None)
         Proportion of variables affected by each change.
-        That is, the proportion of non-zero elements in the differences between adjacent
+        I.e., the proportion of non-zero elements in the differences between adjacent
         means or variances.
-        Must be in (0, 1].
-        Only applicable when `means` and `variances` are None or floats.
-        If None, a random proportion of variables is affected.
-        If a list or np.ndarray, it must have length equal to the number of segments.
+        Only applies when `means` and `variances` are None or floats and
+        `n_variables > 1`.
+        All proportions must be in (0, 1].
         The number of affected variables is determined as
         `int(np.ceil(n_variables * proportion_affected))`.
+        The proportions are recycled to match the number of segments specified by
+        `lengths` or `n_segments`.
+        If None, a random proportion of variables is affected.
 
     randomise_affected_variables : bool, optional (default=False)
         If True, the affected variables are randomly selected for each change point.
@@ -223,11 +229,9 @@ def generate_piecewise_normal_data(
         Seed for the random number generator or a numpy random generator instance.
         If specified, this ensures reproducible output across multiple calls.
 
-    return_params: bool, optional (default=False)
-        If True, returns a tuple of the generated DataFrame and a
-        dictionary with the parameters used to generate the data, including
-        `change_points`, `means`, and `variances`. If False, only the DataFrame is
-        returned.
+    return_params : bool, optional (default=False)
+        If True, the function returns a tuple of the generated DataFrame and a
+        dictionary with the parameters used to generate the data.
 
     Returns
     -------
