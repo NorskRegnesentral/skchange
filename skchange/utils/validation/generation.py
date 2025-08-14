@@ -74,8 +74,7 @@ def check_segment_lengths(
         raise ValueError(f"n_segments must be a positive integer. Got {n_segments}.")
     if n_samples < n_segments:
         raise ValueError(
-            f"n_samples ({n_samples}) must be at least equal to"
-            f" n_segments ({n_segments})."
+            f"n_samples ({n_samples}) must be at least n_segments ({n_segments})."
         )
 
     if lengths is None:
