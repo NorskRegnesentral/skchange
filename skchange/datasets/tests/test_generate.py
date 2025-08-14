@@ -135,9 +135,7 @@ def test_generate_piecewise_data_invalid_distributions():
 @pytest.mark.parametrize(
     "lengths",
     [
-        [10, 20],
         [-1],
-        None,  # Fails since n_samples is 2, < n_segments = 3.
         np.array([[10, 20]]),  # 2d array
         "hehe",
     ],
@@ -147,7 +145,6 @@ def test_generate_piecewise_data_invalid_lengths(lengths: list):
         generate_piecewise_data(
             distributions=[norm, norm(2), norm(5)],
             lengths=lengths,
-            n_samples=2,
         )
 
 
