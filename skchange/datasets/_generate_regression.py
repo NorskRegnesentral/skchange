@@ -1,17 +1,17 @@
 """Data generators for regression data."""
 
-import numbers
-
 import numpy as np
 import pandas as pd
 from sklearn.datasets import make_regression
 
-from ._generate import check_random_state
+from ..utils.validation.generation import check_random_generator, check_segment_lengths
 
 
 def generate_piecewise_regression_data(
-    lengths: int | list[int] | np.ndarray = 100,
+    lengths: int | list[int] | np.ndarray | None = None,
     *,
+    n_segments: int = 3,
+    n_samples: int = 100,
     n_features: int = 1,
     n_informative: int = 1,
     n_targets: int = 1,
@@ -20,7 +20,7 @@ def generate_piecewise_regression_data(
     tail_strength: float = 0.5,
     noise: float = 1.0,
     shuffle: bool = True,
-    random_state: int | np.random.Generator | None = None,
+    seed: int | np.random.Generator | None = None,
     return_params: bool = False,
 ) -> (
     tuple[pd.DataFrame, list[str], list[str]]
@@ -32,9 +32,19 @@ def generate_piecewise_regression_data(
 
     Parameters
     ----------
-    lengths : int | list[int] | np.ndarray
-        The number of samples in each segment. If a single integer is provided,
-        a single segment of that length is generated.
+    lengths : int, list of int or np.ndarray, optional (default=None)
+        The segment lengths. There are three possible cases:
+
+        1. `list` or `numpy array`: Custom set of segment lengths.
+        2. `int`: Length of `n_segments` equal segments.
+        3. `None`: Generate `n_segments` random segment lengths with a total sample size
+           of `n_samples`.
+
+    n_segments : int (default=3)
+        Number of segments to generate if `lengths` is an integer or None.
+
+    n_samples : int (default=100)
+        Total number of samples to generate if `lengths` is not specified.
 
     n_features : int
         The total number of features.
@@ -61,36 +71,36 @@ def generate_piecewise_regression_data(
     shuffle : bool
         Whether to shuffle the samples and features per segment.
 
-    random_state : int | np.random.Generator | None
-        The random seed or generator for reproducibility.
+    seed : np.random.Generator | int | None, optional
+        Seed for the random number generator or a numpy random generator instance.
+        If specified, this ensures reproducible output across multiple calls.
 
     return_params : bool
         Whether to return the parameters used for data generation.
 
     Returns
     -------
-    tuple[pd.DataFrame, list[str], list[str]]
-        A DataFrame containing the generated data, a list of feature column names,
-        and a list of target column names.
-
-    tuple[pd.DataFrame, list[str], list[str], dict]
-        If `return_params` is True, also returns a dictionary with the parameters used
-        for generating the data, including segment lengths, coefficients, change points,
-        and total number of samples.
+    pd.DataFrame
+        The generated data as a DataFrame with columns named
+        "feature_0", "feature_1", ..., "target_0", "target_1", ...
+    list[str]
+        A list of feature column names.
+    list[str]
+        A list of target column names.
+    dict, optional
+        If `return_params` is True, a dictionary containing the parameters used to
+        generate the data, including segment lengths, coefficients, change points,
+        total number of samples and total number of segments.
 
     """
-    random_state = check_random_state(random_state)
-    # make_regression requires a np.random.RandomState instance.
-    random_state = np.random.RandomState(random_state.integers(0, 2**32 - 1))
-
-    if isinstance(lengths, numbers.Integral):
-        lengths = [lengths]
-    if any([length <= 0 for length in lengths]):
-        raise ValueError("All segment lengths must be positive integers.")
-
+    random_generator = check_random_generator(seed)
+    lengths = check_segment_lengths(
+        lengths, n_segments, n_samples, seed=random_generator
+    )
     n_segments = len(lengths)
-    if n_segments < 1:
-        raise ValueError("At least one segment length must be provided.")
+
+    # make_regression requires a np.random.RandomState instance.
+    random_generator = np.random.RandomState(random_generator.integers(0, 2**32 - 1))
 
     ends = np.cumsum(lengths)
     starts = np.concatenate(([0], ends[:-1]))
@@ -111,7 +121,7 @@ def generate_piecewise_regression_data(
             noise=noise,
             shuffle=shuffle,
             coef=True,
-            random_state=random_state,
+            random_state=random_generator,
         )
         generated_x[start:end, :] = x
         generated_y[start:end, :] = y.reshape(segment_length, n_targets)
@@ -126,10 +136,11 @@ def generate_piecewise_regression_data(
 
     if return_params:
         params = {
+            "n_segments": n_segments,
+            "n_samples": n_samples,
             "lengths": lengths,
             "coefs": coefs,
             "change_points": starts[1:],
-            "n_samples": n_samples,
         }
         return generated_df, feature_cols, target_cols, params
 
