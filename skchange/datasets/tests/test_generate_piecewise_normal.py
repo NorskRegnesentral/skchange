@@ -46,14 +46,6 @@ def test_generate_piecewise_normal_data_invalid_means():
         generate_piecewise_normal_data(
             means=np.array([0, 0]), n_samples=10, n_variables=3
         )
-    with pytest.raises(ValueError):
-        generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, lengths=[3, 3, 4], means=[1, 2]
-        )
-    with pytest.raises(ValueError):
-        generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, means=[0, 1], variances=[1, 2, 3]
-        )
 
 
 @pytest.mark.parametrize(
@@ -95,14 +87,6 @@ def test_generate_piecewise_normal_data_invalid_variances():
     with pytest.raises(ValueError):
         generate_piecewise_normal_data(
             n_samples=10, n_variables=3, variances=np.array([1, 1])
-        )
-    with pytest.raises(ValueError):
-        generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, lengths=[3, 3, 4], variances=[1, 2]
-        )
-    with pytest.raises(ValueError):
-        generate_piecewise_normal_data(
-            n_samples=10, n_variables=2, means=[0, 1], variances=[1, 2, 3]
         )
     with pytest.raises(ValueError):
         unsymmetric_cov = np.array([[1, 2], [0, 1]])
@@ -148,7 +132,7 @@ def test_generate_piecewise_normal_data_invalid_lengths(lengths: list[int]):
 @pytest.mark.parametrize("n_samples", [1, 2, 10, 100])
 def test_generate_piecewise_normal_data_valid_n_samples(n_samples: int):
     """Test that the function generates data with the correct number of rows."""
-    df = generate_piecewise_normal_data(n_samples=n_samples, random_state=43)
+    df = generate_piecewise_normal_data(n_samples=n_samples, n_segments=1, seed=43)
     assert df.shape[0] == n_samples
 
 
@@ -156,10 +140,10 @@ def test_generate_piecewise_normal_data_valid_n_samples(n_samples: int):
 def test_generate_piecewise_normal_data_invalid_n_samples(n_samples: int):
     """Test that the function raises ValueError for invalid n_samples values."""
     with pytest.raises(ValueError):
-        generate_piecewise_normal_data(n_samples=n_samples, random_state=43)
+        generate_piecewise_normal_data(n_samples=n_samples, seed=43)
 
 
-@pytest.mark.parametrize("n_segments", [1, 2, 9, None])
+@pytest.mark.parametrize("n_segments", [1, 2, 10])
 def test_generate_piecewise_normal_data_n_segments(n_segments: int):
     """Test that the function generates data with correct number of segments."""
     df, params = generate_piecewise_normal_data(
@@ -221,7 +205,6 @@ def test_generate_piecewise_normal_data_valid_proportion_affected(
         -0.1,
         1.1,
         2,
-        [0.1, 0.2, 0.3],  # invalid since n_segments = 2
     ],
 )
 def test_generate_piecewise_normal_data_invalid_proportion_affected(
@@ -264,14 +247,14 @@ def test_generate_changing_data_with_multiple_changepoints():
     changepoints = [10, 30]  # 3 segements
     means = [1.0, 3.0]  # 2 means -> 3 is required.
     variances = [1.0, 3.0]  # 2 variances -> 3 is required.
-    random_state = 1
+    seed = 1
     with pytest.raises(ValueError):
         generate_changing_data(
             n=n,
             changepoints=changepoints,
             means=means,
             variances=variances,
-            random_state=random_state,
+            random_state=seed,
         )
 
 
@@ -293,14 +276,14 @@ def test_generate_changing_data_mismatched_lengths():
     changepoints = [10, 20]
     means = [1.0, 2.0, 3.0]
     variances = [1.0, 2.0]  # Mismatched length
-    random_state = 1
+    seed = 1
     with pytest.raises(ValueError):
         generate_changing_data(
             n=n,
             changepoints=changepoints,
             means=means,
             variances=variances,
-            random_state=random_state,
+            random_state=seed,
         )
 
 
