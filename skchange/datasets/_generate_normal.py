@@ -394,6 +394,8 @@ def generate_changing_data(
     """
     Generate piecewise multivariate normal data with changing means and variances.
 
+    DEPRECATED: Use `generate_piecewise_normal_data` instead.
+
     Parameters
     ----------
     n : int, optional, default=100
@@ -456,6 +458,8 @@ def generate_anomalous_data(
 ) -> pd.DataFrame:
     """
     Generate multivariate normal data with anomalies.
+
+    DEPRECATED: Use `generate_piecewise_normal_data` instead.
 
     Parameters
     ----------
@@ -524,6 +528,8 @@ def generate_alternating_data(
 ) -> pd.DataFrame:
     """
     Generate multivariate normal data that is alternating between two states.
+
+    DEPRECATED: Use `generate_piecewise_normal_data` instead.
 
     The data alternates between a state with mean 0 and variance 1 and a state with
     mean `mean` and variance `variance`. The length of the segments are all identical
