@@ -15,20 +15,10 @@ from scipy.stats import (
     uniform,
 )
 
-from skchange.datasets import (
-    generate_piecewise_data,
-    generate_piecewise_normal_data,
-    generate_piecewise_regression_data,
-)
-
-generators = [
-    generate_piecewise_data,
-    generate_piecewise_normal_data,
-    generate_piecewise_regression_data,
-]
+from skchange.datasets import GENERATORS, generate_piecewise_data
 
 
-@pytest.mark.parametrize("generate", generators)
+@pytest.mark.parametrize("generate", GENERATORS)
 def test_generate_piecewise_data_expected_output_lengths(generate):
     def get_df_and_params(output: tuple):
         df = None
