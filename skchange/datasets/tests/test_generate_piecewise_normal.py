@@ -205,6 +205,7 @@ def test_generate_piecewise_normal_data_valid_proportion_affected(
         -0.1,
         1.1,
         2,
+        [],
     ],
 )
 def test_generate_piecewise_normal_data_invalid_proportion_affected(

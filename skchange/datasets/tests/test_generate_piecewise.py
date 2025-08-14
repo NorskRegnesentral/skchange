@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from scipy.stats import (
@@ -29,7 +30,7 @@ SCIPY_DISTRIBUTIONS = [
 ]
 
 
-@pytest.mark.parametrize("distribution", SCIPY_DISTRIBUTIONS)
+@pytest.mark.parametrize("distribution", SCIPY_DISTRIBUTIONS + [None])
 def test_generate_piecewise_data(distribution: rv_continuous | rv_discrete):
     length = 10
     df = generate_piecewise_data(
@@ -80,10 +81,12 @@ def test_generate_piecewise_data_invalid_distributions():
         [10, 20],
         [-1],
         None,  # Fails since n_samples is 2, < n_segments = 3.
+        np.array([[10, 20]]),  # 2d array
+        "hehe",
     ],
 )
 def test_generate_piecewise_data_invalid_lengths(lengths: list):
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, TypeError)):
         generate_piecewise_data(
             distributions=[norm, norm(2), norm(5)],
             lengths=lengths,
@@ -112,3 +115,10 @@ def test_generate_piecewise_data_seed():
 
     with pytest.raises(AssertionError):
         pd.testing.assert_frame_equal(df1, df3)
+
+    with pytest.raises(TypeError):
+        generate_piecewise_data(
+            distributions=[norm],
+            lengths=length,
+            seed=np.random.RandomState(),
+        )
