@@ -26,8 +26,8 @@ def test_generate_continuous_piecewise_linear_data_valid_slopes(
     slopes: float | list[float],
 ):
     """Test that invalid slopes raise ValueError."""
-    with pytest.raises(ValueError):
-        generate_continuous_piecewise_linear_data(slopes=slopes)
+    df = generate_continuous_piecewise_linear_data(slopes=slopes)
+    assert not df.empty
 
 
 def test_generate_continuous_piecewise_linear_data_invalid_noise_std():
