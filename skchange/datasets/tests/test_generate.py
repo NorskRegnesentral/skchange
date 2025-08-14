@@ -146,6 +146,11 @@ def test_generate_piecewise_data_invalid_lengths(lengths: list):
             distributions=[norm, norm(2), norm(5)],
             lengths=lengths,
         )
+    with pytest.raises(ValueError):
+        generate_piecewise_data(
+            n_samples=2,
+            n_segments=3,
+        )
 
 
 def test_generate_piecewise_data_seed():
