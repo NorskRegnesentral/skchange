@@ -219,11 +219,11 @@ def generate_piecewise_data(
         lengths, n_segments, n_samples, seed=random_generator
     )
     n_segments = len(lengths)
+    n_samples = np.sum(lengths)
     distributions, n_variables, dtype = _check_distributions(distributions, n_segments)
 
     ends = np.cumsum(lengths)
     starts = np.concatenate(([0], ends[:-1]))
-    n_samples = ends[-1]
     generated_values = np.empty((n_samples, n_variables), dtype=dtype)
     for distribution, start, end in zip(distributions, starts, ends):
         length = end - start

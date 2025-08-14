@@ -98,13 +98,13 @@ def generate_piecewise_regression_data(
         lengths, n_segments, n_samples, seed=random_generator
     )
     n_segments = len(lengths)
+    n_samples = np.sum(lengths)
 
     # make_regression requires a np.random.RandomState instance.
     random_generator = np.random.RandomState(random_generator.integers(0, 2**32 - 1))
 
     ends = np.cumsum(lengths)
     starts = np.concatenate(([0], ends[:-1]))
-    n_samples = ends[-1]
     generated_x = np.empty((n_samples, n_features), dtype=np.float64)
     generated_y = np.empty((n_samples, n_targets), dtype=np.float64)
     coefs = []
