@@ -18,7 +18,7 @@ def generate_piecewise_regression_data(
     bias: float = 0.0,
     effective_rank: int | None = None,
     tail_strength: float = 0.5,
-    noise: float = 0.0,
+    noise: float = 1.0,
     shuffle: bool = True,
     random_state: int | np.random.Generator | None = None,
     return_params: bool = False,
