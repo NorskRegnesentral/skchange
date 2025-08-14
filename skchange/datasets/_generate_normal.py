@@ -8,75 +8,30 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-from ._generate import (
-    check_random_state,
-    generate_piecewise_data,
-)
+from ..utils.validation.generation import check_random_generator, check_segment_lengths
+from ._generate import generate_piecewise_data
+from ._utils import recycle_list
 
 
-def _get_n_segments(
-    means: float | np.ndarray | list[float] | list[np.ndarray] | None,
-    variances: float | np.ndarray | list[float] | list[np.ndarray] | None,
-    lengths: int | list[int] | np.ndarray | None,
-    n_segments: int | None,
-    n_samples: int,
-    random_state: int | np.random.Generator | None = None,
-) -> int:
-    if isinstance(means, list):
-        if len(means) == 0:
-            raise ValueError(
-                "If `means` is a list, it must contain at least one element."
-            )
-        return len(means)
-    if isinstance(variances, list):
-        if len(variances) == 0:
-            raise ValueError(
-                "If `variances` is a list, it must contain at least one element."
-            )
-        return len(variances)
-    if isinstance(lengths, (list, np.ndarray)):
-        if len(lengths) == 0:
-            raise ValueError(
-                "If `lengths` is a list or array, it must contain at least one element."
-            )
-        return len(lengths)
-
-    if n_segments is None:
-        if n_samples < 1:
-            raise ValueError("`n_samples` must be at least 1.")
-
-        mean_n_cpts = 4
-        binom_prob = min(0.1, mean_n_cpts / n_samples)
-        n_change_points = scipy.stats.binom(n_samples, binom_prob).rvs(
-            size=1, random_state=random_state
-        )[0]
-        n_segments = n_change_points + 1
-    else:
-        if n_segments < 1:
-            raise ValueError("Number of segments must be at least 1.")
-
-    return int(n_segments)
-
-
-def _get_affected_variables(
+def _check_affected_variables(
     proportion_affected: float | list[float] | np.ndarray | None,
     randomise_affected_variables: bool,
     n_segments: int,
     n_variables: int,
     random_state: np.random.Generator,
 ) -> list[np.ndarray]:
+    """Check and return affected variables for each segment."""
     if proportion_affected is None:
         proportion_affected = scipy.stats.uniform(1e-8, 1).rvs(
             size=n_segments, random_state=random_state
         )
     elif isinstance(proportion_affected, Number):
-        proportion_affected = [proportion_affected] * n_segments
+        proportion_affected = [proportion_affected]
 
-    if len(proportion_affected) != n_segments:
-        raise ValueError(
-            "Number of `proportions_affected` must match the number of segments."
-            f" Got {len(proportion_affected)} proportions and {n_segments} segments."
-        )
+    if len(proportion_affected) == 0:
+        raise ValueError("proportion_affected cannot be an empty list or np.array.")
+
+    proportion_affected = recycle_list(list(proportion_affected), n_segments)
 
     for prop in proportion_affected:
         if not (0 < prop <= 1):
@@ -99,22 +54,16 @@ def _get_affected_variables(
     return affected_variables
 
 
-def _get_means(
+def _check_means(
     means: float | np.ndarray | list[float] | list[np.ndarray] | None,
     n_segments: int,
     n_variables: int,
     affected_variables: list[np.ndarray],
     random_state: int | np.random.Generator | None = None,
 ) -> list[np.ndarray]:
-    """Create means for each segment."""
+    """Check and return means for each segment."""
     if means is None or isinstance(means, (Number, np.ndarray)):
         means = [means] * n_segments
-
-    if len(means) != n_segments:
-        raise ValueError(
-            "Number of means must match number of segments."
-            f" Got {len(means)} means and {n_segments} segments."
-        )
 
     n_variables = int(n_variables)
     _means = [np.zeros(n_variables)]  # Initialize for the loop to work. Remove later.
@@ -141,30 +90,29 @@ def _get_means(
             )
         _means.append(_mean)
 
-    return _means[1:]  # The first element is just a placeholder to initialize the loop.
+    _means = _means[1:]  # The first element is just to initialize the loop.
+
+    # Means are recycled to match the number of segments. Will only have an effect in
+    # cases where `means` is a list and the list is shorter than `n_segments`.
+    _means = recycle_list(_means, n_segments)
+    return _means
 
 
-def _get_covs(
-    covs: float | np.ndarray | list[float] | list[np.ndarray] | None,
+def _check_variances(
+    variances: float | np.ndarray | list[float] | list[np.ndarray] | None,
     n_segments: int,
     n_variables: int,
     affected_variables: list[np.ndarray],
     random_state: int | np.random.Generator | None = None,
 ) -> list[np.ndarray]:
     """Create covariance matrices for each segment."""
-    if covs is None or isinstance(covs, (Number, np.ndarray)):
-        covs = [covs] * n_segments
-
-    if len(covs) != n_segments:
-        raise ValueError(
-            "Number of variances must match number of segments."
-            f" Got {len(covs)} variances and {n_segments} segments."
-        )
+    if variances is None or isinstance(variances, (Number, np.ndarray)):
+        variances = [variances] * n_segments
 
     n_variables = int(n_variables)
-    _vars = [np.ones(n_variables)]  # Initialize for the loop to work. Remove later.
+    _vars = [np.ones(n_variables)]  # Initialize for the loop to work.
     _covs = []
-    for cov, affected in zip(covs, affected_variables):
+    for cov, affected in zip(variances, affected_variables):
         prev_var = _vars[-1].copy()
         if cov is None:
             # The affected set are the variables that change, so the next covariance
@@ -198,6 +146,10 @@ def _get_covs(
 
         _covs.append(_cov)
 
+    # Covariance matrices are recycled to match the number of segments. Will only have
+    # an effect in cases where `variances` is a list and the list is shorter than
+    # `n_segments`.
+    _covs = recycle_list(_covs, n_segments)
     return _covs
 
 
@@ -205,29 +157,20 @@ def generate_piecewise_normal_data(
     means: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
     variances: float | np.ndarray | list[float] | list[np.ndarray] | None = 1.0,
     lengths: int | list[int] | np.ndarray | None = None,
+    *,
+    n_segments: int = 3,
     n_samples: int = 100,
-    n_segments: int | None = None,
     n_variables: int = 1,
     proportion_affected: float | list[float] | np.ndarray | None = None,
     randomise_affected_variables: bool = False,
-    random_state: int = None,
+    seed: int | np.random.Generator | None = None,
     return_params: bool = False,
 ) -> pd.DataFrame:
     """Generate piecewise multivariate normal data.
 
-    Generates piecewise multivariate normal data, where unspecified
-    distributional parameters are randomly generated according to the mechanisms
-    described below.
-
-    The number of segments in the data is determined in the following order:
-
-    1. The length of `means`, if `means` is a list.
-    2. The length of `variances`, if `variances` is a list.
-    3. The length of `lengths`, if `lengths` is a list or array.
-    4. The value of `n_segments`, if specified.
-    5. Otherwise, a random binomial distribution with parameters n=`n_samples` and
-       prob=`min(0.1, 4/n_samples)` is used. This gives a mean of 5 segments for
-       `n_samples > 40`.
+    Generates piecewise multivariate normal data, where the distributional changes
+    from one segment to another may be sparse. E.g., the difference between two
+    mean vectors may only have a few non-zero elements.
 
     Parameters
     ----------
@@ -244,22 +187,19 @@ def generate_piecewise_normal_data(
         from a chi-squared distribution with 2 degrees of freedom. Floats
         are duplicated to match the number of variables given by `n_variables`.
 
-    lengths : int, list of int, or np.ndarray, optional (default=None)
-        Lengths for each segment. If a list or array, it must be the same
-        length as `means` or `variances`. If an integer is provided, all segments will
-        have this length.
+    lengths : int, list of int or np.ndarray, optional (default=None)
+        The segment lengths. There are three possible cases:
+
+        1. `list` or `numpy array`: Custom set of segment lengths.
+        2. `int`: Length of `n_segments` equal segments.
+        3. `None`: Generate `n_segments` random segment lengths with a total sample size
+           of `n_samples`.
+
+    n_segments : int (default=3)
+        Number of segments to generate if `lengths` is an integer or None.
 
     n_samples : int (default=100)
         Total number of samples to generate if `lengths` is not specified.
-        In this case, `lengths` are randomly generated as follows:
-
-        1. The determined number of segments (see above) minus 1 change points are
-           sampled uniformly from the range `1:n_samples` without replacement.
-        2. `lengths` are then computed as the differences between these change points.
-
-    n_segments : int, optional (default=None)
-        Number of segments to generate if neither `means`, `variances`, nor
-        `lengths` are specified. See above for how the number of segments is determined.
 
     n_variables : int, optional (default=1)
         Number of variables (columns) in the generated data.
@@ -279,9 +219,9 @@ def generate_piecewise_normal_data(
         If True, the affected variables are randomly selected for each change point.
         If False, the first variables are affected.
 
-    random_state : int, optional
-        Seed for the random number generator. Used for all random quantities.
-        If None, the random state is not set.
+    seed : np.random.Generator | int | None, optional
+        Seed for the random number generator or a numpy random generator instance.
+        If specified, this ensures reproducible output across multiple calls.
 
     return_params: bool, optional (default=False)
         If True, returns a tuple of the generated DataFrame and a
@@ -351,48 +291,44 @@ def generate_piecewise_normal_data(
     'change_points': array([3]),
     'affected_variables': [array([0, 1]), array([0])]}
     """
-    random_state = check_random_state(random_state)
+    random_generator = check_random_generator(seed)
     if n_variables < 1:
         raise ValueError("n_variables must be at least 1.")
 
-    n_segments = _get_n_segments(
-        means,
-        variances,
-        lengths,
-        n_segments,
-        n_samples,
-        random_state,
+    lengths = check_segment_lengths(
+        lengths, n_segments, n_samples, seed=random_generator
     )
-    affected_variables = _get_affected_variables(
+    n_segments = len(lengths)
+
+    affected_variables = _check_affected_variables(
         proportion_affected,
         randomise_affected_variables,
         n_segments,
         n_variables,
-        random_state,
+        random_generator,
     )
-    means = _get_means(
+    means = _check_means(
         means,
         n_segments,
         n_variables,
         affected_variables,
-        random_state,
+        random_generator,
     )
-    covs = _get_covs(
+    covs = _check_variances(
         variances,
         n_segments,
         n_variables,
         affected_variables,
-        random_state,
+        random_generator,
     )
     distributions = [
         scipy.stats.multivariate_normal(mean=mean, cov=cov)
         for mean, cov in zip(means, covs)
     ]
     df, _params = generate_piecewise_data(
-        distributions,
-        lengths,
-        n_samples,
-        random_state,
+        distributions=distributions,
+        lengths=lengths,
+        seed=random_generator,
         return_params=True,
     )
     if return_params:
