@@ -29,7 +29,7 @@ def check_random_generator(
     elif isinstance(seed, np.random.Generator):
         return seed
     else:
-        raise ValueError(
+        raise TypeError(
             "random_state must be a numpy.random.Generator instance, an int or None."
             f" Got {type(seed)}."
         )
