@@ -2,40 +2,12 @@
 
 __author__ = ["Tveten"]
 
-from numbers import Number
-
 import numpy as np
 import pandas as pd
 import scipy.stats
 
-
-def check_random_state(
-    random_state: int | np.random.Generator | None,
-) -> np.random.Generator:
-    """Check and return a random state.
-
-    Parameters
-    ----------
-    random_state : int or np.random.Generator or None
-        Seed for the random number generator. If None, a new random state is created.
-        If an int, a new Generator is created with that seed.
-
-    Returns
-    -------
-    np.random.Generator
-        Random state to use for random number generation.
-    """
-    if random_state is None:
-        return np.random.default_rng()
-    elif isinstance(random_state, int):
-        return np.random.default_rng(random_state)
-    elif isinstance(random_state, np.random.Generator):
-        return random_state
-    else:
-        raise ValueError(
-            "random_state must be an int or a numpy random Generator instance."
-            f" Got {type(random_state)}."
-        )
+from ..utils.validation.generation import check_random_generator, check_segment_lengths
+from ._utils import recycle_list
 
 
 def _check_distributions(
@@ -44,7 +16,9 @@ def _check_distributions(
         | scipy.stats.rv_discrete
         | list[scipy.stats.rv_continuous]
         | list[scipy.stats.rv_discrete]
+        | None
     ),
+    n_segments: int,
 ) -> tuple[list[scipy.stats.rv_continuous | scipy.stats.rv_discrete], int, np.dtype]:
     """Check if distributions are valid and return as a list.
 
@@ -52,6 +26,10 @@ def _check_distributions(
     ----------
     distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`
         List of distributions for each segment.
+
+    n_segments : int
+        Number of segments to generate. Used to check if the number of distributions
+        matches the number of segments.
 
     Returns
     -------
@@ -62,9 +40,18 @@ def _check_distributions(
         1 or `p`.
     int
         Output size of the distributions, which is either 1 or `p`.
+    np.dtype
+        Data type of the output of the distributions.
     """
-    if not isinstance(distributions, list):
+    if distributions is None:
+        distributions = [scipy.stats.norm(), scipy.stats.norm(5)]
+    elif not isinstance(distributions, list):
         distributions = [distributions]
+
+    if len(distributions) == 0:
+        raise ValueError("distributions cannot be an empty list.")
+
+    distributions = recycle_list(distributions, n_segments)
 
     output_sizes = []
     output_dtypes = []
@@ -102,39 +89,46 @@ def generate_piecewise_data(
     distributions: scipy.stats.rv_continuous
     | scipy.stats.rv_discrete
     | list[scipy.stats.rv_continuous]
-    | list[scipy.stats.rv_discrete],
+    | list[scipy.stats.rv_discrete]
+    | None = None,
     lengths: int | list[int] | np.ndarray | None = None,
+    n_segments: int = 3,
     n_samples: int = 100,
-    random_state: int | np.random.Generator | None = None,
+    *,
+    seed: int | np.random.Generator | None = None,
     return_params: bool = False,
 ) -> pd.DataFrame | tuple[pd.DataFrame, dict]:
     """Generate data with a piecewise constant distribution.
 
     Parameters
     ----------
-    distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`
-        The distribution for each segment. Each distribution is expected
-        to be a scipy distribution object (e.g., `scipy.stats.norm`,
-        `scipy.stats.uniform`). See
+    distributions : list of `scipy.stats.rv_continuous` or `scipy.stats.rv_discrete`, optional (default=None)
+        The distributions for generating piecewise data. They are recycled to match
+        the number of segments specified by `lengths` or `n_segments`. If None,
+        alternating segments of `scipy.stats.norm()` and `scipy.stats.norm(5)` are used.
+        Each distribution is expected to be a scipy distribution instance
+        (e.g., `scipy.stats.norm`, `scipy.stats.uniform`). See
         `scipy.stats <https://docs.scipy.org/doc/scipy/reference/stats.html>`_
-        for a list of all available distributions. However, the function will run as
-        long as the distribution objects support an
-        `rvs(size: int, random_state: int | None)` method.
+        for a list of all available distributions.
+
     lengths : int, list of int or np.ndarray, optional (default=None)
-        Lengths of each segment. If a list or array, it must be of the same
-        length as `distributions`. If an integer is provided, all segments will be
-        of this length.
+        The segment lengths. There are three possible cases:
+
+        1. `list` or `numpy array`: Custom set of segment lengths.
+        2. `int`: Length of `n_segments` equal segments.
+        3. `None`: Generate `n_segments` random segment lengths with a total sample size
+           of `n_samples`.
+
+    n_segments : int (default=3)
+        Number of segments to generate if `lengths` is an integer or None.
+
     n_samples : int (default=100)
         Total number of samples to generate if `lengths` is not specified.
-        In this case, `lengths` are randomly generated in the following way:
 
-        1. `len(distributions) - 1` change points are sampled uniformly from the range
-           `1:n_samples` without replacement.
-        2. `lengths` are then computed as the differences between these change points.
-
-    random_state : int, optional
+    seed : np.random.Generator | int | None, optional
         Seed for the random number generator. The random state per distribution is set
         to random_state + i, where i is the index of the distribution in the list.
+
     return_params : bool, optional (default=False)
         If True, the function returns a tuple of the generated DataFrame and a
         dictionary with the parameters used to generate the data.
@@ -163,7 +157,7 @@ def generate_piecewise_data(
     >>> generate_piecewise_data(
     ...     distributions=[norm(0, 1), norm(10, 0.1)],
     ...     lengths=[7, 3],
-    ...     random_state=1,
+    ...     seed=1,
     ... )
                0
     0   0.345584
@@ -182,7 +176,7 @@ def generate_piecewise_data(
     >>> generate_piecewise_data(
     ...     distributions=[poisson(1), poisson(10)],
     ...     lengths=[5, 5],
-    ...     random_state=2,
+    ...     seed=2,
     ... )
         0
     0   0
@@ -197,65 +191,48 @@ def generate_piecewise_data(
     9   9
 
 
-    >>> # Example 3: Specify only n_samples and distributions, random segment lengths
+    >>> # Example 3: Specify int lengths and n_segments
     >>> generate_piecewise_data(
     ...     distributions=[norm(0), norm(5)],
-    ...     n_samples=8,
-    ...     random_state=3,
+    ...     lengths=3,
+    ...     n_segments=3,
+    ...     seed=3,
     ... )
               0
-    0 -2.555665
-    1  0.418099
-    2 -0.567770
-    3 -0.452649
-    4 -0.215597
-    5 -2.019986
-    6  4.768068
-    7  4.134787
-    """
-    random_state = check_random_state(random_state)
-
-    distributions, n_variables, dtype = _check_distributions(distributions)
-    n_segments = len(distributions)
-
-    if lengths is None:
-        if n_samples < n_segments:
-            raise ValueError("total_samples must be at least equal to `n_segments`.")
-        if n_segments == 1:
-            lengths = [n_samples]
-        else:
-            change_points = random_state.choice(
-                np.arange(1, n_samples), size=n_segments - 1, replace=False
-            )
-            lengths = np.diff(
-                np.concatenate(([0], np.sort(change_points), [n_samples]))
-            )
-    elif isinstance(lengths, Number):
-        lengths = [lengths] * n_segments
-
-    if len(distributions) != len(lengths):
-        raise ValueError("Length of `distributions` and `lengths` must match.")
-
-    if any([length <= 0 for length in lengths]):
-        raise ValueError("All lengths must be positive integers.")
+    0  2.040919
+    1 -2.555665
+    2  0.418099
+    3  4.432230
+    4  4.547351
+    5  4.784403
+    6 -2.019986
+    7 -0.231932
+    8 -0.865213
+    """  # noqa: E501
+    random_generator = check_random_generator(seed)
+    lengths = check_segment_lengths(
+        lengths, n_segments, n_samples, seed=random_generator
+    )
+    n_segments = len(lengths)
+    distributions, n_variables, dtype = _check_distributions(distributions, n_segments)
 
     ends = np.cumsum(lengths)
     starts = np.concatenate(([0], ends[:-1]))
-    _n_samples = np.sum(lengths)
-    generated_values = np.empty((_n_samples, n_variables), dtype=dtype)
+    n_samples = ends[-1]
+    generated_values = np.empty((n_samples, n_variables), dtype=dtype)
     for distribution, start, end in zip(distributions, starts, ends):
         length = end - start
-        values = distribution.rvs(size=length, random_state=random_state)
+        values = distribution.rvs(size=length, random_state=random_generator)
         generated_values[start:end, :] = values.reshape(length, n_variables)
 
     generated_df = pd.DataFrame(generated_values)
 
     if return_params:
         params = {
-            "distributions": distributions,
             "lengths": lengths,
+            "distributions": distributions,
             "change_points": starts[1:],
-            "n_samples": _n_samples,
+            "n_samples": n_samples,
         }
         return generated_df, params
 
