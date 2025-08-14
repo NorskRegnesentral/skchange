@@ -251,7 +251,7 @@ def generate_piecewise_normal_data(
     >>> # Example 1: Two segments with specified means
     >>> from skchange.datasets import generate_piecewise_normal_data
     >>> df = generate_piecewise_normal_data(
-    ...     means=[0, 5], lengths=5, n_variables=1, random_state=0
+    ...     means=[0, 5], lengths=5, n_segments=2, n_variables=1, seed=0
     ... )
     >>> df
               0
@@ -268,21 +268,20 @@ def generate_piecewise_normal_data(
 
     >>> # Example 2: Unspecified means, variances and lengths
     >>> df, params = generate_piecewise_normal_data(
-    ...     n_samples=10, n_variables=2, random_state=1, return_params=True
+    ...     n_samples=10, n_segments=2, n_variables=2, seed=1, return_params=True
     ... )
     >>> df
               0         1
-    0 -2.025196  2.175284
-    1 -2.312182  1.839134
-    2 -2.059601  1.074258
-    3  0.729839  1.328592
-    4  1.491595  1.850434
-    5  0.600292  1.028803
-    6  0.635557  1.818854
-    7  0.617146  3.104776
-    8  1.899473 -0.900451
-    9 -0.996264  1.635940
-
+    0 -3.143268  2.391830
+    1 -2.241742  2.104844
+    2 -2.577892  2.357425
+    3 -3.342769  1.647802
+    4 -3.088434  2.409558
+    5  0.932471  1.518255
+    6  0.110841  1.553519
+    7  0.900891  1.535109
+    8  2.186813  2.817436
+    9 -1.818413 -0.078302
     >>> params
     {'n_segments': 2,
     'n_samples': np.int64(10),
@@ -291,8 +290,8 @@ def generate_piecewise_normal_data(
             [0., 1.]]),
     array([[1., 0.],
             [0., 1.]])],
-    'lengths': array([3, 7]),
-    'change_points': array([3]),
+    'lengths': array([5, 5]),
+    'change_points': array([5]),
     'affected_variables': [array([0, 1]), array([0])]}
     """
     random_generator = check_random_generator(seed)
