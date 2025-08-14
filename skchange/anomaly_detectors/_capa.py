@@ -225,7 +225,7 @@ class CAPA(BaseSegmentAnomalyDetector):
     >>> df = generate_piecewise_normal_data(
     ...     means=[0, 10, 0, 20, 0],
     ...     lengths=[100, 20, 100, 10, 100],
-    ...     random_state=2,
+    ...     seed=2,
     ... )
     >>> detector = CAPA()
     >>> detector.fit_predict(df)

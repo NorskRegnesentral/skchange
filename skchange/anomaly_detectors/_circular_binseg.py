@@ -169,14 +169,14 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
     >>> from skchange.datasets import generate_piecewise_normal_data
     >>> df = generate_piecewise_normal_data(
     ...     means=[0, 10, 0, 20, 0],
-    ...     lengths=[100, 20, 100, 10, 100],
-    ...     random_state=2,
+    ...     lengths=[20, 10, 20, 5, 20],
+    ...     seed=2,
     ... )
     >>> detector = CircularBinarySegmentation()
     >>> detector.fit_predict(df)
-            ilocs  labels
-    0  [100, 120)       1
-    1  [220, 230)       2
+          ilocs  labels
+    0  [20, 30)       1
+    1  [50, 55)       2
 
     Notes
     -----
