@@ -35,7 +35,7 @@ def test_generate_piecewise_data(distribution: rv_continuous | rv_discrete):
     df = generate_piecewise_data(
         distributions=distribution,
         lengths=[length],
-        random_state=42,
+        seed=42,
     )
     assert df.shape[0] == length
     assert df.columns == pd.RangeIndex(start=0, stop=df.shape[1])
@@ -44,24 +44,24 @@ def test_generate_piecewise_data(distribution: rv_continuous | rv_discrete):
 def test_generate_piecewise_data_invalid_distributions():
     with pytest.raises(ValueError):
         generate_piecewise_data(
-            distributions=[norm],
-            lengths=[100, 50],
-            random_state=42,
+            distributions=[],  # Empty list of distributions
+            lengths=[50],
+            seed=42,
         )
     with pytest.raises(ValueError):
         generate_piecewise_data(
             distributions=["haha", norm],  # Does not have an rvs method.
-            lengths=[100],
-            random_state=0,
+            n_segments=2,
+            seed=0,
         )
     with pytest.raises(ValueError):
         generate_piecewise_data(
             distributions=[
                 norm,
                 multivariate_normal(mean=[0, 1]),
-            ],  # Does not have an rvs method.
-            lengths=[100],
-            random_state=0,
+            ],  # Mismatching output sizes.
+            n_segments=2,
+            seed=0,
         )
     with pytest.raises(ValueError):
         generate_piecewise_data(
@@ -69,8 +69,8 @@ def test_generate_piecewise_data_invalid_distributions():
                 norm,
                 binom(n=10, p=0.5),
             ],  # Mismatching dtypes.
-            lengths=[100],
-            random_state=0,
+            n_segments=2,
+            seed=0,
         )
 
 
@@ -91,17 +91,17 @@ def test_generate_piecewise_data_invalid_lengths(lengths: list):
         )
 
 
-def test_generate_piecewise_data_random_state():
+def test_generate_piecewise_data_seed():
     length = 100
     df1 = generate_piecewise_data(
         distributions=[norm],
         lengths=length,
-        random_state=42,
+        seed=42,
     )
     df2 = generate_piecewise_data(
         distributions=[norm],
         lengths=length,
-        random_state=42,
+        seed=42,
     )
     pd.testing.assert_frame_equal(df1, df2)
 
