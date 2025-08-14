@@ -78,6 +78,9 @@ def generate_continuous_piecewise_linear_data(
         - `noise_std`: Standard deviation of the noise.
         - `change_points`: Indices where the slope changes.
     """
+    if noise_std < 0:
+        raise ValueError(f"noise_std must be non-negative. Got {noise_std}.")
+
     random_generator = check_random_generator(seed)
     lengths = check_segment_lengths(
         lengths, n_segments, n_samples, seed=random_generator
@@ -125,7 +128,7 @@ def generate_continuous_piecewise_linear_data(
             "slopes": slopes,
             "intercept": intercept,
             "noise_std": noise_std,
-            "change_points": change_points.tolist(),
+            "change_points": change_points,
         }
         return generated_df, params
 
