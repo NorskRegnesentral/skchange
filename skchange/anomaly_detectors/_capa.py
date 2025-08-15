@@ -66,8 +66,8 @@ def run_capa(
     segment_penalised_saving.check_is_fitted()
     point_penalised_saving.check_is_penalised()
     point_penalised_saving.check_is_fitted()
-    n_samples = segment_penalised_saving._X.shape[0]
-    if not n_samples == point_penalised_saving._X.shape[0]:
+    n_samples = segment_penalised_saving.n_samples
+    if not n_samples == point_penalised_saving.n_samples:
         raise ValueError(
             "The segment and point saving costs must span the same number of samples."
         )
@@ -129,15 +129,15 @@ def run_capa(
 
 def _make_chi2_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_chi2_penalty(score.get_model_size(p), n)
 
 
 def _make_linear_chi2_penalty_from_score(score: BaseIntervalScorer) -> np.ndarray:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_linear_chi2_penalty(score.get_model_size(p), n, p)
 
 
@@ -201,8 +201,10 @@ class CAPA(BaseSegmentAnomalyDetector):
         the output as segment anomalies of length 1.
     find_affected_components : bool, optional, default=False
         If ``True``, the affected components for each segment anomaly are returned in
-        the `predict` output. This is only relevant for multivariate data in combination
-        with a penalty array.
+        the `"icolumns"` key of the `predict` output.
+        Only relevant for multivariate data in combination with a penalty array.
+        The affected components are sorted from the highest to lowest evidence
+        of an anomaly being present in the variable.
 
     References
     ----------
@@ -221,13 +223,17 @@ class CAPA(BaseSegmentAnomalyDetector):
     Examples
     --------
     >>> from skchange.anomaly_detectors import CAPA
-    >>> from skchange.datasets import generate_alternating_data
-    >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
+    >>> from skchange.datasets import generate_piecewise_normal_data
+    >>> df = generate_piecewise_normal_data(
+    ...     means=[0, 10, 0, 20, 0],
+    ...     lengths=[100, 20, 100, 10, 100],
+    ...     seed=2,
+    ... )
     >>> detector = CAPA()
     >>> detector.fit_predict(df)
             ilocs  labels
-    0  [100, 200)       1
-    1  [300, 400)       2
+    0  [100, 120)       1
+    1  [220, 230)       2
     """
 
     _tags = {
@@ -412,8 +418,8 @@ class CAPA(BaseSegmentAnomalyDetector):
             score: BaseIntervalScorer,
         ) -> np.ndarray:
             score.check_is_fitted()
-            n = score._X.shape[0]
-            p = score._X.shape[1]
+            n = score.n_samples
+            p = score.n_variables
             return make_nonlinear_chi2_penalty(score.get_model_size(p), n, p)
 
         params = [

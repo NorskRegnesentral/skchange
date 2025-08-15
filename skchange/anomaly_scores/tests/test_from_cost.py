@@ -8,7 +8,7 @@ from skchange.anomaly_scores import (
     to_saving,
 )
 from skchange.change_scores import CUSUM
-from skchange.costs import COSTS
+from skchange.costs import COSTS, L2Cost
 from skchange.costs.base import BaseCost
 from skchange.costs.tests.test_all_costs import create_fixed_cost_test_instance
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
@@ -68,7 +68,7 @@ def test_saving_evaluate(CostClass: type[BaseCost]):
     skip_if_no_test_data(saving)
     X = np.random.randn(100, 1)
     saving.fit(X)
-    intervals = np.array([[0, 10], [10, 20], [20, 30]])
+    intervals = np.array([[0, 15], [10, 25], [25, 40]])
     savings = saving.evaluate(intervals)
     assert savings.shape == (3, 1)
 
@@ -135,7 +135,7 @@ def test_local_anomaly_score_evaluate(CostClass: type[BaseCost]):
 
     X = np.random.randn(100, 4)  # Need to be 4 columns for LinearRegressionCost.
     local_anomaly_score.fit(X)
-    cuts = np.array([[0, 5, 10, 15], [5, 10, 15, 20], [10, 15, 20, 25]])
+    cuts = np.array([[0, 15, 30, 45], [5, 20, 35, 50], [10, 25, 40, 55]])
     scores = local_anomaly_score.evaluate(cuts)
     assert scores.shape[0] == 3
 
@@ -145,3 +145,36 @@ def test_to_local_anomaly_score_error():
         to_local_anomaly_score("invalid_evaluator")
     with pytest.raises(ValueError):
         to_local_anomaly_score(CUSUM())
+
+
+class HighMinSizeL2Cost(L2Cost):
+    """A custom cost class that changes `min_size` to return a tuple."""
+
+    @property
+    def min_size(self) -> int:
+        """Return a tuple instead of an integer."""
+        return 3
+
+
+def test_raises_if_inner_if_inner_interval_size_is_too_small():
+    """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
+    local_score = to_local_anomaly_score(scorer=HighMinSizeL2Cost(param=0.0))
+    local_score.fit(np.random.randn(10, 4))  # Fit to have _X set.
+    with pytest.raises(
+        ValueError, match="The inner intervals must be at least min_size="
+    ):
+        local_score._check_cuts(
+            np.array([[1, 3, 5, 8]])
+        )  # Too small inner interval size.
+
+
+def test_raises_if_inner_if_surrounding_interval_size_is_too_small():
+    """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
+    local_score = to_local_anomaly_score(scorer=HighMinSizeL2Cost(param=0.0))
+    local_score.fit(np.random.randn(10, 4))  # Fit to have _X set.
+    with pytest.raises(
+        ValueError, match="The surrounding intervals must be at least min_size="
+    ):
+        local_score._check_cuts(
+            np.array([[1, 2, 6, 7]])
+        )  # Too small surrounding interval size.

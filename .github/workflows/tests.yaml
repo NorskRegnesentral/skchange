@@ -10,7 +10,7 @@ jobs:
       - name: python environment step
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.13.3"
       - name: install pre-commit
         run: python3 -m pip install pre-commit
       - id: changed-files
@@ -29,7 +29,7 @@ jobs:
       matrix:
         python-version:
           - "3.10"
-          - "3.13"
+          - "3.13.3"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,15 +40,12 @@ jobs:
       - name: Run skchange without Numba
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .
-          python -m pip install pytest pytest-cov
+          python -m pip install .[test]
           pytest --cov --cov-report=xml --cov-report=term
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   pytests-with-numba:
     name: pytests-with-numba
@@ -59,20 +56,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.13.3"
       - name: Run skchange with and without Numba
       # Both with and without to get full coverage report.
       # Without numba is very fast, so it doesn't hurt to run it twice.
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .
-          python -m pip install pytest pytest-cov
+          python -m pip install .[test]
           pytest --cov --cov-report=xml
-          python -m pip install .[numba]
+          python -m pip install .[test,numba]
           pytest --cov --cov-report=xml --cov-append --cov-report=term
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
-          files: ./coverage.xml
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}

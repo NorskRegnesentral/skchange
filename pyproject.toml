@@ -34,7 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<3.13.4"
 dependencies = [
   "numpy>=1.21",
   "pandas>=1.1",
@@ -55,6 +55,12 @@ all_extras = [
     "numba>=0.61,<0.62",
 ]
 
+test = [
+    "pytest",
+    "pytest-cov",
+    "ruptures"
+]
+
 # dev - the developer dependency set, install via "pip install skchange[dev]"
 dev = [
     "pre-commit",
@@ -62,6 +68,7 @@ dev = [
     "pytest-cov",
     "ipykernel",
     "plotly",
+    "ruptures",
     "nbformat>=4.2.0",
     "scipy>=1.14.1,<2.0.0"
 ]

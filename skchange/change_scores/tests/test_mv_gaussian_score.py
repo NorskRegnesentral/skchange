@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.special import digamma
 
+from skchange.change_detectors import MovingWindow
 from skchange.change_scores._multivariate_gaussian_score import (
     MultivariateGaussianScore,
     _half_integer_digamma,
@@ -52,3 +53,19 @@ def test_scores_differ_with_Bartlett_correction():
 
 def test_non_fitted_GaussianCovScore_no_min_size():
     assert MultivariateGaussianScore().min_size is None
+
+
+def test_mv_gaussian_score_on_MovingWindow():
+    np.random.seed(0)
+    X_1 = np.random.normal(size=(100, 3), loc=[1.0, -0.2, 0.5], scale=[1.0, 0.5, 1.5])
+    X_2 = np.random.normal(size=(100, 3), loc=[-1.0, 0.2, -0.5], scale=[4.0, 1.5, 2.8])
+
+    X = np.concatenate([X_1, X_2], axis=0)
+
+    cost = MultivariateGaussianScore()
+
+    change_detector = MovingWindow(change_score=cost, bandwidth=50, penalty=1.0)
+    change_detector.fit(X)
+    change_points = change_detector.predict(X)
+
+    assert np.all(change_points["ilocs"].to_numpy() == np.array([100]))

@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from skbase._exceptions import NotFittedError
 
 from skchange.base import BaseIntervalScorer
 
@@ -43,6 +44,7 @@ def test_min_size():
 
 def test_check_cuts():
     evaluator = ConcreteIntervalEvaluator()
+    evaluator.fit(np.array([1, 2, 3, 4, 5]))
     cuts = np.array([[0, 2], [2, 5]])
     checked_cuts = evaluator._check_cuts(cuts)
     assert np.array_equal(checked_cuts, cuts)
@@ -64,3 +66,15 @@ def test_task_tag_not_set():
     evaluator = InvalidConcreteIntervalEvaluator()
     with pytest.raises(RuntimeError):
         evaluator._get_required_cut_size()
+
+
+def test_not_fitted_n_samples_raises():
+    evaluator = BaseIntervalScorer()
+    with pytest.raises(NotFittedError):
+        evaluator.n_samples
+
+
+def test_not_fitted_n_variables_raises():
+    evaluator = BaseIntervalScorer()
+    with pytest.raises(NotFittedError):
+        evaluator.n_variables

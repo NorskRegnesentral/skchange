@@ -67,7 +67,7 @@ def run_circular_binseg(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
-    n_samples = penalised_score._X.shape[0]
+    n_samples = penalised_score.n_samples
 
     starts, ends = make_seeded_intervals(
         n_samples,
@@ -107,8 +107,8 @@ def run_circular_binseg(
 
 def _make_bic_penalty_from_score(score: BaseIntervalScorer) -> float:
     score.check_is_fitted()
-    n = score._X.shape[0]
-    p = score._X.shape[1]
+    n = score.n_samples
+    p = score.n_variables
     return make_bic_penalty(score.get_model_size(p), n, additional_cpts=2)
 
 
@@ -166,13 +166,17 @@ class CircularBinarySegmentation(BaseSegmentAnomalyDetector):
     Examples
     --------
     >>> from skchange.anomaly_detectors import CircularBinarySegmentation
-    >>> from skchange.datasets import generate_alternating_data
-    >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=20)
+    >>> from skchange.datasets import generate_piecewise_normal_data
+    >>> df = generate_piecewise_normal_data(
+    ...     means=[0, 10, 0, 20, 0],
+    ...     lengths=[20, 10, 20, 5, 20],
+    ...     seed=2,
+    ... )
     >>> detector = CircularBinarySegmentation()
     >>> detector.fit_predict(df)
           ilocs  labels
-    0  [20, 40)       1
-    1  [60, 80)       2
+    0  [20, 30)       1
+    1  [50, 55)       2
 
     Notes
     -----

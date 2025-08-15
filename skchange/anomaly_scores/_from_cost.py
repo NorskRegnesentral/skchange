@@ -82,7 +82,7 @@ class Saving(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum valid size of the interval to evaluate."""
         if self.is_fitted:
             return self.optimised_cost_.min_size
@@ -251,7 +251,7 @@ class LocalAnomalyScore(BaseIntervalScorer):
         )
 
     @property
-    def min_size(self) -> int:
+    def min_size(self) -> int | None:
         """Minimum valid size of the interval to evaluate."""
         if self.is_fitted:
             return self.interval_cost_.min_size
@@ -358,7 +358,8 @@ class LocalAnomalyScore(BaseIntervalScorer):
         """
         cuts = check_cuts_array(
             cuts,
-            last_dim_size=self._get_required_cut_size(),
+            n_samples=self._X.shape[0],
+            last_dim_size=self._required_cut_size,
         )
 
         inner_intervals_sizes = np.diff(cuts[:, [1, 2]], axis=1)

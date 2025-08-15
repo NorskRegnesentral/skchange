@@ -47,7 +47,7 @@ def transform_moving_window(
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
 
-    n_samples = penalised_score._X.shape[0]
+    n_samples = penalised_score.n_samples
     cuts = make_extended_moving_window_cuts(
         n_samples, bandwidth, penalised_score.min_size
     )
@@ -58,9 +58,9 @@ def transform_moving_window(
 
 def transform_multiple_moving_window(
     penalised_score: BaseIntervalScorer,
-    bandwidths: list,
+    bandwidths: np.ndarray,
 ) -> np.ndarray:
-    n_samples = penalised_score._X.shape[0]
+    n_samples = penalised_score.n_samples
     scores = np.full((n_samples, len(bandwidths)), np.nan)
     for i, bw in enumerate(bandwidths):
         scores[:, i] = transform_moving_window(penalised_score, bw)
@@ -103,15 +103,20 @@ def select_changepoints_by_local_optimum(
         for cpt in candidate_cpts
         if np.isclose(
             scores[cpt],
-            np.max(scores[cpt - selection_bandwidth : cpt + selection_bandwidth + 1]),
+            np.max(
+                scores[
+                    max(cpt - selection_bandwidth, 0) : cpt + selection_bandwidth + 1
+                ]
+            ),
         )
     ]
+
     return cpts
 
 
 @njit
 def select_changepoints_by_bottom_up(
-    scores: np.ndarray, bandwidths: list, local_optimum_fraction: float
+    scores: np.ndarray, bandwidths: np.ndarray, local_optimum_fraction: float
 ) -> list:
     bandwidths = sorted(bandwidths)
     candidate_cpts = []
@@ -264,7 +269,7 @@ class MovingWindow(BaseChangeDetector):
 
         if isinstance(bandwidth, int):
             check_larger_than(1, bandwidth, "bandwidth")
-            self._bandwidth = [bandwidth]
+            self._bandwidth = np.array([bandwidth])
         elif isinstance(bandwidth, list):
             if len(bandwidth) == 0:
                 raise ValueError("`bandwidth` must be a non-empty list.")
@@ -272,7 +277,7 @@ class MovingWindow(BaseChangeDetector):
                 raise TypeError("All elements of `bandwidth` must be integers.")
             if any(bw < 1 for bw in bandwidth):
                 raise ValueError("All elements of `bandwidth` must be greater than 0.")
-            self._bandwidth = bandwidth
+            self._bandwidth = np.array(bandwidth)
         else:
             raise TypeError(
                 "`bandwidth` must be an integer or a list of integers. "
@@ -326,10 +331,7 @@ class MovingWindow(BaseChangeDetector):
 
         self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
         self.fitted_score.fit(X)
-        scores = transform_multiple_moving_window(
-            self.fitted_score,
-            self._bandwidth,
-        )
+        scores = transform_multiple_moving_window(self.fitted_score, self._bandwidth)
         formatted_scores = pd.DataFrame(
             scores,
             index=X.index,

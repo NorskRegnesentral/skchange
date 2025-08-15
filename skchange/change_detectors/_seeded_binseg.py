@@ -94,7 +94,7 @@ def run_seeded_binseg(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     penalised_score.check_is_penalised()
     penalised_score.check_is_fitted()
-    n_samples = penalised_score._X.shape[0]
+    n_samples = penalised_score.n_samples
 
     starts, ends = make_seeded_intervals(
         n_samples,

@@ -91,7 +91,7 @@ class MyCost(BaseCost):
         # Does the cost support fixed parameters? I.e., is `_evaluate_fixed_param`
         # implemented? Fixed parameter evaluation is required for the cost to be used as
         # a saving in certain anomaly detectors.
-        "supports_fixed_params": False,
+        "supports_fixed_param": False,
     }
 
     # todo: add any hyper-parameters and components to constructor
@@ -183,7 +183,7 @@ class MyCost(BaseCost):
         #       described in the docstring.
         # IMPORTANT: avoid side effects to starts, ends.
 
-    # todo: implement, optional. Mandatory if supports_fixed_params = True.
+    # todo: implement, optional. Mandatory if `supports_fixed_param` = True.
     def _evaluate_fixed_param(self, starts, ends) -> np.ndarray:
         """Evaluate the cost for the fixed parameters.
 
@@ -248,7 +248,7 @@ class MyCost(BaseCost):
         #
         # For example for a covariance matrix cost:
         # if self.is_fitted:
-        #     return self._X.shape[1] + 1
+        #     return self.n_variables + 1
         # else:
         #     return None
 

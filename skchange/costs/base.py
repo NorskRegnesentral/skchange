@@ -65,7 +65,8 @@ class BaseCost(BaseIntervalScorer):
         Parameters
         ----------
         cuts : np.ndarray
-            A 2D array with two columns of integer location-based intervals to evaluate.
+            A 2D array with two columns of integer location-based
+            intervals to evaluate the cost on.
             The subsets ``X[cuts[i, 0]:cuts[i, 1]]`` for
             ``i = 0, ..., len(cuts)`` are evaluated.
 

@@ -191,7 +191,7 @@ class MultivariateGaussianCost(BaseCost):
 
     def _check_fixed_param(
         self, param: tuple[MeanType, CovType], X: np.ndarray
-    ) -> np.ndarray:
+    ) -> tuple[np.ndarray, np.ndarray]:
         """Check if the fixed mean parameter is valid.
 
         Parameters
@@ -218,7 +218,7 @@ class MultivariateGaussianCost(BaseCost):
         The size of each interval is defined as ``cuts[i, 1] - cuts[i, 0]``.
         """
         if self.is_fitted:
-            return self._X.shape[1] + 1
+            return self.n_variables + 1
         else:
             return None
 
@@ -246,7 +246,7 @@ class MultivariateGaussianCost(BaseCost):
         """
         self._param = self._check_param(self.param, X)
 
-        if self.param is not None:
+        if self._param is not None:
             self._mean, cov = self._param
             self._inv_cov = np.linalg.inv(cov)
             _, self._log_det_cov = np.linalg.slogdet(cov)

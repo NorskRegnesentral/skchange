@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from skbase._exceptions import NotFittedError
 
 from skchange.costs import COSTS
 from skchange.costs.base import BaseCost
@@ -69,10 +70,10 @@ def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
     skip_if_no_test_data(optim_cost)
     fixed_cost = create_fixed_cost_test_instance(CostClass)
     np.random.seed(1001)
-    X = np.random.multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=20)
+    X = np.random.multivariate_normal(mean=[0, 0], cov=[[1, 0], [0, 1]], size=40)
     optim_cost.fit(X)
     fixed_cost.fit(X)
-    intervals = np.array([[0, 5], [5, 10], [10, 15], [15, 20]])
+    intervals = np.array([[0, 15], [10, 30], [5, 25], [25, 40]])
     optim_costs = optim_cost.evaluate(intervals)
     fixed_costs = fixed_cost.evaluate(intervals)
     assert np.all(optim_costs <= fixed_costs)
@@ -85,8 +86,28 @@ def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
     cost.fit(df)
-    starts = np.arange(n - 10)
+    starts = np.arange(n - 15)
     ends = np.repeat(n - 1, len(starts))
     intervals = np.column_stack((starts, ends))
     costs = cost.evaluate(intervals)
     assert np.all(costs >= 0.0)
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_accessing_n_samples_before_fit_raises(
+    CostClass: type[BaseCost],
+):
+    """Test that accessing n_samples before fitting raises an error."""
+    cost = CostClass.create_test_instance()
+    with pytest.raises(NotFittedError):
+        cost.n_samples
+
+
+@pytest.mark.parametrize("CostClass", COSTS)
+def test_accessing_n_variables_before_fit_raises(
+    CostClass: type[BaseCost],
+):
+    """Test that accessing n_variables before fitting raises an error."""
+    cost = CostClass.create_test_instance()
+    with pytest.raises(NotFittedError):
+        cost.n_variables
