@@ -358,7 +358,8 @@ class LocalAnomalyScore(BaseIntervalScorer):
         """
         cuts = check_cuts_array(
             cuts,
-            last_dim_size=self._get_required_cut_size(),
+            n_samples=self._X.shape[0],
+            last_dim_size=self._required_cut_size,
         )
 
         inner_intervals_sizes = np.diff(cuts[:, [1, 2]], axis=1)

@@ -159,6 +159,7 @@ class HighMinSizeL2Cost(L2Cost):
 def test_raises_if_inner_if_inner_interval_size_is_too_small():
     """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
     local_score = to_local_anomaly_score(scorer=HighMinSizeL2Cost(param=0.0))
+    local_score.fit(np.random.randn(10, 4))  # Fit to have _X set.
     with pytest.raises(
         ValueError, match="The inner intervals must be at least min_size="
     ):
@@ -170,6 +171,7 @@ def test_raises_if_inner_if_inner_interval_size_is_too_small():
 def test_raises_if_inner_if_surrounding_interval_size_is_too_small():
     """Test LocalAnomalyScore raises ValueError if inner interval size is too small."""
     local_score = to_local_anomaly_score(scorer=HighMinSizeL2Cost(param=0.0))
+    local_score.fit(np.random.randn(10, 4))  # Fit to have _X set.
     with pytest.raises(
         ValueError, match="The surrounding intervals must be at least min_size="
     ):

@@ -45,8 +45,10 @@ class StatThresholdAnomaliser(BaseSegmentAnomalyDetector):
         super().__init__()
 
         if self.stat_lower > self.stat_upper:
-            message = f"stat_lower ({self.stat_lower}) must be less"
-            +f" than or equal to stat_upper ({self.stat_upper})."
+            message = (
+                f"stat_lower ({self.stat_lower}) must be less"
+                + f" than or equal to stat_upper ({self.stat_upper})."
+            )
             raise ValueError(message)
 
         self.clone_tags(change_detector, ["distribution_type"])
