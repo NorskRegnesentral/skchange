@@ -116,6 +116,10 @@ class BaseIntervalScorer(BaseEstimator):
 
         self._fit(X=self._X, y=y)
         self._is_fitted = True
+        # Store "required cut size", as its faster than looking
+        # it up through a tag every time `evaluate` is called.
+        self._required_cut_size = self._get_required_cut_size()
+
         return self
 
     def _fit(self, X: np.ndarray, y=None):

@@ -54,14 +54,14 @@ def test_scorer_evaluate(Scorer: type[BaseIntervalScorer]):
     x = generate_anomalous_data()
     x.index = pd.date_range(start="2020-01-01", periods=x.shape[0], freq="D")
     scorer.fit(x)
-    cut1 = np.linspace(0, 10, scorer._get_required_cut_size(), dtype=int)
+    cut1 = np.linspace(0, 40, scorer._get_required_cut_size(), dtype=int)
 
     results = scorer.evaluate(cut1)
     assert isinstance(results, np.ndarray)
     assert results.ndim == 2
     assert len(results) == 1
 
-    cut2 = np.linspace(10, 20, scorer._get_required_cut_size(), dtype=int)
+    cut2 = np.linspace(10, 40, scorer._get_required_cut_size(), dtype=int)
     cuts = np.array([cut1, cut2])
     results = scorer.evaluate(cuts)
     assert isinstance(results, np.ndarray)
@@ -85,8 +85,8 @@ def test_scorer_evaluate_by_evaluation_type(Scorer: BaseIntervalScorer):
     )
 
     scorer.fit(df)
-    cut1 = np.linspace(0, 10, scorer._get_required_cut_size(), dtype=int)
-    cut2 = np.linspace(10, 20, scorer._get_required_cut_size(), dtype=int)
+    cut1 = np.linspace(0, 20, scorer._get_required_cut_size(), dtype=int)
+    cut2 = np.linspace(20, 40, scorer._get_required_cut_size(), dtype=int)
     cuts = np.array([cut1, cut2])
 
     results = scorer.evaluate(cuts)

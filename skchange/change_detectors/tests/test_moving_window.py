@@ -20,9 +20,9 @@ SCORES_AND_COSTS = CHANGE_SCORES + COSTS
         (ScoreType, (bandwidth, selection_method))
         for ScoreType in SCORES_AND_COSTS
         for bandwidth, selection_method in [
-            (10, "detection_length"),
-            (10, "local_optimum"),
-            [[5, 10, 20], "local_optimum"],
+            (12, "detection_length"),
+            (12, "local_optimum"),
+            [[12, 15, 20], "local_optimum"],
         ]
     ],
 )
@@ -33,7 +33,7 @@ def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer], params: 
     skip_if_no_test_data(score)
 
     n_segments = 2
-    seg_len = 50
+    seg_len = 100
     df = generate_alternating_data(
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
