@@ -44,6 +44,7 @@ def test_min_size():
 
 def test_check_cuts():
     evaluator = ConcreteIntervalEvaluator()
+    evaluator.fit(np.array([1, 2, 3, 4, 5]))
     cuts = np.array([[0, 2], [2, 5]])
     checked_cuts = evaluator._check_cuts(cuts)
     assert np.array_equal(checked_cuts, cuts)

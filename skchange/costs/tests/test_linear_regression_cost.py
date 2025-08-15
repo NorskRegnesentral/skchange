@@ -169,7 +169,7 @@ def test_linear_regression_cost_fixed_params():
 
     # Evaluate on the entire interval
     starts = np.array([0])
-    ends = np.array([100])
+    ends = np.array([10])
     cuts = np.hstack((starts.reshape(-1, 1), ends.reshape(-1, 1)))
     costs = cost.evaluate(cuts=cuts)
 

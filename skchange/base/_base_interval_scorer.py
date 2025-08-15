@@ -42,6 +42,8 @@ class BaseIntervalScorer(BaseEstimator):
         Indicates whether the interval scorer has been fitted.
     _X : np.ndarray
         The data input to `fit` coerced to a 2D ``np.ndarray``.
+    _required_cut_size : int
+        The required size of the cuts array, determined by the task of the scorer.
     """
 
     _tags = {
@@ -76,6 +78,7 @@ class BaseIntervalScorer(BaseEstimator):
     def __init__(self):
         self._is_fitted = False
         self._X = None
+        self._required_cut_size = None
 
         super().__init__()
 
@@ -98,6 +101,12 @@ class BaseIntervalScorer(BaseEstimator):
         -----
         Updates the fitted model and sets attributes ending in ``"_"``.
         """
+        # Getting the cut size per call to evaluate generates a surprising amount of
+        # overhead, so we cache it here.
+        # Cannot be done in __init__ because the task is set at the very end of
+        # __init__ in subclasses.
+        self._required_cut_size = self._get_required_cut_size()
+
         X = check_series(X, allow_index_names=True)
         if isinstance(X, pd.DataFrame):
             self._X_columns = X.columns
@@ -156,7 +165,6 @@ class BaseIntervalScorer(BaseEstimator):
         self.check_is_fitted()
         cuts = as_2d_array(cuts, vector_as_column=False)
         cuts = self._check_cuts(cuts)
-
         values = self._evaluate(cuts)
         return values
 
@@ -256,8 +264,9 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return check_cuts_array(
             cuts,
+            n_samples=self._X.shape[0],
             min_size=self.min_size,
-            last_dim_size=self._get_required_cut_size(),
+            last_dim_size=self._required_cut_size,
         )
 
     def check_is_penalised(self):

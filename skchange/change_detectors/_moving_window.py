@@ -331,10 +331,7 @@ class MovingWindow(BaseChangeDetector):
 
         self.fitted_score: BaseIntervalScorer = self._penalised_score.clone()
         self.fitted_score.fit(X)
-        scores = transform_multiple_moving_window(
-            self.fitted_score,
-            self._bandwidth,
-        )
+        scores = transform_multiple_moving_window(self.fitted_score, self._bandwidth)
         formatted_scores = pd.DataFrame(
             scores,
             index=X.index,
