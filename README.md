@@ -42,10 +42,9 @@ from skchange.change_detectors import MovingWindow
 from skchange.datasets import generate_piecewise_normal_data
 
 df = generate_piecewise_normal_data(
-    n_segments=5,
-    means=[0, 5, 10, 50, 0, -5, -10, 0, 10],
-    lengths=50,
-    random_state=1,
+    means=[0, 5, 10, 5, 0],
+    lengths=[50, 50, 50, 50, 50],
+    seed=1,
 )
 
 detector = MovingWindow(bandwidth=20)
@@ -57,10 +56,6 @@ detector.fit_predict(df)
 1    100
 2    150
 3    200
-4    250
-5    300
-6    350
-7    400
 ```
 
 ### Multivariate anomaly detection with variable identification
@@ -68,25 +63,27 @@ detector.fit_predict(df)
 from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_scores import L2Saving
 from skchange.compose.penalised_score import PenalisedScore
-from skchange.datasets import generate_anomalous_data
+from skchange.datasets import generate_piecewise_normal_data
 from skchange.penalties import make_linear_chi2_penalty
 
-n = 300
-anomalies = [(100, 120), (250, 300)]
-means = [[8.0, 0.0, 0.0], [2.0, 3.0, 5.0]]
-df = generate_anomalous_data(n, anomalies, means, random_state=3)
-p = df.shape[1]
+df = generate_piecewise_normal_data(
+    means=[0, 8, 0, 5],
+    lengths=[100, 20, 130, 50],
+    proportion_affected=[1.0, 0.1, 1.0, 0.5],
+    n_variables=10,
+    seed=1,
+)
 
-score = L2Saving()
-penalty = make_linear_chi2_penalty(score.get_model_size(1), n, p)
+score = L2Saving()  # Looks for segments with non-zero means.
+penalty = make_linear_chi2_penalty(score.get_model_size(1), df.shape[0], df.shape[1])
 penalised_score = PenalisedScore(score, penalty)
 detector = CAPA(penalised_score, find_affected_components=True)
 detector.fit_predict(df)
 ```
 ```python
-        ilocs  labels   icolumns
-0  [100, 120)       1        [0]
-1  [250, 300)       2  [2, 1, 0]
+        ilocs  labels         icolumns
+0  [100, 120)       1              [0]
+1  [250, 300)       2  [2, 0, 3, 1, 4]
 ```
 
 ## License
