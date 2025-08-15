@@ -201,8 +201,10 @@ class CAPA(BaseSegmentAnomalyDetector):
         the output as segment anomalies of length 1.
     find_affected_components : bool, optional, default=False
         If ``True``, the affected components for each segment anomaly are returned in
-        the `predict` output. This is only relevant for multivariate data in combination
-        with a penalty array.
+        the `"icolumns"` key of the `predict` output.
+        Only relevant for multivariate data in combination with a penalty array.
+        The affected components are sorted from the highest to lowest evidence
+        of an anomaly being present in the variable.
 
     References
     ----------
