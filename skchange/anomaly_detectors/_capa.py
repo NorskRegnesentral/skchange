@@ -221,13 +221,17 @@ class CAPA(BaseSegmentAnomalyDetector):
     Examples
     --------
     >>> from skchange.anomaly_detectors import CAPA
-    >>> from skchange.datasets import generate_alternating_data
-    >>> df = generate_alternating_data(n_segments=5, mean=10, segment_length=100)
+    >>> from skchange.datasets import generate_piecewise_normal_data
+    >>> df = generate_piecewise_normal_data(
+    ...     means=[0, 10, 0, 20, 0],
+    ...     lengths=[100, 20, 100, 10, 100],
+    ...     seed=2,
+    ... )
     >>> detector = CAPA()
     >>> detector.fit_predict(df)
             ilocs  labels
-    0  [100, 200)       1
-    1  [300, 400)       2
+    0  [100, 120)       1
+    1  [220, 230)       2
     """
 
     _tags = {

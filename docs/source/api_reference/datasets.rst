@@ -14,7 +14,6 @@ Generate toy data
     generate_anomalous_data
     generate_changing_data
     generate_alternating_data
-    add_linspace_outliers
 
 Load real datasets
 ------------------
