@@ -78,7 +78,7 @@ class BaseIntervalScorer(BaseEstimator):
     def __init__(self):
         self._is_fitted = False
         self._X = None
-        self._required_cut_size = -1
+        self._required_cut_size = None
 
         super().__init__()
 
@@ -101,6 +101,12 @@ class BaseIntervalScorer(BaseEstimator):
         -----
         Updates the fitted model and sets attributes ending in ``"_"``.
         """
+        # Getting the cut size per call to evaluate generates a surprising amount of
+        # overhead, so we cache it here.
+        # Cannot be done in __init__ because the task is set at the very end of
+        # __init__ in subclasses.
+        self._required_cut_size = self._get_required_cut_size()
+
         X = check_series(X, allow_index_names=True)
         if isinstance(X, pd.DataFrame):
             self._X_columns = X.columns
@@ -110,7 +116,6 @@ class BaseIntervalScorer(BaseEstimator):
 
         self._fit(X=self._X, y=y)
         self._is_fitted = True
-        self._required_cut_size = self._get_required_cut_size()
         return self
 
     def _fit(self, X: np.ndarray, y=None):
