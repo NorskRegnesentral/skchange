@@ -13,6 +13,25 @@ from ._generate import generate_piecewise_data
 from ._utils import recycle_list
 
 
+def get_n_variables(
+    n_variables: int,
+    means: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
+    variances: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
+) -> int:
+    """Derive the number of variables from the input parameters."""
+    # If means and variances are list, the first element is used to determine the number
+    # of variables.
+    if isinstance(means, list):
+        means = means[0]
+    if isinstance(variances, list):
+        variances = variances[0]
+
+    mean_n_vars = means.shape[0] if isinstance(means, np.ndarray) else 1
+    var_n_vars = variances.shape[0] if isinstance(variances, np.ndarray) else 1
+
+    return int(max(n_variables, mean_n_vars, var_n_vars))
+
+
 def _check_affected_variables(
     proportion_affected: float | list[float] | np.ndarray | None,
     randomise_affected_variables: bool,
@@ -303,24 +322,25 @@ def generate_piecewise_normal_data(
     )
     n_segments = len(lengths)
 
+    _n_variables = get_n_variables(n_variables, means, variances)
     affected_variables = _check_affected_variables(
         proportion_affected,
         randomise_affected_variables,
         n_segments,
-        n_variables,
+        _n_variables,
         random_generator,
     )
     means = _check_means(
         means,
         n_segments,
-        n_variables,
+        _n_variables,
         affected_variables,
         random_generator,
     )
     covs = _check_variances(
         variances,
         n_segments,
-        n_variables,
+        _n_variables,
         affected_variables,
         random_generator,
     )
