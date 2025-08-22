@@ -13,7 +13,7 @@ from ..penalties import make_chi2_penalty, make_linear_chi2_penalty
 from ..utils.numba import njit
 from ..utils.validation.data import check_data
 from ..utils.validation.interval_scorer import check_interval_scorer
-from ..utils.validation.parameters import check_larger_than
+from ..utils.validation.parameters import check_larger_than, check_smaller_than
 from ..utils.validation.penalties import check_penalty
 from .base import BaseSegmentAnomalyDetector
 
@@ -192,7 +192,8 @@ class CAPA(BaseSegmentAnomalyDetector):
         `segment_penalty` for details. For ``None`` input, the default is set using the
         `make_linear_chi2_penalty` function.
     min_segment_length : int, optional, default=2
-        Minimum length of a segment.
+        Minimum length of a segment. This may be overridden by the `min_size` of the
+        fitted `segment_saving`.
     max_segment_length : int, optional, default=1000
         Maximum length of a segment.
     ignore_point_anomalies : bool, optional, default=False
@@ -352,10 +353,18 @@ class CAPA(BaseSegmentAnomalyDetector):
         self.fitted_point_saving: BaseIntervalScorer = (
             self._point_penalised_saving.clone().fit(X)
         )
+
+        min_segment_length = max(
+            self.min_segment_length, self.fitted_segment_saving.min_size
+        )
+        check_smaller_than(
+            self.max_segment_length, min_segment_length, "min_segment_length"
+        )
+        check_larger_than(min_segment_length, X.shape[0], "X.shape[0]")
         opt_savings, segment_anomalies, point_anomalies = run_capa(
             segment_penalised_saving=self.fitted_segment_saving,
             point_penalised_saving=self.fitted_point_saving,
-            min_segment_length=self.min_segment_length,
+            min_segment_length=min_segment_length,
             max_segment_length=self.max_segment_length,
             find_affected_components=self.find_affected_components,
         )
