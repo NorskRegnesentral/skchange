@@ -46,4 +46,4 @@ Plotting
     :template: functions.rst
 
     plot_detections
-    plot_scatter_segmentationo
+    plot_scatter_segmentation
