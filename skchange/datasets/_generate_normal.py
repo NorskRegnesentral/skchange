@@ -19,16 +19,18 @@ def get_n_variables(
     variances: float | np.ndarray | list[float] | list[np.ndarray] | None = None,
 ) -> int:
     """Derive the number of variables from the input parameters."""
-    # If means and variances are list, the first element is used to determine the number
-    # of variables.
-    if isinstance(means, list):
-        means = means[0]
-    if isinstance(variances, list):
-        variances = variances[0]
+    # Convert to list if not, to make the rest of the code easier.
+    if not isinstance(means, list):
+        means = [means]
+    if not isinstance(variances, list):
+        variances = [variances]
 
-    mean_n_vars = means.shape[0] if isinstance(means, np.ndarray) else 1
-    var_n_vars = variances.shape[0] if isinstance(variances, np.ndarray) else 1
-
+    mean_n_vars = max(
+        len(mean) if isinstance(mean, (list, np.ndarray)) else 1 for mean in means
+    )
+    var_n_vars = max(
+        len(var) if isinstance(var, (list, np.ndarray)) else 1 for var in variances
+    )
     return int(max(n_variables, mean_n_vars, var_n_vars))
 
 
