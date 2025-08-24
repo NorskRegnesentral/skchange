@@ -37,7 +37,7 @@ def check_penalty(
     if penalty is None:
         return None
 
-    penalty = np.asarray([penalty]).flatten()
+    penalty = np.atleast_1d(np.asarray([penalty]).squeeze())
     if isinstance(penalty, np.ndarray):
         if penalty.ndim != 1:
             raise ValueError(
