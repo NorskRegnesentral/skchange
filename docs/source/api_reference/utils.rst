@@ -36,3 +36,14 @@ Parameter validation
     check_larger_than
     check_smaller_than
     check_in_interval
+
+Plotting
+--------
+.. currentmodule:: skchange.utils.plotting
+
+.. autosummary::
+    :toctree: auto_generated/
+    :template: functions.rst
+
+    plot_detections
+    plot_scatter_segmentationo
