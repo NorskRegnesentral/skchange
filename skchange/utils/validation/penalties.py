@@ -1,7 +1,6 @@
 """Validation functions for penalties."""
 
 import copy
-import numbers
 
 import numpy as np
 
@@ -38,7 +37,7 @@ def check_penalty(
     if penalty is None:
         return None
 
-    penalty = np.asarray([penalty]) if isinstance(penalty, numbers.Number) else penalty
+    penalty = np.asarray([penalty]).flatten()
     if isinstance(penalty, np.ndarray):
         if penalty.ndim != 1:
             raise ValueError(
