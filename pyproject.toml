@@ -58,7 +58,8 @@ all_extras = [
 test = [
     "pytest",
     "pytest-cov",
-    "ruptures"
+    # for the latest ruptures bug fix: Revert to pip version when released
+    "git+https://github.com/deepcharles/ruptures.git@main"
 ]
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"
