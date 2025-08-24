@@ -56,6 +56,9 @@ nbsphinx_codecell_lexer = "ipython3"
 
 html_static_path = ["_static"]
 html_css_files = ["custom_notebook.css"]
+html_js_files = [
+    "plotly_resize.js",  # plotly need to resize after the sidebars load.
+]
 
 # Recommended by sphinx_design when using the MyST Parser
 myst_enable_extensions = ["colon_fence"]
@@ -186,6 +189,9 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "secondary_sidebar_items": {
+        "**/*": ["page-toc"],
+    },
 }
 html_context = {
     "github_user": "NorskRegnesentral",
@@ -194,7 +200,7 @@ html_context = {
     "doc_path": "docs/source/",
 }
 html_sidebars = {
-    "**": ["sidebar-nav-bs.html", "sidebar-ethical-ads.html"],
+    "**": ["sidebar-nav-bs.html"],
     "index": [],
     "get_started": [],
     "search": [],

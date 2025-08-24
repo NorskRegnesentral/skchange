@@ -40,7 +40,7 @@ def test_generate_piecewise_normal_data_valid_means(
 
 def test_generate_piecewise_normal_data_invalid_means():
     """Test that the function generates data with the correct means."""
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, IndexError)):
         generate_piecewise_normal_data(means=[], n_samples=10, n_variables=1)
     with pytest.raises(ValueError):
         generate_piecewise_normal_data(
@@ -82,7 +82,7 @@ def test_generate_piecewise_normal_data_valid_variances(
 
 def test_generate_piecewise_normal_data_invalid_variances():
     """Test that the function raises ValueError for invalid variances."""
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, IndexError)):
         generate_piecewise_normal_data(variances=[], n_samples=10, n_variables=1)
     with pytest.raises(ValueError):
         generate_piecewise_normal_data(

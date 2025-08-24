@@ -58,7 +58,8 @@ all_extras = [
 test = [
     "pytest",
     "pytest-cov",
-    "ruptures"
+    # for the latest ruptures bug fix: Revert to pip version when released
+    "ruptures @ git+https://github.com/deepcharles/ruptures.git@master"
 ]
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"
@@ -73,18 +74,20 @@ dev = [
     "scipy>=1.14.1,<2.0.0"
 ]
 
+# docs - the documentation dependency set, install via "pip install skchange[docs]"
 docs = [
   "myst-parser",
   "numpydoc",
+  "pypandoc",
   "pydata-sphinx-theme",
-  "Sphinx!=7.2.0,<9.0.0",
+  "sphinx",
   "sphinx-copybutton",
-  "sphinx-design<0.7.0",
-  "sphinx-gallery<0.18.0",
-  "sphinx-issues<5.0.0",
+  "sphinx-design",
+  "sphinx-gallery",
+  "sphinx-issues",
   "tabulate",
   "nbsphinx",
-  "pypandoc",
+  "nbstripout",
   "ipykernel",
   "nbformat>=4.2.0",
   "plotly",
