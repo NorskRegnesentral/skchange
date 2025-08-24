@@ -197,7 +197,7 @@ class MovingWindow(BaseChangeDetector):
           maximum in the scores within a neighbourhood of size
           ``local_optimum_fraction * bandwidth``. Corresponds to the eta-criterion
           in [2]_. This method is used within the "bottom-up" merging approach if
-            multiple bandwidths are given.
+          multiple bandwidths are given.
 
     min_detection_fraction : float, default=0.2
         The minimum size of the detection interval for a candidate change-point to be

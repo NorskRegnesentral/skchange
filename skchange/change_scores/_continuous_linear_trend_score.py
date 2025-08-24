@@ -184,49 +184,38 @@ def analytical_cont_piecewise_linear_trend_score(
 
 
 class ContinuousLinearTrendScore(BaseIntervalScorer):
-    """Continuous linear trend change score.
+    """
+    Continuous linear trend change score.
 
-    This change score calculates the difference in the squared error between
-    observed data and a two parameter linear trend accross the whole interval,
-    with the squared error between a three parameter linear trend with an added
-    kink at the split point.  It is intended for use with the NOT segment
-    selection method as developed by [1]_, and which is accessible within the
-    `SeededBinarySegmentation` change detector by passing it the argument
-    `selection_method="narrowest"`.
+    Calculates the difference in squared error between observed data and:
+    - a two-parameter linear trend across the whole interval, and
+    - a three-parameter linear trend with a kink at the split point.
 
-    By default time steps are assumed to be evenly spaced. If a time column is
-    provided, its time steps are used to calculate the linear trends. The time
-    column values must be convertible to `float` datatype. If your time column
-    is of `datetime.datetime` type, you can e.g. transform your `"datetime"` as
-    ```
-    ## Sane way of creating a numeric time column:
-    df: pd.DataFrame
-    df["time_elapsed"] = df["datetime"] - df.loc[0, "datetime"]
-    df["num_timestamp"] = (
-        df["time_elapsed"].dt.total_seconds() / pd.Timedelta(hours=1).total_seconds()
-    )  # Convert to hours
-    ```
-    and then pass `time_column = "num_timestamp"`.
+    Intended for use with the NOT segment selection method as developed by
+    Baranowski et al. [1]_. Accessible within the `SeededBinarySegmentation`
+    change detector by passing `selection_method="narrowest"`.
 
-    When a time columns is not provided, an analytical solution is used to calculate
-    the score for each column in the data, courtesy of [1]_. Otherwise, two linear
-    regression problems are solved for each interval, one with a kink at the split
-    point and one without.
+    By default, time steps are assumed to be evenly spaced.
+    In this case, an analytical solution is used to calculate the score for each column
+    in the data, as described in [1]_.
+
+    If a time column is provided, its values are used as time stamps for calculating the
+    linear trends. In this case, two linear regression problems are solved for each
+    interval: One with a kink at the split point and one without.
 
     Parameters
     ----------
     time_column : str, optional
-            Name of the time column in the data. If provided, its values are used as
-            time stamps for calculating the piecewise linear trends. If not provided,
-            the time steps are assumed to be evenly spaced.
+        Name of the time column in the data. The columns must be convertible to a float.
+        If provided, its values are used as time stamps for calculating the piecewise
+        linear trends.
+        If not provided, the time steps are assumed to be evenly spaced.
 
     References
     ----------
-    .. [1] Baranowski, R., Chen, Y., & Fryzlewicz, P. (2019). Narrowest-over-threshold \
-    detection of multiple change points and change-point-like features. Journal of the \
-    Royal Statistical Society Series B: Statistical Methodology, 81(3), 649-672.
-    ----------
-
+    .. [1] Baranowski, R., Chen, Y., & Fryzlewicz, P. (2019). Narrowest-over-threshold
+       detection of multiple change points and change-point-like features. Journal of
+       the Royal Statistical Society Series B: Statistical Methodology, 81(3), 649-672.
     """
 
     _tags = {
