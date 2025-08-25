@@ -361,7 +361,7 @@ class EmpiricalDistributionCost(BaseCost):
     """
     Empirical Distribution Cost.
 
-    Computationally efficient approximate empirical distribution cost[1]_.
+    Computationally efficient approximate empirical distribution cost [1]_.
     Uses the integrated log-likelihood of the empirical cumulative distribution
     function (EDF) to evaluate the cost for each segment defined by the cuts,
     in a non-parametric way.

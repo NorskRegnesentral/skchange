@@ -211,6 +211,7 @@ class MovingWindow(BaseChangeDetector):
     ----------
     .. [1] Eichinger, B., & Kirch, C. (2018). A MOSUM procedure for the estimation of
        multiple random change points.
+
     .. [2] Meier, A., Kirch, C., & Cho, H. (2021). mosum: A package for moving sums in
        change-point analysis. Journal of Statistical Software, 97, 1-42.
 
