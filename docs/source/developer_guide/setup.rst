@@ -3,9 +3,7 @@
 Development setup
 =================
 This guide provides step-by-step instructions to set up your local development
-environment for contributing to Skchange. The guide is heavily inspired by similar
-guides by Sktime and Polars.
-
+environment for contributing to Skchange.
 
 Configuring Git
 ---------------
