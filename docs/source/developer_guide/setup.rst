@@ -90,6 +90,8 @@ your development experience. Here is a recommended configuration.
 
 3. Make sure to select the created virtual environment as the `interpreter <https://code.visualstudio.com/docs/python/environments#_select-and-activate-an-environment>`_ in VS Code.
 
+.. _updating_development_environment:
+
 Updating the development environment
 ------------------------------------
 It is good practice to regularly update your development environment to ensure you have
