@@ -32,6 +32,6 @@ Here are some guidelines to make a pull request:
 
 * Title:
 * Description:
-* Make sure your branch is :doc:`up to date <updating_development_environment>`
+* Make sure your branch is :ref:`up to date <updating_development_environment>`
   with the latest changes from the ``main`` branch of the Skchange repository.
 * Make sure all continuous integration checks pass.
