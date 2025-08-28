@@ -1,12 +1,10 @@
-.. _contributing:
+.. _contributing_code:
 
-============
-Contributing
-============
+=================
+Contributing code
+=================
 After setting up your development environment as described in the
-:doc:`setup`, you are ready to start contributing to Skchange!
-This guide provides best practices for contributing code, reporting issues,
-and submitting pull requests.
+:doc:`setup`, you are ready to start contributing code to Skchange!
 
 Working on an issue
 -------------------
