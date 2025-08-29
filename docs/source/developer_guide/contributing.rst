@@ -31,7 +31,17 @@ to the ``main`` branch of the Skchange repository.
 Here are some guidelines to make a pull request:
 
 * Title:
+    - Start your pull request title with a `conventional commit <https://www.conventionalcommits.org>`_ tag.
+      This helps us add your contribution to the right section of the changelog. We use the `Angular convention <https://github.com/angular/angular/blob/22b96b9/CONTRIBUTING.md#type>`_.
+      Specifying the scope of the commit is optional.
+    - Use a descriptive title starting with an uppercase letter.
+      This text will end up in the changelog, so make sure the text is meaningful to the user.
+      Use single backticks to annotate code snippets.
+      Use active language and do not end your title with punctuation.
+    - Example: ``feat: Add new cost class GammaCost``.
 * Description:
+    - `Link <https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue>`_ to the issue you are working on.
+    - Add any relevant information to the description that you think may help the maintainers review your code.
 * Make sure your branch is :ref:`up to date <updating_development_environment>`
   with the latest changes from the ``main`` branch of the Skchange repository.
 * Make sure all continuous integration checks pass.
