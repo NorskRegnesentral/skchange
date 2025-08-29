@@ -33,4 +33,6 @@ The guide is divided into three parts, which are intended to be read in sequence
     contributing
     code_style
 
+Credits
+-------
 The guide is heavily inspired by similar guides by Sktime and Polars.

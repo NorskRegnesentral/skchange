@@ -45,3 +45,14 @@ Here are some guidelines to make a pull request:
 * Make sure your branch is :ref:`up to date <updating_development_environment>`
   with the latest changes from the ``main`` branch of the Skchange repository.
 * Make sure all continuous integration checks pass.
+
+After you have opened your pull request, a maintainer will review it and possibly leave some comments.
+Once all issues are resolved, the maintainer will merge your pull request, and your work will be part of the next Skchange release!
+
+Keep in mind that your work does not have to be perfect right away.
+If you are stuck or unsure about your solution,
+feel free to open a draft pull request and ask for help.
+
+Credits
+-------
+This page is heavily inspired by the `Polars contributing guide <https://docs.pola.rs/development/contributing/#pull-requests>`_.
