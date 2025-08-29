@@ -68,6 +68,7 @@ Raise an issue if you find something missing or unclear.
 
 To build and check the documentation locally, you first need to install the documentation
 dependencies:
+
 .. code-block:: bash
 
     uv pip install -e .[docs]
