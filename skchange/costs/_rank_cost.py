@@ -39,15 +39,17 @@ def _rank_cost(
     np.ndarray
         The rank costs for each segment.
     """
+    n_variables = centered_data_ranks.shape[1]
     costs = np.zeros(segment_starts.shape[0])
 
     # Compute mean ranks for each segment:
-    mean_segment_ranks = np.zeros(centered_data_ranks.shape[1])
+    mean_segment_ranks = np.zeros(n_variables)
 
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
-        mean_segment_ranks[:] = np.mean(
-            centered_data_ranks[segment_start:segment_end], axis=0
-        )
+        for var in range(n_variables):
+            mean_segment_ranks[var] = np.mean(
+                centered_data_ranks[segment_start:segment_end, var]
+            )
         rank_score = (segment_end - segment_start) * (
             mean_segment_ranks.T @ pinv_rank_cov @ mean_segment_ranks
         )
@@ -72,7 +74,8 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
     n_samples, n_variables = X.shape
     sorted_by_column = np.sort(X, axis=0)
     # Compute the Empirical CDF value for each column:
-    data_ranks = np.zeros_like(X)
+    data_ranks = np.zeros_like(X, dtype=np.float64)
+
     for col in range(n_variables):
         # Compute upper right ranks: (a[i-1] < v <= a[i])
         data_ranks[:, col] = np.searchsorted(
