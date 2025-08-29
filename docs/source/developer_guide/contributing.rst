@@ -53,6 +53,30 @@ Keep in mind that your work does not have to be perfect right away.
 If you are stuck or unsure about your solution,
 feel free to open a draft pull request and ask for help.
 
+Contributing to the documentation
+---------------------------------
+We highly value properly documented code!
+`Sphinx <https://www.sphinx-doc.org/en/master/>`_
+and `numpydoc <https://numpydoc.readthedocs.io/en/latest/format.html>`_
+are used to generate the documentation from the docstrings in the codebase.
+Please make sure to follow the
+`numpydoc style guide <https://numpydoc.readthedocs.io/en/latest/format.html>`_
+when writing docstrings for new functions, classes, and methods.
+
+Contributions to the :doc:`user guide <../user_guide/index>` are also welcome!
+Raise an issue if you find something missing or unclear.
+
+To build and check the documentation locally, you first need to install the documentation
+dependencies:
+.. code-block:: bash
+
+    uv pip install -e .[docs]
+
+Then, you can build the documentation by running ``make docs``.
+
+Note that the documentation is also built as part of the continuous integration
+pipeline when you push your changes to a branch with an open pull request.
+
 Credits
 -------
 This page is heavily inspired by the `Polars contributing guide <https://docs.pola.rs/development/contributing/#pull-requests>`_.
