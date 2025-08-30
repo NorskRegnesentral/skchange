@@ -92,33 +92,29 @@ def test_rank_cost_model_size():
 
 
 def test_rank_cost_on_changing_slope_data():
-    # changing_slope_data = generate_continuous_piecewise_linear_signal(
-    #     change_points=[30, 80, 150],
-    #     slopes=[-1, 2.0, 0.5, 3.0],
-    #     n_samples=200,
-    #     noise_std=0.5,
-    #     random_seed=42,
-    # )
+    lengths = [200, 150, 150]
     changing_mv_gaussian_data = generate_piecewise_normal_data(
-        means=[0, 5, 10], variances=[1, 3, 2], lengths=[30, 80, 150], n_variables=5
+        means=[0, 5, 10], variances=[1, 3, 2], lengths=lengths, n_variables=5
     )
-    cost = RankCost()
-    change_detector = PELT(cost=cost, min_segment_length=5, penalty=10.0)
-    change_detector.fit(changing_mv_gaussian_data)
+    expected_change_points = np.cumsum(lengths)[:-1]
 
-    pelt_pred_change_points = change_detector.predict(changing_mv_gaussian_data)
+    cost = RankCost()
+    change_detector = PELT(cost=cost, min_segment_length=5)
+    change_detector.fit(changing_mv_gaussian_data)
 
     crops_detector = CROPS(
         cost=cost,
         min_segment_length=2,
         min_penalty=1.0e1,
-        max_penalty=1.0e6,
+        max_penalty=1.0e3,
         segmentation_selection="elbow",
     )
     crops_detector.fit(changing_mv_gaussian_data)
 
     pred_crops_change_points = crops_detector.predict(changing_mv_gaussian_data)
-    assert pred_crops_change_points == [30, 80, 150]
+    assert (
+        np.abs(pred_crops_change_points.ilocs - expected_change_points) < 5
+    ).all(), "CROPS change points do not match expected change points"
 
 
 def test_change_score_distribution():
