@@ -269,8 +269,8 @@ class CROPS(BaseChangeDetector):
         The start of the penalty solution interval.
     max_penalty : float
         The end of the penalty solution interval.
-    selection_method : str, default="bic"
-        The selection method to use when selecting the
+    segmentation_selection : str, default="bic"
+        The segmentation selection method to use when selecting the
         best segmentation among the optimal segmentations found
         within the penalty range `[min_penalty, max_penalty]`.
         The options are:

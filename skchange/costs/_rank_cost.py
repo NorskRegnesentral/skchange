@@ -39,11 +39,12 @@ def _rank_cost(
     np.ndarray
         The rank costs for each segment.
     """
-    n_variables = centered_data_ranks.shape[1]
+    n_samples, n_variables = centered_data_ranks.shape
     costs = np.zeros(segment_starts.shape[0])
 
     # Compute mean ranks for each segment:
     mean_segment_ranks = np.zeros(n_variables)
+    normalization_constant = 4.0 / np.square(n_samples)
 
     for i, (segment_start, segment_end) in enumerate(zip(segment_starts, segment_ends)):
         for var in range(n_variables):
@@ -53,7 +54,7 @@ def _rank_cost(
         rank_score = (segment_end - segment_start) * (
             mean_segment_ranks.T @ pinv_rank_cov @ mean_segment_ranks
         )
-        costs[i] = -rank_score
+        costs[i] = -rank_score * normalization_constant
 
     return costs
 
