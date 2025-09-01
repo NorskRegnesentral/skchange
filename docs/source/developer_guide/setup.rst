@@ -17,7 +17,7 @@ You need to have a GitHub account and ``git`` installed on your machine.
         git clone https://github.com/<username>/skchange.git
         cd skchange
 
-3.  Set the ``upstream`` remote to the original repository to be able to sync your fork later:
+3.  Set the ``upstream`` remote branch to the original repository to be able to sync your fork later:
 
     .. code-block:: bash
 
@@ -27,7 +27,7 @@ You need to have a GitHub account and ``git`` installed on your machine.
 Installing dependencies
 -----------------------
 First, you need to have Python installed.
-We recommend using the latest version Python version.
+We recommend using the latest Python version.
 Make sure to deactivate any active virtual environment before proceeding,
 as the following steps will create a new
 `virtual environment <https://docs.python.org/3/tutorial/venv.html>`_ for Skchange.
@@ -86,7 +86,7 @@ your development experience. Here is a recommended configuration.
 
    - Python (ms-python.python): Official Python extension for easily working with Python code.
    - Ruff (charliermarsh.ruff): A fast Python linter and code formatter.
-     This will help you adhere to the code style requirements enforced by ``pre-commit``.
+     This will help you adhere to the code style requirements enforced by pre-commit.
 
 3. Make sure to select the created virtual environment as the `interpreter <https://code.visualstudio.com/docs/python/environments#_select-and-activate-an-environment>`_ in VS Code.
 
