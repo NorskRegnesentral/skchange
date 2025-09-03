@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
     inputs:
       commit-sha:
-        description: Commit SHA. If omitted, use the latest commit on the main branch.
+        description: Commit SHA. If omitted, the latest commit on the main branch is used.
         type: string
-      build-only:
-        description: Only build the package, but don't release or test on TestPyPI.
-        type: boolean
-        default: false
       run-test-pypi:
-        description: Run a test release to TestPyPI. If the test works, it will automatically be published to the main PyPI.
+        description: Test the release on TestPyPI before publishing.
+        type: boolean
+        default: true
+      run-release:
+        description: Release the package on PyPI and Github. Turn off for a dry-run.
         type: boolean
         default: true
 
@@ -59,7 +59,7 @@ jobs:
   test-install:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ !inputs.build-only && !inputs.run-test-pypi }}
+    if: ${{ inputs.run-test-pypi }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -87,7 +87,7 @@ jobs:
   publish:
     needs: test-install
     runs-on: ubuntu-latest
-    if: ${{ !inputs.build-only }}
+    if: ${{ inputs.run-release }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
