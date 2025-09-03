@@ -95,6 +95,12 @@ class RankScore(BaseIntervalScorer):
     -----
     - The score is inherently multivariate and aggregated.
     - Suitable for detecting changes in mean or variance in non-Gaussian data.
+
+    References
+    ----------
+    .. [1] Lung-Yut-Fong, A., Lévy-Leduc, C., & Cappé, O. (2015). Homogeneity and
+       change-point detection tests for multivariate data using rank statistics.
+       Journal de la société française de statistique, 156(4), 133-162.
     """
 
     _tags = {

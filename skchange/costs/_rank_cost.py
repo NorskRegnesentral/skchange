@@ -84,12 +84,11 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
             sorted_by_column[:, col], X[:, col], side="left"
         )
 
+        # Must average lower and upper ranks to work on data with duplicates:
         # Add lower left ranks: (a[i-1] <= v < a[i])
         data_ranks[:, col] += np.searchsorted(
             sorted_by_column[:, col], X[:, col], side="right"
         )
-
-        # Average out the ranks to handle duplicates:
         data_ranks[:, col] /= 2
 
     cdf_values = np.copy(data_ranks) / n_samples
@@ -121,6 +120,12 @@ class RankCost(BaseCost):
     param : any, optional (default=None)
         If None, the cost is evaluated for an interval-optimised parameter.
         Fixed parameters are not supported for this cost.
+
+    References
+    ----------
+    .. [1] Lung-Yut-Fong, A., Lévy-Leduc, C., & Cappé, O. (2015). Homogeneity and
+       change-point detection tests for multivariate data using rank statistics.
+       Journal de la société française de statistique, 156(4), 133-162.
     """
 
     _tags = {

@@ -1082,7 +1082,7 @@ class MultivariateTCost(BaseCost):
     .. [2] Ollila, Esa, & Palomar, Daniel P. & Pascal, Frédéric. (2020). Shrinking the
        Eigenvalues of M-Estimators of Covariance Matrix. IEEE Transactions on Signal
        Processing, 256-269.
-    .. [3] Pascal, Frédéric & Ollila, Esa & Palomar, Daniel P. (2021) Improved
+    .. [3] Pascal, Frédéric & Ollila, Esa & Palomar, Daniel P. (2021). Improved
        Estimation of the Degree of Freedom Parameter of Multivariate T-Distribution.
        In 2021 29th European Signal Processing Conference (EUSIPCO), 860-864.
     """
