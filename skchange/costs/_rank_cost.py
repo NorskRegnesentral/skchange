@@ -79,7 +79,8 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
 
     for col in range(n_variables):
         # Compute upper right ranks: (a[i-1] < v <= a[i])
-        data_ranks[:, col] = np.searchsorted(
+        # One-indexed lower ranks:
+        data_ranks[:, col] = 1 + np.searchsorted(
             sorted_by_column[:, col], X[:, col], side="left"
         )
 

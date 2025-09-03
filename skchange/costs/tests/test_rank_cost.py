@@ -1,13 +1,10 @@
 import numpy as np
 import pytest
-import seaborn as sns
 from scipy.stats import chi2, kstest
 
 from skchange.change_detectors import CROPS, PELT
-from skchange.change_scores import to_change_score
 from skchange.costs._rank_cost import RankCost
 from skchange.datasets import (
-    generate_continuous_piecewise_linear_signal,
     generate_piecewise_normal_data,
 )
 
@@ -144,6 +141,7 @@ def test_change_score_distribution():
             lengths=[data_length],
         )
         # rank_change_score.fit(sample)
+
         cost.fit(sample)
         for j, change_score_cut in enumerate(change_score_cuts):
             change_score = -cost.evaluate(change_score_cut).sum()
