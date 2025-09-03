@@ -1,7 +1,7 @@
 # This script is heavily inspired by
 # https://github.com/pola-rs/polars/blob/main/.github/workflows/release-python.yml
 
-name: Release
+name: release
 
 on:
   workflow_dispatch:
