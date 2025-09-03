@@ -1,0 +1,131 @@
+# This script is heavily inspired by
+# https://github.com/pola-rs/polars/blob/main/.github/workflows/release-python.yml
+
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit-sha:
+        description: Commit SHA. If omitted, use the latest commit on the main branch.
+        type: string
+      build-only:
+        description: Only build the package, but don't release or test on TestPyPI.
+        type: boolean
+        default: false
+      run-test-pypi:
+        description: Run a test release to TestPyPI. If the test works, it will automatically be published to the main PyPI.
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit-sha || 'main' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          pip install .[docs]
+
+      - name: Clean build artifacts
+        run: make clean
+
+      - name: Build documentation
+        run: make docs
+
+      - name: Build package
+        run: make dist
+
+      - name: Check distribution with twine
+        run: twine check dist/*
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  test-install:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.build-only && !inputs.run-test-pypi }}
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to TestPyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+      - name: Check install from TestPyPI
+        run: |
+          set -e
+          mkdir "$HOME"/testdir
+          cd "$HOME"/testdir
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple skchange
+          deactivate
+          rm -rf "$HOME"/testdir
+
+  publish:
+    needs: test-install
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.build-only }}
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Get version from pyproject.toml
+        id: get_version
+        run: |
+          VERSION=$(grep '^version =' pyproject.toml | sed 's/version = \"\\(.*\\)\"/\\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag v${{ steps.get_version.outputs.version }}
+          git push origin v${{ steps.get_version.outputs.version }}
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+      - name: Create GitHub release draft
+        id: github-release
+        uses: release-drafter/release-drafter@v6
+        with:
+          name: skchange v${{ steps.get_version.outputs.version }}
+          tag: v${{ steps.get_version.outputs.version }}
+          version: ${{ steps.get_version.outputs.version }}
+          commitish: ${{ inputs.commit-sha || github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub release
+        run: gh release edit v${{ steps.get_version.outputs.version }} --draft=false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
