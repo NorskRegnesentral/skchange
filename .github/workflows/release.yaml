@@ -1,17 +1,22 @@
+# This script is heavily inspired by
+# https://github.com/pola-rs/polars/blob/main/.github/workflows/release-python.yml
+
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
-      # Latest commit to include with the release. If omitted, use the latest commit on the main branch.
       commit-sha:
-        description: Commit SHA
+        description: Commit SHA. If omitted, use the latest commit on the main branch.
         type: string
-      # Create the sdist, build the wheels and upload to TestPyPI, but do not publish to PyPI / GitHub.
-      dry-run:
-        description: Dry run
+      build-only:
+        description: Only build the package, but don't release or test on TestPyPI.
         type: boolean
         default: false
+      run-test-pypi:
+        description: Run a test release to TestPyPI. If the test works, it will automatically be published to the main PyPI.
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -54,6 +59,7 @@ jobs:
   test-install:
     needs: build
     runs-on: ubuntu-latest
+    if: ${{ !inputs.build-only && !inputs.run-test-pypi }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -81,19 +87,13 @@ jobs:
   publish:
     needs: test-install
     runs-on: ubuntu-latest
-    if: ${{ !inputs.dry-run }}
+    if: ${{ !inputs.build-only }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
-
-      - name: Publish to PyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
 
       - name: Get version from pyproject.toml
         id: get_version
@@ -107,6 +107,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag v${{ steps.get_version.outputs.version }}
           git push origin v${{ steps.get_version.outputs.version }}
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
 
       - name: Create GitHub release draft
         id: github-release
