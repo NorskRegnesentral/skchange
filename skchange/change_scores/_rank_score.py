@@ -148,12 +148,7 @@ class RankScore(BaseIntervalScorer):
         scores : np.ndarray
             A 2D array of change scores, shape (n_cuts, 1).
         """
-        starts = cuts[:, 0]
-        splits = cuts[:, 1]
-        ends = cuts[:, 2]
-        scores = direct_rank_score(
-            starts, splits, ends, self._centered_data_ranks, self._pinv_rank_cov
-        )
+        scores = direct_rank_score(cuts, self._centered_data_ranks, self._pinv_rank_cov)
         return scores.reshape(-1, 1)
 
     @property
