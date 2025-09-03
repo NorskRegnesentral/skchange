@@ -41,9 +41,6 @@ jobs:
       - name: Clean build artifacts
         run: make clean
 
-      - name: Build documentation
-        run: make docs
-
       - name: Build package
         run: make dist
 
