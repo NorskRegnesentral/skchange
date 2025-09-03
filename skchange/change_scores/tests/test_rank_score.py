@@ -133,19 +133,16 @@ def test_naiive_and_direct_rank_score_equivalence_with_repeats():
 
 
 def test_change_score_distribution():
-    # TODO: Test distribution of change score on multivariate Gaussian data:
-    # n = 200 samples, with cut point at n/8, n/2, 7*n/8.
-    np.random.seed(510)
-    # rank_change_score = to_change_score(cost)
+    np.random.seed(500)
 
     n_distribution_samples = 500
-    data_length = 200
+    data_length = 400
 
     cut_points = [data_length // 8, data_length // 2, 7 * data_length // 8]
     change_score_samples = np.zeros((n_distribution_samples, len(cut_points)))
-    change_score_cuts = [
-        np.array([[0, cut_point, data_length]]) for cut_point in cut_points
-    ]
+    change_score_cuts = np.array(
+        [[0, cut_point, data_length] for cut_point in cut_points]
+    )
 
     n_variables = 10
 
@@ -157,16 +154,18 @@ def test_change_score_distribution():
             variances=[1],
             lengths=[data_length],
         )
-        centered_data_ranks, pinv_rank_cov = _compute_ranks_and_pinv_cdf_cov(sample)
+        X = sample.values
+        centered_data_ranks, pinv_rank_cov = _compute_ranks_and_pinv_cdf_cov(X)
 
-        for j, change_score_cut in enumerate(change_score_cuts):
-            change_score = direct_rank_score(change_score_cut)
-            change_score_samples[i, j] = change_score
+        change_scores = direct_rank_score(
+            change_score_cuts, centered_data_ranks, pinv_rank_cov
+        )
+        change_score_samples[i, :] = change_scores
 
     # Use Kolmogorov-Smirnov test to compare to chi2 distribution:
     chi2_at_n_variables_df = chi2(df=n_variables)
     for j, cut_point in enumerate(cut_points):
         res = kstest(change_score_samples[:, j], chi2_at_n_variables_df.cdf)
-        assert res.pvalue > 0.01, (
-            f"KS test failed for cut at {cut_point}: p={res.pvalue}"
+        assert res.pvalue > 0.05, (
+            f"KS test failed at p=0.05 for cut at {cut_point}: p={res.pvalue}"
         )
