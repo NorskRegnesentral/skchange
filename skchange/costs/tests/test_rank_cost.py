@@ -89,15 +89,11 @@ def test_rank_cost_model_size():
 
 
 def test_rank_cost_on_changing_mv_normal():
-    # lengths = [200, 150, 150]
-    # changing_mv_gaussian_data = generate_piecewise_normal_data(
-    #     means=[0, 5, 10], variances=[1, 3, 2], lengths=lengths, n_variables=5
-    # )
-
-    lengths = [50, 80, 40]
+    lengths = [100, 150, 125]
     changing_mv_gaussian_data = generate_piecewise_normal_data(
-        means=[0, 5.0, 2.5], variances=[1, 1.5, 0.9], lengths=lengths, n_variables=3
+        means=[0, 5, 10], variances=[1, 3, 2], lengths=lengths, n_variables=5
     )
+
     expected_change_points = np.cumsum(lengths)[:-1]
 
     cost = RankCost()
@@ -109,16 +105,26 @@ def test_rank_cost_on_changing_mv_normal():
     no_prune_pelt_cpd.fit(changing_mv_gaussian_data)
     no_prune_pelt_change_points = no_prune_pelt_cpd.predict(changing_mv_gaussian_data)
 
+    assert len(no_prune_pelt_change_points) == len(pruning_pelt_change_points), (
+        "Pruned and unpruned PELT change points do not match."
+    )
+    assert (
+        no_prune_pelt_change_points["ilocs"] == pruning_pelt_change_points["ilocs"]
+    ).all(), "Pruned and unpruned PELT change points do not match."
+
     crops_detector = CROPS(
         cost=cost,
         min_segment_length=2,
-        min_penalty=1.0e1,
+        min_penalty=1.0e0,
         max_penalty=1.0e3,
         segmentation_selection="elbow",
     )
     crops_detector.fit(changing_mv_gaussian_data)
 
     pred_crops_change_points = crops_detector.predict(changing_mv_gaussian_data)
+    assert len(pred_crops_change_points) == len(expected_change_points), (
+        "CROPS change points do not match expected change points"
+    )
     assert (
         np.abs(pred_crops_change_points.ilocs - expected_change_points) < 5
     ).all(), "CROPS change points do not match expected change points"
