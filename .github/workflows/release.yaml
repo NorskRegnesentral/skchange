@@ -9,14 +9,14 @@ on:
       commit-sha:
         description: Commit SHA. If omitted, the latest commit on the main branch is used.
         type: string
-      run-test-pypi:
-        description: Test the release on TestPyPI before publishing.
+      dry-run:
+        description: Dry run. No publishing to TestPyPI, PyPI or Github.
         type: boolean
         default: true
-      run-release:
-        description: Release the package on PyPI and Github. Turn off for a dry-run.
+      skip-test-pypi:
+        description: Skip TestPyPI (use only if necessary).
         type: boolean
-        default: true
+        default: false
 
 jobs:
   build:
@@ -55,7 +55,7 @@ jobs:
   test-install:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ inputs.run-test-pypi }}
+    if: ${{ !inputs.dry-run && !inputs.skip-test-pypi }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -88,7 +88,7 @@ jobs:
   publish:
     needs: test-install
     runs-on: ubuntu-latest
-    if: ${{ inputs.run-release }}
+    if: ${{ !inputs.dry-run }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
