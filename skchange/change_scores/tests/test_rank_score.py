@@ -169,3 +169,69 @@ def test_change_score_distribution():
         assert res.pvalue > 0.05, (
             f"KS test failed at p=0.05 for cut at {cut_point}: p={res.pvalue}"
         )
+
+
+from time import perf_counter
+
+
+def test_numba_sorting_time():
+    @njit
+    def njit_sorting(array: np.ndarray):
+        sorted_array = np.sort(array)
+        return sorted_array
+
+    def np_sorting(array: np.ndarray):
+        return np.sort(array)
+
+    def np_int_sorting(array: np.ndarray):
+        return np.sort(array, kind="stable")
+
+    small_array_float = np.random.randn(100_000)
+    medium_array_float = np.random.randn(500_00)
+    large_array_float = np.random.randn(1_000_000)
+
+    small_array_int = np.random.randint(0, 100_000, size=(100_000,))
+    medium_array_int = np.random.randint(0, 500_000, size=(500_000,))
+    large_array_int = np.random.randint(0, 1_000_000, size=(1_000_000))
+
+    float_sorting_times = {"numba": [], "numpy": []}
+    int_sorting_times = {"numba": [], "numpy": []}
+
+    float_arrays = [small_array_float, medium_array_float, large_array_float]
+    int_arrays = [small_array_int, medium_array_int, large_array_int]
+
+    for array in float_arrays:
+        # Run once first to warm of JIT:
+        njit_sorting(array)
+
+        njit_sort_start_time = perf_counter()
+        sorted_numba_array = njit_sorting(array)
+        njit_sorting_time = perf_counter() - njit_sort_start_time
+        float_sorting_times["numba"].append(np.log10(njit_sorting_time))
+
+        numpy_sort_start_time = perf_counter()
+        sorted_np_array = np_sorting(array)
+        numpy_sorting_time = perf_counter() - numpy_sort_start_time
+        float_sorting_times["numpy"].append(np.log10(numpy_sorting_time))
+
+    print("Float numba sorting times:", float_sorting_times["numba"])
+    print("Float numpy sorting times:", float_sorting_times["numpy"])
+
+    for array in int_arrays:
+        # Run once first to warm of JIT:
+        njit_sorting(array)
+
+        njit_sort_start_time = perf_counter()
+        sorted_numba_array = njit_sorting(array)
+        njit_sorting_time = perf_counter() - njit_sort_start_time
+        int_sorting_times["numba"].append(np.log10(njit_sorting_time))
+
+        numpy_sort_start_time = perf_counter()
+        sorted_np_array = np_sorting(array)
+        numpy_sorting_time = perf_counter() - numpy_sort_start_time
+        int_sorting_times["numpy"].append(np.log10(numpy_sorting_time))
+
+    print("Int numba sorting times:", int_sorting_times["numba"])
+    print("Int numpy sorting times:", int_sorting_times["numpy"])
+
+    print("What?")

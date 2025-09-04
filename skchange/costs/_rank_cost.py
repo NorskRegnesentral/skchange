@@ -115,6 +115,9 @@ class RankCost(BaseCost):
     This cost function uses rank-based statistics to detect changes in the
     distribution of multivariate data.
 
+    TODO: Sort data points within each segment being tested?
+    # Lots more sorting, perhaps not needed?
+
     Parameters
     ----------
     param : any, optional (default=None)

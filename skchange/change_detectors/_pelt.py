@@ -93,8 +93,8 @@ def _run_pelt(
     cost: BaseCost,
     penalty: float,
     min_segment_length: int,
+    prune: bool,
     split_cost: float = 0.0,
-    prune: bool = True,
     pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm.
@@ -115,15 +115,15 @@ def _run_pelt(
         The penalty incurred for adding a changepoint.
     min_segment_length : int
         The minimum length of a segment, by default 1.
+    prune: bool
+        If False, drop the pruning step, reverting to optimal partitioning.
+        Can be useful for debugging and testing.
     split_cost : float, optional
         The cost of splitting a segment, to ensure that
         cost(X[t:p]) + cost(X[p:(s+1)]) + split_cost <= cost(X[t:(s+1)]),
         for all possible splits, 0 <= t < p < s <= len(X) - 1.
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the above inequality.
-    prune: bool, optional
-        If False, drop the pruning step, reverting to optimal partitioning.
-        Can be useful for debugging and testing. By default set to True.
     pruning_margin : float, optional
         The pruning margin to use. By default set to zero.
         This is used to reduce pruning of the admissible starts set.
@@ -382,8 +382,8 @@ def _run_pelt_with_step_size(
     cost: BaseCost,
     penalty: float,
     step_size: int,
+    prune: bool,
     split_cost: float = 0.0,
-    prune: bool = True,
     pruning_margin: float = 0.0,
 ) -> PELTResult:
     """Run the PELT algorithm.
@@ -553,9 +553,9 @@ class PELT(BaseChangeDetector):
         for all possible splits, 0 <= t < p < s <= len(X) - 1.
         By default set to 0.0, which is sufficient for
         log likelihood cost functions to satisfy the above inequality.
-    prune : bool, optional, default=False
-        If True, drop the pruning step. Reverts to optimal partitioning.
-        Can be useful for debugging and testing. By default set to False.
+    prune : bool, optional, default=True
+        If False, drop the pruning step. Reverts to optimal partitioning.
+        Can be useful for debugging and testing. By default set to True.
     pruning_margin : float, optional, default=0.0
         The pruning margin to use. By default set to zero.
         This is used to reduce pruning of the admissible starts set.
@@ -689,8 +689,8 @@ class PELT(BaseChangeDetector):
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
                 step_size=self.step_size,
-                split_cost=self.split_cost,
                 prune=self.prune,
+                split_cost=self.split_cost,
                 pruning_margin=self.pruning_margin,
             )
         elif self.min_segment_length == 1:
@@ -698,8 +698,8 @@ class PELT(BaseChangeDetector):
             pelt_result = _run_pelt_min_segment_length_one(
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
-                split_cost=self.split_cost,
                 prune=self.prune,
+                split_cost=self.split_cost,
                 pruning_margin=self.pruning_margin,
             )
         else:
@@ -707,8 +707,8 @@ class PELT(BaseChangeDetector):
                 cost=self.fitted_cost,
                 penalty=self.fitted_penalty,
                 min_segment_length=self.min_segment_length,
-                split_cost=self.split_cost,
                 prune=self.prune,
+                split_cost=self.split_cost,
                 pruning_margin=self.pruning_margin,
             )
 

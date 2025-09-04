@@ -88,16 +88,26 @@ def test_rank_cost_model_size():
     assert cost.get_model_size(3) == 6
 
 
-def test_rank_cost_on_changing_slope_data():
-    lengths = [200, 150, 150]
+def test_rank_cost_on_changing_mv_normal():
+    # lengths = [200, 150, 150]
+    # changing_mv_gaussian_data = generate_piecewise_normal_data(
+    #     means=[0, 5, 10], variances=[1, 3, 2], lengths=lengths, n_variables=5
+    # )
+
+    lengths = [50, 80, 40]
     changing_mv_gaussian_data = generate_piecewise_normal_data(
-        means=[0, 5, 10], variances=[1, 3, 2], lengths=lengths, n_variables=5
+        means=[0, 5.0, 2.5], variances=[1, 1.5, 0.9], lengths=lengths, n_variables=3
     )
     expected_change_points = np.cumsum(lengths)[:-1]
 
     cost = RankCost()
-    change_detector = PELT(cost=cost, min_segment_length=5)
-    change_detector.fit(changing_mv_gaussian_data)
+    pruning_pelt_cpd = PELT(cost=cost, min_segment_length=5, prune=True)
+    pruning_pelt_cpd.fit(changing_mv_gaussian_data)
+    pruning_pelt_change_points = pruning_pelt_cpd.predict(changing_mv_gaussian_data)
+
+    no_prune_pelt_cpd = PELT(cost=cost, min_segment_length=5, prune=False)
+    no_prune_pelt_cpd.fit(changing_mv_gaussian_data)
+    no_prune_pelt_change_points = no_prune_pelt_cpd.predict(changing_mv_gaussian_data)
 
     crops_detector = CROPS(
         cost=cost,
@@ -154,3 +164,119 @@ def test_change_score_distribution():
         assert res.pvalue > 0.01, (
             f"KS test failed for cut at {cut_point}: p={res.pvalue}"
         )
+
+
+def test_split_RankCost_relation(
+    # full_segment_cuts, split_cuts_list, rank_cost: RankCost
+):
+    np.random.seed(521)
+    lengths = [50, 80, 40]
+    changing_mv_gaussian_data = generate_piecewise_normal_data(
+        means=[0, 5.0, 2.5], variances=[1, 1.5, 0.9], lengths=lengths, n_variables=3
+    )
+
+    rank_cost = RankCost().fit(changing_mv_gaussian_data)
+
+    start_index = 0
+    end_index = changing_mv_gaussian_data.shape[0] - 5
+    # end_index = 50
+
+    splits = np.arange(start_index + 2, end_index - 1)
+    full_segment_cuts = np.array([[start_index, end_index] for _ in splits])
+    split_cuts_list = [
+        np.array([[start_index, split], [split, end_index]]) for split in splits
+    ]
+
+    full_segment_costs = np.array(
+        [
+            rank_cost.evaluate(full_segment_cut)[0, 0]
+            for full_segment_cut in full_segment_cuts
+        ]
+    )
+    split_segment_costs = np.array(
+        [
+            [
+                rank_cost.evaluate(split_cuts[0])[0, 0],
+                rank_cost.evaluate(split_cuts[1])[0, 0],
+            ]
+            for split_cuts in split_cuts_list
+        ]
+    )
+    split_segment_lengths = np.array(
+        [
+            [
+                split_cuts[0][1] - split_cuts[0][0],
+                split_cuts[1][1] - split_cuts[1][0],
+            ]
+            for split_cuts in split_cuts_list
+        ]
+    )
+    full_segment_lengths = np.array(
+        [
+            full_segment_cut[1] - full_segment_cut[0]
+            for full_segment_cut in full_segment_cuts
+        ]
+    )[:, None]
+
+    # First part reconstructing the full interval cost from the split costs:
+    reconstructed_full_segment_costs = np.sum(
+        (split_segment_lengths / full_segment_lengths) * split_segment_costs, axis=1
+    )
+
+    # Now add weighted inner product:
+    cross_term_inner_product_weights = 2 * (
+        np.prod(split_segment_lengths, axis=1)[:, None] / full_segment_lengths
+    )
+    cross_term_inner_products = np.zeros((full_segment_cuts.shape[0], 1))
+
+    normalization_constant = 4.0 / np.square(rank_cost.n_samples)
+
+    for i, split_cuts in enumerate(split_cuts_list):
+        start_1, split_end = split_cuts[0]
+        split_start, end_2 = split_cuts[1]
+
+        avg_ranks_pre_split = np.mean(
+            rank_cost._centered_data_ranks[start_1:split_end, :], axis=0
+        )
+        avg_ranks_post_split = np.mean(
+            rank_cost._centered_data_ranks[split_start:end_2, :], axis=0
+        )
+
+        cross_term_inner_products[i, 0] = normalization_constant * (
+            avg_ranks_pre_split.T @ rank_cost._pinv_rank_cov @ avg_ranks_post_split
+        )
+
+    cross_term_contributions = -(
+        cross_term_inner_product_weights * cross_term_inner_products
+    )[:, 0]
+    reconstructed_full_segment_costs += cross_term_contributions
+
+    # The full segment cost should be at least the split segment cost
+    assert (full_segment_costs - reconstructed_full_segment_costs >= -1e-10).all()
+
+
+def test_effective_split_cost():
+    lengths = [50, 80, 40]
+    changing_mv_gaussian_data = generate_piecewise_normal_data(
+        means=[0, 5.0, 2.5], variances=[1, 1.5, 0.9], lengths=lengths, n_variables=3
+    )
+    expected_change_points = np.cumsum(lengths)[:-1]
+
+    cost = RankCost().fit(changing_mv_gaussian_data)
+
+    start_index = 0
+    end_index = changing_mv_gaussian_data.shape[0] - 5
+    splits = np.arange(start_index + 2, end_index - 1)
+    full_segment_cuts = np.array([[start_index, end_index] for _ in splits])
+    split_cuts = [
+        np.array([[start_index, split], [split, end_index]]) for split in splits
+    ]
+
+    effective_split_costs = []
+    for full_segment_cut, split_cut in zip(full_segment_cuts, split_cuts):
+        full_segment_cost = cost.evaluate(full_segment_cut)[0, 0]
+        split_segment_cost = cost.evaluate(split_cut).sum()
+        effective_split_costs.append(full_segment_cost - split_segment_cost)
+
+    effective_split_costs = np.array(effective_split_costs)
+    print(effective_split_costs)
