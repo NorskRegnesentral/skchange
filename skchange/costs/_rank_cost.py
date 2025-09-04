@@ -73,7 +73,7 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
         The pseudo-inverse of the rank covariance matrix and centered data ranks.
     """
     n_samples, n_variables = X.shape
-    sorted_by_column = np.sort(X, axis=0)
+    X_sorted_by_column = np.sort(X, axis=0)
     # Compute the Empirical CDF value for each column:
     data_ranks = np.zeros_like(X, dtype=np.float64)
 
@@ -81,13 +81,13 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
         # Compute upper right ranks: (a[i-1] < v <= a[i])
         # One-indexed lower ranks:
         data_ranks[:, col] = 1 + np.searchsorted(
-            sorted_by_column[:, col], X[:, col], side="left"
+            X_sorted_by_column[:, col], X[:, col], side="left"
         )
 
         # Must average lower and upper ranks to work on data with duplicates:
         # Add lower left ranks: (a[i-1] <= v < a[i])
         data_ranks[:, col] += np.searchsorted(
-            sorted_by_column[:, col], X[:, col], side="right"
+            X_sorted_by_column[:, col], X[:, col], side="right"
         )
         data_ranks[:, col] /= 2
 

@@ -78,7 +78,7 @@ def _naiive_rank_score(
     return scores
 
 
-def test_naiive_and_direct_rank_score_equivalence():
+def test_naiive_and_direct_rank_score_equivalence_full_span():
     np.random.seed(42)
     n_samples = 10
     n_variables = 3
@@ -99,7 +99,7 @@ def test_naiive_and_direct_rank_score_equivalence():
     np.testing.assert_allclose(naiive_scores, direct_scores, rtol=1e-10, atol=1e-12)
 
 
-def test_naiive_and_direct_rank_score_equivalence_with_repeats():
+def test_naiive_and_direct_rank_score_equivalence_with_repeats_full_span():
     np.random.seed(123)
     n_samples = 10
 
@@ -132,6 +132,38 @@ def test_naiive_and_direct_rank_score_equivalence_with_repeats():
     np.testing.assert_allclose(naiive_scores, direct_scores, rtol=1e-10, atol=1e-12)
 
 
+def test_naiive_and_direct_rank_score_equivalence_middle_span():
+    np.random.seed(42)
+    n_samples = 12
+    n_variables = 3
+    X = np.random.randn(n_samples, n_variables)
+
+    # Compute ranks and pinv cov as in _rank_cost
+    start_index = 2
+    end_index = n_samples - 2
+    direct_centered_data_ranks, full_pinv_rank_cov = _compute_ranks_and_pinv_cdf_cov(X)
+    naiive_centered_data_ranks, _ = _compute_ranks_and_pinv_cdf_cov(
+        X[start_index:end_index, :]
+    )
+
+    # Make segmentations spanning all the samples:
+    segment_splits = np.arange(4, n_samples - 4)  # [1, 2, ..., n_samples-1]
+    segment_starts = np.repeat(start_index, len(segment_splits))
+    segment_ends = np.repeat(end_index, len(segment_splits))
+
+    direct_cuts = np.column_stack((segment_starts, segment_splits, segment_ends))
+    naiive_cuts = direct_cuts - start_index  # Adjust cuts for naiive ranks
+
+    naiive_scores = _naiive_rank_score(
+        naiive_cuts, naiive_centered_data_ranks, full_pinv_rank_cov
+    )
+    direct_scores = direct_rank_score(
+        direct_cuts, direct_centered_data_ranks, full_pinv_rank_cov
+    )
+
+    np.testing.assert_allclose(naiive_scores, direct_scores, rtol=1e-10, atol=1e-12)
+
+
 def test_change_score_distribution():
     np.random.seed(500)
 
@@ -153,6 +185,7 @@ def test_change_score_distribution():
             means=[0],
             variances=[1],
             lengths=[data_length],
+            seed=41 + i,  # Different seed for each sample
         )
         X = sample.values
         centered_data_ranks, pinv_rank_cov = _compute_ranks_and_pinv_cdf_cov(X)

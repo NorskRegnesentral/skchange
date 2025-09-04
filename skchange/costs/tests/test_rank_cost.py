@@ -3,13 +3,14 @@ import pytest
 from scipy.stats import chi2, kstest
 
 from skchange.change_detectors import CROPS, PELT
+from skchange.change_scores import RankScore
 from skchange.costs._rank_cost import RankCost
 from skchange.datasets import (
     generate_piecewise_normal_data,
 )
 
 
-def test_rank_cost_single_variable_no_change():
+def test_rank_cost_single_variable_full_span():
     # Single variable, no change
     X = np.arange(10).reshape(-1, 1)
     cost = RankCost()
@@ -17,9 +18,9 @@ def test_rank_cost_single_variable_no_change():
     starts = np.array([0])
     ends = np.array([10])
     costs = cost._evaluate_optim_param(starts, ends)
-    # Should be a single value, negative and not zero
+    # Cost evaluated over entire interval should be zero:
     assert costs.shape == (1, 1)
-    assert costs[0, 0] < 0
+    assert costs[0, 0] == pytest.approx(0.0)
 
 
 def test_rank_cost_single_variable_with_change():
@@ -35,8 +36,8 @@ def test_rank_cost_single_variable_with_change():
     assert costs[0, 0] - (costs[1, 0] + costs[2, 0]) > 0
 
 
-def test_rank_cost_multivariate_no_change():
-    # Multivariate, no change
+def test_rank_cost_multivariate_full_span():
+    # Multivariate, over full span, zero cost.
     X = np.tile(np.arange(10), (2, 1)).T
     cost = RankCost()
     cost.fit(X)
@@ -44,11 +45,14 @@ def test_rank_cost_multivariate_no_change():
     ends = np.array([10])
     costs = cost._evaluate_optim_param(starts, ends)
     assert costs.shape == (1, 1)
-    assert costs[0, 0] < 0
+    assert costs[0, 0] == pytest.approx(0.0)
 
 
 def test_rank_cost_multivariate_with_change():
-    # Multivariate, change in one variable
+    # Multivariate, change in one variable.
+    # Average ranks the same in each interval [0, 5)
+    # and [5, 10), thus they get the same cost.
+    np.random.seed(423)
     X = np.zeros((10, 2))
     X[:5, 0] = 1 * np.random.rand(5)
     X[5:, 0] = 10 * np.random.rand(5)
@@ -59,11 +63,13 @@ def test_rank_cost_multivariate_with_change():
     ends = np.array([5, 10])
     costs = cost._evaluate_optim_param(starts, ends)
     assert costs.shape == (2, 1)
-    assert costs[0, 0] != pytest.approx(costs[1, 0])
+    assert costs[0, 0] == pytest.approx(costs[1, 0])
 
 
 def test_rank_cost_multivariate_change_both_vars():
-    # Multivariate, change in both variables
+    # Multivariate, change in both variables.
+    # Same here, same average ranks in each interval [0, 5)
+    # and [5, 10), thus they get the same cost.
     X = np.zeros((10, 2))
     X[:5, 0] = 1
     X[5:, 0] = 10
@@ -71,11 +77,32 @@ def test_rank_cost_multivariate_change_both_vars():
     X[5:, 1] = 20
     cost = RankCost()
     cost.fit(X)
+
+    # Check that the centered ranks are as expected
+    # when there are ties:
+    np.testing.assert_array_equal(
+        cost._centered_data_ranks,
+        np.array(
+            [
+                [-2.5, -2.5],
+                [-2.5, -2.5],
+                [-2.5, -2.5],
+                [-2.5, -2.5],
+                [-2.5, -2.5],
+                [2.5, 2.5],
+                [2.5, 2.5],
+                [2.5, 2.5],
+                [2.5, 2.5],
+                [2.5, 2.5],
+            ]
+        ),
+    )
+
     starts = np.array([0, 5])
     ends = np.array([5, 10])
     costs = cost._evaluate_optim_param(starts, ends)
     assert costs.shape == (2, 1)
-    assert costs[0, 0] != pytest.approx(costs[1, 0])
+    assert costs[0, 0] == pytest.approx(costs[1, 0])
 
 
 def test_rank_cost_min_size_property():
@@ -155,8 +182,8 @@ def test_change_score_distribution():
             means=[0],
             variances=[1],
             lengths=[data_length],
+            seed=61 + i,
         )
-        # rank_change_score.fit(sample)
 
         cost.fit(sample)
         for j, change_score_cut in enumerate(change_score_cuts):
@@ -182,9 +209,10 @@ def test_split_RankCost_relation(
     )
 
     rank_cost = RankCost().fit(changing_mv_gaussian_data)
+    rank_score = RankScore().fit(changing_mv_gaussian_data)
 
     start_index = 0
-    end_index = changing_mv_gaussian_data.shape[0] - 5
+    end_index = changing_mv_gaussian_data.shape[0]
     # end_index = 50
 
     splits = np.arange(start_index + 2, end_index - 1)
@@ -192,6 +220,7 @@ def test_split_RankCost_relation(
     split_cuts_list = [
         np.array([[start_index, split], [split, end_index]]) for split in splits
     ]
+    change_score_cuts = np.array([[start_index, split, end_index] for split in splits])
 
     full_segment_costs = np.array(
         [
@@ -208,6 +237,7 @@ def test_split_RankCost_relation(
             for split_cuts in split_cuts_list
         ]
     )
+    change_score_values = rank_score.evaluate(change_score_cuts)[:, 0]
 
     # Record the difference in full-segment vs. sum(split-segment) costs:
     actual_full_minus_split_costs = full_segment_costs - split_segment_costs.sum(axis=1)
@@ -275,30 +305,4 @@ def test_split_RankCost_relation(
     # The full segment cost should be at least the split segment cost
     assert (full_segment_costs - reconstructed_full_segment_costs >= -1e-10).all()
     assert (actual_full_minus_split_costs - pred_full_minus_split_costs < 1e-10).all()
-
-
-def test_effective_split_cost():
-    lengths = [50, 80, 40]
-    changing_mv_gaussian_data = generate_piecewise_normal_data(
-        means=[0, 5.0, 2.5], variances=[1, 1.5, 0.9], lengths=lengths, n_variables=3
-    )
-    expected_change_points = np.cumsum(lengths)[:-1]
-
-    cost = RankCost().fit(changing_mv_gaussian_data)
-
-    start_index = 0
-    end_index = changing_mv_gaussian_data.shape[0] - 5
-    splits = np.arange(start_index + 2, end_index - 1)
-    full_segment_cuts = np.array([[start_index, end_index] for _ in splits])
-    split_cuts = [
-        np.array([[start_index, split], [split, end_index]]) for split in splits
-    ]
-
-    effective_split_costs = []
-    for full_segment_cut, split_cut in zip(full_segment_cuts, split_cuts):
-        full_segment_cost = cost.evaluate(full_segment_cut)[0, 0]
-        split_segment_cost = cost.evaluate(split_cut).sum()
-        effective_split_costs.append(full_segment_cost - split_segment_cost)
-
-    effective_split_costs = np.array(effective_split_costs)
-    print(effective_split_costs)
+    assert (change_score_values - pred_full_minus_split_costs < 1e-10).all()
