@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       commit-sha:
-        description: Commit SHA. If omitted, use the latest commit on the main branch.
+        description: Commit SHA. If omitted, the latest commit on the main branch is used.
         type: string
-      build-only:
-        description: Only build the package, but don't release or test on TestPyPI.
-        type: boolean
-        default: false
-      run-test-pypi:
-        description: Run a test release to TestPyPI. If the test works, it will automatically be published to the main PyPI.
+      dry-run:
+        description: Dry run. No publishing to TestPyPI, PyPI or Github.
         type: boolean
         default: true
+      skip-test-pypi:
+        description: Skip TestPyPI (use only if necessary).
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -32,17 +32,13 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine
-          pip install .[docs]
+            pip install build "twine<=6.0.1"
 
       - name: Clean build artifacts
         run: make clean
-
-      - name: Build documentation
-        run: make docs
 
       - name: Build package
         run: make dist
@@ -59,7 +55,7 @@ jobs:
   test-install:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ !inputs.build-only && !inputs.run-test-pypi }}
+    if: ${{ !inputs.dry-run && !inputs.skip-test-pypi }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -67,11 +63,16 @@ jobs:
           name: dist
           path: dist
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "twine<=6.0.1"
+
       - name: Publish to TestPyPI
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+        run: twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
 
       - name: Check install from TestPyPI
         run: |
@@ -87,7 +88,7 @@ jobs:
   publish:
     needs: test-install
     runs-on: ubuntu-latest
-    if: ${{ !inputs.build-only }}
+    if: ${{ !inputs.dry-run }}
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
@@ -108,6 +109,11 @@ jobs:
           git tag v${{ steps.get_version.outputs.version }}
           git push origin v${{ steps.get_version.outputs.version }}
 
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "twine<=6.0.1"
+
       - name: Publish to PyPI
         env:
           TWINE_USERNAME: __token__
@@ -126,6 +132,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub release
-        run: gh release edit v${{ steps.get_version.outputs.version }} --draft=false
+        run: gh release edit v${{ steps.get_version.outputs.version }} --draft=true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
