@@ -24,7 +24,7 @@ implemented.
 Contributing code
 -----------------
 The following sections provide detailed instructions on how to contribute code to Skchange effectively.
-The guide is divided into three parts, which are intended to be read in sequence:
+The guide is divided into three parts, which are intended to be read in sequence.
 
 .. toctree::
     :maxdepth: 1
@@ -32,6 +32,17 @@ The guide is divided into three parts, which are intended to be read in sequence
     setup
     contributing
     code_style
+
+For maintainers
+---------------
+There is an additional section for maintainers, containing information on how to manage
+the project, make releases and so forth.
+
+.. toctree::
+    :maxdepth: 1
+
+    for_maintainers
+
 
 Credits
 -------
