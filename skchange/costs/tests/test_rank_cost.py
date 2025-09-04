@@ -202,6 +202,10 @@ def test_split_RankCost_relation(
             for split_cuts in split_cuts_list
         ]
     )
+
+    # Record the difference in full-segment vs. sum(split-segment) costs:
+    actual_full_minus_split_costs = full_segment_costs - split_segment_costs.sum(axis=1)
+
     split_segment_lengths = np.array(
         [
             [
@@ -230,6 +234,7 @@ def test_split_RankCost_relation(
     cross_term_inner_products = np.zeros((full_segment_cuts.shape[0], 1))
 
     normalization_constant = 4.0 / np.square(rank_cost.n_samples)
+    pred_full_minus_split_costs = np.zeros(full_segment_cuts.shape[0])
 
     for i, split_cuts in enumerate(split_cuts_list):
         start_1, split_end = split_cuts[0]
@@ -246,6 +251,16 @@ def test_split_RankCost_relation(
             avg_ranks_pre_split.T @ rank_cost._pinv_rank_cov @ avg_ranks_post_split
         )
 
+        pre_split_length = split_end - start_1
+        post_split_length = end_2 - split_start
+        full_segment_length = end_2 - start_1
+        diff_avg_ranks = avg_ranks_pre_split - avg_ranks_post_split
+        pred_full_minus_split_costs[i] = normalization_constant * (
+            (pre_split_length * post_split_length)
+            / full_segment_length
+            * (diff_avg_ranks.T @ rank_cost._pinv_rank_cov @ diff_avg_ranks)
+        )
+
     cross_term_contributions = -(
         cross_term_inner_product_weights * cross_term_inner_products
     )[:, 0]
@@ -253,6 +268,7 @@ def test_split_RankCost_relation(
 
     # The full segment cost should be at least the split segment cost
     assert (full_segment_costs - reconstructed_full_segment_costs >= -1e-10).all()
+    assert (actual_full_minus_split_costs - pred_full_minus_split_costs < 1e-10).all()
 
 
 def test_effective_split_cost():
