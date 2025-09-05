@@ -62,6 +62,7 @@ jobs:
             echo "Error: version not found in pyproject.toml"
             exit 1
           fi
+          echo "Got version: $VERSION"
           echo "$VERSION" > version.txt
 
       - name: Upload version artifact
@@ -172,6 +173,7 @@ jobs:
         id: github-release
         uses: release-drafter/release-drafter@v6
         with:
+          config-name: release-drafter.yml
           name: skchange v${{ steps.read_version.outputs.version }}
           tag: v${{ steps.read_version.outputs.version }}
           version: ${{ steps.read_version.outputs.version }}
