@@ -18,7 +18,7 @@ from ..utils.numba import njit
 
 # @njit
 def direct_rank_score(
-    cuts: np.ndarray,
+    change_cuts: np.ndarray,
     centered_data_ranks: np.ndarray,
     pinv_rank_cov: np.ndarray,
 ):
@@ -46,7 +46,7 @@ def direct_rank_score(
         The rank-based change scores for each segment.
     """
     n_variables = centered_data_ranks.shape[1]
-    rank_scores = np.zeros(cuts.shape[0])
+    rank_scores = np.zeros(change_cuts.shape[0])
     if len(rank_scores) == 0:
         # Return early if not at least one cut to evaluate:
         return rank_scores
@@ -54,11 +54,11 @@ def direct_rank_score(
     mean_segment_ranks = np.zeros(n_variables)
 
     # Use CDF covariance pseudo-inverse computed on all the data.
-    max_interval_length = np.max(np.diff(cuts[:, [0, 2]], axis=1))
+    max_interval_length = np.max(np.diff(change_cuts[:, [0, 2]], axis=1))
     segment_data_ranks = np.zeros((max_interval_length, n_variables))
 
-    prev_segment_start = cuts[0, 0]
-    prev_segment_end = cuts[0, 2]
+    prev_segment_start = change_cuts[0, 0]
+    prev_segment_end = change_cuts[0, 2]
 
     # Rank values within the first segment:
     segment_sorted_by_column = np.sort(
@@ -92,7 +92,7 @@ def direct_rank_score(
         (prev_segment_end - prev_segment_start) + 1
     ) / 2.0
 
-    for i, cut in enumerate(cuts):
+    for i, cut in enumerate(change_cuts):
         # Unpack cut row into start, split, end:
         segment_start, segment_split, segment_end = cut
 

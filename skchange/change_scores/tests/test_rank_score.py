@@ -11,7 +11,7 @@ from skchange.utils.numba import njit
 
 @njit
 def _naiive_rank_score(
-    cuts: np.ndarray,
+    change_cuts: np.ndarray,
     centered_data_ranks: np.ndarray,
     pinv_rank_cov: np.ndarray,
 ) -> np.ndarray:
@@ -39,12 +39,12 @@ def _naiive_rank_score(
         The rank costs for each segment.
     """
     n_variables = centered_data_ranks.shape[1]
-    scores = np.zeros(cuts.shape[0])
+    scores = np.zeros(change_cuts.shape[0])
 
     # Compute mean ranks for each segment:
     mean_segment_ranks = np.zeros(n_variables)
 
-    for i, cut in enumerate(cuts):
+    for i, cut in enumerate(change_cuts):
         # Unpack cut row into start, split, end:
         segment_start, segment_split, segment_end = cut
 
