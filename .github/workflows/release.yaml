@@ -90,6 +90,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry-run }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit-sha || 'main' }}
+
       - name: Download dist artifacts
         uses: actions/download-artifact@v4
         with:
@@ -99,7 +104,11 @@ jobs:
       - name: Get version from pyproject.toml
         id: get_version
         run: |
-          VERSION=$(grep '^version =' pyproject.toml | sed 's/version = \"\\(.*\\)\"/\\1/')
+          VERSION=$(grep '^version =' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "Error: version not found in pyproject.toml"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create and push git tag
