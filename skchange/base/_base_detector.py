@@ -56,7 +56,8 @@ class BaseDetector(_BaseDetector):
 
     Adjusts the BaseDetector class in sktime to fit the skchange framework as follows:
 
-        * Sets reasonable default values for the tags.
+    * Sets reasonable default values for the tags.
+
     """
 
     _tags = {
