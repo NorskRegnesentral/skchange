@@ -225,7 +225,5 @@ class RankCost(BaseCost):
         params : dict or list of dict
             Parameters to create testing instances of the class.
         """
-        params = [
-            {"param": None},
-        ]
+        params = [{}, {}]
         return params

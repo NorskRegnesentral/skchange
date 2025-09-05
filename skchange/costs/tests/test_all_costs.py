@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from skbase._exceptions import NotFittedError
 
-from skchange.costs import COSTS
+from skchange.costs import COSTS, RankCost
 from skchange.costs.base import BaseCost
 from skchange.datasets import generate_alternating_data
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
@@ -83,6 +83,9 @@ def test_cost_evaluation_optim_gt_fixed(CostClass: type[BaseCost]):
 def test_cost_evaluation_positive(CostClass: type[BaseCost]):
     cost = CostClass.create_test_instance()
     skip_if_no_test_data(cost)
+    if isinstance(cost, RankCost):
+        pytest.skip("RankCost produces negative costs.")
+
     n = 50
     df = generate_alternating_data(n_segments=1, segment_length=n, p=1, random_state=5)
     cost.fit(df)

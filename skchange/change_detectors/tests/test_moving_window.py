@@ -7,7 +7,7 @@ from skchange.anomaly_scores import LocalAnomalyScore
 from skchange.base import BaseIntervalScorer
 from skchange.change_detectors import MovingWindow
 from skchange.change_scores import CHANGE_SCORES, ContinuousLinearTrendScore, RankScore
-from skchange.costs import COSTS
+from skchange.costs import COSTS, RankCost
 from skchange.datasets import generate_alternating_data
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
@@ -39,7 +39,7 @@ def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer], params: 
     )
 
     # RankScore needs penalty 10 to detect single change in mean.
-    if isinstance(score, RankScore):
+    if isinstance(score, RankScore) or isinstance(score, RankCost):
         penalty = 10.0
     else:
         penalty = 20.0

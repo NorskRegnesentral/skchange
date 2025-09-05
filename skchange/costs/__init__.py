@@ -10,6 +10,7 @@ from ._linear_trend_cost import LinearTrendCost
 from ._multivariate_gaussian_cost import MultivariateGaussianCost
 from ._multivariate_t_cost import MultivariateTCost
 from ._poisson_cost import PoissonCost
+from ._rank_cost import RankCost
 
 COSTS = [
     EmpiricalDistributionCost,
@@ -22,6 +23,7 @@ COSTS = [
     LinearRegressionCost,
     LinearTrendCost,
     PoissonCost,
+    RankCost,
 ]
 
 __all__ = COSTS

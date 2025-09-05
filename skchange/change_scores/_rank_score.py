@@ -3,17 +3,12 @@
 Detects distributional changes using rank statistics, assuming continuous CDFs.
 The score is based on the difference in mean ranks before and after a split,
 normalized by the pseudo-inverse of the rank covariance matrix.
-
-References
-----------
-- Hawkins, D. M., & Zamba, K. D. (2005). Statistical process control for shifts in mean or variance using rank statistics. Technometrics, 47(2), 164-173.
 """
 
 import numpy as np
 
 from ..base import BaseIntervalScorer
 from ..costs._rank_cost import _compute_ranks_and_pinv_cdf_cov
-from ..utils.numba import njit
 
 
 # @njit
