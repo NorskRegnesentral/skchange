@@ -433,6 +433,7 @@ def test_run_pelt(cost: BaseCost, penalty: float, min_segment_length=1):
     pelt_result = _run_pelt(
         cost,
         penalty=penalty,
+        prune=True,
         min_segment_length=min_segment_length,
     )
 
@@ -457,6 +458,7 @@ def test_pelt_with_and_without_pruning_is_the_same(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
 
     assert np.array_equal(opt_part_results.changepoints, pelt_results.changepoints)
@@ -487,12 +489,13 @@ def test_pelt_on_tricky_data(
         penalty=penalty,
         min_segment_length=min_segment_length,
         pruning_margin=pruning_margin,
+        prune=True,
     )
     opt_part_result = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
-        prune=True,
+        prune=False,
     )
 
     assert np.array_equal(pelt_result.changepoints, opt_part_result.changepoints)
@@ -528,6 +531,7 @@ def test_pelt_min_segment_lengths(cost: BaseCost, penalty: float, min_segment_le
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
 
     cost.fit(alternating_sequence)
@@ -558,6 +562,7 @@ def test_high_min_segment_length(cost: BaseCost, penalty: float, min_segment_len
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
 
     opt_part_result = _run_pelt(
@@ -587,6 +592,7 @@ def test_pelt_agrees_with_opt_part_longer_min_segment_length(
         penalty=penalty,
         min_segment_length=min_segment_length,
         pruning_margin=0.0,
+        prune=True,
     )
 
     opt_part_result = _run_pelt(
@@ -630,6 +636,7 @@ def test_comparing_skchange_to_ruptures_pelt_where_it_works(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
     skchange_pelt_min_value = (
         evaluate_segmentation(cost, skchange_pelt_result.changepoints)
@@ -701,6 +708,7 @@ def test_compare_with_ruptures_pelt_where_restricted_pruning_works(
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
     skchange_pelt_min_value = (
         evaluate_segmentation(cost, skchange_pelt_result.changepoints)
@@ -755,6 +763,7 @@ def test_pelt_dense_changepoints_parametrized(cost: BaseCost, min_segment_length
         cost,
         penalty=penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
 
     # Expected changepoints are at every min_segment_length interval
@@ -838,6 +847,7 @@ def test_jump_pelt_pruning_fraction(cost: BaseCost, penalty: float):
         cost=cost,
         penalty=penalty,
         step_size=step_size,
+        prune=True,
     )
 
     # Check that pruning fraction is 1.0 when pruning is disabled
@@ -900,12 +910,14 @@ def test_old_pelt_failing_with_large_min_segment_length(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
 
     old_pelt_result = old_run_pelt(
         cost=cost,
         penalty=common_penalty,
         min_segment_length=min_segment_length,
+        prune=True,
     )
 
     # PELT objective values:
@@ -953,7 +965,7 @@ def test_pelt_with_fewer_samples_than_min_segment_length_throws():
         ValueError,
         match="The `min_segment_length` cannot be larger than the number of samples",
     ):
-        _run_pelt(cost, penalty=1.0, min_segment_length=10)
+        _run_pelt(cost, penalty=1.0, min_segment_length=10, prune=True)
 
 
 def test_jump_pelt_with_fewer_samples_than_step_size_throws():
@@ -996,6 +1008,7 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=1,
+        prune=True,
     )
     no_pruning_pelt_result = _run_pelt(
         cost,
@@ -1013,6 +1026,7 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
     min_seg_length_one_pelt_result = _run_pelt_min_segment_length_one(
         cost,
         penalty=penalty,
+        prune=True,
     )
     no_pruning_min_seg_length_one_pelt_result = _run_pelt_min_segment_length_one(
         cost,
@@ -1024,9 +1038,9 @@ def test_pelt_min_segment_length_one_agrees_with_regular_run_pelt(
         f"got {no_pruning_min_seg_length_one_pelt_result.pruning_fraction}"
     )
 
-    assert (
-        min_seg_length_one_pelt_result == regular_pelt_result
-    ), "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    assert min_seg_length_one_pelt_result == regular_pelt_result, (
+        "Expected PELT with min_segment_length=1 to agree with regular PELT."
+    )
     assert no_pruning_min_seg_length_one_pelt_result == no_pruning_pelt_result, (
         "Expected PELT with min_segment_length=1 and prune=False to agree with "
         "regular PELT with prune=False."
@@ -1043,7 +1057,7 @@ def test_pelt_min_segment_length_one_throws_if_zero_sample():
         ValueError,
         match="The number of samples for the fitted cost must be at least one.",
     ):
-        _run_pelt_min_segment_length_one(cost, penalty=1.0)
+        _run_pelt_min_segment_length_one(cost, penalty=1.0, prune=True)
 
 
 def test_constructing_PELTResult_with_differing_array_sizes_raises_error():
@@ -1063,9 +1077,9 @@ def test_comparing_PELTResult_with_non_PELTResult_returns_false():
         previous_change_points=np.array([0, 1]),
         pruning_fraction=0.0,
     )
-    assert (
-        not pelt_result == "not a PELTResult object"
-    ), "Expected comparison with non-PELTResult to return False."
+    assert not pelt_result == "not a PELTResult object", (
+        "Expected comparison with non-PELTResult to return False."
+    )
 
 
 def test_PELTResult_cannot_be_hashed():
@@ -1113,14 +1127,16 @@ def test_run_pelt_with_pruning_margin_decreases_pruning_fraction(
         cost,
         penalty=penalty,
         min_segment_length=4,
+        prune=True,
         pruning_margin=0.0,  # Small margin
     )
 
-    # Run PELT with a larger pruning margin
+    # Run PELT with a larger pruning margin:
     pelt_result_large_margin = _run_pelt(
         cost,
         penalty=penalty,
         min_segment_length=4,
+        prune=True,
         pruning_margin=10.0,  # Larger margin
     )
 
@@ -1145,6 +1161,7 @@ def test_run_pelt_min_seglen_one_with_pruning_margin_decreases_pruning_fraction(
     pelt_result_no_margin = _run_pelt_min_segment_length_one(
         cost,
         penalty=penalty,
+        prune=True,
         pruning_margin=0.0,  # Small margin
     )
 
@@ -1153,6 +1170,7 @@ def test_run_pelt_min_seglen_one_with_pruning_margin_decreases_pruning_fraction(
         cost,
         penalty=penalty,
         pruning_margin=10.0,  # Larger margin
+        prune=True,
     )
 
     # Check that the pruning fraction decreases with larger margin
@@ -1178,6 +1196,7 @@ def test_run_pelt_step_size_with_pruning_margin_decreases_pruning_fraction(
         step_size=5,
         penalty=penalty,
         pruning_margin=0.0,  # Small margin
+        prune=True,
     )
 
     # Run PELT with a larger pruning margin
@@ -1185,6 +1204,7 @@ def test_run_pelt_step_size_with_pruning_margin_decreases_pruning_fraction(
         cost,
         step_size=5,
         penalty=penalty,
+        prune=True,
         pruning_margin=10.0,  # Larger margin
     )
 
