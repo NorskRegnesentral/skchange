@@ -58,7 +58,6 @@ jobs:
   pytests-with-numba:
     name: pytests-with-numba
     runs-on: ubuntu-latest
-    needs: pytests-without-numba
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -76,6 +75,7 @@ jobs:
         with:
           name: coverage-with-numba
           path: .coverage
+
   combine-coverage:
     name: combine-coverage
     runs-on: ubuntu-latest
