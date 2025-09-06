@@ -16,7 +16,7 @@ jobs:
         uses: release-drafter/release-drafter@v6
         with:
           config-name: release-drafter.yml
-          name: skchange v${{ inputs.version }}
+          name: v${{ inputs.version }}
           tag: v${{ inputs.version }}
           version: ${{ inputs.version }}
           commitish: ${{ github.sha }}
