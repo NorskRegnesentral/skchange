@@ -8,11 +8,6 @@ exclude-labels:
 change-template: '- $TITLE (#$NUMBER)'
 change-title-escapes: '\<*_&'
 
-replacers:
-  # Remove conventional commits from titles
-  - search: '/- (build|chore|ci|depr|docs|feat|fix|perf|refactor|release|test)(\(.*\))?(\!)?\: /g'
-    replace: '- '
-
 autolabeler:
   - label: breaking
     title:
@@ -41,6 +36,11 @@ autolabeler:
   - label: release
     title:
       - '/^release/'
+
+replacers:
+  # Remove conventional commits from titles
+  - search: '/- (build|chore|ci|depr|docs|feat|fix|perf|refactor|release|test)(\(.*\))?(\!)?\: /g'
+    replace: '- '
 
 categories:
   - title: 🏆 Highlights
