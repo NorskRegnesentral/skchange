@@ -20,5 +20,7 @@ jobs:
           tag: v${{ inputs.version }}
           version: ${{ inputs.version }}
           commitish: ${{ github.sha }}
+          disable-autolabeler: true
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
