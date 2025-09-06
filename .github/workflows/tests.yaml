@@ -16,7 +16,7 @@ jobs:
       - name: python environment step
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13.7"
+          python-version: "3.13.3"
       - name: install pre-commit
         run: python3 -m pip install pre-commit
       - id: changed-files
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.13']
+        python-version: ['3.10', '3.13.3']
         with-numba: [false, true]
     steps:
       - uses: actions/checkout@v4
