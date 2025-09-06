@@ -29,7 +29,7 @@ jobs:
         shell: bash
 
   pytests:
-    name: pytests (python=${{ matrix.python-version }}, ${{ matrix.with-numba == 'true' && 'with numba' || 'without numba' }})
+    name: pytests (python=${{ matrix.python-version }}, with-numba=${{ matrix.with-numba }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
