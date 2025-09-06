@@ -12,31 +12,31 @@ replacers:
 autolabeler:
   - label: breaking
     title:
-      - '/^(build|chore|ci|depr|docs|feat|fix|perf|refactor|release|test)(\(.*\))?\!\: /'
+      - '/^(build|chore|ci|depr|docs|feat|fix|perf|refactor|release|test)(\(.*\))?!: ?/i'
   - label: build
     title:
-      - '/^build/'
+      - '/^build:? ?/i'
   - label: internal
     title:
-      - '/^(chore|ci|refactor|test)/'
+      - '/^(chore|ci|refactor|test):? ?/i'
   - label: deprecation
     title:
-      - '/^depr/'
+      - '/^depr:? ?/i'
   - label: documentation
     title:
-      - '/^docs/'
+      - '/^docs:? ?/i'
   - label: enhancement
     title:
-      - '/^feat/'
+      - '/^feat:? ?/i'
   - label: fix
     title:
-      - '/^fix/'
+      - '/^fix:? ?/i'
   - label: performance
     title:
-      - '/^perf/'
+      - '/^perf:? ?/i'
   - label: release
     title:
-      - '/^release/'
+      - '/^release:? ?/i'
 
 template: |
   $CHANGES
