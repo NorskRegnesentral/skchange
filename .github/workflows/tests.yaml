@@ -54,7 +54,8 @@ jobs:
           fi
           uv pip install -r requirements-test.txt
       - name: Run tests
-        run: pytest --cov --cov-report=xml --cov-report=term
+        run: |
+          .venv/bin/python -m pytest --cov --cov-report=xml --cov-report=term
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
