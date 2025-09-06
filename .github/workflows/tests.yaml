@@ -47,7 +47,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          python -m pip install --upgrade pip
           if [ "${{ matrix.with-numba }}" = "true" ]; then
             uv pip install .[numba]
           else
