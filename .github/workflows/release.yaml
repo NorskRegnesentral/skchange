@@ -183,6 +183,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish GitHub release
-        run: gh release edit v${{ steps.read_version.outputs.version }} --draft=true
+        run: gh release edit v${{ steps.read_version.outputs.version }} --draft=false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
