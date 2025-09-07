@@ -1,7 +1,6 @@
 """Validation functions for penalties."""
 
 import copy
-import numbers
 
 import numpy as np
 
@@ -38,31 +37,25 @@ def check_penalty(
     if penalty is None:
         return None
 
-    penalty = np.asarray([penalty]) if isinstance(penalty, numbers.Number) else penalty
-    if isinstance(penalty, np.ndarray):
-        if penalty.ndim != 1:
-            raise ValueError(
-                f"`{arg_name}` must be a 1D array in {caller_name}."
-                f" Got {penalty.ndim}D array."
-            )
-        if penalty.size < 1:
-            raise ValueError(
-                f"`{arg_name}` must have at least one element in {caller_name}"
-            )
-        if require_constant_penalty and penalty.size != 1:
-            raise ValueError(
-                f"`{arg_name}` must be a single penalty value in {caller_name}."
-                f" Got {penalty.size} values."
-            )
-        if not np.all(penalty >= 0.0):
-            raise ValueError(f"`{arg_name}` must be non-negative in {caller_name}")
-        if not allow_non_decreasing and not np.all(np.diff(penalty) >= 0):
-            raise ValueError(f"`{arg_name}` must be non-decreasing in {caller_name}")
-    else:
-        raise TypeError(
-            f"`{arg_name}` must be a number or a numpy array in {caller_name}"
-            f" Got {type(penalty)}."
+    penalty = np.atleast_1d(np.asarray([penalty]).squeeze())
+    if penalty.ndim != 1:
+        raise ValueError(
+            f"`{arg_name}` must be a 1D array in {caller_name}."
+            f" Got {penalty.ndim}D array."
         )
+    if penalty.size < 1:
+        raise ValueError(
+            f"`{arg_name}` must have at least one element in {caller_name}"
+        )
+    if require_constant_penalty and penalty.size != 1:
+        raise ValueError(
+            f"`{arg_name}` must be a single penalty value in {caller_name}."
+            f" Got {penalty.size} values."
+        )
+    if not np.all(penalty >= 0.0):
+        raise ValueError(f"`{arg_name}` must be non-negative in {caller_name}")
+    if not allow_non_decreasing and not np.all(np.diff(penalty) >= 0):
+        raise ValueError(f"`{arg_name}` must be non-decreasing in {caller_name}")
 
 
 def check_penalty_against_data(

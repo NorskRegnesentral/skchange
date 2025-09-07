@@ -60,6 +60,7 @@ class CUSUM(BaseIntervalScorer):
     ----------
     .. [1] Page, E. S. (1954). Continuous inspection schemes. Biometrika, 41(1/2),
       100-115.
+
     .. [2] Wang, D., Yu, Y., & Rinaldo, A. (2020). Univariate mean change point
       detection: Penalization, cusum and optimality. Electronic Journal of Statistics,
       14(1) 1917-1961.

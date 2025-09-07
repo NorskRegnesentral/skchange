@@ -22,6 +22,7 @@ Costs
     :toctree: auto_generated/
     :template: class.rst
 
+    EmpiricalDistributionCost
     GaussianCost
     L1Cost
     L2Cost

@@ -1,0 +1,188 @@
+# This script is heavily inspired by
+# https://github.com/pola-rs/polars/blob/main/.github/workflows/release-python.yml
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit-sha:
+        description: Commit SHA. If omitted, the latest commit on the main branch is used.
+        type: string
+      dry-run:
+        description: Dry run. Build and test on TestPyPI. No publishing to PyPI or Github.
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit-sha || 'main' }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build "twine<=6.0.1"
+
+      - name: Clean build artifacts
+        run: make clean
+
+      - name: Build package
+        run: make dist
+
+      - name: Check distribution with twine
+        run: twine check dist/*
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  get_version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit-sha || 'main' }}
+      - name: Extract version from pyproject.toml
+        run: |
+          VERSION=$(grep '^version =' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "Error: version not found in pyproject.toml"
+            exit 1
+          fi
+          echo "Got version: $VERSION"
+          echo "$VERSION" > version.txt
+
+      - name: Upload version artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: version
+          path: version.txt
+
+  test-install:
+    needs: [build, get_version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "twine<=6.0.1"
+
+      - name: Download version artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: version
+          path: .
+
+      - name: Read version from artifact
+        id: read_version
+        run: |
+          VERSION=$(cat version.txt)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Publish to TestPyPI if not already published
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          VERSION="${{ steps.read_version.outputs.version }}"
+          PKG_URL="https://test.pypi.org/pypi/skchange/$VERSION/json"
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" "$PKG_URL")
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "Version $VERSION already exists on TestPyPI. Skipping upload."
+            exit 0
+          fi
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/* --verbose
+
+      - name: Check install from TestPyPI
+        run: |
+          set -e
+          mkdir "$HOME"/testdir
+          cd "$HOME"/testdir
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple skchange
+          deactivate
+          rm -rf "$HOME"/testdir
+
+  publish:
+    needs: test-install
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry-run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit-sha || 'main' }}
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Download version artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: version
+          path: .
+
+      - name: Read version from artifact
+        id: read_version
+        run: |
+          VERSION=$(cat version.txt)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create and push git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag v${{ steps.read_version.outputs.version }}
+          git push origin v${{ steps.read_version.outputs.version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install "twine<=6.0.1"
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
+
+      - name: Create GitHub release draft
+        id: github-release
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+          name: v${{ steps.read_version.outputs.version }}
+          tag: v${{ steps.read_version.outputs.version }}
+          version: ${{ steps.read_version.outputs.version }}
+          commitish: ${{ inputs.commit-sha || github.sha }}
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish GitHub release
+        run: gh release edit v${{ steps.read_version.outputs.version }} --draft=true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

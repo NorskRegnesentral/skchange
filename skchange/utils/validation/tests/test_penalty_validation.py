@@ -45,7 +45,7 @@ def test_check_penalty_valid_cases(
     [
         (None, "penalty", "test_func", False, False, False, ValueError),
         (
-            np.array([[1.0, 2.0]]),
+            np.array([[1.0, 2.0], [3.0, 4.0]]),
             "penalty",
             "test_func",
             False,

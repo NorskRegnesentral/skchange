@@ -55,8 +55,10 @@ def check_cuts_array(
 
     interval_sizes = np.diff(cuts, axis=1)
     if not np.all(interval_sizes >= min_size):
+        min_interval_size = np.min(interval_sizes)
         raise ValueError(
             "All rows in `cuts` must be strictly increasing and each entry must"
             f" be more than min_size={min_size} apart."
+            f" Found a minimum interval size of {min_interval_size}."
         )
     return cuts

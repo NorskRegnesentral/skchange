@@ -138,7 +138,7 @@ class MultivariateGaussianScore(BaseIntervalScorer):
     """Multivariate Gaussian change score for a change in mean and/or covariance.
 
     Scores are calculated as the likelihood ratio scores for a change
-    in mean and covariance under a multivariate Gaussian distribution[1]_.
+    in mean and covariance under a multivariate Gaussian distribution [1]_.
 
     To stabilize the score, the Bartlett correction is applied by default,
     which adjusts the score for the relative sizes of the left and right segments.
@@ -154,9 +154,9 @@ class MultivariateGaussianScore(BaseIntervalScorer):
 
     References
     ----------
-    .. [1] Zamba, K. D., & Hawkins, D. M. (2009). A Multivariate Change-Point Model\
-    for Change in Mean Vector and/or Covariance Structure. \
-    Journal of Quality Technology, 41(3), 285-303.
+    .. [1] Zamba, K. D., & Hawkins, D. M. (2009). A Multivariate Change-Point Model
+       for Change in Mean Vector and/or Covariance Structure. Journal of Quality
+       Technology, 41(3), 285-303.
     """
 
     _tags = {
