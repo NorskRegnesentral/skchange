@@ -1,6 +1,6 @@
 [project]
 name = "skchange"
-version = "0.13.0"
+version = "0.14.2"
 description = "Sktime-compatible change and anomaly detection"
 authors = [
     {name = "Martin Tveten", email = "tveten@nr.no"},
@@ -73,18 +73,20 @@ dev = [
     "scipy>=1.14.1,<2.0.0"
 ]
 
+# docs - the documentation dependency set, install via "pip install skchange[docs]"
 docs = [
   "myst-parser",
   "numpydoc",
+  "pypandoc",
   "pydata-sphinx-theme",
-  "Sphinx!=7.2.0,<9.0.0",
+  "sphinx",
   "sphinx-copybutton",
-  "sphinx-design<0.7.0",
-  "sphinx-gallery<0.18.0",
-  "sphinx-issues<5.0.0",
+  "sphinx-design",
+  "sphinx-gallery",
+  "sphinx-issues",
   "tabulate",
   "nbsphinx",
-  "pypandoc",
+  "nbstripout",
   "ipykernel",
   "nbformat>=4.2.0",
   "plotly",

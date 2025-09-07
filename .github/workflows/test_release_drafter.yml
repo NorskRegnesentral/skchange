@@ -1,0 +1,25 @@
+name: Test release-drafter
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to draft (e.g. 0.14.2)'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub release draft
+        id: github-release
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+          name: v${{ inputs.version }}
+          tag: v${{ inputs.version }}
+          version: ${{ inputs.version }}
+          commitish: ${{ github.sha }}
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

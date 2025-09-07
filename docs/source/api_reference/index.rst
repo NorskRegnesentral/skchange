@@ -11,8 +11,6 @@ It describes the classes and functions included in skchange.
 
 For Python Interactive examples, see the `interactive <https://github.com/NorskRegnesentral/skchange/tree/main/interactive>`_ folder on Github.
 
-.. include:: ../includes/api_css.rst
-
 .. toctree::
    :maxdepth: 1
 
