@@ -38,6 +38,16 @@ autolabeler:
     title:
       - '/^release/'
 
+version-resolver:
+  major:
+    labels:
+      - breaking
+  minor:
+    labels:
+      - performance
+      - enhancement
+  default: patch
+
 template: |
   $CHANGES
 
