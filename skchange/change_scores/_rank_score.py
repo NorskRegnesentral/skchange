@@ -11,7 +11,65 @@ from ..base import BaseIntervalScorer
 from ..costs._rank_cost import _compute_ranks_and_pinv_cdf_cov
 
 
-# @njit
+def _compute_sorted_ranks(
+    centered_data_ranks: np.ndarray,
+    segment_start: int,
+    segment_end: int,
+    output_array: np.ndarray,
+):
+    """Compute sorted ranks for a given segment.
+
+    This function computes the sorted ranks for the data within the specified
+    segment defined by the start and end indices. The ranks are centered by
+    subtracting the mean rank.
+
+    Parameters
+    ----------
+    centered_data_ranks : np.ndarray
+        The centered data ranks.
+    segment_start : int
+        The start index of the segment, inclusive.
+    segment_end : int
+        The end index of the segment, exclusive.
+    output_array : np.ndarray
+        The array to store the computed ranks.
+
+    Returns
+    -------
+    None
+        The function modifies the output_array in place.
+    """
+    n_variables = centered_data_ranks.shape[1]
+    # Rank values within the first segment:
+    segment_sorted_by_column = np.sort(
+        centered_data_ranks[segment_start:segment_end, :], axis=0
+    )
+
+    for col in range(n_variables):
+        # Compute upper right ranks: (a[i-1] < v <= a[i])
+        # One-indexed lower ranks:
+        output_array[0 : (segment_end - segment_start), col] = 1 + np.searchsorted(
+            segment_sorted_by_column[:, col],
+            centered_data_ranks[segment_start:segment_end, col],
+            side="left",
+        )
+
+        # Must average lower and upper ranks to work on data with duplicates:
+        # Add lower left ranks: (a[i-1] <= v < a[i])
+        output_array[0 : (segment_end - segment_start), col] += np.searchsorted(
+            segment_sorted_by_column[:, col],
+            centered_data_ranks[segment_start:segment_end, col],
+            side="right",
+        )
+        output_array[0 : (segment_end - segment_start), col] /= 2
+
+    output_array[0 : (segment_end - segment_start), :] -= (
+        (segment_end - segment_start) + 1
+    ) / 2.0
+
+    return
+
+
 def direct_rank_score(
     change_cuts: np.ndarray,
     centered_data_ranks: np.ndarray,
@@ -55,37 +113,12 @@ def direct_rank_score(
     prev_segment_start = change_cuts[0, 0]
     prev_segment_end = change_cuts[0, 2]
 
-    # Rank values within the first segment:
-    segment_sorted_by_column = np.sort(
-        centered_data_ranks[prev_segment_start:prev_segment_end, :], axis=0
+    _compute_sorted_ranks(
+        centered_data_ranks,
+        segment_start=prev_segment_start,
+        segment_end=prev_segment_end,
+        output_array=segment_data_ranks,
     )
-
-    for col in range(n_variables):
-        # Compute upper right ranks: (a[i-1] < v <= a[i])
-        # One-indexed lower ranks:
-        segment_data_ranks[0 : (prev_segment_end - prev_segment_start), col] = (
-            1
-            + np.searchsorted(
-                segment_sorted_by_column[:, col],
-                centered_data_ranks[prev_segment_start:prev_segment_end, col],
-                side="left",
-            )
-        )
-
-        # Must average lower and upper ranks to work on data with duplicates:
-        # Add lower left ranks: (a[i-1] <= v < a[i])
-        segment_data_ranks[0 : (prev_segment_end - prev_segment_start), col] += (
-            np.searchsorted(
-                segment_sorted_by_column[:, col],
-                centered_data_ranks[prev_segment_start:prev_segment_end, col],
-                side="right",
-            )
-        )
-        segment_data_ranks[0 : (prev_segment_end - prev_segment_start), col] /= 2
-
-    segment_data_ranks[0 : (prev_segment_end - prev_segment_start), :] -= (
-        (prev_segment_end - prev_segment_start) + 1
-    ) / 2.0
 
     for i, cut in enumerate(change_cuts):
         # Unpack cut row into start, split, end:
@@ -100,37 +133,13 @@ def direct_rank_score(
         )
 
         if segment_start != prev_segment_start or segment_end != prev_segment_end:
-            # Rank values within the segment:
-            segment_sorted_by_column = np.sort(
-                centered_data_ranks[segment_start:segment_end, :], axis=0
+            # Recompute sorted ranks if segment has changed:
+            _compute_sorted_ranks(
+                centered_data_ranks,
+                segment_start=segment_start,
+                segment_end=segment_end,
+                output_array=segment_data_ranks,
             )
-
-            for col in range(n_variables):
-                # Compute upper right ranks: (a[i-1] < v <= a[i])
-                # One-indexed lower ranks:
-                segment_data_ranks[0 : (segment_end - segment_start), col] = (
-                    1
-                    + np.searchsorted(
-                        segment_sorted_by_column[:, col],
-                        centered_data_ranks[segment_start:segment_end, col],
-                        side="left",
-                    )
-                )
-
-                # Must average lower and upper ranks to work on data with duplicates:
-                # Add lower left ranks: (a[i-1] <= v < a[i])
-                segment_data_ranks[0 : (segment_end - segment_start), col] += (
-                    np.searchsorted(
-                        segment_sorted_by_column[:, col],
-                        centered_data_ranks[segment_start:segment_end, col],
-                        side="right",
-                    )
-                )
-                segment_data_ranks[0 : (segment_end - segment_start), col] /= 2
-
-            segment_data_ranks[0 : (segment_end - segment_start), :] -= (
-                full_segment_length + 1
-            ) / 2.0
 
         # Use score formulation from first part centered ranks:
         if pre_split_length < post_split_length:

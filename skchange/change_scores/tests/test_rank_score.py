@@ -202,3 +202,17 @@ def test_change_score_distribution():
         assert (
             res.pvalue > 0.05
         ), f"KS test failed at p=0.05 for cut at {cut_point}: p={res.pvalue}"
+
+
+def test_empty_cuts_returns_empty_scores():
+    np.random.seed(42)
+    n_samples = 10
+    n_variables = 3
+    X = np.random.randn(n_samples, n_variables)
+
+    centered_data_ranks, pinv_rank_cov = _compute_ranks_and_pinv_cdf_cov(X)
+
+    cuts = np.empty((0, 3), dtype=int)  # No cuts
+
+    scores = direct_rank_score(cuts, centered_data_ranks, pinv_rank_cov)
+    assert scores.shape == (0,)

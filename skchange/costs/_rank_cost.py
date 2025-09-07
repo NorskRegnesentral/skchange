@@ -4,6 +4,7 @@ Assumes continuous cumulative distribution functions (CDFs) for the data.
 """
 
 import numpy as np
+from scipy.linalg import pinvh
 
 from ..utils.numba import njit
 from .base import BaseCost
@@ -96,12 +97,7 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
 
     cdf_cov = 4.0 * (centered_cdf_values.T @ centered_cdf_values) / n_samples
     cdf_cov = cdf_cov.reshape(n_variables, n_variables)
-    try:
-        pinv_cdf_cov = np.linalg.pinv(cdf_cov)
-    except np.linalg.LinAlgError as e:
-        raise np.linalg.LinAlgError(
-            "Could not compute the pseudo-inverse of the CDF covariance matrix: "
-        ) from e
+    pinv_cdf_cov = pinvh(cdf_cov)
 
     centered_data_ranks = data_ranks - (n_samples + 1) / 2.0
 
