@@ -1,9 +1,58 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+template: |
+  $CHANGES
+
+  Thanks to all contributors!
+  $CONTRIBUTORS
+
+categories:
+  - title: 🏆 Highlights
+    labels:
+      - highlight
+  - title: 💥 Breaking changes
+    labels:
+      - breaking
+  - title: ⚠️ Deprecations
+    labels:
+      - deprecation
+  - title: 🚀 Performance improvements
+    labels:
+      - performance
+  - title: ✨ Enhancements
+    labels:
+      - enhancement
+  - title: 🐞 Bug fixes
+    labels:
+      - fix
+  - title: 📖 Documentation
+    labels:
+      - documentation
+  - title: 📦 Build system
+    labels:
+      - build
+  - title: 🛠️ Other improvements
+    labels:
+      - internal
+
+change-template: '- $TITLE (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - breaking
+  minor:
+    labels:
+      - performance
+      - enhancement
+  default: patch
+
 exclude-labels:
   - skip changelog
   - release
 
-change-template: '- $TITLE (#$NUMBER)'
-change-title-escapes: '\<*_&'
 replacers:
   # Remove conventional commits from titles
   - search: '/- (build|chore|ci|depr|docs|feat|fix|perf|refactor|release|test)(\(.*\))?(\!)?\: /g'
@@ -37,51 +86,3 @@ autolabeler:
   - label: release
     title:
       - '/^release/'
-
-version-resolver:
-  major:
-    labels:
-      - breaking
-  minor:
-    labels:
-      - performance
-      - enhancement
-  default: patch
-
-template: |
-  $CHANGES
-
-  Thanks to all contributors!
-  $CONTRIBUTORS
-
-name-template: 'v$RESOLVED_VERSION'
-tag-template: 'v$RESOLVED_VERSION'
-
-categories:
-  - title: 🏆 Highlights
-    labels:
-      - highlight
-  - title: 💥 Breaking changes
-    labels:
-      - breaking
-  - title: ⚠️ Deprecations
-    labels:
-      - deprecation
-  - title: 🚀 Performance improvements
-    labels:
-      - performance
-  - title: ✨ Enhancements
-    labels:
-      - enhancement
-  - title: 🐞 Bug fixes
-    labels:
-      - fix
-  - title: 📖 Documentation
-    labels:
-      - documentation
-  - title: 📦 Build system
-    labels:
-      - build
-  - title: 🛠️ Other improvements
-    labels:
-      - internal
