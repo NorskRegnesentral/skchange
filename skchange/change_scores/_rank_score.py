@@ -164,11 +164,6 @@ class RankScore(BaseIntervalScorer):
     ----------
     None
 
-    Notes
-    -----
-    - The score is inherently multivariate and aggregated.
-    - Suitable for detecting changes in mean or variance in non-Gaussian data.
-
     References
     ----------
     .. [1] Lung-Yut-Fong, A., Lévy-Leduc, C., & Cappé, O. (2015). Homogeneity and

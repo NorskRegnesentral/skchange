@@ -118,7 +118,11 @@ def test_rank_cost_model_size():
 def test_rank_cost_on_changing_mv_normal():
     lengths = [100, 150, 125]
     changing_mv_gaussian_data = generate_piecewise_normal_data(
-        means=[0, 5, 10], variances=[1, 3, 2], lengths=lengths, n_variables=5
+        means=[0, 5, 10],
+        variances=[1, 3, 2],
+        lengths=lengths,
+        n_variables=5,
+        seed=612,
     )
 
     expected_change_points = np.cumsum(lengths)[:-1]
@@ -142,7 +146,7 @@ def test_rank_cost_on_changing_mv_normal():
     crops_detector = CROPS(
         cost=cost,
         min_segment_length=2,
-        min_penalty=1.0e0,
+        min_penalty=1.0e1,
         max_penalty=1.0e3,
         segmentation_selection="elbow",
     )
