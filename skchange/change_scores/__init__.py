@@ -9,6 +9,7 @@ from skchange.change_scores._from_cost import ChangeScore, to_change_score
 from skchange.change_scores._multivariate_gaussian_score import (
     MultivariateGaussianScore,
 )
+from skchange.change_scores._rank_score import RankScore
 
 CHANGE_SCORES = [
     ContinuousLinearTrendScore,
@@ -16,6 +17,7 @@ CHANGE_SCORES = [
     MultivariateGaussianScore,
     CUSUM,
     ESACScore,
+    RankScore,
 ]
 
 __all__ = CHANGE_SCORES + [to_change_score]

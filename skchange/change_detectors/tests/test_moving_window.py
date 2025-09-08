@@ -6,8 +6,8 @@ import pytest
 from skchange.anomaly_scores import LocalAnomalyScore
 from skchange.base import BaseIntervalScorer
 from skchange.change_detectors import MovingWindow
-from skchange.change_scores import CHANGE_SCORES, ContinuousLinearTrendScore
-from skchange.costs import COSTS
+from skchange.change_scores import CHANGE_SCORES, ContinuousLinearTrendScore, RankScore
+from skchange.costs import COSTS, RankCost
 from skchange.datasets import generate_alternating_data
 from skchange.tests.test_all_interval_scorers import skip_if_no_test_data
 
@@ -37,9 +37,20 @@ def test_moving_window_changepoint(ScoreType: type[BaseIntervalScorer], params: 
     df = generate_alternating_data(
         n_segments=n_segments, mean=15, segment_length=seg_len, p=1, random_state=2
     )
+
+    # RankScore needs penalty 10 to detect single change in mean.
+    if isinstance(score, RankScore) or isinstance(score, RankCost):
+        penalty = 10.0
+    else:
+        penalty = 20.0
+
     detector = MovingWindow.create_test_instance().set_params(
-        change_score=score, bandwidth=bandwidth, selection_method=selection_method
+        change_score=score,
+        bandwidth=bandwidth,
+        selection_method=selection_method,
+        penalty=penalty,
     )
+
     changepoints = detector.fit_predict(df)["ilocs"]
     if isinstance(score, ContinuousLinearTrendScore):
         # ContinuousLinearTrendScore finds two changes in linear trend
