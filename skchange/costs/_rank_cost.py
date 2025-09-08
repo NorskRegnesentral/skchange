@@ -1,7 +1,4 @@
-"""Rank based multivariate cost.
-
-Assumes continuous cumulative distribution functions (CDFs) for the data.
-"""
+"""Difference in mean rank aggregated multivariate cost."""
 
 import numpy as np
 from scipy.linalg import pinvh
@@ -107,18 +104,17 @@ def _compute_ranks_and_pinv_cdf_cov(X: np.ndarray) -> tuple[np.ndarray, np.ndarr
 class RankCost(BaseCost):
     """Rank based multivariate cost.
 
-    Assumes continuous cumulative distribution functions (CDFs) for the data.
-    This cost function uses rank-based statistics to detect changes in the
-    distribution of multivariate data.
+    This cost function uses mean rank statistics to detect changes in the
+    distribution of multivariate data. Aggregates mean rank statistics over all
+    variables using the pseudo-inverse of the covariance of the empirical CDF [1]_.
 
-    TODO: Sort data points within each segment being tested?
-    # Lots more sorting, perhaps not needed?
+    Fulfills the PELT assumption that the summed cost of two adjacent segments is
+    less than or equal to the cost of the combined segment, for K = 0.
 
     Parameters
     ----------
     param : any, optional (default=None)
-        If None, the cost is evaluated for an interval-optimised parameter.
-        Fixed parameters are not supported for this cost.
+        Not used. Included for API consistency by convention.
 
     References
     ----------
@@ -129,7 +125,7 @@ class RankCost(BaseCost):
 
     _tags = {
         "authors": ["johannvk"],
-        "maintainers": "Tveten",
+        "maintainers": ["johannvk"],
         "distribution_type": "None",
         "is_conditional": False,
         "is_aggregated": True,

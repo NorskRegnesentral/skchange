@@ -1,9 +1,4 @@
-"""Rank-based change score for multivariate data.
-
-Detects distributional changes using rank statistics, assuming continuous CDFs.
-The score is based on the difference in mean ranks before and after a split,
-normalized by the pseudo-inverse of the rank covariance matrix.
-"""
+"""Difference in mean rank aggregated change score."""
 
 import numpy as np
 
@@ -165,13 +160,18 @@ def direct_rank_score(
 class RankScore(BaseIntervalScorer):
     """Rank-based change score for multivariate data.
 
-    Detects distributional changes using rank statistics, assuming continuous CDFs.
-    The score is based on the difference in mean ranks before and after a split,
-    normalized by the pseudo-inverse of the rank covariance matrix.
+    This cost function uses mean rank statistics to detect changes in the
+    distribution of multivariate data.
+    Score measures the difference in mean ranks for each variable before and after
+    the split, normalized by the pseudo-inverse of the rank covariance matrix [1]_.
+
+    Requires sorting the data within each segment, leading to increased computational
+    complexity per evaluation. Suitable for offline detection with moderate data sizes.
 
     Parameters
     ----------
-    None
+    param : any, optional (default=None)
+        Not used. Included for API consistency by convention.
 
     References
     ----------
