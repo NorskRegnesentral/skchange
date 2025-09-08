@@ -7,8 +7,8 @@ on:
       - main
 
 jobs:
-  code-quality:
-    name: code-quality
+  pre-commit:
+    name: pre-commit
     runs-on: ubuntu-latest
     steps:
       - name: repository checkout step
@@ -24,6 +24,19 @@ jobs:
         uses: tj-actions/changed-files@v45
       - name: run pre-commit hooks on modified files
         run: pre-commit run --color always --files ${{ steps.changed-files.outputs.all_changed_files }} --show-diff-on-failure
-      - name: check missing __init__ files
-        run: build_tools/fail_on_missing_init_files.sh
-        shell: bash
+  missing-init-files:
+    name: check missing __init__ files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check for missing __init__.py files
+        run: |
+          set -euxo pipefail
+          FILES=$( find ./skchange -type d '!' -exec test -e "{}/__init__.py" ";" -not -path "**/__pycache__" -not -path "**/datasets/data*" -not -path "**/contrib/*" -print )
+          if [[ -n "$FILES" ]]
+          then
+              echo "Missing __init__.py files detected in the following modules:"
+              echo "$FILES"
+              exit 1
+          fi
