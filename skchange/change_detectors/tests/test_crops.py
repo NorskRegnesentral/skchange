@@ -84,7 +84,7 @@ def test_pelt_crops_with_elbow_segmentation_selection():
     # Fit CROPS change point detector:
     change_point_detector = CROPS(
         cost=cost,
-        segmentation_selection="elbow",
+        selection_method="elbow",
         step_size=step_size,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -94,7 +94,7 @@ def test_pelt_crops_with_elbow_segmentation_selection():
 
     no_pruning_change_detector = CROPS(
         cost=cost,
-        segmentation_selection="elbow",
+        selection_method="elbow",
         step_size=step_size,
         min_penalty=min_penalty,
         max_penalty=max_penalty,
@@ -125,7 +125,7 @@ def test_pelt_crops_raises_on_wrong_segmentation_selection():
     with pytest.raises(ValueError):
         CROPS(
             cost=cost,
-            segmentation_selection="wrong",
+            selection_method="wrong",
             min_penalty=min_penalty,
             max_penalty=max_penalty,
         )
