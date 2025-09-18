@@ -148,7 +148,7 @@ def test_rank_cost_on_changing_mv_normal():
         min_segment_length=2,
         min_penalty=1.0e1,
         max_penalty=1.0e3,
-        segmentation_selection="elbow",
+        selection_method="elbow",
     )
     crops_detector.fit(changing_mv_gaussian_data)
 

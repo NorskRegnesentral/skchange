@@ -269,7 +269,7 @@ class CROPS(BaseChangeDetector):
         The start of the penalty solution interval.
     max_penalty : float
         The end of the penalty solution interval.
-    segmentation_selection : str, default="bic"
+    selection_method : str, default="bic"
         The segmentation selection method to use when selecting the
         best segmentation among the optimal segmentations found
         within the penalty range `[min_penalty, max_penalty]`.
@@ -323,7 +323,7 @@ class CROPS(BaseChangeDetector):
         cost: BaseIntervalScorer,
         min_penalty: float,
         max_penalty: float,
-        segmentation_selection: str = "bic",
+        selection_method: str = "bic",
         min_segment_length: int = 1,
         step_size: int = 1,
         split_cost: float = 0.0,
@@ -335,7 +335,7 @@ class CROPS(BaseChangeDetector):
         self.cost = cost
         self.min_penalty = min_penalty
         self.max_penalty = max_penalty
-        self.segmentation_selection = segmentation_selection
+        self.selection_method = selection_method
         self.min_segment_length = min_segment_length
         self.step_size = step_size
         self.split_cost = split_cost
@@ -358,9 +358,9 @@ class CROPS(BaseChangeDetector):
                 f"greater than the `step_size`(={self.step_size}) > 1."
             )
 
-        if segmentation_selection not in ["bic", "elbow"]:
+        if selection_method not in ["bic", "elbow"]:
             raise ValueError(
-                f"Invalid selection criterion: {segmentation_selection}. "
+                f"Invalid selection criterion: {selection_method}. "
                 "Must be one of ['bic', 'elbow']."
             )
 
@@ -398,7 +398,7 @@ class CROPS(BaseChangeDetector):
             )
         self._run_crops(X=X)
 
-        if self.segmentation_selection == "elbow":
+        if self.selection_method == "elbow":
             # Select the best segmentation using the elbow criterion.
             change_in_slope_df = self.change_points_metadata[
                 ["num_change_points", "optimum_value"]
@@ -419,7 +419,7 @@ class CROPS(BaseChangeDetector):
                 )[["num_change_points", "penalty"]].iloc[0]
             )
 
-        elif self.segmentation_selection == "bic":
+        elif self.selection_method == "bic":
             # Select the best segmentation using the BIC criterion.
             self.change_points_metadata["bic_value"] = self.change_points_metadata[
                 "num_change_points"
@@ -637,7 +637,7 @@ class CROPS(BaseChangeDetector):
                 "cost": L2Cost(),
                 "min_penalty": 0.5,
                 "max_penalty": 50.0,
-                "segmentation_selection": "bic",
+                "selection_method": "bic",
                 "min_segment_length": 10,
                 "split_cost": 0.0,
                 "pruning_margin": 0.0,
@@ -648,7 +648,7 @@ class CROPS(BaseChangeDetector):
                 "cost": L2Cost(),
                 "min_penalty": 1.0,
                 "max_penalty": 10.0,
-                "segmentation_selection": "elbow",
+                "selection_method": "elbow",
                 "min_segment_length": 2,
                 "split_cost": 0.0,
                 "pruning_margin": 0.01,
