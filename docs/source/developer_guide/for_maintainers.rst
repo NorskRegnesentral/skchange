@@ -17,7 +17,9 @@ pull requests.
 
 To make a release, follow these steps:
 
-1. Decide on a `new version <https://semver.org/spec/v2.0.0-rc.2.html>`_.
+1. Check the `release page <https://github.com/NorskRegnesentral/skchange/releases>`_
+   and find the appropriate draft release.
+   Note the version number associated with this release.
 2. Make sure your fork is up to date with the `main` branch of the main Skchange repository.
 3. Create a new branch, e.g. `release-x.y.z`.
 4. Bump the version in two files:
