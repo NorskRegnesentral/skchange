@@ -1,0 +1,70 @@
+[project]
+name = "skchange-new-api"
+version = "0.1.0"
+description = "New API design for skchange - change and anomaly detection with sklearn compatibility"
+authors = [
+    {name = "Martin Tveten", email = "tveten@nr.no"},
+]
+maintainers = [
+    {name = "Martin Tveten", email = "tveten@nr.no"},
+]
+readme = "README.md"
+keywords = [
+    "data-science",
+    "machine-learning",
+    "statistics",
+    "scikit-learn",
+    "time-series",
+    "change-detection",
+    "anomaly-detection",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "numpy>=1.21",
+    "scikit-learn>=1.0",
+]
+
+[project.urls]
+Homepage = "https://skchange.readthedocs.io"
+
+[project.optional-dependencies]
+# numba - numba as an optional dependency, install via "pip install skchange-new-api[numba]"
+numba = [
+    "numba>=0.61,<0.62",
+]
+
+# test - testing dependencies
+test = [
+    "pytest",
+    "pytest-cov",
+]
+
+# dev - developer dependency set
+dev = [
+    "pre-commit",
+    "pytest",
+    "pytest-cov",
+    "ipykernel",
+]
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+    "setuptools>61",
+    "setuptools-scm>=8.0",
+]
