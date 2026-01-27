@@ -126,12 +126,10 @@ class ChangeDetectionResult(TypedDict):
     >>> labels = result["segment_labels"]
     """
 
-    # Required fields - type checkers enforce these
     indices: np.ndarray
     segment_labels: np.ndarray
     n_samples: int
     n_features: int
-    # Optional fields - can be omitted
     scores: NotRequired[np.ndarray]
     affected_variables: NotRequired[list[np.ndarray]]
     meta: NotRequired[dict[str, Any]]
@@ -147,37 +145,47 @@ class ChangeDetector(Protocol):
     Terminology
     -----------
     **Univariate vs Multivariate** (feature dimension):
-        - Univariate: n_features = 1 (single channel/variable)
-        - Multivariate: n_features > 1 (multiple channels/variables)
 
-    **Single vs Multiple** (series dimension):
-        - Single: One time series, shape (n_samples, n_features)
-        - Multiple: List of time series, each (n_samples_i, n_features)
-          Series may have different lengths (n_samples_i) but must share
-          the same number of features (n_features) across all series.
+    - Univariate: n_features = 1 (single channel/variable)
+    - Multivariate: n_features > 1 (multiple channels/variables)
 
-    These dimensions are independent - all four combinations are valid:
-        - Single univariate: array of shape (n_samples, 1)
-        - Single multivariate: array of shape (n_samples, n_features)
-        - Multiple univariate: list of arrays, each (n_samples_i, 1)
-        - Multiple multivariate: list of arrays, each (n_samples_i, n_features)
+    **Single vs Multiple Series** (for fit only):
+
+    - Single: One time series, shape (n_samples, n_features)
+    - Multiple: List of time series, each (n_samples_i, n_features).
+      Series may have different lengths (n_samples_i) but must share
+      the same number of features (n_features) across all series.
 
     Design Principles
     -----------------
-    **Unified API**: Same interface handles single or multiple series via type unions.
+    **Intentional Asymmetry**
+        fit() accepts single or multiple series (enabling shared parameter
+        learning across series), while predict() accepts only single
+        series (per-series operation without cross-series computation).
+        This design reflects the semantic difference between training
+        and inference.
 
-    **Consistent Output**: predict() always returns list[ChangeDetectionResult],
-    regardless of input type (single series → list of 1 element, multiple series →
-    list of N elements). This consistency simplifies downstream code.
+    **Simple Output**
+        predict() returns one ChangeDetectionResult dict per input
+        series. Use e.g. list comprehension for multiple series prediction.
 
-    **Stateless Prediction**: fit() learns parameters, predict() is stateless and
-    can be called repeatedly on different data.
+    **Stateless Prediction**
+        fit() learns parameters, predict() applies them without
+        modifying state. Can be called repeatedly on different data.
+
+    Notes
+    -----
+    For full sklearn compatibility (GridSearchCV, clone, pipelines, etc.),
+    estimators should inherit from sklearn.base.BaseEstimator to get
+    parameter management methods (get_params, set_params).
+
+    The BaseChangeDetector class combines both requirements automatically.
     """
 
     def fit(
         self,
         X: ArrayLike | list[ArrayLike],
-        y: ArrayLike | list[ArrayLike] | None = None,
+        y: ArrayLike | dict | list[ArrayLike | dict] | None = None,
     ) -> Self:
         """Fit the detector to training data.
 
@@ -185,24 +193,33 @@ class ChangeDetector(Protocol):
         ----------
         X : ArrayLike | list[ArrayLike]
             Training data.
+
             - Single series: 2D array of shape (n_samples, n_features)
-            - Multiple series: List of 2D arrays, each (n_samples_i, n_features)
+            - Multiple series: List of 2D arrays, each
+              (n_samples_i, n_features)
             - Univariate data: Use (n_samples, 1), never 1D arrays
 
-        y : ArrayLike | list[ArrayLike] | None, default=None
-            Supervised labels (optional).
-            Structure depends on X type:
+        y : ArrayLike | dict | list[ArrayLike | dict] | None, default=None
+            Supervised labels (optional). Default is None (unsupervised).
 
-            If X is ArrayLike (single series):
-                - y is ArrayLike: Per-timepoint labels, shape (n_samples,)
-                - y is None: Unsupervised (most common)
+            Single series (X is ArrayLike):
 
-            If X is list[ArrayLike] (multiple series):
-                - y is ArrayLike: One label per series, shape (n_series,)
-                  Example: Binary classification of each series
-                - y is list[ArrayLike]: Per-timepoint labels for each series
-                  Example: y[i] has shape (len(X[i]),) matching X[i]
-                - y is None: Unsupervised (most common)
+            - ArrayLike: Dense segment labels, shape (n_samples,).
+              Example: ``np.array([0,0,0,1,1,1,2,2])``
+            - dict: Sparse changepoint format with keys:
+
+              - ``"indices"``: integer changepoint locations, shape (n_changepoints,)
+              - ``"segment_labels"``: integer segment labels,
+                shape (n_changepoints + 1,)
+
+              Example: ``{"indices": np.array([50, 100]),
+              "segment_labels": np.array([0, 1, 2])}``
+
+            Multiple series (X is list[ArrayLike]):
+
+            - ArrayLike: One label per series, shape (n_series,)
+            - list: Per-series labels, each element ArrayLike or dict
+              as above
 
         Returns
         -------
@@ -211,26 +228,22 @@ class ChangeDetector(Protocol):
         """
         ...
 
-    def predict(self, X: ArrayLike | list[ArrayLike]) -> list[ChangeDetectionResult]:
-        """Detect changepoints in time series data.
+    def predict(self, X: ArrayLike) -> ChangeDetectionResult:
+        """Detect changepoints in a single time series.
 
         Parameters
         ----------
-        X : ArrayLike | list[ArrayLike]
-            Data to analyze for changepoints.
-            - Single series: 2D array of shape (n_samples, n_features)
-            - Multiple series: List of 2D arrays, each (n_samples_i, n_features)
-            - Univariate data: Use (n_samples, 1), never 1D arrays
+        X : ArrayLike
+            Time series data to analyze for changepoints.
+            Must be 2D array of shape (n_samples, n_features).
+            - Univariate: shape (n_samples, 1)
+            - Multivariate: shape (n_samples, n_features)
+            Never use 1D arrays, even for univariate data.
 
         Returns
         -------
-        list[ChangeDetectionResult]
-            Detection results, one per input series. Always returns a list,
-            regardless of input type.
-            - Single series input: List with 1 element
-            - Multiple series input: List with N elements
-
-            Each result is a dict (ChangeDetectionResult) containing:
+        ChangeDetectionResult
+            Detection result as a dict containing:
             - "indices": Changepoint locations, shape (n_changepoints,)
             - "segment_labels": Segment assignments, shape (n_changepoints + 1,)
             - "n_samples": Number of timepoints analyzed
@@ -241,14 +254,15 @@ class ChangeDetector(Protocol):
 
         Examples
         --------
-        >>> # Single series prediction
+        >>> # Predict on single series
         >>> detector.fit(X_train)
-        >>> results = detector.predict(X_test)
-        >>> print(results[0]["indices"])  # Changepoint locations
-        >>> print(results[0]["segment_labels"])  # Segment assignments
+        >>> result = detector.predict(X_test)
+        >>> print(result["indices"])  # Changepoint locations
+        >>> print(result["segment_labels"])  # Segment assignments
+        >>> print(len(result["indices"]))  # Number of changepoints
 
-        >>> # Multiple series prediction
-        >>> results = detector.predict([X1, X2, X3])
+        >>> # Predict on multiple series using list comprehension
+        >>> results = [detector.predict(X) for X in test_series]
         >>> for i, result in enumerate(results):
         ...     print(f"Series {i}: {len(result['indices'])} changepoints")
         """

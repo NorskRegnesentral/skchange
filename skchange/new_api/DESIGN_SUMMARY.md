@@ -28,18 +28,19 @@ Complete design documentation for the new changepoint detection API.
 - Lists handle this naturally
 
 ### 2. Output Consistency
-**Always return the same structure, regardless of input**
+**Direct dict output from predict()**
 
-- `predict()` always returns `ChangeDetectionResult` (TypedDict)
+- `predict()` accepts only single series and returns `ChangeDetectionResult` (TypedDict) directly
 - Helper function: `make_change_detection_result()` for clean construction
 - No type unions, no `@overload` decorators needed
-- User code is uniform: always access `result["indices"]`
+- User code is simple: `result = detector.predict(X)` → access `result["indices"]`
 
 **Benefits:**
 - ✅ Single precise type for IDE autocomplete
-- ✅ No runtime type checking needed
+- ✅ No awkward indexing: `result["indices"]` not `results[0]["indices"]`
 - ✅ Simpler protocol (2 required methods: fit + predict)
 - ✅ Better for pipelines and composition
+- ✅ Easy batching: `[detector.predict(X) for X in series_list]`
 
 ### 3. Protocol-Based Architecture
 **Duck typing by design**
@@ -190,7 +191,7 @@ class SimplePELT(BaseChangeDetector):
 **User experience:**
 ```python
 detector = SimplePELT()
-result = detector.predict(X_single)  # ✅ Works
+result = detector.predict(X_single)  # ✅ Works - returns dict directly
 detector.fit([X1, X2])  # ❌ Clear error: doesn't support multiple series
 ```
 
@@ -340,11 +341,16 @@ class MyDetector(BaseChangeDetector):
 ```python
 result = detector.predict(X)
 
-# Access fields
+# Access fields (no indexing needed)
 changepoints = result["indices"]
 labels = result["segment_labels"]
 n = result["n_samples"]
 scores = result.get("scores")  # Optional field
+
+# For multiple series, use list comprehension
+results = [detector.predict(X) for X in series_list]
+for result in results:
+    print(result["indices"])
 
 # Helper auto-generates segment_labels: [0, 1, 2, ...]
 # Helper requires n_samples and n_features (explicit and clear)
@@ -354,9 +360,10 @@ scores = result.get("scores")  # Optional field
 
 ## Key Design Insights
 
-1. **Optimize input for ergonomics, output for consistency**
-   - Accept single series naturally (sklearn-like)
-   - Always return same structure (predictable)
+1. **Asymmetric API by design**
+   - fit() accepts single or multiple series (shared parameter learning)
+   - predict() accepts only single series (per-series operation)
+   - Returns dict directly, not wrapped in list
 
 2. **Lists >> 3D arrays for variable-length series**
    - Real time series have variable lengths
