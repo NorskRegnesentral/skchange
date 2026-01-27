@@ -42,28 +42,28 @@ import numpy as np
 ArrayLike = Any
 
 
-class ChangeDetectionResult(TypedDict):
-    """Result of changepoint detection on a single time series.
+class Segmentation(TypedDict):
+    """Sparse segmentation representation for changepoint detection.
 
-    This is the fundamental output type. Both single and multiple series
-    predictions return list[ChangeDetectionResult].
+    This is the universal sparse format used throughout the API for both
+    input (y labels) and output (predict results).
 
     TypedDict allows plain dicts to be returned, avoiding custom classes and
     maintaining alignment with scikit-learn's design philosophy.
 
     The result contains a sparse representation with per-changepoint arrays
-    (indices, scores, affected_variables), per-segment arrays (segment_labels),
-    and scalar metadata (n_samples, n_features).
+    (changepoints, scores, affected_variables), per-segment arrays (labels),
+    and scalar metadata (n_samples).
 
     Required Fields
     ---------------
-    indices : np.ndarray of shape (n_changepoints,)
+    changepoints : np.ndarray of shape (n_changepoints,)
         Changepoint indices where the time series exhibits structural breaks.
         Integer array with values in [0, n_samples). Each index marks the start
         of a new segment. Empty array if no changepoints detected.
         dtype: typically int64, but any integer dtype accepted.
 
-    segment_labels : np.ndarray of shape (n_changepoints + 1,)
+    labels : np.ndarray of shape (n_changepoints + 1,)
         Segment labels for each interval between changepoints (and boundaries).
         Integer array starting from 0. Default is [0, 1, 2, ...] where each
         segment has a unique label. Can assign the same label to multiple
@@ -75,12 +75,13 @@ class ChangeDetectionResult(TypedDict):
         Required for sparse-to-dense conversion and validation.
         Must be positive integer.
 
+    Optional Fields
+    ---------------
     n_features : int
         Number of features (variables/channels) in the analyzed time series.
         Must be positive integer, use 1 for univariate data.
+        Useful metadata but not required for core sparse representation.
 
-    Optional Fields
-    ---------------
     scores : np.ndarray of shape (n_changepoints,)
         Score, strength, or confidence measure for each detected changepoint.
         Higher values typically indicate stronger evidence for the changepoint.
@@ -103,33 +104,39 @@ class ChangeDetectionResult(TypedDict):
 
     Examples
     --------
-    >>> # Basic univariate detection (use helper function)
-    >>> result = make_change_detection_result(
-    ...     indices=np.array([10, 50, 90]),
-    ...     segment_labels=np.array([0, 1, 2, 3]),
+    >>> # Minimal result - only required fields
+    >>> result = {
+    ...     "changepoints": np.array([10, 50, 90]),
+    ...     "labels": np.array([0, 1, 2, 3]),
+    ...     "n_samples": 200,
+    ... }
+
+    >>> # Full result - all fields included
+    >>> result = make_segmentation(
+    ...     changepoints=np.array([10, 50, 90]),
+    ...     labels=np.array([0, 1, 2, 3]),
     ...     n_samples=200,
     ...     n_features=1,
     ...     scores=np.array([0.9, 0.8, 0.7]),
     ... )
 
-    >>> # Or create dict directly
-    >>> result = {
-    ...     "indices": np.array([10, 50, 90]),
-    ...     "segment_labels": np.array([0, 1, 2, 3]),
-    ...     "n_samples": 200,
-    ...     "n_features": 1,
-    ...     "scores": np.array([0.9, 0.8, 0.7]),
-    ... }
+    >>> # Auto-generated labels (recommended)
+    >>> result = make_segmentation(
+    ...     changepoints=np.array([10, 50]),
+    ...     n_samples=100,
+    ... )
+    >>> result["labels"]  # Auto-generated: [0, 1, 2]
+    array([0, 1, 2])
 
     >>> # Access fields via dict keys
-    >>> changepoints = result["indices"]
-    >>> labels = result["segment_labels"]
+    >>> cps = result["changepoints"]
+    >>> labels = result["labels"]
     """
 
-    indices: np.ndarray
-    segment_labels: np.ndarray
+    changepoints: np.ndarray
+    labels: np.ndarray
     n_samples: int
-    n_features: int
+    n_features: NotRequired[int]
     scores: NotRequired[np.ndarray]
     affected_variables: NotRequired[list[np.ndarray]]
     meta: NotRequired[dict[str, Any]]
@@ -166,7 +173,7 @@ class ChangeDetector(Protocol):
         and inference.
 
     **Simple Output**
-        predict() returns one ChangeDetectionResult dict per input
+        predict() returns one Segmentation dict per input
         series. Use e.g. list comprehension for multiple series prediction.
 
     **Stateless Prediction**
@@ -185,7 +192,7 @@ class ChangeDetector(Protocol):
     def fit(
         self,
         X: ArrayLike | list[ArrayLike],
-        y: ArrayLike | dict | list[ArrayLike | dict] | None = None,
+        y: Segmentation | list[Segmentation] | ArrayLike | None = None,
     ) -> Self:
         """Fit the detector to training data.
 
@@ -199,27 +206,28 @@ class ChangeDetector(Protocol):
               (n_samples_i, n_features)
             - Univariate data: Use (n_samples, 1), never 1D arrays
 
-        y : ArrayLike | dict | list[ArrayLike | dict] | None, default=None
+        y : Segmentation | list[Segmentation] | ArrayLike | None
             Supervised labels (optional). Default is None (unsupervised).
+
+            **Segmentation dict** has required fields:
+
+            - "changepoints": np.ndarray of changepoint indices
+            - "labels": np.ndarray of segment labels
+            - "n_samples": int, number of samples
 
             Single series (X is ArrayLike):
 
-            - ArrayLike: Dense segment labels, shape (n_samples,).
-              Example: ``np.array([0,0,0,1,1,1,2,2])``
-            - dict: Sparse changepoint format with keys:
-
-              - ``"indices"``: integer changepoint locations, shape (n_changepoints,)
-              - ``"segment_labels"``: integer segment labels,
-                shape (n_changepoints + 1,)
-
-              Example: ``{"indices": np.array([50, 100]),
-              "segment_labels": np.array([0, 1, 2])}``
+            - **Segmentation**: Sparse changepoint/segment labels.
+              Example: ``make_segmentation(changepoints=[50, 100],
+              n_samples=150)``
+            - Use ``dense_to_sparse()`` to convert dense labels if needed.
 
             Multiple series (X is list[ArrayLike]):
 
-            - ArrayLike: One label per series, shape (n_series,)
-            - list: Per-series labels, each element ArrayLike or dict
-              as above
+            - **list[Segmentation]**: Sparse labels per series.
+            - **ArrayLike**: Series-level classification (one label per series).
+              Shape (n_series,). Example: ``np.array([0, 1, 0])``
+              for 3 series with class labels.
 
         Returns
         -------
@@ -228,7 +236,7 @@ class ChangeDetector(Protocol):
         """
         ...
 
-    def predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def predict(self, X: ArrayLike) -> Segmentation:
         """Detect changepoints in a single time series.
 
         Parameters
@@ -242,24 +250,32 @@ class ChangeDetector(Protocol):
 
         Returns
         -------
-        ChangeDetectionResult
-            Detection result as a dict containing:
-            - "indices": Changepoint locations, shape (n_changepoints,)
-            - "segment_labels": Segment assignments, shape (n_changepoints + 1,)
-            - "n_samples": Number of timepoints analyzed
-            - "n_features": Number of features/channels
-            - "scores" (optional): Changepoint scores, shape (n_changepoints,)
-            - "affected_variables" (optional): Per-changepoint variable indices
-            - "meta" (optional): Algorithm-specific metadata
+        Segmentation
+            Detection result as a dict with required fields:
+
+            - "changepoints": np.ndarray, changepoint locations,
+              shape (n_changepoints,)
+            - "labels": np.ndarray, segment assignments,
+              shape (n_changepoints + 1,)
+            - "n_samples": int, number of timepoints analyzed
+
+            Optional fields:
+
+            - "n_features": int, number of features/channels
+            - "scores": np.ndarray, changepoint scores,
+              shape (n_changepoints,)
+            - "affected_variables": list[np.ndarray], per-changepoint
+              variable indices
+            - "meta": dict, algorithm-specific metadata
 
         Examples
         --------
         >>> # Predict on single series
         >>> detector.fit(X_train)
         >>> result = detector.predict(X_test)
-        >>> print(result["indices"])  # Changepoint locations
-        >>> print(result["segment_labels"])  # Segment assignments
-        >>> print(len(result["indices"]))  # Number of changepoints
+        >>> print(result["changepoints"])  # Changepoint locations
+        >>> print(result["labels"])  # Segment assignments
+        >>> print(len(result["changepoints"]))  # Number of changepoints
 
         >>> # Predict on multiple series using list comprehension
         >>> results = [detector.predict(X) for X in test_series]

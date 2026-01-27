@@ -6,7 +6,7 @@ that work on both single and multiple time series in a clean, maintainable way.
 Design Philosophy
 -----------------
 1. **Flexible Inputs**: Accept ArrayLike | list[ArrayLike] (optimize for common case)
-2. **Simple List Outputs**: Always return list[ChangeDetectionResult] (natural Python)
+2. **Simple List Outputs**: Always return Segmentation dict (natural Python)
 3. **Variable Lengths**: Use lists (not 3D arrays) for natural time series handling
 4. **Protocol-Based**: Duck typing via typing.Protocol (inheritance optional)
 5. **Base Class Dispatching**: Automatic routing based on input type + capability tags
@@ -15,7 +15,7 @@ Design Philosophy
 Quick Start
 -----------
 ```python
-from skchange.new_api import BaseChangeDetector, ChangeDetectionResult
+from skchange.new_api import BaseChangeDetector, Segmentation
 
 class MyDetector(BaseChangeDetector):
     _tags = {"capability:multiple_series": True}
@@ -27,12 +27,11 @@ class MyDetector(BaseChangeDetector):
 
     def _predict(self, X):
         changepoints = detect(X, self.threshold_)
-        return ChangeDetectionResult(indices=changepoints)
+        return make_segmentation(indices=changepoints, n_samples=len(X))
 
-# Usage - works for both single and multiple series
+# Usage - works for single series
 detector = MyDetector()
-results = detector.predict(X)         # list[ChangeDetectionResult]
-results = detector.predict([X1, X2])  # list[ChangeDetectionResult]
+result = detector.predict(X)         # Segmentation dict
 ```
 
 Documentation
@@ -47,18 +46,20 @@ Documentation
 ```
 """
 
-from .base import BaseChangeDetector
-from .typing import (
+from skchange.new_api.base import BaseChangeDetector
+from skchange.new_api.typing import (
     ArrayLike,
-    ChangeDetectionResult,
     ChangeDetector,
+    Segmentation,
 )
-from .utils import make_change_detection_result
+from skchange.new_api.utils import dense_to_sparse, make_segmentation, sparse_to_dense
 
 __all__ = [
     "BaseChangeDetector",
     "ChangeDetector",
     "ArrayLike",
-    "ChangeDetectionResult",
-    "make_change_detection_result",
+    "Segmentation",
+    "make_segmentation",
+    "sparse_to_dense",
+    "dense_to_sparse",
 ]

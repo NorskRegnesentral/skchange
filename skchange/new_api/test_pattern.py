@@ -3,8 +3,7 @@
 import numpy as np
 import pytest
 
-from .examples import BatchPELT, MovingWindowDetector, SimplePELT
-from .typing import ChangeDetectionResult
+from skchange.new_api.examples import BatchPELT, MovingWindowDetector, SimplePELT
 
 
 class TestSingleSeriesOnly:
@@ -17,11 +16,11 @@ class TestSingleSeriesOnly:
         # 2D input
         X = np.random.randn(100, 3)
         detector.fit(X)
-        results = detector.predict(X)
+        result = detector.predict(X)
 
-        assert isinstance(results, list)
-        assert len(results) == 1
-        assert isinstance(results[0], ChangeDetectionResult)
+        assert isinstance(result, dict)
+        assert "changepoints" in result
+        assert "labels" in result
 
     def test_accepts_1d_input(self):
         """Should auto-convert 1D to 2D."""
@@ -30,10 +29,10 @@ class TestSingleSeriesOnly:
         # 1D input - should be converted to (100, 1)
         X = np.random.randn(100)
         detector.fit(X)
-        results = detector.predict(X)
+        result = detector.predict(X)
 
-        assert isinstance(results, list)
-        assert len(results) == 1
+        assert isinstance(result, dict)
+        assert "changepoints" in result
 
     def test_rejects_multiple_series(self):
         """Single-series detector should reject list input."""
@@ -63,28 +62,29 @@ class TestUniversalDetector:
 
         X = np.random.randn(100, 2)
         detector.fit(X)
-        results = detector.predict(X)
+        result = detector.predict(X)
 
-        assert isinstance(results, list)
-        assert len(results) == 1
-        assert isinstance(results[0], ChangeDetectionResult)
+        assert isinstance(result, dict)
+        assert "changepoints" in result
+        assert "labels" in result
 
-    def test_multiple_series(self):
-        """Should work on multiple series."""
+    def test_multiple_series_prediction(self):
+        """Should predict on multiple series via list comprehension."""
         detector = MovingWindowDetector(window_size=20)
 
         X_list = [
             np.random.randn(100, 2),
             np.random.randn(150, 2),
-            np.random.randn(200, 3),  # Different number of channels is OK
+            np.random.randn(200, 2),
         ]
 
         detector.fit(X_list)
-        results = detector.predict(X_list)
+        results = [detector.predict(X) for X in X_list]
 
         assert isinstance(results, list)
         assert len(results) == 3
-        assert all(isinstance(r, ChangeDetectionResult) for r in results)
+        assert all(isinstance(r, dict) for r in results)
+        assert all("indices" in r for r in results)
 
     def test_transform_single(self):
         """Transform should work on single series."""
@@ -92,11 +92,10 @@ class TestUniversalDetector:
 
         X = np.random.randn(100, 2)
         detector.fit(X)
-        labels_list = detector.transform(X)
+        labels = detector.transform(X)
 
-        assert isinstance(labels_list, list)
-        assert len(labels_list) == 1
-        assert len(labels_list[0]) == len(X)
+        assert isinstance(labels, np.ndarray)
+        assert len(labels) == len(X)
 
     def test_transform_multiple(self):
         """Transform should work on multiple series."""
@@ -105,7 +104,7 @@ class TestUniversalDetector:
         X_list = [np.random.randn(100, 2), np.random.randn(50, 2)]
 
         detector.fit(X_list)
-        labels_list = detector.transform(X_list)
+        labels_list = [detector.transform(X) for X in X_list]
 
         assert isinstance(labels_list, list)
         assert len(labels_list) == 2
@@ -133,8 +132,9 @@ class TestBatchOptimizedDetector:
         assert detector.penalty is not None
 
         # Should use same threshold for all predictions
-        results = detector.predict(X_list)
+        results = [detector.predict(X) for X in X_list]
         assert len(results) == 3
+        assert all(isinstance(r, dict) for r in results)
 
     def test_works_on_single_series(self):
         """Should also work on single series (fallback)."""
@@ -142,10 +142,10 @@ class TestBatchOptimizedDetector:
 
         X = np.random.randn(100, 1)
         detector.fit(X)
-        results = detector.predict(X)
+        result = detector.predict(X)
 
-        assert isinstance(results, list)
-        assert len(results) == 1
+        assert isinstance(result, dict)
+        assert "indices" in result
         assert detector.global_threshold_ is not None
 
 
@@ -160,9 +160,9 @@ class TestInputValidation:
         detector.fit(X_1d)
 
         # Should work without errors
-        results = detector.predict(X_1d)
-        assert isinstance(results, list)
-        assert len(results) == 1
+        result = detector.predict(X_1d)
+        assert isinstance(result, dict)
+        assert "indices" in result
 
     def test_inconsistent_y_type_error(self):
         """If X is list, y must also be list or None."""
@@ -185,34 +185,47 @@ class TestInputValidation:
         ]
 
         detector.fit(X_list)
-        results = detector.predict(X_list)
+        results = [detector.predict(X) for X in X_list]
 
         assert len(results) == 3
+        assert all(isinstance(r, dict) for r in results)
 
 
 class TestTagSystem:
     """Test tag-based capability system."""
 
     def test_get_tag(self):
-        """Should retrieve tags correctly."""
+        """Should retrieve tags correctly via __sklearn_tags__."""
         detector = SimplePELT()
-        assert detector.get_tag("capability:multiple_series") is False
+        assert (
+            detector.__sklearn_tags__().change_detector_tags.capability_multiple_series
+            is False
+        )
 
         detector = MovingWindowDetector()
-        assert detector.get_tag("capability:multiple_series") is True
+        assert (
+            detector.__sklearn_tags__().change_detector_tags.capability_multiple_series
+            is True
+        )
 
     def test_tag_controls_behavior(self):
         """Tag should control whether multiple series are accepted."""
         # Single-series detector
         single = SimplePELT()
-        assert single.get_tag("capability:multiple_series") is False
+        assert (
+            single.__sklearn_tags__().change_detector_tags.capability_multiple_series
+            is False
+        )
 
         with pytest.raises(ValueError):
             single.fit([np.random.randn(100, 2)])
 
         # Multi-series detector
         multi = MovingWindowDetector()
-        assert multi.get_tag("capability:multiple_series") is True
+        assert (
+            multi.__sklearn_tags__().change_detector_tags.capability_multiple_series
+            is True
+        )
 
         # Should work
         multi.fit([np.random.randn(100, 2)])
@@ -228,27 +241,30 @@ def test_end_to_end_workflow():
     detector = MovingWindowDetector(window_size=10)
     detector.fit(X)
 
-    # Predict (sparse)
-    results = detector.predict(X)
-    assert isinstance(results, list)
-    assert len(results) == 1
-    assert isinstance(results[0], ChangeDetectionResult)
+    # Predict (sparse) - returns dict directly
+    result = detector.predict(X)
+    assert isinstance(result, dict)
+    assert "changepoints" in result
+    assert "labels" in result
 
-    # Transform (dense)
-    labels_list = detector.transform(X)
-    assert len(labels_list) == 1
-    assert len(labels_list[0]) == len(X)
-    assert labels_list[0].dtype == int
+    # Transform (dense) - returns array directly
+    labels = detector.transform(X)
+    assert isinstance(labels, np.ndarray)
+    assert len(labels) == len(X)
+    assert labels.dtype == int
 
     # Multiple-series workflow
     X_list = [X, X[:60], X[40:]]
 
     detector.fit(X_list)
-    results = detector.predict(X_list)
 
+    # Predict on multiple series using list comprehension
+    results = [detector.predict(Xi) for Xi in X_list]
     assert len(results) == 3
+    assert all(isinstance(r, dict) for r in results)
 
-    labels_list = detector.transform(X_list)
+    # Transform on multiple series using list comprehension
+    labels_list = [detector.transform(Xi) for Xi in X_list]
     assert len(labels_list) == 3
     assert len(labels_list[0]) == 100
     assert len(labels_list[1]) == 60

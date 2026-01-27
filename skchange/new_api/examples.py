@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from .base import BaseChangeDetector
-from .typing import ArrayLike, ChangeDetectionResult
-from .utils import make_change_detection_result
+from skchange.new_api.base import BaseChangeDetector
+from skchange.new_api.typing import ArrayLike, Segmentation
+from skchange.new_api.utils import make_segmentation
 
 # ============================================================================
 # Example 1: Single-Series Only Detector
@@ -23,13 +23,15 @@ class SimplePELT(BaseChangeDetector):
     Users get a clear error if they try to pass multiple series.
     """
 
-    _tags = {
-        "capability:multiple_series": False,  # Explicitly single-series only
-    }
-
     def __init__(self, penalty: float = 1.0):
         self.penalty = penalty
         self.threshold_ = None
+
+    def __sklearn_tags__(self):
+        """Get estimator tags."""
+        tags = super().__sklearn_tags__()
+        tags.change_detector_tags.capability_multiple_series = False
+        return tags
 
     def _fit(self, X: ArrayLike, y: ArrayLike | None = None) -> SimplePELT:
         """Fit on single series - core logic here.
@@ -41,7 +43,7 @@ class SimplePELT(BaseChangeDetector):
         self.threshold_ = np.std(X) * self.penalty
         return self
 
-    def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def _predict(self, X: ArrayLike) -> Segmentation:
         """Detect changepoints in single series.
 
         X is guaranteed to be 2D (n_samples, n_features).
@@ -49,8 +51,8 @@ class SimplePELT(BaseChangeDetector):
         # Simplified PELT logic
         changepoints = self._run_pelt_algorithm(X)
 
-        return make_change_detection_result(
-            indices=changepoints,
+        return make_segmentation(
+            changepoints=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
             meta={"threshold": self.threshold_},
@@ -75,13 +77,15 @@ class MovingWindowDetector(BaseChangeDetector):
     Base class automatically handles multiple series by calling _fit on each.
     """
 
-    _tags = {
-        "capability:multiple_series": True,  # Supports both!
-    }
-
     def __init__(self, window_size: int = 50):
         self.window_size = window_size
         self.threshold_ = None
+
+    def __sklearn_tags__(self):
+        """Get estimator tags."""
+        tags = super().__sklearn_tags__()
+        tags.capability_multiple_series = True
+        return tags
 
     def _fit(self, X: ArrayLike, y: ArrayLike | None = None) -> MovingWindowDetector:
         """Fit on single series - this is all you need to implement.
@@ -92,7 +96,7 @@ class MovingWindowDetector(BaseChangeDetector):
         self.threshold_ = 2.0 * np.std(X)
         return self
 
-    def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def _predict(self, X: ArrayLike) -> Segmentation:
         """Detect on single series."""
         n = len(X)
         scores = np.zeros(n)
@@ -106,8 +110,8 @@ class MovingWindowDetector(BaseChangeDetector):
         # Find peaks above threshold
         changepoints = np.where(scores > self.threshold_)[0]
 
-        return make_change_detection_result(
-            indices=changepoints,
+        return make_segmentation(
+            changepoints=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
             scores=scores[changepoints],  # Only scores at changepoints
@@ -130,13 +134,16 @@ class BatchPELT(BaseChangeDetector):
     so it implements custom _fit_multiple logic.
     """
 
-    _tags = {
-        "capability:multiple_series": True,
-    }
-
     def __init__(self, penalty: float | None = None):
         self.penalty = penalty
         self.global_threshold_ = None
+
+    def __sklearn_tags__(self):
+        """Get estimator tags."""
+        """Get estimator tags."""
+        tags = super().__sklearn_tags__()
+        tags.change_detector_tags.capability_multiple_series = True
+        return tags
 
     def _fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BatchPELT:
         """Single series fit - compute series-specific threshold."""
@@ -162,13 +169,13 @@ class BatchPELT(BaseChangeDetector):
         self.global_threshold_ = global_std * self.penalty
         return self
 
-    def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def _predict(self, X: ArrayLike) -> Segmentation:
         """Predict on single series using learned threshold."""
         # Use the global threshold
         changepoints = self._detect_with_threshold(X, self.global_threshold_)
 
-        return make_change_detection_result(
-            indices=changepoints,
+        return make_segmentation(
+            changepoints=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
             meta={"threshold": self.global_threshold_},

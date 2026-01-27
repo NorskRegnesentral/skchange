@@ -30,14 +30,14 @@ Complete design documentation for the new changepoint detection API.
 ### 2. Output Consistency
 **Direct dict output from predict()**
 
-- `predict()` accepts only single series and returns `ChangeDetectionResult` (TypedDict) directly
-- Helper function: `make_change_detection_result()` for clean construction
+- `predict()` accepts only single series and returns `Segmentation` (TypedDict) directly
+- Helper function: `make_segmentation()` for clean construction
 - No type unions, no `@overload` decorators needed
-- User code is simple: `result = detector.predict(X)` → access `result["indices"]`
+- User code is simple: `result = detector.predict(X)` → access `result["changepoints"]`
 
 **Benefits:**
 - ✅ Single precise type for IDE autocomplete
-- ✅ No awkward indexing: `result["indices"]` not `results[0]["indices"]`
+- ✅ No awkward indexing: `result["changepoints"]` not `results[0]["changepoints"]`
 - ✅ Simpler protocol (2 required methods: fit + predict)
 - ✅ Better for pipelines and composition
 - ✅ Easy batching: `[detector.predict(X) for X in series_list]`
@@ -62,6 +62,46 @@ Complete design documentation for the new changepoint detection API.
 - **Stateless predict()**: Returns values, doesn't store attributes
 - **Input flexibility, output consistency**: Accept ArrayLike, return np.ndarray
 
+### 5. Sparse-First Representation
+**Sparse changepoints as the canonical format**
+
+Changepoint detection is fundamentally a **sparse problem** - most time series have few changepoints relative to their length. The API embraces this with sparse-first design:
+
+**Core principle:**
+- **Segmentation dict is the universal format** - Used for output, input (y labels), metrics, and conversions
+- **Sparse by default** - `changepoints` array (length: n_changepoints) is primary
+- **Dense on demand** - `transform()` or `sparse_to_dense()` converts to per-timepoint labels
+
+**Why sparse-first?**
+- ✅ **Natural representation** - `[50, 100, 150]` is clearer than 200-element array
+- ✅ **Memory efficient** - O(k) vs O(n) where k << n
+- ✅ **Algorithm-aligned** - Most detection algorithms work with changepoint locations
+- ✅ **Metric-friendly** - Hausdorff, F1, etc. compare sparse locations directly
+- ✅ **Validation included** - `n_samples` enables consistency checks
+
+**Format comparison:**
+```python
+# Sparse (canonical) - 3 changepoints in 200 samples
+sparse = {
+    "changepoints": np.array([50, 100, 150]),  # Just 3 values
+    "labels": np.array([0, 1, 2, 3]),          # 4 segment IDs
+    "n_samples": 200,
+}
+
+# Dense (convenience) - same information, 200 values
+dense = np.array([0,0,0,...,1,1,1,...,2,2,2,...,3,3,3])  # 200 elements
+```
+
+**API usage:**
+- `predict()` → Returns sparse Segmentation
+- `transform()` → Returns dense labels (convenience wrapper)
+- Metrics → Accept Segmentation (sparse), auto-convert if needed
+- **y parameter** → **Only accepts Segmentation** for segment labels (strict sparse-first)
+
+**Conversion utilities:**
+- `sparse_to_dense(result)` → Convert Segmentation to per-timepoint labels
+- `dense_to_sparse(labels, n_samples)` → Convert dense labels to Segmentation
+
 ---
 
 ## Output Type Design
@@ -69,18 +109,27 @@ Complete design documentation for the new changepoint detection API.
 ### Decision: TypedDict over Dataclass
 
 ```python
-class ChangeDetectionResult(TypedDict, total=False):
+from typing import TypedDict, NotRequired
+
+class Segmentation(TypedDict):
     """Plain dict, sklearn-aligned output."""
-    # Required
-    indices: np.ndarray
-    segment_labels: np.ndarray
-    n_samples: int
-    n_features: int
-    # Optional
-    scores: np.ndarray
-    affected_variables: list[np.ndarray]
-    meta: dict[str, Any]
+    # Required (3 fields - must always be present)
+    changepoints: np.ndarray         # Changepoint locations
+    labels: np.ndarray               # Segment identifiers
+    n_samples: int                   # Length of time series
+
+    # Optional (4 fields - NotRequired, can be omitted)
+    n_features: NotRequired[int]                       # Number of channels
+    scores: NotRequired[np.ndarray]                    # Changepoint scores
+    affected_variables: NotRequired[list[np.ndarray]]  # Per-CP variable indices
+    meta: NotRequired[dict[str, Any]]                  # Detector metadata
 ```
+
+**Field Usage Guidelines:**
+- **Always include**: `changepoints`, `labels`, `n_samples` (required)
+- **Include when relevant**: `n_features` (multivariate), `scores` (confidence), `affected_variables` (which channels changed)
+- **Include for debugging**: `meta` (algorithm parameters, thresholds, timing)
+- **Minimal valid result**: Just the 3 required fields
 
 ### Why TypedDict?
 
@@ -123,25 +172,25 @@ class ChangeDetectionResult(TypedDict, total=False):
 To mitigate dict syntax, we provide a helper:
 
 ```python
-def make_change_detection_result(
-    indices: np.ndarray,
+def make_segmentation(
+    changepoints: np.ndarray,
     n_samples: int,
-    n_features: int,
-    segment_labels: np.ndarray | None = None,  # Auto-generated if None
+    labels: np.ndarray | None = None,  # Auto-generated if None
+    n_features: int | None = None,  # Optional
     scores: np.ndarray | None = None,
     affected_variables: list[np.ndarray] | None = None,
     meta: dict[str, Any] | None = None,
-) -> ChangeDetectionResult:
-    """Create result with clean syntax, auto-generates segment_labels."""
+) -> Segmentation:
+    """Create result with clean syntax, auto-generates labels."""
     ...
 ```
 
 **Usage in detectors:**
 ```python
-def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
-    changepoints = self._detect(X)
-    return make_change_detection_result(
-        indices=changepoints,
+def _predict(self, X: ArrayLike) -> Segmentation:
+    cps = self._detect(X)
+    return make_segmentation(
+        changepoints=cps,
         n_samples=X.shape[0],
         n_features=X.shape[1],
         meta={"threshold": self.threshold_},
@@ -178,9 +227,9 @@ class SimplePELT(BaseChangeDetector):
         self.threshold_ = np.std(X) * self.penalty
         return self
 
-    def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def _predict(self, X: ArrayLike) -> Segmentation:
         changepoints = self._run_pelt(X)
-        return make_change_detection_result(
+        return make_segmentation(
             indices=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
@@ -208,10 +257,10 @@ class MovingWindowDetector(BaseChangeDetector):
         self.threshold_ = compute_threshold(X)
         return self
 
-    def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def _predict(self, X: ArrayLike) -> Segmentation:
         """Base class calls this for each series automatically."""
         changepoints = self._detect(X, self.threshold_)
-        return make_change_detection_result(
+        return make_segmentation(
             indices=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
@@ -235,10 +284,10 @@ class BatchPELT(BaseChangeDetector):
         self.global_threshold_ = self._auto_tune(X) * global_std
         return self
 
-    def _predict(self, X: ArrayLike) -> ChangeDetectionResult:
+    def _predict(self, X: ArrayLike) -> Segmentation:
         """Use shared parameters."""
         changepoints = run_pelt(X, self.global_threshold_)
-        return make_change_detection_result(
+        return make_segmentation(
             indices=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
@@ -259,8 +308,8 @@ X.shape = (n_samples, n_features)
 
 # Our results
 result = {
-    "indices": np.array([50, 100]),
-    "segment_labels": np.array([0, 1, 2]),
+    "changepoints": np.array([50, 100]),
+    "labels": np.array([0, 1, 2]),
     "n_samples": 200,      # sklearn: number of samples
     "n_features": 3,       # sklearn: number of features
 }
@@ -317,7 +366,7 @@ Base class validates and provides clear errors.
 ### Minimal Detector Implementation
 
 ```python
-from skchange.new_api import BaseChangeDetector, make_change_detection_result
+from skchange.new_api import BaseChangeDetector, make_segmentation
 import numpy as np
 
 class MyDetector(BaseChangeDetector):
@@ -329,7 +378,7 @@ class MyDetector(BaseChangeDetector):
     def _predict(self, X):
         # Detect changepoints
         changepoints = np.array([len(X) // 2])
-        return make_change_detection_result(
+        return make_segmentation(
             indices=changepoints,
             n_samples=X.shape[0],
             n_features=X.shape[1],
@@ -342,18 +391,17 @@ class MyDetector(BaseChangeDetector):
 result = detector.predict(X)
 
 # Access fields (no indexing needed)
-changepoints = result["indices"]
-labels = result["segment_labels"]
+changepoints = result["changepoints"]
+labels = result["labels"]
 n = result["n_samples"]
 scores = result.get("scores")  # Optional field
 
 # For multiple series, use list comprehension
 results = [detector.predict(X) for X in series_list]
 for result in results:
-    print(result["indices"])
+    print(result["changepoints"])
 
-# Helper auto-generates segment_labels: [0, 1, 2, ...]
-# Helper requires n_samples and n_features (explicit and clear)
+# Helper auto-generates labels: [0, 1, 2, ...]
 ```
 
 ---
@@ -369,17 +417,23 @@ for result in results:
    - Real time series have variable lengths
    - Padding wastes memory and distorts algorithms
 
-3. **TypedDict >> dataclass for sklearn alignment**
+3. **Sparse-first representation**
+   - Segmentation dict is the universal format (output, metrics, conversions)
+   - Changepoint detection is inherently sparse: k changepoints in n samples where k << n
+   - Dense labels available via transform() when needed
+   - Memory efficient: O(k) vs O(n)
+
+4. **TypedDict >> dataclass for sklearn alignment**
    - Plain dicts, no custom classes
    - Zero coupling, third-party friendly
    - Stateless predict() convention
 
-4. **Helper function mitigates dict access UX**
+5. **Helper function mitigates dict access UX**
    - Clean construction syntax
-   - Auto-generates segment_labels
-   - Requires explicit n_samples/n_features (mirrors TypedDict)
+   - Auto-generates labels
+   - Requires explicit n_samples (mirrors TypedDict required fields)
 
-5. **Protocol-based >> inheritance-required**
+6. **Protocol-based >> inheritance-required**
    - Duck typing enables third-party integration
    - BaseChangeDetector is convenience, not requirement
    - Simpler for users, more flexible for ecosystem
@@ -389,7 +443,7 @@ for result in results:
 ## Files in This Directory
 
 - **typing.py**: Protocol and TypedDict definitions
-- **utils.py**: Helper functions (make_change_detection_result)
+- **utils.py**: Helper functions (make_segmentation)
 - **base.py**: BaseChangeDetector with dispatching logic
 - **examples.py**: Reference implementations (SimplePELT, MovingWindowDetector, BatchPELT)
 - **examples_y_parameter.py**: Y parameter flexibility demos
