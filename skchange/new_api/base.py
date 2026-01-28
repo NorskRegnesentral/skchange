@@ -1,7 +1,11 @@
-"""Reference base detector implementation for single/multiple series handling.
+"""Base detector implementation providing sklearn compatibility.
 
-This module demonstrates the recommended pattern for handling both single and
-multiple time series in a clean, maintainable way.
+Provides a minimal base class for change detectors that:
+- Inherits from sklearn.base.BaseEstimator for compatibility
+- Defines custom tags via __sklearn_tags__()
+- Provides optional transform() convenience method
+
+Subclasses implement fit() and predict() directly without forced private methods.
 """
 
 from __future__ import annotations
@@ -11,69 +15,68 @@ from dataclasses import fields
 import numpy as np
 from sklearn.base import BaseEstimator
 
-from skchange.new_api.typing import ArrayLike, Segmentation
-from skchange.new_api.utils import SkchangeTags, sparse_to_dense, validate_data
+from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils import SkchangeTags, sparse_to_dense
 
 
 class BaseChangeDetector(BaseEstimator):
-    """Base class for change detectors with automatic single/multi series handling.
+    """Base class for change detectors providing sklearn compatibility.
 
     Inherits from sklearn.base.BaseEstimator for full sklearn compatibility,
-    including cloning, GridSearchCV, and pipeline support.
+    including cloning, GridSearchCV, pipeline support, and get_params/set_params.
 
-    This base class provides dispatching logic for fit() to handle both single
-    and multiple series. The predict() and transform() methods operate on single
-    series only - use list comprehensions for batch prediction.
+    This base class provides:
+    - Custom tags via __sklearn_tags__() for change detection metadata
+    - Optional transform() method that converts predict() output to dense labels
+    - No enforced private methods - implement public API directly
 
-    The transform() method is provided as a convenience and has a default
-    implementation that converts sparse changepoint results to dense labels.
-    It is not required by the ChangeDetector Protocol.
+    Subclasses must implement:
+    - fit(X, y=None) -> self
+    - predict(X) -> Segmentation
 
-    Implementation Guide for Subclasses
-    ------------------------------------
-
-    1. **Single-series only detector** (e.g., PELT):
-       - Override `__sklearn_tags__()` and set
-         `tags.change_detector_tags.capability_multiple_series = False`
-       - Implement `_fit(X: ArrayLike, y)` and `_predict(X: ArrayLike)`
-       - Users get clear error if they try to pass multiple series to fit()
-
-    2. **Multiple-series detector** (e.g., batch processor):
-       - Override `__sklearn_tags__()` and set
-         `tags.change_detector_tags.capability_multiple_series = True`
-       - Implement `_fit_multiple(X: list[ArrayLike], y)` for batch learning
-       - Implement `_predict(X: ArrayLike)` for per-series prediction
-       - Optionally implement `_fit(X, y)` to handle single series efficiently
-
-    3. **Universal detector** (works on both):
-       - Override `__sklearn_tags__()` and set
-         `tags.change_detector_tags.capability_multiple_series = True`
-       - Implement `_fit(X, y)` for single series (core logic)
-       - Don't override `_fit_multiple` - base class will call `_fit` on each
-       - Or implement both for optimized batch processing
-
-    Tags
-    ----
-    change_detector_tags.capability_multiple_series : bool, default=False
-        Whether the detector can process multiple series in a single fit() call.
+    Internal implementation is completely up to the subclass:
+    - Use any internal data representation (numpy, pandas, polars, etc.)
+    - Apply validation as needed using utils.validate_data() or your own logic
+    - Output from predict() must be a Segmentation dict with numpy arrays
 
     Examples
     --------
-    >>> # Customizing tags in a subclass
     >>> class MyDetector(BaseChangeDetector):
-    ...     def __sklearn_tags__(self):
-    ...         tags = super().__sklearn_tags__()
-    ...         tags.change_detector_tags.capability_multiple_series = True
-    ...         return tags
+    ...     def __init__(self, threshold=1.0):
+    ...         self.threshold = threshold
+    ...
+    ...     def fit(self, X, y=None):
+    ...         # Your validation and fitting logic
+    ...         self.n_features_in_ = X.shape[1]
+    ...         return self
+    ...
+    ...     def predict(self, X):
+    ...         # Your detection logic
+    ...         changepoints = np.array([50, 100])
+    ...         return make_segmentation(
+    ...             changepoints=changepoints,
+    ...             n_samples=len(X),
+    ...             n_features=X.shape[1]
+    ...         )
     """
 
     def __sklearn_tags__(self) -> SkchangeTags:
-        """Get estimator tags.
+        """Get estimator tags for change detection.
+
+        Override this method in subclasses to customize tags.
 
         Returns
         -------
-        tags : Tags
+        tags : SkchangeTags
             Estimator tags with change detection specific attributes.
+
+        Examples
+        --------
+        >>> class MyDetector(BaseChangeDetector):
+        ...     def __sklearn_tags__(self):
+        ...         tags = super().__sklearn_tags__()
+        ...         tags.change_detector_tags.capability_multiple_series = True
+        ...         return tags
         """
         tags_orig = super().__sklearn_tags__()
         tags_orig.estimator_type = None
@@ -82,281 +85,178 @@ class BaseChangeDetector(BaseEstimator):
         }
         return SkchangeTags(**as_dict)
 
-    # ==================== Public API ====================
+    def transform(self, X: ArrayLike) -> np.ndarray:
+        """Transform time series to dense segment labels.
 
-    def fit(
-        self,
-        X: ArrayLike | list[ArrayLike],
-        y: Segmentation | list[Segmentation] | ArrayLike | None = None,
-    ) -> BaseChangeDetector:
-        """Fit the detector on single or multiple series.
+        This is an optional convenience method that converts the sparse
+        changepoint representation from predict() into dense per-sample labels.
+
+        The default implementation calls predict(X) and converts the result
+        to dense labels. Override this method if you want custom behavior.
 
         Parameters
         ----------
-        X : ArrayLike | list[ArrayLike]
-            Training data.
-            - If ArrayLike: shape (n_samples, n_features) for single series
-            - If list: each element has shape (n_samples_i, n_features)
-        y : Segmentation | list[Segmentation] | ArrayLike | None
-            Supervised labels (optional). Formats:
-
-            **Sparse-first**: Only Segmentation dicts accepted for segment
-            labels.
-
-            **Segmentation dict** has required fields:
-
-            - "changepoints": np.ndarray of changepoint indices
-            - "labels": np.ndarray of segment labels
-            - "n_samples": int, number of samples
-
-            Accepted formats:
-
-            - **Segmentation**: Sparse segment labels for single series
-            - **list[Segmentation]**: Sparse labels per series
-            - **ArrayLike**: Series-level labels ONLY (one label per series,
-              for classification tasks). Shape (n_series,).
-            - **None**: Unsupervised (most common)
-
-            See ChangeDetector Protocol for detailed format specification.
+        X : ArrayLike
+            Time series data. Expected shape (n_samples, n_features).
+            Actual validation depends on your predict() implementation.
 
         Returns
         -------
-        self
-            Fitted detector instance.
+        labels : np.ndarray of shape (n_samples,)
+            Dense segment labels, one per sample.
+
+        Examples
+        --------
+        >>> detector = MyDetector().fit(X_train)
+        >>> labels = detector.transform(X_test)
+        >>> # Equivalent to:
+        >>> result = detector.predict(X_test)
+        >>> labels = sparse_to_dense(result)
+
+        Notes
+        -----
+        This method is not part of the ChangeDetector Protocol - it's purely
+        a convenience. You can use predict() and sparse_to_dense() directly
+        if you prefer explicit conversion.
+        """
+        result = self.predict(X)
+        return sparse_to_dense(result)
+
+    def fit_transform(self, X, y=None, **fit_params):
+        """Fit to data, then transform it.
+
+        This method is provided for sklearn pipeline compatibility when working
+        with single series. For detectors that require multi-series training,
+        this method will raise an error - use fit() and transform() separately.
+
+        Parameters
+        ----------
+        X : ArrayLike
+            Time series data. Must be single series (n_samples, n_features).
+            Lists of series are not supported in fit_transform().
+
+        y : Segmentation | ArrayLike | None, default=None
+            Optional labels for supervised learning.
+            - Segmentation dict for changepoint labels
+            - ArrayLike for dense per-sample labels
+            - None for unsupervised learning
+
+        **fit_params : dict
+            Additional parameters passed to fit(). Not commonly used,
+            but provided for sklearn compatibility.
+
+        Returns
+        -------
+        labels : np.ndarray of shape (n_samples,)
+            Dense segment labels.
 
         Raises
         ------
         ValueError
-            If detector doesn't support multiple series but receives a list.
+            If X is a list of series. Multi-series training is not
+            compatible with fit_transform - use fit() then transform().
+
+        Examples
+        --------
+        >>> # Single series - works
+        >>> detector = MyDetector()
+        >>> labels = detector.fit_transform(X_train)
+
+        >>> # Multi-series - raises error
+        >>> detector.fit_transform([X1, X2, X3], y=[0, 1, 1])
+        ValueError: fit_transform() does not support multi-series training...
+
+        >>> # Multi-series - correct workflow
+        >>> detector.fit([X1, X2, X3], y=[0, 1, 1])
+        >>> labels = detector.transform(X_new)
+
+        Notes
+        -----
+        The **fit_params argument exists for sklearn compatibility (e.g.,
+        passing sample_weight through pipelines), but most change detectors
+        won't use it.
         """
         if isinstance(X, list):
-            # Multiple series requested
-            tags = self.__sklearn_tags__()
-            if not tags.change_detector_tags.capability_multiple_series:
-                raise ValueError(
-                    f"{self.__class__.__name__} does not support "
-                    f"multiple series. Please fit on each series "
-                    f"separately or use a detector with "
-                    f"'change_detector_tags.capability_multiple_series' "
-                    f"tag set to True."
-                )
+            raise ValueError(
+                "fit_transform() does not support multi-series training. "
+                "For detectors that require multiple series:\n"
+                "  1. Train: detector.fit([X1, X2, X3], y=labels)\n"
+                "  2. Transform: detector.transform(X_single)\n"
+                "Use fit() and transform() separately instead of fit_transform()."
+            )
 
-            # Validate all series are 2D
-            X = [validate_data(X_i) for X_i in X]
+        return self.fit(X, y, **fit_params).transform(X)
 
-            # Validate and normalize y structure
-            if y is not None:
-                if isinstance(y, list):
-                    # Per-series segment labels (must be Segmentation dicts)
-                    if len(y) != len(X):
-                        raise ValueError(
-                            f"If y is a list, it must have same length as X. "
-                            f"Got len(X)={len(X)}, len(y)={len(y)}"
-                        )
-                    # Validate each y_i is Segmentation and convert to dense
-                    y_validated = []
-                    for i, (y_i, X_i) in enumerate(zip(y, X)):
-                        if y_i is not None:
-                            if not isinstance(y_i, dict):
-                                raise TypeError(
-                                    f"y[{i}] must be a Segmentation dict. "
-                                    f"Got {type(y_i).__name__}. "
-                                    f"Use dense_to_sparse() to convert dense "
-                                    f"labels or pass ArrayLike for series-level "
-                                    f"classification (not per-series labels)."
-                                )
-                            # Convert Segmentation to dense labels
-                            y_i = sparse_to_dense(y_i)
-                            if len(y_i) != len(X_i):
-                                raise ValueError(
-                                    f"y[{i}] must have same length as "
-                                    f"X[{i}]. Got len(y[{i}])={len(y_i)}, "
-                                    f"len(X[{i}])={len(X_i)}"
-                                )
-                        y_validated.append(y_i)
-                    y = y_validated
-                else:
-                    # Series-level classification - one label per series
-                    y = np.asarray(y)
-                    if y.ndim != 1:
-                        raise ValueError(
-                            f"If X is a list and y is not a list, y should be "
-                            f"1D (one label per series for classification). "
-                            f"Got y.shape={y.shape}"
-                        )
-                    if len(y) != len(X):
-                        raise ValueError(
-                            f"y must have one label per series. "
-                            f"Got len(X)={len(X)}, len(y)={len(y)}"
-                        )
+    def fit_predict(self, X, y=None, **fit_params):
+        """Fit to data, then predict changepoints.
 
-            return self._fit_multiple(X, y)
-        else:
-            # Single series
-            X = validate_data(X)
-            # Validate y if provided - must be Segmentation
-            if y is not None:
-                if not isinstance(y, dict):
-                    raise TypeError(
-                        f"For single series, y must be a Segmentation dict. "
-                        f"Got {type(y).__name__}. "
-                        f"Use dense_to_sparse() to convert dense labels, or "
-                        f"use make_segmentation(changepoints=[...], n_samples=...)."
-                    )
-                # Convert Segmentation to dense labels
-                y = sparse_to_dense(y)
-                if len(y) != len(X):
-                    raise ValueError(
-                        f"y must have same length as X. "
-                        f"Got len(y)={len(y)}, len(X)={len(X)}"
-                    )
-            return self._fit(X, y)
-
-    def predict(self, X: ArrayLike) -> Segmentation:
-        """Detect changepoints in a single time series.
+        This method is provided for sklearn compatibility when working
+        with single series. For detectors that require multi-series training,
+        this method will raise an error - use fit() and predict() separately.
 
         Parameters
         ----------
         X : ArrayLike
-            Time series data to analyze. Must be 2D: (n_samples, n_features).
+            Time series data. Must be single series (n_samples, n_features).
+            Lists of series are not supported in fit_predict().
+
+        y : Segmentation | ArrayLike | None, default=None
+            Optional labels for supervised learning.
+            - Segmentation dict for changepoint labels
+            - ArrayLike for dense per-sample labels
+            - None for unsupervised learning
+
+        **fit_params : dict
+            Additional parameters passed to fit(). Not commonly used,
+            but provided for sklearn compatibility.
 
         Returns
         -------
         Segmentation
             Detection result as a dict with required fields:
-
             - "changepoints": np.ndarray, changepoint indices
             - "labels": np.ndarray, segment labels
             - "n_samples": int, number of samples
 
-            Optional fields: "n_features", "scores", "affected_variables",
-            "meta".
+        Raises
+        ------
+        ValueError
+            If X is a list of series. Multi-series training is not
+            compatible with fit_predict - use fit() then predict().
 
         Examples
         --------
-        >>> result = detector.predict(X)
+        >>> # Single series - works
+        >>> detector = MyDetector()
+        >>> result = detector.fit_predict(X_train)
         >>> print(result["changepoints"])
-        >>> # For multiple series, use list comprehension
-        >>> results = [detector.predict(Xi) for Xi in series_list]
+
+        >>> # Multi-series - raises error
+        >>> detector.fit_predict([X1, X2, X3], y=[0, 1, 1])
+        ValueError: fit_predict() does not support multi-series training...
+
+        >>> # Multi-series - correct workflow
+        >>> detector.fit([X1, X2, X3], y=[0, 1, 1])
+        >>> result = detector.predict(X_new)
+
+        Notes
+        -----
+        This is similar to fit_transform() but returns sparse Segmentation
+        dict instead of dense labels. Use fit_transform() if you need
+        dense labels for sklearn compatibility.
         """
-        X = validate_data(X)
-        return self._predict(X)
+        if isinstance(X, list):
+            raise ValueError(
+                "fit_predict() does not support multi-series training. "
+                "For detectors that require multiple series:\n"
+                "  1. Train: detector.fit([X1, X2, X3], y=labels)\n"
+                "  2. Predict: detector.predict(X_single)\n"
+                "Use fit() and predict() separately instead of fit_predict()."
+            )
 
-    def transform(self, X: ArrayLike) -> np.ndarray:
-        """Transform to dense segment labels.
+        return self.fit(X, y, **fit_params).predict(X)
 
-        This is an optional convenience method that converts the sparse
-        changepoint representation from predict() into dense segment labels.
 
-        Parameters
-        ----------
-        X : ArrayLike
-            Data to transform. Must be 2D: (n_samples, n_features).
-
-        Returns
-        -------
-        np.ndarray
-            Segment labels, shape (n_samples,).
-
-        Examples
-        --------
-        >>> labels = detector.transform(X)
-        >>> # For multiple series, use list comprehension
-        >>> labels_list = [detector.transform(Xi) for Xi in series_list]
-        """
-        X = validate_data(X)
-        return self._transform(X)
-
-    # ==================== Methods to Override ====================
-
-    def _fit(self, X: ArrayLike, y: ArrayLike | None = None) -> BaseChangeDetector:
-        """Fit on a single series. Override in subclasses.
-
-        Parameters
-        ----------
-        X : ArrayLike
-            Shape (n_samples, n_features). Already validated as 2D.
-        y : ArrayLike | None
-            Optional labels.
-
-        Returns
-        -------
-        self
-        """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement _fit() method"
-        )
-
-    def _predict(self, X: ArrayLike) -> Segmentation:
-        """Predict on a single series. Override in subclasses.
-
-        Parameters
-        ----------
-        X : ArrayLike
-            Shape (n_timepoints, n_channels). Already validated as 2D.
-
-        Returns
-        -------
-        Segmentation
-            Detection result as a dict with required fields:
-
-            - "changepoints": np.ndarray, changepoint indices
-            - "labels": np.ndarray, segment labels
-            - "n_samples": int, number of samples
-
-            Optional fields: "n_features", "scores", "affected_variables",
-            "meta".
-        """
-        raise NotImplementedError(
-            f"{self.__class__.__name__} must implement _predict() method"
-        )
-
-    def _transform(self, X: ArrayLike) -> np.ndarray:
-        """Transform single series to dense labels. Override if needed.
-
-        Parameters
-        ----------
-        X : ArrayLike
-            Shape (n_samples, n_features).
-
-        Returns
-        -------
-        np.ndarray
-            Dense segment labels, shape (n_samples,).
-        """
-        # Default: convert sparse predictions to dense
-        prediction = self._predict(X)
-        return sparse_to_dense(prediction)
-
-    def _fit_multiple(
-        self,
-        X: list[ArrayLike],
-        y: list[ArrayLike] | ArrayLike | None = None,
-    ) -> BaseChangeDetector:
-        """Fit on multiple series. Override for batch-specific logic.
-
-        Default behavior: fit independently on each series (stateless detector).
-
-        Parameters
-        ----------
-        X : list[ArrayLike]
-            List of series, each (n_samples_i, n_features).
-        y : list[ArrayLike] | ArrayLike | None
-            Optional labels - already validated and converted to dense in fit().
-            Segmentation dicts are automatically converted to dense arrays.
-            Either list (per-timepoint for each series) or array (one label
-            per series).
-
-        Returns
-        -------
-        self
-        """
-        # Default: fit on each series independently
-        # Override this for detectors that learn shared parameters
-        for i, X_i in enumerate(X):
-            if y is not None:
-                y_i = y[i] if isinstance(y, list) else y[i]
-            else:
-                y_i = None
-            self._fit(X_i, y_i)
-        return self
+# TODO: Finish tags.
+# TODO: Add support for parameter specification. To simplify hyperparameter tuning
+#       and validation.

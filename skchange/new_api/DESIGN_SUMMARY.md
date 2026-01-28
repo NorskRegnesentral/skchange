@@ -131,6 +131,28 @@ class Segmentation(TypedDict):
 - **Include for debugging**: `meta` (algorithm parameters, thresholds, timing)
 - **Minimal valid result**: Just the 3 required fields
 
+### Why Keep `labels` and `n_samples` Required?
+
+**Design Decision:** Both fields are required even though they could technically be inferred:
+- `n_samples` could be inferred from `len(X)` in `fit()`
+- `labels` could be auto-generated as `[0, 1, 2, ...]`
+
+**Rationale - Safety over Convenience:**
+- ✅ **No silent bugs** - Users must explicitly specify structure
+- ✅ **Validation, not guessing** - `n_samples` serves as consistency check between y and X
+- ✅ **Explicit intent** - Custom labels (e.g., `[0, 1, 1, 2]` for regime grouping) require conscious choice
+- ✅ **Sklearn philosophy** - Explicit parameters over implicit magic
+- ✅ **Self-documenting** - Code shows expected data shape
+
+**Helper mitigates verbosity:**
+```python
+# Still concise with make_segmentation()
+y = make_segmentation(changepoints=[50, 100], n_samples=len(X))
+detector.fit(X, y)  # Explicit and validated
+```
+
+The small verbosity cost is worth preventing silent correctness issues in supervised learning.
+
 ### Why TypedDict?
 
 **Sklearn philosophy:**

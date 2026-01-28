@@ -17,11 +17,16 @@ class ChangeDetectorTags(slots=True):
 
     Attributes
     ----------
-    capability_multiple_series : bool, default=False
+    multiple_series : bool, default=False
         Whether the detector can process multiple series in a single fit.
     """
 
-    capability_multiple_series: bool = False
+    multiple_series: bool = False
+    multivariate: bool = True
+    supervised: bool = False
+    variable_identification: bool = False
+    scores: bool = False
+    integer_input_only: bool = False
 
 
 @dataclass
