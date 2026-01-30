@@ -39,10 +39,6 @@ class TemplateDetector(BaseChangeDetector):
         TODO: Document attributes learned during fit().
         All fitted attributes must end with underscore.
 
-    changepoints_ : np.ndarray
-        TODO: Example of storing last prediction (optional).
-        Only if your algorithm needs to remember state.
-
     Examples
     --------
     >>> from skchange.new_api.template_detector import TemplateDetector
@@ -95,7 +91,7 @@ class TemplateDetector(BaseChangeDetector):
         # NOTE: Do NOT do validation or computation in __init__
         # All logic should go in fit() or predict()
 
-    def fit(self, X: ArrayLike, y: Segmentation | ArrayLike | None = None):
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the change detector on training data.
 
         Parameters
@@ -105,11 +101,9 @@ class TemplateDetector(BaseChangeDetector):
             - Univariate: shape (n_samples, 1)
             - Multivariate: shape (n_samples, n_features)
 
-        y : Segmentation | ArrayLike | None, default=None
-            Optional supervised labels.
-            - Segmentation dict: sparse changepoint labels
-            - ArrayLike: dense per-sample labels
-            - None: unsupervised (most common)
+        y : None
+            Ignored. Exists for sklearn API compatibility.
+            Changepoint detection is unsupervised on single series.
 
         Returns
         -------
@@ -120,19 +114,7 @@ class TemplateDetector(BaseChangeDetector):
         # This also sets self.n_features_in_ automatically
         X = validate_data(self, X)
 
-        # TODO: If you support supervised learning, process y here
-        if y is not None:
-            # Option 1: y is a Segmentation dict
-            if isinstance(y, dict):
-                from skchange.new_api.utils import sparse_to_dense
-
-                y_dense = sparse_to_dense(y)
-                # Use y_dense for supervised learning
-            # Option 2: y is already dense labels
-            else:
-                y_dense = np.asarray(y)
-                if len(y_dense) != len(X):
-                    raise ValueError("y must have same length as X")
+        # Note: y is ignored - changepoint detection is unsupervised
 
         # TODO: Learn parameters from data
         # All learned attributes MUST end with underscore
@@ -166,8 +148,7 @@ class TemplateDetector(BaseChangeDetector):
             Optional fields:
 
             - "n_features": int, number of features
-            - "scores": np.ndarray, changepoint scores
-            - "affected_variables": list[np.ndarray], per-changepoint variable indices
+            - "changed_features": list[np.ndarray], per-changepoint feature indices
             - "meta": dict, algorithm-specific metadata
         """
         # TODO: Validate input and check if fitted
@@ -181,11 +162,8 @@ class TemplateDetector(BaseChangeDetector):
         # This is where the core detection logic goes
         changepoints = self._detect_changepoints(X)
 
-        # TODO: Optionally compute scores for each changepoint
-        # scores = self._compute_scores(X, changepoints)
-
-        # TODO: For multivariate data, optionally identify affected variables
-        # affected_vars = self._identify_affected_variables(X, changepoints)
+        # TODO: For multivariate data, optionally identify changed features
+        # changed_feats = self._identify_changed_features(X, changepoints)
 
         # TODO: Create and return Segmentation dict
         # Use make_segmentation() helper for clean syntax
@@ -193,8 +171,7 @@ class TemplateDetector(BaseChangeDetector):
             changepoints=changepoints,
             n_samples=len(X),
             n_features=X.shape[1],  # Optional but recommended
-            # scores=scores,  # Optional
-            # affected_variables=affected_vars,  # Optional
+            # changed_features=changed_feats,  # Optional
             meta={  # Optional: algorithm-specific info
                 "threshold_used": self.threshold_,
                 # "n_iterations": n_iter,
@@ -210,13 +187,12 @@ class TemplateDetector(BaseChangeDetector):
 
         TODO: Override only if you need to change default tags.
         Common cases:
-        - Set capability_multiple_series = True for multi-series support
-        - Set requires_y = True for supervised detectors
+        - Set required = True for supervised detectors
+        - Set allow_nan = False if you don't handle NaN
         """
         tags = super().__sklearn_tags__()
 
         # TODO: Uncomment and modify as needed
-        # tags.change_detector_tags.capability_multiple_series = True
         # tags.target_tags.required = True  # If supervised learning
         # tags.input_tags.allow_nan = False  # If you don't handle NaN
 
@@ -236,104 +212,51 @@ class TemplateDetector(BaseChangeDetector):
     #     return f1_score(y, y_pred)
 
 
-# ==================== Example: Multi-Series Detector ====================
-
-
-class MultiSeriesTemplateDetector(BaseChangeDetector):
-    """Template for detectors that support multi-series training.
-
-    TODO: Use this template if your algorithm can learn from multiple series.
-
-    Examples include:
-    - Meta-learning from series-level labels
-    - Learning shared parameters across series
-    - Batch processing for efficiency
-
-    Parameters
-    ----------
-    threshold : float, default=1.0
-        Detection threshold.
-    """
-
-    def __init__(self, threshold: float = 1.0):
-        self.threshold = threshold
-
-    def __sklearn_tags__(self):
-        """Enable multi-series support."""
-        tags = super().__sklearn_tags__()
-        # Enable multi-series capability
-        tags.change_detector_tags.capability_multiple_series = True
-        return tags
-
-    def fit(
-        self,
-        X: ArrayLike | list[ArrayLike],
-        y: Segmentation | list[Segmentation] | ArrayLike | None = None,
-    ):
-        """Fit on single or multiple series.
-
-        Parameters
-        ----------
-        X : ArrayLike | list[ArrayLike]
-            Training data.
-            - Single series: shape (n_samples, n_features)
-            - Multiple series: list of arrays, each (n_samples_i, n_features)
-
-        y : Segmentation | list[Segmentation] | ArrayLike | None
-            Labels (optional).
-            - For multi-series: list[Segmentation] or array of series labels
-            - For single series: Segmentation dict or dense labels
-
-        Returns
-        -------
-        self
-        """
-        # TODO: Handle both single and multiple series
-        if isinstance(X, list):
-            # Multiple series
-            X_validated = [
-                validate_data(self, X_i, reset=(i == 0)) for i, X_i in enumerate(X)
-            ]
-
-            # TODO: Process y if provided
-            if y is not None:
-                if isinstance(y, list):
-                    # Per-series segment labels
-                    # Each y_i should be a Segmentation dict
-                    pass
-                else:
-                    # Series-level classification labels
-                    # y is array of shape (n_series,)
-                    y = np.asarray(y)
-
-            # TODO: Learn shared parameters across all series
-            # Example: compute global threshold
-            all_data = np.concatenate(X_validated, axis=0)
-            self.threshold_ = self.threshold * np.std(all_data)
-
-        else:
-            # Single series
-            X = validate_data(self, X)
-            self.threshold_ = self.threshold * np.std(X)
-
-        return self
-
-    def predict(self, X: ArrayLike) -> Segmentation:
-        """Predict on a single series.
-
-        TODO: Implement prediction logic using learned parameters.
-
-        Note: predict() always takes single series, even if fit() saw multiple.
-        """
-        from sklearn.utils.validation import check_is_fitted
-
-        check_is_fitted(self)
-        X = validate_data(self, X, reset=False)
-
-        # TODO: Use learned threshold_ for detection
-        changepoints = np.array([])  # Placeholder
-
-        return make_segmentation(changepoints=changepoints, n_samples=len(X))
+# ==================== Multi-Series Workflows ====================
+#
+# For processing multiple time series, handle externally to the detector.
+# This maintains full sklearn compatibility and gives you control over
+# memory usage and parallelization.
+#
+# Example 1: Fit and predict on multiple series
+# ----------------------------------------------
+# detector = TemplateDetector(threshold=1.0)
+# results = []
+# for X_i in series_list:
+#     detector.fit(X_i)
+#     results.append(detector.predict(X_i))
+#
+# Example 2: Cross-series hyperparameter tuning with GroupKFold
+# --------------------------------------------------------------
+# from sklearn.model_selection import GroupKFold, GridSearchCV
+#
+# # Concatenate series with group labels
+# X_all = np.vstack([X1, X2, X3])
+# y_all = np.concatenate([y1, y2, y3])
+# groups = np.array([0]*len(X1) + [1]*len(X2) + [2]*len(X3))
+#
+# # Tune with series-aware CV
+# cv = GroupKFold(n_splits=3)
+# grid = GridSearchCV(
+#     TemplateDetector(),
+#     param_grid={"threshold": [0.5, 1.0, 2.0]},
+#     cv=cv,
+#     n_jobs=-1
+# )
+# grid.fit(X_all, y_all, groups=groups)
+#
+# Example 3: Parallel processing with joblib
+# -------------------------------------------
+# from joblib import Parallel, delayed
+#
+# def process_series(X_i):
+#     detector = TemplateDetector(threshold=1.5)
+#     detector.fit(X_i)
+#     return detector.predict(X_i)
+#
+# results = Parallel(n_jobs=-1)(
+#     delayed(process_series)(X_i) for X_i in series_list
+# )
 
 
 # ==================== Testing Your Detector ====================

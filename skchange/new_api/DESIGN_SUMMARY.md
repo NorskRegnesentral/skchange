@@ -6,69 +6,38 @@ Complete design documentation for the new changepoint detection API.
 
 ## Table of Contents
 1. [Core Design Principles](#core-design-principles)
-2. [Output Type Design](#output-type-design)
-3. [Implementation Patterns](#implementation-patterns)
-4. [Naming Conventions](#naming-conventions)
-5. [Architecture Overview](#architecture-overview)
+2. [Single-Series Design Decision](#single-series-design-decision)
+3. [Output Type Design](#output-type-design)
+4. [Sklearn Compatibility](#sklearn-compatibility)
+5. [Meta-Estimator Pattern](#meta-estimator-pattern)
+6. [Quick Reference](#quick-reference)
 
 ---
 
 ## Core Design Principles
 
-### 1. Input Flexibility
-**Accept both single and multiple series naturally**
+### 1. Single-Series API
+**Detectors operate on one time series at a time**
 
-- **Single series**: `detector.fit(X)` where `X` has shape `(n_samples, n_features)`
-- **Multiple series**: `detector.fit([X1, X2, X3])` - explicit list
+- **Input**: `detector.fit(X)` where `X` has shape `(n_samples, n_features)`
+- **Output**: `predict(X)` returns single `Segmentation` dict
 - **Univariate**: Always 2D with `n_features=1`, never 1D arrays
+- **Multi-series workflows**: Handled externally via loops, GroupKFold, or parallel processing
 
-**Why lists, not 3D arrays?**
-- Time series have variable lengths (patient monitoring: 500h vs 3000h)
-- Padding wastes memory and distorts algorithms
-- Lists handle this naturally
+**Why single-series only?**
+- ✅ Full sklearn compatibility (pipelines, GridSearchCV, transformers)
+- ✅ User controls memory and parallelization
+- ✅ Simpler detector implementation
+- ✅ Standard sklearn patterns for cross-series tuning (GroupKFold)
+- ✅ No forced all-data-in-memory requirement
 
-### 2. Output Consistency
-**Direct dict output from predict()**
-
-- `predict()` accepts only single series and returns `Segmentation` (TypedDict) directly
-- Helper function: `make_segmentation()` for clean construction
-- No type unions, no `@overload` decorators needed
-- User code is simple: `result = detector.predict(X)` → access `result["changepoints"]`
-
-**Benefits:**
-- ✅ Single precise type for IDE autocomplete
-- ✅ No awkward indexing: `result["changepoints"]` not `results[0]["changepoints"]`
-- ✅ Simpler protocol (2 required methods: fit + predict)
-- ✅ Better for pipelines and composition
-- ✅ Easy batching: `[detector.predict(X) for X in series_list]`
-
-### 3. Protocol-Based Architecture
-**Duck typing by design**
-
-- `ChangeDetector` is a `typing.Protocol`, not ABC
-- **Required methods**: Only `fit()` and `predict()` (core domain logic)
-- **Optional methods**:
-  - `transform()`: Provided by BaseChangeDetector (sparse → dense conversion)
-  - `get_params()` / `set_params()`: Provided by sklearn.base.BaseEstimator
-- **Inheritance is optional**: Any class with required methods works
-- `BaseChangeDetector` provides convenience (dispatching, validation, transform, sklearn compatibility), not enforcement
-- Enables third-party detectors without modification or sklearn dependency
-
-### 4. Sklearn Alignment
-**Follow scikit-learn conventions**
-
-- **Naming**: `n_samples` (timepoints), `n_features` (variables/channels)
-- **No custom classes**: Return plain dicts (TypedDict), not dataclass
-- **Stateless predict()**: Returns values, doesn't store attributes
-- **Input flexibility, output consistency**: Accept ArrayLike, return np.ndarray
-
-### 5. Sparse-First Representation
+### 2. Sparse-First Representation
 **Sparse changepoints as the canonical format**
 
-Changepoint detection is fundamentally a **sparse problem** - most time series have few changepoints relative to their length. The API embraces this with sparse-first design:
+Changepoint detection is fundamentally a **sparse problem** - most time series have few changepoints relative to their length.
 
 **Core principle:**
-- **Segmentation dict is the universal format** - Used for output, input (y labels), metrics, and conversions
+- **Segmentation dict is the universal format** - Used for output, metrics, and conversions
 - **Sparse by default** - `changepoints` array (length: n_changepoints) is primary
 - **Dense on demand** - `transform()` or `sparse_to_dense()` converts to per-timepoint labels
 
@@ -77,81 +46,201 @@ Changepoint detection is fundamentally a **sparse problem** - most time series h
 - ✅ **Memory efficient** - O(k) vs O(n) where k << n
 - ✅ **Algorithm-aligned** - Most detection algorithms work with changepoint locations
 - ✅ **Metric-friendly** - Hausdorff, F1, etc. compare sparse locations directly
-- ✅ **Validation included** - `n_samples` enables consistency checks
+- ✅ **Self-contained** - `n_samples` enables standalone usage without X
 
-**Format comparison:**
+### 3. TypedDict Output
+**Plain dicts, sklearn-aligned**
+
+- `predict()` returns `Segmentation` (TypedDict) directly
+- Helper function: `make_segmentation()` for clean construction
+- No custom classes - follows sklearn convention (GridSearchCV.cv_results_, cross_validate())
+- Type hints without runtime overhead
+
+### 4. Protocol-Based Architecture
+**Duck typing by design**
+
+- `ChangeDetector` is a `typing.Protocol`, not ABC
+- **Required methods**: Only `fit()` and `predict()`
+- **Optional methods**: `transform()`, `fit_transform()`, `fit_predict()`, `score()`
+- **Inheritance is optional**: Any class with required methods works
+- `BaseChangeDetector` provides convenience, not enforcement
+
+### 5. Sklearn Alignment
+**Follow scikit-learn conventions**
+
+- **Naming**: `n_samples` (timepoints), `n_features` (variables/channels)
+- **No custom classes**: Return plain dicts (TypedDict), not dataclass
+- **Stateless predict()**: Returns values, doesn't modify state
+- **Input flexibility**: Accept ArrayLike (Any), output np.ndarray
+- **Unsupervised**: `y` parameter ignored (exists for API compatibility)
+
+---
+
+## Single-Series Design Decision
+
+### The Decision
+
+**Detectors accept only single time series in fit() and predict().**
+
+Multi-series workflows are handled **outside** the detector using standard sklearn patterns.
+
+### Rationale
+
+**Problem with multi-series fit():**
+
+1. **Breaks sklearn pipelines**:
+   ```python
+   # ❌ This fails with multi-series fit
+   pipe = Pipeline([('scaler', StandardScaler()), ('detector', detector)])
+   pipe.fit([X1, X2, X3])  # StandardScaler can't handle list
+   ```
+
+2. **Incompatible with GridSearchCV**:
+   ```python
+   X = [X1, X2, X3]  # list of series
+   # ❌ GridSearchCV can't index: X[train_idx] fails
+   grid.fit(X, y, groups=groups)
+   ```
+
+3. **Forces all data in memory**:
+   ```python
+   # ❌ Must load everything at once
+   X_list = [load_series(i) for i in range(1000)]  # OOM!
+   detector.fit(X_list)
+   ```
+
+4. **Removes user control**: User can't manage batching, streaming, or parallelization
+
+**Solution - External multi-series handling:**
+
 ```python
-# Sparse (canonical) - 3 changepoints in 200 samples
-sparse = {
-    "changepoints": np.array([50, 100, 150]),  # Just 3 values
-    "labels": np.array([0, 1, 2, 3]),          # 4 segment IDs
-    "n_samples": 200,
-}
+# Hyperparameter tuning across series (GroupKFold)
+X_all = np.vstack([X1, X2, X3])
+groups = np.array([0]*len(X1) + [1]*len(X2) + [2]*len(X3))
+cv = GroupKFold(n_splits=3)
 
-# Dense (convenience) - same information, 200 values
-dense = np.array([0,0,0,...,1,1,1,...,2,2,2,...,3,3,3])  # 200 elements
+grid = GridSearchCV(MyDetector(), param_grid, cv=cv)
+grid.fit(X_all, y_all, groups=groups)  # ✅ Standard sklearn
+
+# Parallel processing (joblib)
+from joblib import Parallel, delayed
+
+def process(X_i):
+    detector.fit(X_i)
+    return detector.predict(X_i)
+
+results = Parallel(n_jobs=-1)(delayed(process)(X_i) for X_i in series_list)
+
+# Memory-efficient streaming
+for series_id in tqdm(all_series):
+    X = load_series(series_id)
+    detector.fit(X)
+    result = detector.predict(X)
+    save_result(result)
+    del X  # Free memory
 ```
 
-**API usage:**
-- `predict()` → Returns sparse Segmentation
-- `transform()` → Returns dense labels (convenience wrapper)
-- Metrics → Accept Segmentation (sparse), auto-convert if needed
-- **y parameter** → **Only accepts Segmentation** for segment labels (strict sparse-first)
+### Benefits of Single-Series Design
 
-**Conversion utilities:**
-- `sparse_to_dense(result)` → Convert Segmentation to per-timepoint labels
-- `dense_to_sparse(labels, n_samples)` → Convert dense labels to Segmentation
+1. ✅ **Full sklearn compatibility**: Pipelines, GridSearchCV, cross_validate all work
+2. ✅ **User controls resources**: Memory, parallelization, batching
+3. ✅ **Simpler implementation**: No isinstance(X, list) checks, no dual code paths
+4. ✅ **Standard patterns**: GroupKFold is well-documented sklearn approach
+5. ✅ **Flexible workflows**: Streaming, distributed computing, progressive saving
+
+### Multi-Series Use Cases - How to Handle
+
+**Use case: Cross-series hyperparameter tuning**
+```python
+# Concatenate + GroupKFold
+X_all = np.vstack(series_list)
+groups = np.repeat(range(len(series_list)), [len(X) for X in series_list])
+GridSearchCV(detector, params, cv=GroupKFold()).fit(X_all, groups=groups)
+```
+
+**Use case: Batch processing many series**
+```python
+# Simple loop with progress tracking
+for X_i in tqdm(series_list):
+    detector.fit(X_i)
+    results.append(detector.predict(X_i))
+```
+
+**Use case: Learning shared parameters**
+```python
+# Custom meta-estimator wrapping base detector
+class EnsembleDetector(BaseEstimator):
+    def fit(self, X_list, y=None):
+        self.detectors_ = [clone(self.base_detector).fit(X) for X in X_list]
+        return self
+```
+
+### Rejected Alternatives
+
+**❌ Option: Support both single and multi-series in fit()**
+- Pros: Convenient for some algorithms
+- Cons: Breaks pipelines, GridSearchCV, forces memory usage, adds complexity
+- Decision: Convenience doesn't outweigh compatibility loss
+
+**❌ Option: Separate classes (SingleSeriesDetector vs MultiSeriesDetector)**
+- Pros: Clear separation
+- Cons: API fragmentation, most algorithms don't need multi-series training
+- Decision: External handling is more flexible
 
 ---
 
 ## Output Type Design
 
-### Decision: TypedDict over Dataclass
+### Segmentation TypedDict
 
 ```python
 from typing import TypedDict, NotRequired
 
 class Segmentation(TypedDict):
-    """Plain dict, sklearn-aligned output."""
-    # Required (3 fields - must always be present)
+    """Sparse segmentation representation."""
+    # Required fields (must always be present)
     changepoints: np.ndarray         # Changepoint locations
     labels: np.ndarray               # Segment identifiers
     n_samples: int                   # Length of time series
 
-    # Optional (4 fields - NotRequired, can be omitted)
-    n_features: NotRequired[int]                       # Number of channels
-    scores: NotRequired[np.ndarray]                    # Changepoint scores
-    affected_variables: NotRequired[list[np.ndarray]]  # Per-CP variable indices
+    # Optional fields (NotRequired, can be omitted)
+    n_features: NotRequired[int]                       # Number of features
+    changed_features: NotRequired[list[np.ndarray]]    # Per-changepoint feature indices
     meta: NotRequired[dict[str, Any]]                  # Detector metadata
 ```
 
-**Field Usage Guidelines:**
-- **Always include**: `changepoints`, `labels`, `n_samples` (required)
-- **Include when relevant**: `n_features` (multivariate), `scores` (confidence), `affected_variables` (which channels changed)
-- **Include for debugging**: `meta` (algorithm parameters, thresholds, timing)
-- **Minimal valid result**: Just the 3 required fields
+### Required Fields - Design Decisions
 
-### Why Keep `labels` and `n_samples` Required?
+**Why `n_samples` is required:**
+- ✅ **Critical for sparse-to-dense conversion** without keeping X:
+  ```python
+  result = detector.predict(X)
+  # Later, X is gone
+  dense = sparse_to_dense(result)  # Needs n_samples
+  ```
+- ✅ **Self-contained format**: Serialize/pass around independently
+- ✅ **Validation**: Ensures changepoints are in valid range [0, n_samples)
 
-**Design Decision:** Both fields are required even though they could technically be inferred:
-- `n_samples` could be inferred from `len(X)` in `fit()`
-- `labels` could be auto-generated as `[0, 1, 2, ...]`
+**Why `labels` is required:**
+- ✅ **Essential for dense conversion**: `sparse_to_dense()` needs segment assignments
+- ✅ **Semantic information**: Not always [0,1,2,...] - some algorithms cluster segments
+- ✅ **Safety**: Explicit over implicit (prevent silent bugs)
+- ✅ **Auto-generated by helper**: `make_segmentation()` creates default labels
 
-**Rationale - Safety over Convenience:**
-- ✅ **No silent bugs** - Users must explicitly specify structure
-- ✅ **Validation, not guessing** - `n_samples` serves as consistency check between y and X
-- ✅ **Explicit intent** - Custom labels (e.g., `[0, 1, 1, 2]` for regime grouping) require conscious choice
-- ✅ **Sklearn philosophy** - Explicit parameters over implicit magic
-- ✅ **Self-documenting** - Code shows expected data shape
+**Why `n_features` is optional:**
+- Only useful for metadata/validation
+- Can be inferred from X
+- ⚠️ **IMPORTANT**: If `changed_features` is present, `n_features` should also be included
+  - Cannot infer total features from changed subset (e.g., [0, 2] could mean 3, 4, or 10 features)
+- Detectors can include in `meta` if needed
 
-**Helper mitigates verbosity:**
-```python
-# Still concise with make_segmentation()
-y = make_segmentation(changepoints=[50, 100], n_samples=len(X))
-detector.fit(X, y)  # Explicit and validated
-```
+### Field Naming
 
-The small verbosity cost is worth preventing silent correctness issues in supervised learning.
+**`changed_features` (not `affected_variables`):**
+- Clearly indicates which features changed at each changepoint
+- Distinguishes from segment labels (states vs changes)
+- List of arrays: `[np.array([0, 2]), np.array([1])]` means first changepoint affects features 0,2
+- ⚠️ **When included, also include `n_features`** (cannot infer total from subset)
 
 ### Why TypedDict?
 
@@ -168,12 +257,11 @@ The small verbosity cost is worth preventing silent correctness issues in superv
 
 ### Alternatives Considered
 
-| Approach | Sklearn-like | Type hints | Attribute access | Zero coupling | Defaults |
-|----------|--------------|------------|------------------|---------------|----------|
-| **TypedDict** ✅ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| dataclass | ❌ | ✅ | ✅ | ❌ | ✅ |
-| NamedTuple | ⚠️ | ✅ | ✅ | ✅ | ⚠️ |
-| Bunch | ✅ | ❌ | ✅ | ❌ | ✅ |
+| Approach | Sklearn-like | Type hints | Attribute access | Zero coupling |
+|----------|--------------|------------|------------------|---------------|
+| **TypedDict** ✅ | ✅ | ✅ | ❌ (dict keys) | ✅ |
+| dataclass | ❌ | ✅ | ✅ | ❌ |
+| NamedTuple | ⚠️ | ✅ | ✅ | ✅ |
 
 **Rejected: dataclass**
 - Custom class violates sklearn convention
@@ -184,292 +272,250 @@ The small verbosity cost is worth preventing silent correctness issues in superv
 - Immutability prevents updating `meta` dict
 - Confusing tuple behavior (indexing)
 
-**Rejected: Store as attributes**
-- Violates stateless predict() convention
-- Thread safety issues
-- Batch prediction unclear
-
 ### Helper Function
-
-To mitigate dict syntax, we provide a helper:
 
 ```python
 def make_segmentation(
     changepoints: np.ndarray,
     n_samples: int,
     labels: np.ndarray | None = None,  # Auto-generated if None
-    n_features: int | None = None,  # Optional
-    scores: np.ndarray | None = None,
-    affected_variables: list[np.ndarray] | None = None,
+    n_features: int | None = None,
+    changed_features: list[np.ndarray] | None = None,
     meta: dict[str, Any] | None = None,
 ) -> Segmentation:
-    """Create result with clean syntax, auto-generates labels."""
-    ...
+    """Create Segmentation with clean syntax, auto-generates labels."""
 ```
 
-**Usage in detectors:**
+**Usage:**
 ```python
-def _predict(self, X: ArrayLike) -> Segmentation:
-    cps = self._detect(X)
+def predict(self, X):
+    changepoints = self._detect(X)
     return make_segmentation(
-        changepoints=cps,
-        n_samples=X.shape[0],
+        changepoints=changepoints,
+        n_samples=len(X),
         n_features=X.shape[1],
         meta={"threshold": self.threshold_},
     )
 ```
 
-### Input vs Output Typing
+### Removed Fields
 
-**Inputs: Flexible (ArrayLike)**
-- Accept numpy, pandas, lists
-- `ArrayLike = Any` (avoid linter issues)
-
-**Outputs: Consistent (np.ndarray)**
-- Always numpy arrays
-- Predictable for downstream processing
-- Follows sklearn: flexible input, consistent output
+**`scores` was removed:**
+- Per-changepoint scores are artificial - most algorithms compute per-timepoint or per-interval statistics
+- Natural home is separate method like `decision_function()` (similar to sklearn classifiers)
+- Can be revisited when score semantics are better understood
 
 ---
 
-## Implementation Patterns
+## Sklearn Compatibility
 
-Concrete detectors implement only what they need. Base class handles dispatching.
-
-### Pattern 1: Single-Series Only
-
-**Use when**: Algorithm fundamentally works on one series (e.g., PELT)
+### BaseChangeDetector Implementation
 
 ```python
-class SimplePELT(BaseChangeDetector):
-    _tags = {"capability:multiple_series": False}
+class BaseChangeDetector(BaseEstimator):
+    """Minimal base class for sklearn compatibility."""
 
-    def _fit(self, X: ArrayLike, y=None) -> Self:
-        """X guaranteed 2D: (n_samples, n_features)."""
-        self.threshold_ = np.std(X) * self.penalty
-        return self
+    def __sklearn_tags__(self):
+        """Custom tags for change detection."""
+        return SkchangeTags(...)
 
-    def _predict(self, X: ArrayLike) -> Segmentation:
-        changepoints = self._run_pelt(X)
-        return make_segmentation(
-            indices=changepoints,
-            n_samples=X.shape[0],
-            n_features=X.shape[1],
-            meta={"threshold": self.threshold_},
-        )
+    def transform(self, X):
+        """Convert sparse to dense labels (convenience)."""
+        return sparse_to_dense(self.predict(X))
+
+    def fit_transform(self, X, y=None, **fit_params):
+        """Sklearn compatibility - fit then transform."""
+        return self.fit(X, y, **fit_params).transform(X)
+
+    def fit_predict(self, X, y=None, **fit_params):
+        """Sklearn compatibility - fit then predict."""
+        return self.fit(X, y, **fit_params).predict(X)
+
+    def score(self, X, y):
+        """Sklearn compatibility - evaluate predictions."""
+        from skchange.new_api.metrics import hausdorff_distance
+        y_pred = self.predict(X)
+        return -hausdorff_distance(y, y_pred)  # Higher is better
 ```
 
-**User experience:**
+### The `y` Parameter
+
+**Design: `y: ArrayLike | None = None` (ignored)**
+
+**Rationale:**
+- ✅ **Unsupervised**: Changepoint detection on single series is unsupervised
+- ✅ **Sklearn compatibility**: Pipelines pass `y` through, must accept it
+- ✅ **Flexible type**: ArrayLike allows future use without breaking changes
+- ✅ **Documented**: "Ignored. Exists for sklearn API compatibility."
+
+**Supervision happens externally:**
 ```python
-detector = SimplePELT()
-result = detector.predict(X_single)  # ✅ Works - returns dict directly
-detector.fit([X1, X2])  # ❌ Clear error: doesn't support multiple series
+# NOT via y parameter
+detector.fit(X, y=changepoint_labels)  # ❌ y is ignored
+
+# VIA cross-series tuning
+GridSearchCV(detector, params, cv=GroupKFold()).fit(X_all, groups=series_ids)  # ✅
 ```
 
-### Pattern 2: Universal (Stateless)
-
-**Use when**: No cross-series learning needed (e.g., Moving Window)
+### Minimal Detector Implementation
 
 ```python
-class MovingWindowDetector(BaseChangeDetector):
-    _tags = {"capability:multiple_series": True}
+class MyDetector(BaseChangeDetector):
+    def __init__(self, threshold=1.0):
+        self.threshold = threshold
 
-    def _fit(self, X: ArrayLike, y=None) -> Self:
-        """Implement single-series logic only."""
-        self.threshold_ = compute_threshold(X)
+    def fit(self, X, y=None):
+        X = validate_data(self, X)  # Sets n_features_in_
+        self.threshold_ = self.threshold * np.std(X)
         return self
 
-    def _predict(self, X: ArrayLike) -> Segmentation:
-        """Base class calls this for each series automatically."""
-        changepoints = self._detect(X, self.threshold_)
+    def predict(self, X):
+        from sklearn.utils.validation import check_is_fitted
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False)
+
+        changepoints = self._detect_changepoints(X)
         return make_segmentation(
-            indices=changepoints,
-            n_samples=X.shape[0],
-            n_features=X.shape[1],
-        )
-
-    # That's it! Base class handles multiple series automatically
-```
-
-### Pattern 3: Batch-Optimized
-
-**Use when**: Cross-series learning improves results (e.g., AutoML)
-
-```python
-class BatchPELT(BaseChangeDetector):
-    _tags = {"capability:multiple_series": True}
-
-    def _fit_multiple(self, X: list[ArrayLike], y=None) -> Self:
-        """Learn shared parameters across series."""
-        all_stds = [np.std(X_i) for X_i in X]
-        global_std = np.median(all_stds)
-        self.global_threshold_ = self._auto_tune(X) * global_std
-        return self
-
-    def _predict(self, X: ArrayLike) -> Segmentation:
-        """Use shared parameters."""
-        changepoints = run_pelt(X, self.global_threshold_)
-        return make_segmentation(
-            indices=changepoints,
-            n_samples=X.shape[0],
+            changepoints=changepoints,
+            n_samples=len(X),
             n_features=X.shape[1],
         )
 ```
+
+**That's it!** BaseChangeDetector provides:
+- `transform()` for dense labels
+- `fit_transform()` and `fit_predict()` convenience methods
+- `score()` with default metric
+- `get_params()` / `set_params()` from BaseEstimator
 
 ---
 
-## Naming Conventions
+## Meta-Estimator Pattern
 
-### Sklearn Standard Names
+### Composing Detectors with Other Estimators
 
-Following `sklearn.base.BaseEstimator` conventions:
+Some algorithms use trained classifiers or other estimators as components.
+
+**Pattern: Pass estimator as hyperparameter**
 
 ```python
-# Standard sklearn shape
-X.shape = (n_samples, n_features)
+class ClassifierChangeDetector(BaseChangeDetector):
+    """Detect changes using a pre-trained classifier on sliding windows."""
 
-# Our results
-result = {
-    "changepoints": np.array([50, 100]),
-    "labels": np.array([0, 1, 2]),
-    "n_samples": 200,      # sklearn: number of samples
-    "n_features": 3,       # sklearn: number of features
+    def __init__(self, classifier, window_size=10):
+        self.classifier = classifier
+        self.window_size = window_size
+
+    def fit(self, X, y=None):
+        from sklearn.utils.validation import check_is_fitted
+
+        X = validate_data(self, X)
+
+        # Require pre-fitted classifier
+        try:
+            check_is_fitted(self.classifier)
+        except NotFittedError:
+            raise ValueError(
+                f"{self.__class__.__name__} requires a pre-fitted classifier. "
+                "Train your classifier before passing it."
+            )
+
+        self.classifier_ = self.classifier
+        return self
+
+    def predict(self, X):
+        # Apply classifier to sliding windows
+        scores = [self.classifier_.predict(window) for window in windows(X)]
+        changepoints = self._detect_from_scores(scores)
+        return make_segmentation(changepoints, len(X))
+```
+
+**Usage:**
+```python
+# Train classifier separately
+clf = RandomForestClassifier()
+clf.fit(X_labeled, y_labeled)
+
+# Use in detector
+detector = ClassifierChangeDetector(classifier=clf, window_size=10)
+detector.fit(X)
+result = detector.predict(X_test)
+
+# Works with GridSearchCV
+param_grid = {
+    'classifier__n_estimators': [50, 100],  # Nested params!
+    'window_size': [5, 10, 20],
 }
+grid = GridSearchCV(
+    ClassifierChangeDetector(RandomForestClassifier()),
+    param_grid
+)
 ```
 
-**Naming mapping:**
-- ~~`n_timepoints`~~ → **`n_samples`** (sklearn standard)
-- ~~`n_channels`~~ → **`n_features`** (sklearn standard)
-
-**Why sklearn naming?**
-1. Consistency with sklearn ecosystem
-2. Familiarity for sklearn users
-3. Works seamlessly with sklearn tooling
-4. Industry standard in ML/Python
-
----
-
-## Architecture Overview
-
-```
-User API (Public)
-    ↓
-BaseChangeDetector (Dispatcher)
-    • Check isinstance(X, list)
-    • Validate capabilities via tags
-    • Route to appropriate method
-    ↓
-┌─────────────────┬────────────────────┐
-↓                 ↓                    ↓
-_fit(X)       _fit_multiple(Xs)
-_predict(X)   _predict_multiple(Xs)
-    ↓                 ↓                    ↓
-Concrete Detector Implementation
-    • Single-only: just _fit/_predict
-    • Universal: _fit/_predict (base handles batch)
-    • Batch-opt: _fit_multiple + _predict
-```
-
-### Capability Tags
-
-```python
-_tags = {
-    "capability:multiple_series": False,  # Single-series only
-    "capability:multiple_series": True,   # Supports both
-}
-```
-
-Base class validates and provides clear errors.
+**This follows sklearn's meta-estimator pattern:**
+- `CalibratedClassifierCV`, `BaggingClassifier`, `VotingClassifier` all do this
+- Sub-estimator is a hyperparameter
+- `check_is_fitted()` validates requirements
+- Clear error messages guide users
 
 ---
 
 ## Quick Reference
 
-### Minimal Detector Implementation
+### Minimal Implementation
 
 ```python
 from skchange.new_api import BaseChangeDetector, make_segmentation
-import numpy as np
+from skchange.new_api.utils import validate_data
 
 class MyDetector(BaseChangeDetector):
-    def _fit(self, X, y=None):
-        # Learn from X (guaranteed 2D)
-        self.threshold_ = np.std(X)
+    def __init__(self, threshold=1.0):
+        self.threshold = threshold
+
+    def fit(self, X, y=None):
+        X = validate_data(self, X)
+        # Optional: learn from X
         return self
 
-    def _predict(self, X):
-        # Detect changepoints
-        changepoints = np.array([len(X) // 2])
-        return make_segmentation(
-            indices=changepoints,
-            n_samples=X.shape[0],
-            n_features=X.shape[1],
-        )
+    def predict(self, X):
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False)
+        changepoints = self._detect(X)
+        return make_segmentation(changepoints, len(X))
 ```
 
-### Result Access
+### Usage
 
 ```python
-result = detector.predict(X)
+# Basic usage
+detector = MyDetector(threshold=1.5)
+detector.fit(X_train)
+result = detector.predict(X_test)
 
-# Access fields (no indexing needed)
-changepoints = result["changepoints"]
-labels = result["labels"]
-n = result["n_samples"]
-scores = result.get("scores")  # Optional field
+print(result["changepoints"])  # np.array([50, 100])
+print(result["labels"])        # np.array([0, 1, 2])
 
-# For multiple series, use list comprehension
-results = [detector.predict(X) for X in series_list]
-for result in results:
-    print(result["changepoints"])
+# Dense labels
+labels = detector.transform(X_test)
 
-# Helper auto-generates labels: [0, 1, 2, ...]
+# Cross-series tuning
+X_all = np.vstack([X1, X2, X3])
+groups = np.repeat(range(3), [len(X1), len(X2), len(X3)])
+
+grid = GridSearchCV(
+    MyDetector(),
+    param_grid={"threshold": [0.5, 1.0, 2.0]},
+    cv=GroupKFold(n_splits=3)
+)
+grid.fit(X_all, groups=groups)
+
+# Parallel processing
+from joblib import Parallel, delayed
+results = Parallel(n_jobs=-1)(
+    delayed(lambda X: MyDetector().fit(X).predict(X))(X_i)
+    for X_i in series_list
+)
 ```
-
----
-
-## Key Design Insights
-
-1. **Asymmetric API by design**
-   - fit() accepts single or multiple series (shared parameter learning)
-   - predict() accepts only single series (per-series operation)
-   - Returns dict directly, not wrapped in list
-
-2. **Lists >> 3D arrays for variable-length series**
-   - Real time series have variable lengths
-   - Padding wastes memory and distorts algorithms
-
-3. **Sparse-first representation**
-   - Segmentation dict is the universal format (output, metrics, conversions)
-   - Changepoint detection is inherently sparse: k changepoints in n samples where k << n
-   - Dense labels available via transform() when needed
-   - Memory efficient: O(k) vs O(n)
-
-4. **TypedDict >> dataclass for sklearn alignment**
-   - Plain dicts, no custom classes
-   - Zero coupling, third-party friendly
-   - Stateless predict() convention
-
-5. **Helper function mitigates dict access UX**
-   - Clean construction syntax
-   - Auto-generates labels
-   - Requires explicit n_samples (mirrors TypedDict required fields)
-
-6. **Protocol-based >> inheritance-required**
-   - Duck typing enables third-party integration
-   - BaseChangeDetector is convenience, not requirement
-   - Simpler for users, more flexible for ecosystem
-
----
-
-## Files in This Directory
-
-- **typing.py**: Protocol and TypedDict definitions
-- **utils.py**: Helper functions (make_segmentation)
-- **base.py**: BaseChangeDetector with dispatching logic
-- **examples.py**: Reference implementations (SimplePELT, MovingWindowDetector, BatchPELT)
-- **examples_y_parameter.py**: Y parameter flexibility demos
-- **DESIGN_SUMMARY.md**: This file
 
 ---
 
@@ -477,15 +523,21 @@ for result in results:
 
 This design achieves:
 
-✅ **Minimal protocol** (2 required methods: fit, predict)
-✅ **Optional transform()** (convenience method in BaseChangeDetector)
-✅ **Sklearn alignment** (naming, no custom classes, stateless)
-✅ **Predictable outputs** (always TypedDict)
-✅ **Duck-typed interface** (Protocol, inheritance optional)
-✅ **Natural inputs** (sklearn-compatible single series)
-✅ **Variable lengths** (lists, not 3D arrays)
-✅ **Minimal implementation** (~15 lines per detector)
-✅ **Clear errors** (capability tags + validation)
-✅ **Zero coupling** (plain dicts, third-party friendly)
+✅ **Single-series API** - Full sklearn compatibility
+✅ **Sparse-first representation** - Efficient, natural, self-contained
+✅ **TypedDict output** - Plain dicts, zero coupling
+✅ **Protocol-based** - Duck typing, inheritance optional
+✅ **External multi-series** - User controls memory, parallelization
+✅ **Meta-estimator support** - Compose with classifiers, regressors
+✅ **Stateless predict()** - Thread-safe, reproducible
+✅ **Minimal implementation** - ~20 lines per detector
 
-The design balances simplicity, flexibility, and consistency while following sklearn best practices.
+**Key insights:**
+
+1. **Single-series keeps it simple** - Multi-series workflows use standard sklearn patterns
+2. **Sparse is canonical** - Dense available via `transform()` when needed
+3. **TypedDict matches sklearn** - No custom output classes
+4. **External > Internal** - GroupKFold, joblib give user more control than multi-series fit
+5. **y is ignored** - Supervision via cross-series tuning, not labels
+
+The design balances simplicity, flexibility, and sklearn alignment while respecting the realities of changepoint detection workflows.

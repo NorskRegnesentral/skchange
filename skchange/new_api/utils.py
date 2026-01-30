@@ -11,21 +11,26 @@ from sklearn.utils._tags import Tags
 from skchange.new_api.typing import Segmentation
 
 
-@dataclass
-class ChangeDetectorTags(slots=True):
+@dataclass(slots=True)
+class ChangeDetectorTags:
     """Tags specific to change detection estimators.
 
     Attributes
     ----------
-    multiple_series : bool, default=False
-        Whether the detector can process multiple series in a single fit.
+    multivariate : bool, default=True
+        Whether the detector can handle multivariate time series (n_features > 1).
+    supervised : bool, default=False
+        Whether the detector supports supervised learning (requires y labels).
+    variable_identification : bool, default=False
+        Whether the detector can identify which variables are affected
+        at each changepoint.
+    integer_input_only : bool, default=False
+        Whether the detector requires integer-valued input data (e.g., for count data).
     """
 
-    multiple_series: bool = False
     multivariate: bool = True
     supervised: bool = False
     variable_identification: bool = False
-    scores: bool = False
     integer_input_only: bool = False
 
 
@@ -49,8 +54,7 @@ def make_segmentation(
     n_samples: int,
     labels: np.ndarray | None = None,
     n_features: int | None = None,
-    scores: np.ndarray | None = None,
-    affected_variables: list[np.ndarray] | None = None,
+    changed_features: list[np.ndarray] | None = None,
     meta: dict[str, Any] | None = None,
 ) -> Segmentation:
     """Create a Segmentation dict with clean syntax.
@@ -72,10 +76,8 @@ def make_segmentation(
     ------------------------------------------------
     n_features : int | None, default=None
         Number of features/channels. Only added if not None.
-    scores : np.ndarray | None, default=None
-        Scores at each changepoint. Only added if not None.
-    affected_variables : list[np.ndarray] | None, default=None
-        Variables affected at each changepoint. Only added if not None.
+    changed_features : list[np.ndarray] | None, default=None
+        Features affected at each changepoint. Only added if not None.
     meta : dict[str, Any] | None, default=None
         Additional metadata. Only added if not None.
 
@@ -121,10 +123,10 @@ def make_segmentation(
     # Add optional fields only if provided
     if n_features is not None:
         result["n_features"] = n_features
-    if scores is not None:
-        result["scores"] = scores
-    if affected_variables is not None:
-        result["affected_variables"] = affected_variables
+
+    if changed_features is not None:
+        result["changed_features"] = changed_features
+
     if meta is not None:
         result["meta"] = meta
 

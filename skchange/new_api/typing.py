@@ -2,25 +2,15 @@
 
 Design Philosophy
 -----------------
-Single vs. Multiple Series Handling:
+Input Convention:
 
-1. **Input Convention:**
-   - Single series: ArrayLike of shape (n_samples, n_features)
-   - Multiple series: list[ArrayLike], each with shape (n_samples_i, n_features)
-   - Univariate series use n_features=1 (never 1D arrays)
+- Single series: ArrayLike of shape (n_samples, n_features)
+- Univariate series use n_features=1 (never 1D arrays)
+- For processing multiple series, use loops or utilities external to the detector
 
-2. **Protocol Design:**
-   - Public API accepts both: ArrayLike | list[ArrayLike]
-   - Concrete detectors implement only what they support
-   - Base class handles dispatching automatically
-
-3. **Implementation Pattern:**
-   - Detectors override `_fit(X: ArrayLike)` for single series
-   - Detectors override `_fit_multiple(X: list[ArrayLike])` for batch processing
-   - Universal detectors can implement both or rely on default composition
-   - Use tags to declare capabilities explicitly
-
-This avoids API fragmentation while keeping implementations simple.
+This keeps the detector API simple and fully sklearn-compatible (pipelines,
+GridSearchCV, etc.). Multi-series workflows are handled via GroupKFold or
+custom loops that maintain user control over memory and parallelization.
 """
 
 from __future__ import annotations
@@ -52,7 +42,7 @@ class Segmentation(TypedDict):
     maintaining alignment with scikit-learn's design philosophy.
 
     The result contains a sparse representation with per-changepoint arrays
-    (changepoints, scores, affected_variables), per-segment arrays (labels),
+    (changepoints, changed_features), per-segment arrays (labels),
     and scalar metadata (n_samples).
 
     Required Fields
@@ -82,18 +72,12 @@ class Segmentation(TypedDict):
         Must be positive integer, use 1 for univariate data.
         Useful metadata but not required for core sparse representation.
 
-    scores : np.ndarray of shape (n_changepoints,)
-        Score, strength, or confidence measure for each detected changepoint.
-        Higher values typically indicate stronger evidence for the changepoint.
-        Scale and interpretation are detector-specific.
-        dtype: typically float64, but any numeric dtype accepted.
-
-    affected_variables : list[np.ndarray]
-        Variable/channel indices affected at each changepoint.
+    changed_features : list[np.ndarray]
+        Feature/channel indices affected at each changepoint.
         List of length n_changepoints. Each element is an integer array of
         shape (n_affected_i,) containing indices in [0, n_features).
         None or omit entirely if not applicable (e.g., univariate data) or
-        if all variables are affected at all changepoints.
+        if all features are affected at all changepoints.
         dtype per array: typically int64, but any integer dtype accepted.
 
     meta : dict[str, Any]
@@ -117,7 +101,6 @@ class Segmentation(TypedDict):
     ...     labels=np.array([0, 1, 2, 3]),
     ...     n_samples=200,
     ...     n_features=1,
-    ...     scores=np.array([0.9, 0.8, 0.7]),
     ... )
 
     >>> # Auto-generated labels (recommended)
@@ -137,8 +120,7 @@ class Segmentation(TypedDict):
     labels: np.ndarray
     n_samples: int
     n_features: NotRequired[int]
-    scores: NotRequired[np.ndarray]
-    affected_variables: NotRequired[list[np.ndarray]]
+    changed_features: NotRequired[list[np.ndarray]]
     meta: NotRequired[dict[str, Any]]
 
 
@@ -146,39 +128,30 @@ class Segmentation(TypedDict):
 class ChangeDetector(Protocol):
     """Protocol for changepoint detection algorithms.
 
-    Defines the minimal public interface for changepoint detectors supporting
-    both single and multiple time series. Only fit() and predict() are required.
+    Defines the minimal public interface for changepoint detectors.
+    Only fit() and predict() are required.
 
     Terminology
     -----------
-    **Univariate vs Multivariate** (feature dimension):
+    **Univariate vs Multivariate**:
 
     - Univariate: n_features = 1 (single channel/variable)
     - Multivariate: n_features > 1 (multiple channels/variables)
 
-    **Single vs Multiple Series** (for fit only):
-
-    - Single: One time series, shape (n_samples, n_features)
-    - Multiple: List of time series, each (n_samples_i, n_features).
-      Series may have different lengths (n_samples_i) but must share
-      the same number of features (n_features) across all series.
-
     Design Principles
     -----------------
-    **Intentional Asymmetry**
-        fit() accepts single or multiple series (enabling shared parameter
-        learning across series), while predict() accepts only single
-        series (per-series operation without cross-series computation).
-        This design reflects the semantic difference between training
-        and inference.
-
-    **Simple Output**
-        predict() returns one Segmentation dict per input
-        series. Use e.g. list comprehension for multiple series prediction.
+    **Single Series API**
+        Both fit() and predict() operate on single time series. For workflows
+        involving multiple series (e.g., cross-series hyperparameter tuning),
+        use external tools like sklearn's GroupKFold or custom loops.
 
     **Stateless Prediction**
         fit() learns parameters, predict() applies them without
         modifying state. Can be called repeatedly on different data.
+
+    **Full sklearn Compatibility**
+        Single-series design enables full compatibility with sklearn tools:
+        pipelines, GridSearchCV, cross_validate, etc.
 
     Notes
     -----
@@ -189,45 +162,20 @@ class ChangeDetector(Protocol):
     The BaseChangeDetector class combines both requirements automatically.
     """
 
-    def fit(
-        self,
-        X: ArrayLike | list[ArrayLike],
-        y: Segmentation | list[Segmentation] | ArrayLike | None = None,
-    ) -> Self:
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit the detector to training data.
 
         Parameters
         ----------
-        X : ArrayLike | list[ArrayLike]
-            Training data.
+        X : ArrayLike of shape (n_samples, n_features)
+            Training time series data.
+            - Univariate: shape (n_samples, 1)
+            - Multivariate: shape (n_samples, n_features)
+            Never use 1D arrays, even for univariate data.
 
-            - Single series: 2D array of shape (n_samples, n_features)
-            - Multiple series: List of 2D arrays, each
-              (n_samples_i, n_features)
-            - Univariate data: Use (n_samples, 1), never 1D arrays
-
-        y : Segmentation | list[Segmentation] | ArrayLike | None
-            Supervised labels (optional). Default is None (unsupervised).
-
-            **Segmentation dict** has required fields:
-
-            - "changepoints": np.ndarray of changepoint indices
-            - "labels": np.ndarray of segment labels
-            - "n_samples": int, number of samples
-
-            Single series (X is ArrayLike):
-
-            - **Segmentation**: Sparse changepoint/segment labels.
-              Example: ``make_segmentation(changepoints=[50, 100],
-              n_samples=150)``
-            - Use ``dense_to_sparse()`` to convert dense labels if needed.
-
-            Multiple series (X is list[ArrayLike]):
-
-            - **list[Segmentation]**: Sparse labels per series.
-            - **ArrayLike**: Series-level classification (one label per series).
-              Shape (n_series,). Example: ``np.array([0, 1, 0])``
-              for 3 series with class labels.
+        y : None
+            Ignored. Exists for sklearn API compatibility (e.g., pipelines).
+            Changepoint detection is unsupervised on single series.
 
         Returns
         -------
@@ -262,24 +210,22 @@ class ChangeDetector(Protocol):
             Optional fields:
 
             - "n_features": int, number of features/channels
-            - "scores": np.ndarray, changepoint scores,
-              shape (n_changepoints,)
-            - "affected_variables": list[np.ndarray], per-changepoint
-              variable indices
+            - "changed_features": list[np.ndarray], per-changepoint
+              feature indices
             - "meta": dict, algorithm-specific metadata
 
         Examples
         --------
-        >>> # Predict on single series
+        >>> # Fit and predict on time series
         >>> detector.fit(X_train)
         >>> result = detector.predict(X_test)
         >>> print(result["changepoints"])  # Changepoint locations
         >>> print(result["labels"])  # Segment assignments
         >>> print(len(result["changepoints"]))  # Number of changepoints
 
-        >>> # Predict on multiple series using list comprehension
-        >>> results = [detector.predict(X) for X in test_series]
-        >>> for i, result in enumerate(results):
-        ...     print(f"Series {i}: {len(result['indices'])} changepoints")
+        Notes
+        -----
+        For multiple series, use list comprehension or loops:
+        ``results = [detector.predict(X_i) for X_i in series_list]``
         """
         ...

@@ -75,7 +75,7 @@ class BaseChangeDetector(BaseEstimator):
         >>> class MyDetector(BaseChangeDetector):
         ...     def __sklearn_tags__(self):
         ...         tags = super().__sklearn_tags__()
-        ...         tags.change_detector_tags.capability_multiple_series = True
+        ...         tags.target_tags.required = True  # Supervised detector
         ...         return tags
         """
         tags_orig = super().__sklearn_tags__()
@@ -122,24 +122,19 @@ class BaseChangeDetector(BaseEstimator):
         result = self.predict(X)
         return sparse_to_dense(result)
 
-    def fit_transform(self, X, y=None, **fit_params):
+    def fit_transform(self, X, y: ArrayLike | None = None, **fit_params):
         """Fit to data, then transform it.
 
-        This method is provided for sklearn pipeline compatibility when working
-        with single series. For detectors that require multi-series training,
-        this method will raise an error - use fit() and transform() separately.
+        This is a convenience method for sklearn compatibility.
+        Equivalent to calling fit(X, y).transform(X).
 
         Parameters
         ----------
-        X : ArrayLike
-            Time series data. Must be single series (n_samples, n_features).
-            Lists of series are not supported in fit_transform().
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series data.
 
-        y : Segmentation | ArrayLike | None, default=None
-            Optional labels for supervised learning.
-            - Segmentation dict for changepoint labels
-            - ArrayLike for dense per-sample labels
-            - None for unsupervised learning
+        y : None
+            Ignored. Exists for sklearn API compatibility.
 
         **fit_params : dict
             Additional parameters passed to fit(). Not commonly used,
@@ -150,25 +145,13 @@ class BaseChangeDetector(BaseEstimator):
         labels : np.ndarray of shape (n_samples,)
             Dense segment labels.
 
-        Raises
-        ------
-        ValueError
-            If X is a list of series. Multi-series training is not
-            compatible with fit_transform - use fit() then transform().
-
         Examples
         --------
-        >>> # Single series - works
         >>> detector = MyDetector()
         >>> labels = detector.fit_transform(X_train)
-
-        >>> # Multi-series - raises error
-        >>> detector.fit_transform([X1, X2, X3], y=[0, 1, 1])
-        ValueError: fit_transform() does not support multi-series training...
-
-        >>> # Multi-series - correct workflow
-        >>> detector.fit([X1, X2, X3], y=[0, 1, 1])
-        >>> labels = detector.transform(X_new)
+        >>> # Equivalent to:
+        >>> detector.fit(X_train)
+        >>> labels = detector.transform(X_train)
 
         Notes
         -----
@@ -176,35 +159,21 @@ class BaseChangeDetector(BaseEstimator):
         passing sample_weight through pipelines), but most change detectors
         won't use it.
         """
-        if isinstance(X, list):
-            raise ValueError(
-                "fit_transform() does not support multi-series training. "
-                "For detectors that require multiple series:\n"
-                "  1. Train: detector.fit([X1, X2, X3], y=labels)\n"
-                "  2. Transform: detector.transform(X_single)\n"
-                "Use fit() and transform() separately instead of fit_transform()."
-            )
-
         return self.fit(X, y, **fit_params).transform(X)
 
-    def fit_predict(self, X, y=None, **fit_params):
+    def fit_predict(self, X, y: ArrayLike | None = None, **fit_params):
         """Fit to data, then predict changepoints.
 
-        This method is provided for sklearn compatibility when working
-        with single series. For detectors that require multi-series training,
-        this method will raise an error - use fit() and predict() separately.
+        This is a convenience method for sklearn compatibility.
+        Equivalent to calling fit(X, y).predict(X).
 
         Parameters
         ----------
-        X : ArrayLike
-            Time series data. Must be single series (n_samples, n_features).
-            Lists of series are not supported in fit_predict().
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series data.
 
-        y : Segmentation | ArrayLike | None, default=None
-            Optional labels for supervised learning.
-            - Segmentation dict for changepoint labels
-            - ArrayLike for dense per-sample labels
-            - None for unsupervised learning
+        y : None
+            Ignored. Exists for sklearn API compatibility.
 
         **fit_params : dict
             Additional parameters passed to fit(). Not commonly used,
@@ -212,32 +181,20 @@ class BaseChangeDetector(BaseEstimator):
 
         Returns
         -------
-        Segmentation
+        result : Segmentation
             Detection result as a dict with required fields:
             - "changepoints": np.ndarray, changepoint indices
             - "labels": np.ndarray, segment labels
             - "n_samples": int, number of samples
 
-        Raises
-        ------
-        ValueError
-            If X is a list of series. Multi-series training is not
-            compatible with fit_predict - use fit() then predict().
-
         Examples
         --------
-        >>> # Single series - works
         >>> detector = MyDetector()
         >>> result = detector.fit_predict(X_train)
         >>> print(result["changepoints"])
-
-        >>> # Multi-series - raises error
-        >>> detector.fit_predict([X1, X2, X3], y=[0, 1, 1])
-        ValueError: fit_predict() does not support multi-series training...
-
-        >>> # Multi-series - correct workflow
-        >>> detector.fit([X1, X2, X3], y=[0, 1, 1])
-        >>> result = detector.predict(X_new)
+        >>> # Equivalent to:
+        >>> detector.fit(X_train)
+        >>> result = detector.predict(X_train)
 
         Notes
         -----
@@ -245,15 +202,6 @@ class BaseChangeDetector(BaseEstimator):
         dict instead of dense labels. Use fit_transform() if you need
         dense labels for sklearn compatibility.
         """
-        if isinstance(X, list):
-            raise ValueError(
-                "fit_predict() does not support multi-series training. "
-                "For detectors that require multiple series:\n"
-                "  1. Train: detector.fit([X1, X2, X3], y=labels)\n"
-                "  2. Predict: detector.predict(X_single)\n"
-                "Use fit() and predict() separately instead of fit_predict()."
-            )
-
         return self.fit(X, y, **fit_params).predict(X)
 
 
