@@ -15,7 +15,7 @@ from dataclasses import fields
 import numpy as np
 from sklearn.base import BaseEstimator
 
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.typing import ArrayLike, Segmentation
 from skchange.new_api.utils import SkchangeTags, sparse_to_dense
 
 
@@ -122,7 +122,7 @@ class BaseChangeDetector(BaseEstimator):
         result = self.predict(X)
         return sparse_to_dense(result)
 
-    def fit_transform(self, X, y: ArrayLike | None = None, **fit_params):
+    def fit_transform(self, X, y: ArrayLike | None = None, **fit_params) -> np.ndarray:
         """Fit to data, then transform it.
 
         This is a convenience method for sklearn compatibility.
@@ -161,7 +161,7 @@ class BaseChangeDetector(BaseEstimator):
         """
         return self.fit(X, y, **fit_params).transform(X)
 
-    def fit_predict(self, X, y: ArrayLike | None = None, **fit_params):
+    def fit_predict(self, X, y: ArrayLike | None = None, **fit_params) -> Segmentation:
         """Fit to data, then predict changepoints.
 
         This is a convenience method for sklearn compatibility.

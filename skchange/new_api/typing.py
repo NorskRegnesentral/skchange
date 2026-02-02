@@ -42,7 +42,7 @@ class Segmentation(TypedDict):
     maintaining alignment with scikit-learn's design philosophy.
 
     The result contains a sparse representation with per-changepoint arrays
-    (changepoints, changed_features), per-segment arrays (labels),
+    (changepoints, changed_features), optionally per-segment arrays (labels),
     and scalar metadata (n_samples).
 
     Required Fields
@@ -53,13 +53,6 @@ class Segmentation(TypedDict):
         of a new segment. Empty array if no changepoints detected.
         dtype: typically int64, but any integer dtype accepted.
 
-    labels : np.ndarray of shape (n_changepoints + 1,)
-        Segment labels for each interval between changepoints (and boundaries).
-        Integer array starting from 0. Default is [0, 1, 2, ...] where each
-        segment has a unique label. Can assign the same label to multiple
-        segments to group them into the same regime/state.
-        dtype: typically int64, but any integer dtype accepted.
-
     n_samples : int
         Number of samples (timepoints) in the analyzed time series.
         Required for sparse-to-dense conversion and validation.
@@ -67,6 +60,14 @@ class Segmentation(TypedDict):
 
     Optional Fields
     ---------------
+    labels : np.ndarray of shape (n_changepoints + 1,)
+        Segment labels for each interval between changepoints (and boundaries).
+        Integer array starting from 0.
+        **If omitted, automatically generated as [0, 1, 2, ...] where each
+        segment has a unique label.** Explicitly provide labels to group
+        segments into the same regime/state (e.g., for recurring patterns).
+        dtype: typically int64, but any integer dtype accepted.
+
     n_features : int
         Number of features (variables/channels) in the analyzed time series.
         Must be positive integer, use 1 for univariate data.
@@ -89,36 +90,43 @@ class Segmentation(TypedDict):
     Examples
     --------
     >>> # Minimal result - only required fields
-    >>> result = {
-    ...     "changepoints": np.array([10, 50, 90]),
-    ...     "labels": np.array([0, 1, 2, 3]),
-    ...     "n_samples": 200,
-    ... }
-
-    >>> # Full result - all fields included
     >>> result = make_segmentation(
     ...     changepoints=np.array([10, 50, 90]),
-    ...     labels=np.array([0, 1, 2, 3]),
     ...     n_samples=200,
-    ...     n_features=1,
     ... )
+    >>> "labels" in result  # Not included unless provided
+    False
+    >>> result["changepoints"]
+    array([10, 50, 90])
 
-    >>> # Auto-generated labels (recommended)
+    >>> # Explicit labels for recurring patterns
+    >>> result = make_segmentation(
+    ...     changepoints=np.array([10, 50, 90]),
+    ...     labels=np.array([0, 1, 0, 1]),  # Alternating states
+    ...     n_samples=200,
+    ... )
+    >>> result["labels"]
+    array([0, 1, 0, 1])
+
+    >>> # Full result with all optional fields
     >>> result = make_segmentation(
     ...     changepoints=np.array([10, 50]),
+    ...     labels=np.array([0, 1, 2]),
     ...     n_samples=100,
+    ...     n_features=3,
+    ...     changed_features=[np.array([0, 1]), np.array([2])],
+    ...     meta={"threshold": 1.5},
     ... )
-    >>> result["labels"]  # Auto-generated: [0, 1, 2]
-    array([0, 1, 2])
 
-    >>> # Access fields via dict keys
-    >>> cps = result["changepoints"]
-    >>> labels = result["labels"]
+    >>> # Labels generated lazily when converting to dense
+    >>> from skchange.new_api.utils import sparse_to_dense
+    >>> result = make_segmentation(changepoints=np.array([50]), n_samples=100)
+    >>> dense_labels = sparse_to_dense(result)  # Auto-generates [0, 1]
     """
 
     changepoints: np.ndarray
-    labels: np.ndarray
     n_samples: int
+    labels: NotRequired[np.ndarray]
     n_features: NotRequired[int]
     changed_features: NotRequired[list[np.ndarray]]
     meta: NotRequired[dict[str, Any]]
@@ -149,10 +157,6 @@ class ChangeDetector(Protocol):
         fit() learns parameters, predict() applies them without
         modifying state. Can be called repeatedly on different data.
 
-    **Full sklearn Compatibility**
-        Single-series design enables full compatibility with sklearn tools:
-        pipelines, GridSearchCV, cross_validate, etc.
-
     Notes
     -----
     For full sklearn compatibility (GridSearchCV, clone, pipelines, etc.),
@@ -173,14 +177,15 @@ class ChangeDetector(Protocol):
             - Multivariate: shape (n_samples, n_features)
             Never use 1D arrays, even for univariate data.
 
-        y : None
-            Ignored. Exists for sklearn API compatibility (e.g., pipelines).
-            Changepoint detection is unsupervised on single series.
+        y : ArrayLike | None, default=None
+            Exists for sklearn API compatibility (e.g. pipelines).
+            Most changepoint detectors are unsupervised on single series,
+            so y is typically None and ignored.
 
         Returns
         -------
         self
-            Fitted detector instance (enables method chaining).
+            Fitted detector instance.
         """
         ...
 

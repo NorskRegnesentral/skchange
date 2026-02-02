@@ -53,7 +53,12 @@ from skchange.new_api.typing import (
     ChangeDetector,
     Segmentation,
 )
-from skchange.new_api.utils import dense_to_sparse, make_segmentation, sparse_to_dense
+from skchange.new_api.utils import (
+    dense_to_sparse,
+    make_segmentation,
+    sparse_to_dense,
+    validate_segmentation,
+)
 
 __all__ = [
     "BaseChangeDetector",
@@ -63,4 +68,5 @@ __all__ = [
     "make_segmentation",
     "sparse_to_dense",
     "dense_to_sparse",
+    "validate_segmentation",
 ]

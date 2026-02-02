@@ -60,26 +60,30 @@ def make_segmentation(
     """Create a Segmentation dict with clean syntax.
 
     This helper function mimics dataclass-style construction while returning
-    a plain dict. Auto-generates labels if not provided.
+    a plain dict. Keeps the sparse representation minimal - labels are only
+    included if explicitly provided.
 
-    Required Parameters (Always Included in Output)
-    -----------------------------------------------
+    Required Parameters
+    -------------------
     changepoints : np.ndarray
         Changepoint indices, shape (n_changepoints,). REQUIRED.
     n_samples : int
         Number of samples in the time series. REQUIRED.
-    labels : np.ndarray | None, default=None
-        Segment labels, shape (n_changepoints + 1,). REQUIRED in output.
-        If None, auto-generates default [0, 1, 2, ...] labels.
 
-    Optional Parameters (Included Only If Provided)
-    ------------------------------------------------
+    Optional Parameters
+    -------------------
+    labels : np.ndarray | None, default=None
+        Segment labels, shape (n_changepoints + 1,).
+        **If None (default), labels are NOT included in output.**
+        Auto-generation happens lazily when converting to dense (e.g., via
+        transform() or sparse_to_dense()). Only provide labels explicitly
+        for recurring patterns (e.g., [0, 1, 0, 1] for alternating states).
     n_features : int | None, default=None
-        Number of features/channels. Only added if not None.
+        Number of features/channels. Only added to output if not None.
     changed_features : list[np.ndarray] | None, default=None
-        Features affected at each changepoint. Only added if not None.
+        Features affected at each changepoint. Only added to output if not None.
     meta : dict[str, Any] | None, default=None
-        Additional metadata. Only added if not None.
+        Additional metadata. Only added to output if not None.
 
     Returns
     -------
@@ -88,39 +92,75 @@ def make_segmentation(
 
     Examples
     --------
-    >>> # Basic usage
-    >>> X = np.random.randn(200, 3)
-    >>> result = make_segmentation(
-    ...     changepoints=np.array([50, 100]),
-    ...     n_samples=X.shape[0],
-    ...     labels=np.array([0, 1, 2]),
-    ... )
-    >>> result["changepoints"]
-    array([50, 100])
-    >>> result["labels"]
-    array([0, 1, 2])
-
-    >>> # With optional n_features
+    >>> # Minimal usage - just changepoints
     >>> result = make_segmentation(
     ...     changepoints=np.array([50, 100]),
     ...     n_samples=200,
+    ... )
+    >>> result.keys()
+    dict_keys(['changepoints', 'n_samples'])
+    >>> "labels" in result
+    False
+
+    >>> # Explicit labels for recurring patterns
+    >>> result = make_segmentation(
+    ...     changepoints=np.array([50, 100]),
     ...     labels=np.array([0, 1, 0]),  # Return to state 0
+    ...     n_samples=200,
+    ... )
+    >>> result["labels"]
+    array([0, 1, 0])
+
+    >>> # With additional metadata
+    >>> result = make_segmentation(
+    ...     changepoints=np.array([50]),
+    ...     n_samples=200,
     ...     n_features=3,
+    ...     meta={"threshold": 1.5},
     ... )
     """
-    # Auto-generate labels if not provided
-    if labels is None:
-        n_changepoints = len(changepoints) if changepoints is not None else 0
-        labels = np.arange(n_changepoints + 1)
+    # Basic validation - fast checks for common errors
+    changepoints = np.asarray(changepoints)
+    if changepoints.ndim != 1:
+        raise ValueError(
+            f"changepoints must be 1D array, got shape {changepoints.shape}"
+        )
 
-    # Build result dict
+    if not isinstance(n_samples, (int, np.integer)):
+        raise TypeError(f"n_samples must be integer, got {type(n_samples).__name__}")
+    if n_samples <= 0:
+        raise ValueError(f"n_samples must be positive, got {n_samples}")
+
+    # Check that all changepoints are within valid range
+    if len(changepoints) > 0:
+        if np.any(changepoints >= n_samples):
+            invalid_cps = changepoints[changepoints >= n_samples]
+            raise ValueError(
+                f"All changepoints must be < n_samples ({n_samples}), "
+                f"got changepoints at {invalid_cps}"
+            )
+
+    if labels is not None:
+        labels = np.asarray(labels)
+        if labels.ndim != 1:
+            raise ValueError(f"labels must be 1D array, got shape {labels.shape}")
+        expected_len = len(changepoints) + 1
+        if len(labels) != expected_len:
+            raise ValueError(
+                f"labels must have length {expected_len} (n_changepoints + 1), "
+                f"got {len(labels)}"
+            )
+
+    # Build result dict with required fields only
     result: Segmentation = {
         "changepoints": changepoints,
-        "labels": labels,
         "n_samples": n_samples,
     }
 
     # Add optional fields only if provided
+    if labels is not None:
+        result["labels"] = labels
+
     if n_features is not None:
         result["n_features"] = n_features
 
@@ -131,6 +171,140 @@ def make_segmentation(
         result["meta"] = meta
 
     return result
+
+
+def validate_segmentation(result: Segmentation, strict: bool = True) -> None:
+    """Validate a Segmentation dict for correctness.
+
+    Performs thorough validation of a Segmentation result, checking that all
+    fields are properly formatted and internally consistent.
+
+    Parameters
+    ----------
+    result : Segmentation
+        Segmentation dict to validate.
+    strict : bool, default=True
+        If True, performs all validations including checking that changepoints
+        are sorted and within valid range. If False, only checks types and shapes.
+
+    Raises
+    ------
+    ValueError
+        If any validation check fails.
+    TypeError
+        If fields have incorrect types.
+
+    Examples
+    --------
+    >>> result = make_segmentation(
+    ...     changepoints=np.array([50, 100]),
+    ...     n_samples=200
+    ... )
+    >>> validate_segmentation(result)  # No error - valid
+
+    >>> # Invalid - changepoint out of range
+    >>> bad_result = {
+    ...     "changepoints": np.array([50, 250]),
+    ...     "n_samples": 200
+    ... }
+    >>> validate_segmentation(bad_result)  # Raises ValueError
+    """
+    # Check required fields
+    if "changepoints" not in result:
+        raise ValueError("Segmentation must have 'changepoints' field")
+    if "n_samples" not in result:
+        raise ValueError("Segmentation must have 'n_samples' field")
+
+    changepoints = result["changepoints"]
+    n_samples = result["n_samples"]
+
+    # Validate changepoints
+    if not isinstance(changepoints, np.ndarray):
+        raise TypeError(
+            f"changepoints must be np.ndarray, got {type(changepoints).__name__}"
+        )
+    if changepoints.ndim != 1:
+        raise ValueError(f"changepoints must be 1D, got shape {changepoints.shape}")
+    if not np.issubdtype(changepoints.dtype, np.integer):
+        raise TypeError(
+            f"changepoints must have integer dtype, got {changepoints.dtype}"
+        )
+
+    # Validate n_samples
+    if not isinstance(n_samples, (int, np.integer)):
+        raise TypeError(f"n_samples must be integer, got {type(n_samples).__name__}")
+    if n_samples <= 0:
+        raise ValueError(f"n_samples must be positive, got {n_samples}")
+
+    if strict and len(changepoints) > 0:
+        # Check changepoints are sorted
+        if not np.all(changepoints[:-1] < changepoints[1:]):
+            raise ValueError("changepoints must be strictly increasing")
+
+        # Check changepoints are in valid range [0, n_samples)
+        if changepoints[0] < 0:
+            raise ValueError(f"changepoints must be >= 0, got {changepoints[0]}")
+        if changepoints[-1] >= n_samples:
+            raise ValueError(
+                f"changepoints must be < n_samples ({n_samples}), "
+                f"got {changepoints[-1]}"
+            )
+
+    # Validate optional fields if present
+    if "labels" in result:
+        labels = result["labels"]
+        if not isinstance(labels, np.ndarray):
+            raise TypeError(f"labels must be np.ndarray, got {type(labels).__name__}")
+        if labels.ndim != 1:
+            raise ValueError(f"labels must be 1D, got shape {labels.shape}")
+        expected_len = len(changepoints) + 1
+        if len(labels) != expected_len:
+            raise ValueError(
+                f"labels must have length {expected_len}, got {len(labels)}"
+            )
+
+    if "n_features" in result:
+        n_features = result["n_features"]
+        if not isinstance(n_features, (int, np.integer)):
+            raise TypeError(
+                f"n_features must be integer, got {type(n_features).__name__}"
+            )
+        if n_features <= 0:
+            raise ValueError(f"n_features must be positive, got {n_features}")
+
+    if "changed_features" in result:
+        changed_features = result["changed_features"]
+        if not isinstance(changed_features, list):
+            raise TypeError(
+                f"changed_features must be list, got {type(changed_features).__name__}"
+            )
+        if len(changed_features) != len(changepoints):
+            raise ValueError(
+                f"changed_features must have length {len(changepoints)}, "
+                f"got {len(changed_features)}"
+            )
+        for i, feats in enumerate(changed_features):
+            if not isinstance(feats, np.ndarray):
+                raise TypeError(
+                    f"changed_features[{i}] must be np.ndarray, "
+                    f"got {type(feats).__name__}"
+                )
+            if feats.ndim != 1:
+                raise ValueError(
+                    f"changed_features[{i}] must be 1D, got shape {feats.shape}"
+                )
+            if strict and "n_features" in result:
+                n_features = result["n_features"]
+                if np.any(feats < 0) or np.any(feats >= n_features):
+                    raise ValueError(
+                        f"changed_features[{i}] contains indices outside "
+                        f"[0, {n_features})"
+                    )
+
+    if "meta" in result:
+        meta = result["meta"]
+        if not isinstance(meta, dict):
+            raise TypeError(f"meta must be dict, got {type(meta).__name__}")
 
 
 def validate_data(X: Any, y: Any = None) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
@@ -218,40 +392,61 @@ def sparse_to_dense(result: Segmentation) -> np.ndarray:
         Dict with required fields:
 
         - "changepoints": np.ndarray of changepoint indices
-        - "labels": np.ndarray of segment labels
         - "n_samples": int, number of samples
+
+        Optional fields:
+
+        - "labels": np.ndarray of segment labels.
+          If not provided, auto-generates [0, 1, 2, ...]
 
     Returns
     -------
     np.ndarray
-        Dense labels, shape (n_samples,). Each segment gets a unique integer label.
+        Dense labels, shape (n_samples,). Each sample assigned its segment label.
 
     Examples
     --------
+    >>> # With explicit labels
     >>> result = {
     ...     "changepoints": np.array([50, 100]),
-    ...     "n_samples": 150,
-    ...     "n_features": 3,
     ...     "labels": np.array([0, 1, 2]),
+    ...     "n_samples": 150,
     ... }
     >>> dense_labels = sparse_to_dense(result)
     >>> dense_labels.shape
     (150,)
     >>> np.unique(dense_labels)
     array([0, 1, 2])
+
+    >>> # Without labels (auto-generated)
+    >>> result = {
+    ...     "changepoints": np.array([50, 100]),
+    ...     "n_samples": 150,
+    ... }
+    >>> dense_labels = sparse_to_dense(result)
+    >>> np.unique(dense_labels)
+    array([0, 1, 2])
     """
     n_samples = result["n_samples"]
+    changepoints = np.asarray(result["changepoints"])
+
+    # Get labels, auto-generate if not provided
+    if "labels" in result:
+        labels = np.asarray(result["labels"])
+    else:
+        # Auto-generate unique labels for each segment
+        n_changepoints = len(changepoints) if changepoints is not None else 0
+        labels = np.arange(n_changepoints + 1)
+
     dense_labels = np.zeros(n_samples, dtype=int)
 
-    if result["changepoints"] is not None:
-        changepoints = np.asarray(result["changepoints"])
-        if len(changepoints) > 0:
-            # Create segment labels
-            changepoints = np.concatenate([[0], changepoints, [n_samples]])
-            for seg_id in range(len(changepoints) - 1):
-                start = changepoints[seg_id]
-                end = changepoints[seg_id + 1]
-                dense_labels[start:end] = seg_id
+    if len(changepoints) > 0:
+        # Create segment boundaries
+        boundaries = np.concatenate([[0], changepoints, [n_samples]])
+        for seg_id in range(len(boundaries) - 1):
+            start = boundaries[seg_id]
+            end = boundaries[seg_id + 1]
+            dense_labels[start:end] = labels[seg_id]
 
     return dense_labels
 
