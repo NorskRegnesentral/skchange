@@ -36,7 +36,7 @@ classifiers = [
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "numpy>=1.21",
-    "scikit-learn>=1.0",
+    "scikit-learn>=1.6",  # sklearn tags are stable public API from >= 1.6.
 ]
 
 [project.urls]

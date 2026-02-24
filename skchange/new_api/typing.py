@@ -20,7 +20,7 @@ try:
 except ImportError:
     from typing_extensions import NotRequired, Self  # Python 3.8-3.10
 
-from typing import Any, Protocol, TypedDict, runtime_checkable
+from typing import Protocol, TypedDict, runtime_checkable
 
 import numpy as np
 
@@ -29,7 +29,7 @@ import numpy as np
 # potentially compatible array types (e.g., pandas DataFrames, polars, xarray)
 # that aren't covered by numpy's definition.
 # Convention: ArrayLike is for INPUTS (flexible), np.ndarray for OUTPUTS (consistent).
-ArrayLike = Any
+ArrayLike = np.typing.ArrayLike
 
 
 class Segmentation(TypedDict):
@@ -41,9 +41,9 @@ class Segmentation(TypedDict):
     TypedDict allows plain dicts to be returned, avoiding custom classes and
     maintaining alignment with scikit-learn's design philosophy.
 
-    The result contains a sparse representation with per-changepoint arrays
-    (changepoints, changed_features), optionally per-segment arrays (labels),
-    and scalar metadata (n_samples).
+    The result contains a sparse representation focused on what was detected:
+    changepoint locations, optional segment labels, and optional per-changepoint
+    feature information.
 
     Required Fields
     ---------------
@@ -52,11 +52,6 @@ class Segmentation(TypedDict):
         Integer array with values in [0, n_samples). Each index marks the start
         of a new segment. Empty array if no changepoints detected.
         dtype: typically int64, but any integer dtype accepted.
-
-    n_samples : int
-        Number of samples (timepoints) in the analyzed time series.
-        Required for sparse-to-dense conversion and validation.
-        Must be positive integer.
 
     Optional Fields
     ---------------
@@ -68,11 +63,6 @@ class Segmentation(TypedDict):
         segments into the same regime/state (e.g., for recurring patterns).
         dtype: typically int64, but any integer dtype accepted.
 
-    n_features : int
-        Number of features (variables/channels) in the analyzed time series.
-        Must be positive integer, use 1 for univariate data.
-        Useful metadata but not required for core sparse representation.
-
     changed_features : list[np.ndarray]
         Feature/channel indices affected at each changepoint.
         List of length n_changepoints. Each element is an integer array of
@@ -81,18 +71,11 @@ class Segmentation(TypedDict):
         if all features are affected at all changepoints.
         dtype per array: typically int64, but any integer dtype accepted.
 
-    meta : dict[str, Any]
-        Optional metadata about the detection process or results.
-        May include algorithm parameters, thresholds, convergence info,
-        computation time, or any detector-specific information.
-        Structure is detector-dependent and not standardized.
-
     Examples
     --------
-    >>> # Minimal result - only required fields
+    >>> # Minimal result - just changepoints
     >>> result = make_segmentation(
     ...     changepoints=np.array([10, 50, 90]),
-    ...     n_samples=200,
     ... )
     >>> "labels" in result  # Not included unless provided
     False
@@ -103,7 +86,6 @@ class Segmentation(TypedDict):
     >>> result = make_segmentation(
     ...     changepoints=np.array([10, 50, 90]),
     ...     labels=np.array([0, 1, 0, 1]),  # Alternating states
-    ...     n_samples=200,
     ... )
     >>> result["labels"]
     array([0, 1, 0, 1])
@@ -112,24 +94,18 @@ class Segmentation(TypedDict):
     >>> result = make_segmentation(
     ...     changepoints=np.array([10, 50]),
     ...     labels=np.array([0, 1, 2]),
-    ...     n_samples=100,
-    ...     n_features=3,
     ...     changed_features=[np.array([0, 1]), np.array([2])],
-    ...     meta={"threshold": 1.5},
     ... )
 
     >>> # Labels generated lazily when converting to dense
     >>> from skchange.new_api.utils import sparse_to_dense
-    >>> result = make_segmentation(changepoints=np.array([50]), n_samples=100)
-    >>> dense_labels = sparse_to_dense(result)  # Auto-generates [0, 1]
+    >>> result = make_segmentation(changepoints=np.array([50]))
+    >>> dense_labels = sparse_to_dense(result, n_samples=100)  # Auto-generates [0, 1]
     """
 
     changepoints: np.ndarray
-    n_samples: int
     labels: NotRequired[np.ndarray]
-    n_features: NotRequired[int]
     changed_features: NotRequired[list[np.ndarray]]
-    meta: NotRequired[dict[str, Any]]
 
 
 @runtime_checkable
@@ -203,21 +179,18 @@ class ChangeDetector(Protocol):
 
         Returns
         -------
-        Segmentation
+        dict
             Detection result as a dict with required fields:
 
             - "changepoints": np.ndarray, changepoint locations,
               shape (n_changepoints,)
-            - "labels": np.ndarray, segment assignments,
-              shape (n_changepoints + 1,)
-            - "n_samples": int, number of timepoints analyzed
 
             Optional fields:
 
-            - "n_features": int, number of features/channels
+            - "labels": np.ndarray, segment assignments,
+              shape (n_changepoints + 1,)
             - "changed_features": list[np.ndarray], per-changepoint
               feature indices
-            - "meta": dict, algorithm-specific metadata
 
         Examples
         --------

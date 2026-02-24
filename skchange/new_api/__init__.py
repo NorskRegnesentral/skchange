@@ -9,22 +9,25 @@ Design Philosophy
 2. **Sparse-First Output**: Return Segmentation dict (changepoints + labels)
 3. **Protocol-Based**: Duck typing via typing.Protocol (inheritance optional)
 4. **Sklearn Compatible**: Works with pipelines, GridSearchCV, cross_validate
-5. **Minimal Implementation**: Detectors implement only _fit() and _predict()
+5. **Minimal Implementation**: Detectors implement `fit()` and `predict()`
 
 Quick Start
 -----------
 ```python
 from skchange.new_api import BaseChangeDetector, make_segmentation
+from sklearn.utils.validation import check_is_fitted, validate_data
 
 class MyDetector(BaseChangeDetector):
-    def _fit(self, X, y=None):
-        # X is guaranteed to be 2D: (n_samples, n_features)
+    def fit(self, X, y=None):
+        X = validate_data(self, X, reset=True, ensure_2d=True)
         self.threshold_ = compute_threshold(X)
         return self
 
-    def _predict(self, X):
+    def predict(self, X):
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False, ensure_2d=True)
         changepoints = detect(X, self.threshold_)
-        return make_segmentation(changepoints=changepoints, n_samples=len(X))
+        return make_segmentation(changepoints=changepoints)
 
 # Usage
 detector = MyDetector()

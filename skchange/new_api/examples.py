@@ -44,12 +44,7 @@ class SimplePELT(BaseChangeDetector):
         # Simplified PELT logic
         changepoints = self._run_pelt_algorithm(X)
 
-        return make_segmentation(
-            changepoints=changepoints,
-            n_samples=X.shape[0],
-            n_features=X.shape[1],
-            meta={"threshold": self.threshold_},
-        )
+        return make_segmentation(changepoints=changepoints)
 
     def _run_pelt_algorithm(self, X: ArrayLike) -> np.ndarray:
         """Run placeholder for actual PELT algorithm."""
@@ -93,12 +88,7 @@ class MovingWindowDetector(BaseChangeDetector):
         # Find peaks above threshold
         changepoints = np.where(scores > self.threshold_)[0]
 
-        return make_segmentation(
-            changepoints=changepoints,
-            n_samples=X.shape[0],
-            n_features=X.shape[1],
-            meta={"window_size": self.window_size},
-        )
+        return make_segmentation(changepoints=changepoints)
 
 
 # ============================================================================
@@ -118,7 +108,7 @@ def demo_simple_detector():
     result = detector.predict(X)
 
     print(f"Detected {len(result['changepoints'])} changepoints")
-    print(f"Threshold: {result['meta']['threshold']:.3f}")
+    print(f"Threshold: {detector.threshold_:.3f}")
 
 
 def demo_moving_window():
@@ -133,7 +123,7 @@ def demo_moving_window():
     result = detector.predict(X)
 
     print(f"Detected {len(result['changepoints'])} changepoints")
-    print(f"Window size: {result['meta']['window_size']}")
+    print(f"Window size: {detector.window_size}")
 
 
 if __name__ == "__main__":

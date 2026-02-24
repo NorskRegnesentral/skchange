@@ -12,7 +12,7 @@ from __future__ import annotations
 import numpy as np
 
 from skchange.new_api.base import BaseChangeDetector
-from skchange.new_api.typing import ArrayLike, Segmentation
+from skchange.new_api.typing import ArrayLike, Segmentation, Self
 from skchange.new_api.utils import make_segmentation, validate_data
 
 
@@ -77,6 +77,26 @@ class TemplateDetector(BaseChangeDetector):
     TODO: Link to related detectors or base classes.
     """
 
+    # ==================== Advanced: Parameter Validation ====================
+    # TODO: Uncomment to enable automatic parameter validation (optional)
+    # This uses sklearn's parameter validation system for robust input checking.
+    #
+    # from numbers import Integral, Real
+    # from skchange.new_api._utils_param_validation import (
+    #     _fit_context,
+    #     Interval,
+    #     StrOptions,
+    # )
+    #
+    # _parameter_constraints = {
+    #     "threshold": [Interval(Real, 0, None, closed="neither")],
+    #     "min_segment_length": [Interval(Integral, 1, None, closed="left")],
+    #     # Add more constraints as needed:
+    #     # "method": [StrOptions({"auto", "bottom_up", "max"})],
+    #     # "penalty": [Interval(Real, 0, None, closed="left"), None],
+    # }
+    # ========================================================================
+
     # TODO: Add all hyperparameters as keyword arguments with defaults
     def __init__(
         self,
@@ -91,7 +111,10 @@ class TemplateDetector(BaseChangeDetector):
         # NOTE: Do NOT do validation or computation in __init__
         # All logic should go in fit() or predict()
 
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
+    # TODO: Uncomment to enable automatic parameter validation (advanced)
+    # @_fit_context(prefer_skip_nested_validation=False)
+
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit the change detector on training data.
 
         Parameters
@@ -142,14 +165,12 @@ class TemplateDetector(BaseChangeDetector):
             Detection result as a dict with required fields:
 
             - "changepoints": np.ndarray, changepoint indices
-            - "labels": np.ndarray, segment labels
             - "n_samples": int, number of samples
 
             Optional fields:
 
-            - "n_features": int, number of features
+            - "labels": np.ndarray, segment labels
             - "changed_features": list[np.ndarray], per-changepoint feature indices
-            - "meta": dict, algorithm-specific metadata
         """
         # TODO: Validate input and check if fitted
         # This ensures fit() was called and validates X shape
@@ -169,14 +190,12 @@ class TemplateDetector(BaseChangeDetector):
         # Use make_segmentation() helper for clean syntax
         result = make_segmentation(
             changepoints=changepoints,
-            n_samples=len(X),
-            n_features=X.shape[1],  # Optional but recommended
             # changed_features=changed_feats,  # Optional
-            meta={  # Optional: algorithm-specific info
-                "threshold_used": self.threshold_,
-                # "n_iterations": n_iter,
-            },
         )
+
+        # TODO: Store detector-specific metadata as fitted attributes
+        # self.scores_ = scores  # Detection scores per sample
+        # self.n_iterations_ = n_iter  # Number of iterations used
 
         return result
 

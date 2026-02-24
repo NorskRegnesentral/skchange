@@ -10,13 +10,12 @@ Subclasses implement fit() and predict() directly without forced private methods
 
 from __future__ import annotations
 
-from dataclasses import fields
-
 import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.utils._tags import TransformerTags
 
 from skchange.new_api.typing import ArrayLike, Segmentation
-from skchange.new_api.utils import SkchangeTags, sparse_to_dense
+from skchange.new_api.utils import ChangeDetectorTags, SkchangeTags, sparse_to_dense
 
 
 class BaseChangeDetector(BaseEstimator):
@@ -53,11 +52,7 @@ class BaseChangeDetector(BaseEstimator):
     ...     def predict(self, X):
     ...         # Your detection logic
     ...         changepoints = np.array([50, 100])
-    ...         return make_segmentation(
-    ...             changepoints=changepoints,
-    ...             n_samples=len(X),
-    ...             n_features=X.shape[1]
-    ...         )
+    ...         return make_segmentation(changepoints=changepoints)
     """
 
     def __sklearn_tags__(self) -> SkchangeTags:
@@ -78,12 +73,10 @@ class BaseChangeDetector(BaseEstimator):
         ...         tags.target_tags.required = True  # Supervised detector
         ...         return tags
         """
-        tags_orig = super().__sklearn_tags__()
-        tags_orig.estimator_type = None
-        as_dict = {
-            field.name: getattr(tags_orig, field.name) for field in fields(tags_orig)
-        }
-        return SkchangeTags(**as_dict)
+        tags = SkchangeTags()
+        tags.change_detector_tags = ChangeDetectorTags()
+        tags.transformer_tags = TransformerTags(preserves_dtype=[])
+        return tags
 
     def transform(self, X: ArrayLike) -> np.ndarray:
         """Transform time series to dense segment labels.
@@ -111,7 +104,7 @@ class BaseChangeDetector(BaseEstimator):
         >>> labels = detector.transform(X_test)
         >>> # Equivalent to:
         >>> result = detector.predict(X_test)
-        >>> labels = sparse_to_dense(result)
+        >>> labels = sparse_to_dense(result, n_samples=len(X_test))
 
         Notes
         -----
@@ -119,8 +112,9 @@ class BaseChangeDetector(BaseEstimator):
         a convenience. You can use predict() and sparse_to_dense() directly
         if you prefer explicit conversion.
         """
+        X = np.asarray(X)
         result = self.predict(X)
-        return sparse_to_dense(result)
+        return sparse_to_dense(result, n_samples=len(X))
 
     def fit_transform(self, X, y: ArrayLike | None = None, **fit_params) -> np.ndarray:
         """Fit to data, then transform it.
@@ -181,11 +175,18 @@ class BaseChangeDetector(BaseEstimator):
 
         Returns
         -------
-        result : Segmentation
+        result : dict
             Detection result as a dict with required fields:
-            - "changepoints": np.ndarray, changepoint indices
-            - "labels": np.ndarray, segment labels
-            - "n_samples": int, number of samples
+
+            - "changepoints": np.ndarray, changepoint locations,
+              shape (n_changepoints,)
+
+            Optional fields:
+
+            - "labels": np.ndarray, segment assignments,
+              shape (n_changepoints + 1,)
+            - "changed_features": list[np.ndarray], per-changepoint
+              feature indices
 
         Examples
         --------
