@@ -47,7 +47,9 @@ def make_anomaly_intervals(
 ) -> tuple[np.ndarray, np.ndarray]:
     starts = []
     ends = []
-    for i in range(interval_start + min_segment_length, interval_end - min_segment_length + 2):
+    for i in range(
+        interval_start + min_segment_length, interval_end - min_segment_length + 2
+    ):
         # TODO: Add support for anomaly_intervals starting at interval_start and ending
         # at interval_end. Currently blocked by interval evaluators requiring
         # strictly increasing interval input.

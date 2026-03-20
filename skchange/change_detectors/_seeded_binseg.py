@@ -27,7 +27,9 @@ def make_seeded_intervals(
     max_length = min(max_length, n)
     if max_length < min_length:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
-    n_lengths = max(1, int(np.ceil(np.log(max_length / min_length) / np.log(growth_factor))))
+    n_lengths = max(
+        1, int(np.ceil(np.log(max_length / min_length) / np.log(growth_factor)))
+    )
     interval_lens = np.unique(np.round(np.geomspace(min_length, max_length, n_lengths)))
     for interval_len in interval_lens:
         step = max(1, np.round(step_factor * interval_len))
