@@ -35,6 +35,10 @@ def test_sktime_compatible_estimators(obj, test_name):
             "test_estimator_tags",
             "test_valid_estimator_tags",
             "test_valid_estimator_class_tags",
+            "test_fit_does_not_overwrite_hyper_params",
+            "test_non_state_changing_method_contract",
+            "test_persistence_via_pickle",
+            "test_save_estimators_to_file",
         ],
     )
 

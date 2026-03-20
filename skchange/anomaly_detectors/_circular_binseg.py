@@ -47,11 +47,11 @@ def make_anomaly_intervals(
 ) -> tuple[np.ndarray, np.ndarray]:
     starts = []
     ends = []
-    for i in range(interval_start + 1, interval_end - min_segment_length + 2):
+    for i in range(interval_start + min_segment_length, interval_end - min_segment_length + 2):
         # TODO: Add support for anomaly_intervals starting at interval_start and ending
         # at interval_end. Currently blocked by interval evaluators requiring
         # strictly increasing interval input.
-        for j in range(i + min_segment_length, interval_end):
+        for j in range(i + min_segment_length, interval_end - min_segment_length + 1):
             baseline_n = interval_end - j + i - interval_start
             if baseline_n >= min_segment_length:
                 starts.append(i)
@@ -69,9 +69,12 @@ def run_circular_binseg(
     penalised_score.check_is_fitted()
     n_samples = penalised_score.n_samples
 
+    # TODO: Only works for min_segment_length samples to both the left and right of
+    # an anomalous interval now. Should be able to work for min_segment_length samples
+    # combined on both sides of an interval.
     starts, ends = make_seeded_intervals(
         n_samples,
-        2 * min_segment_length,
+        3 * min_segment_length,
         max_interval_length,
         growth_factor,
     )
