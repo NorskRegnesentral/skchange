@@ -18,7 +18,7 @@ from skchange.new_api._utils_param_validation import (
     _fit_context,
 )
 from skchange.new_api.base import BaseChangeDetector
-from skchange.new_api.scorers import CUSUM, IntervalScorer, PenalisedScore
+from skchange.new_api.scorers import CUSUM, BaseIntervalScorer, PenalisedScore
 from skchange.new_api.typing import ArrayLike, Segmentation, Self
 from skchange.new_api.utils import (
     check_interval_scorer,
@@ -29,7 +29,7 @@ from skchange.new_api.utils import (
 
 
 def transform_multiple_moving_window(
-    fitted_score: IntervalScorer,
+    fitted_score: BaseIntervalScorer,
     X: np.ndarray,
     bandwidths: np.ndarray,
 ) -> np.ndarray:
@@ -37,7 +37,7 @@ def transform_multiple_moving_window(
 
     Parameters
     ----------
-    fitted_score : IntervalScorer
+    fitted_score : BaseIntervalScorer
         Fitted (typically penalised) score object.
     X : np.ndarray
         Input data used for evaluation.
@@ -55,13 +55,13 @@ def transform_multiple_moving_window(
 
     scores = np.full((n_samples, len(bandwidths)), np.nan)
     for i, bw in enumerate(bandwidths):
-        cuts = make_extended_moving_window_cuts(
+        interval_specs = make_extended_moving_window_cuts(
             n_samples,
             int(bw),
             fitted_score.min_size,
         )
-        cuts_scores = fitted_score.evaluate(precomputed, cuts).reshape(-1)
-        scores[cuts[:, 1], i] = cuts_scores
+        interval_scores = fitted_score.evaluate(precomputed, interval_specs).reshape(-1)
+        scores[interval_specs[:, 1], i] = interval_scores
 
     return scores
 
@@ -91,7 +91,7 @@ class MovingWindow(BaseChangeDetector):
     ----------
     change_score : BaseIntervalScorer, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost is given, it is
-        converted to a change score using the `ChangeScore` class.
+        converted to a change score using the `CostBasedChangeScore` class.
     penalty : np.ndarray or float, optional, default=None
         The penalty to use for change detection. If the score is
         penalised (`change_score.__sklearn_tags__().interval_scorer_tags.penalised`)
@@ -106,7 +106,6 @@ class MovingWindow(BaseChangeDetector):
           linear penalty array is faster to evaluate than a nonlinear penalty array.
         * ``None``: A default penalty is created in `predict` based on the fitted
           score using the `make_bic_penalty` function.
-
     bandwidth : int or list of int, default=None
         The bandwidth is the number of samples on either side of a candidate
         change-point. Must be 1 or greater. If ``None``, a data-dependent default
@@ -128,7 +127,6 @@ class MovingWindow(BaseChangeDetector):
           ``local_optimum_fraction * bandwidth``. Corresponds to the eta-criterion
           in [2]_. This method is used within the "bottom-up" merging approach if
           multiple bandwidths are given.
-
     min_detection_fraction : float, default=0.2
         The minimum size of the detection interval for a candidate change-point to be
         accepted in the ``"detection_length"`` selection method.
@@ -169,7 +167,7 @@ class MovingWindow(BaseChangeDetector):
 
     def __init__(
         self,
-        change_score: IntervalScorer | None = None,
+        change_score: BaseIntervalScorer | None = None,
         penalty: ArrayLike | float | None = None,
         bandwidth: ArrayLike | int | None = None,
         selection_method: str = "local_optimum",
@@ -222,11 +220,7 @@ class MovingWindow(BaseChangeDetector):
             arg_name="change_score",
         )
         if not scorer.__sklearn_tags__().interval_scorer_tags.penalised:
-            penalty = self.penalty or scorer.get_default_penalty(X.shape[0], X.shape[1])
-            penalty = check_penalty(
-                penalty, caller_name=self.__class__.__name__, arg_name="penalty"
-            )
-            scorer = PenalisedScore(scorer, penalty)
+            scorer = PenalisedScore(scorer, self.penalty)
         self.change_score_ = scorer.fit(X, y)
 
         if self.bandwidth is None:
@@ -241,14 +235,6 @@ class MovingWindow(BaseChangeDetector):
             if np.any(bw < 1):
                 raise ValueError("All elements of `bandwidth` must be 1 or larger.")
         self.bandwidth_ = bw.astype(int, copy=False)
-
-        min_required_samples = 2 * int(np.max(self.bandwidth_))
-        if X.shape[0] < min_required_samples:
-            raise ValueError(
-                "Insufficient samples for configured `bandwidth`: "
-                f"n_samples={X.shape[0]} but at least "
-                f"2 * max(bandwidth) = {min_required_samples} is required."
-            )
 
         if self.selection_method == "detection_length" and len(self.bandwidth_) > 1:
             raise ValueError(

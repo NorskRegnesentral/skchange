@@ -10,7 +10,8 @@ Complete design documentation for the new changepoint detection API.
 3. [Output Type Design](#output-type-design)
 4. [Sklearn Compatibility](#sklearn-compatibility)
 5. [Meta-Estimator Pattern](#meta-estimator-pattern)
-6. [Quick Reference](#quick-reference)
+6. [Interval Scorer Design](#interval-scorer-design)
+7. [Quick Reference](#quick-reference)
 
 ---
 
@@ -524,6 +525,218 @@ grid = GridSearchCV(
 - Sub-estimator is a hyperparameter
 - `check_is_fitted()` validates requirements
 - Clear error messages guide users
+
+---
+
+## Interval Scorer Design
+
+Interval scorers (costs, change scores, savings) provide the scoring functions used by change detection algorithms. This section documents the design decisions for the scorer hierarchy.
+
+### Base Class vs Protocol
+
+**Decision: Use `BaseIntervalScorer` base class, not Protocol**
+
+**Rationale:**
+- ✅ **Sklearn convention**: sklearn uses base classes (BaseEstimator), not Protocols
+- ✅ **Heavy interface**: IntervalScorer had 7+ methods - too heavy for Protocol
+- ✅ **NotImplementedError pattern**: Follows sklearn's pattern over ABC
+- ✅ **Implementation sharing**: Base class provides common functionality (tags, validation)
+- ⚠️ **Minimal protocols kept**: ChangeDetector Protocol kept (only 2 required methods)
+
+**When to use Protocol vs Base Class:**
+- **Protocol**: Minimal interface (2-3 methods), pure duck typing
+- **Base Class**: Rich interface (5+ methods), shared implementation, inheritance beneficial
+
+**Example - Heavy Protocol (avoided):**
+```python
+# ❌ Too heavy for Protocol
+class IntervalScorer(Protocol):
+    def fit(self, X): ...
+    def evaluate(self, interval_specs): ...
+    def score(self, X, interval_specs): ...
+    def get_fitted_params(self): ...
+    def sparse_to_dense(self, scores): ...
+    # ... 7+ methods
+```
+
+**Example - Minimal Protocol (kept):**
+```python
+# ✅ Lightweight enough for Protocol
+class ChangeDetector(Protocol):
+    def fit(self, X, y=None): ...
+    def predict(self, X): ...
+    # Only 2 required methods
+```
+
+### NotImplementedError vs ABC
+
+**Decision: Use `NotImplementedError` in base class methods, not `@abstractmethod`**
+
+**Rationale:**
+- ✅ **Sklearn pattern**: sklearn uses NotImplementedError, not ABC
+- ✅ **Clearer errors**: Can provide custom error messages
+- ✅ **Flexible inheritance**: Subclasses can selectively override
+- ✅ **No metaclass complexity**: Simpler class hierarchy
+
+**Implementation:**
+```python
+class BaseIntervalScorer(BaseEstimator):
+    """Base class for interval scorers."""
+
+    def fit(self, X, y=None):
+        """Fit the scorer to data."""
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement fit()"
+        )
+
+    def evaluate(self, interval_specs):
+        """Evaluate intervals."""
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement evaluate()"
+        )
+
+    @property
+    def interval_specs_width(self):
+        """Width of interval specifications."""
+        raise NotImplementedError(
+            f"{self.__class__.__name__} does not implement interval_specs_width"
+        )
+```
+
+**Why not ABC:**
+```python
+# ❌ Not sklearn convention
+from abc import ABC, abstractmethod
+
+class BaseIntervalScorer(ABC, BaseEstimator):
+    @abstractmethod
+    def fit(self, X, y=None):
+        pass
+```
+
+### Naming Conventions
+
+**Decision: Asymmetric naming following sklearn patterns**
+
+**Rules:**
+1. **Generic variable/parameter name**: Use `scorer` for all `BaseIntervalScorer` instances
+2. **Base class name**: `BaseIntervalScorer` indicates the abstraction/concept
+3. **Concrete class names**: Named after what they **produce**, not the abstraction
+4. **Type-specific bases**: Named after what they produce (BaseCost, BaseChangeScore, etc.)
+
+**Examples:**
+
+```python
+# ✅ Base class indicates concept
+class BaseIntervalScorer(BaseEstimator):
+    """Base class for all interval scorers."""
+
+# ✅ Concrete classes named after output
+class L2Cost(BaseCost):
+    """Computes L2 cost."""  # Named after what it produces
+
+class CUSUM(BaseChangeScore):
+    """Computes CUSUM change scores."""  # Named after what it produces
+
+class PenalisedScore(BaseIntervalScorer):
+    """Applies penalty to scores."""  # Named after what it produces
+
+class CostBasedChangeScore(BaseChangeScore):
+    """Converts cost to change scores."""  # Named after what it produces
+
+# ✅ Generic parameter uses "scorer"
+class SomeDetector(BaseChangeDetector):
+    def __init__(self, scorer, threshold=1.0):
+        self.scorer = scorer  # Generic BaseIntervalScorer instance
+        self.threshold = threshold
+
+    def fit(self, X, y=None):
+        self.scorer_ = clone(self.scorer).fit(X)
+        return self
+```
+
+**Why asymmetric?**
+- ✅ **Follows sklearn**: BaseEstimator but RandomForestClassifier (not RandomForestEstimator)
+- ✅ **Natural naming**: L2Cost, CUSUM read more naturally than L2CostScorer, CUSUMScorer
+- ✅ **Hierarchy clarity**: "Base" prefix signals abstraction, concrete names signal specifics
+- ✅ **Generic variable**: "scorer" as generic term (like sklearn uses "estimator")
+
+**Score vs Scorer terminology:**
+- **scorer** (object): An instance of BaseIntervalScorer
+- **score(s)** (values): Numeric values returned by `evaluate()`
+
+```python
+scorer = L2Cost()           # Object is a scorer
+scorer.fit(X)
+scores = scorer.evaluate()  # Values are scores
+```
+
+### Type-Specific Base Classes
+
+**Hierarchy: BaseIntervalScorer → Type-specific bases → Concrete implementations**
+
+```python
+BaseIntervalScorer               # Root: fit(), evaluate(), interval_specs_width
+├── BaseCost                    # Costs between intervals
+│   ├── L2Cost
+│   ├── L1Cost
+│   └── MultivariateGaussianCost
+├── BaseChangeScore             # Scores for change detection  
+│   ├── CUSUM
+│   ├── RankScore
+│   └── CostBasedChangeScore   # Adapter: cost → change score
+├── BaseSaving                  # Global segment savings
+│   └── L2Saving
+└── BaseLocalSaving             # Local (per-changepoint) savings
+    └── LocalL2Saving
+```
+
+**Design:**
+- **Type-specific bases** named after output type (Cost, ChangeScore, Saving)
+- **No "Base" redundancy**: Not `BaseCostScorer` - the scorer concept is implied
+- **Adapters exist**: CostBasedChangeScore wraps BaseCost to produce change scores
+- **Wrappers named by output**: PenalisedScore produces penalised scores
+
+### Rejected Alternatives
+
+**❌ All classes end in "Scorer":**
+```python
+class PenalisedScorer(BaseIntervalScorer):     # Verbose
+class CostBasedChangeScorer(...):        # Redundant
+class L2CostScorer(BaseCostScorer):            # Awkward
+```
+- Rejected: Verbose, redundant with base class suffix, unnatural for algorithms
+
+**❌ Protocol for everything:**
+```python
+class IntervalScorer(Protocol):  # 7+ methods
+```
+- Rejected: Too heavy, loses implementation sharing, not sklearn convention
+
+**❌ Full ABC hierarchy:**
+```python
+class BaseIntervalScorer(ABC, BaseEstimator):
+    @abstractmethod
+    def fit(self, X): ...
+```
+- Rejected: Not sklearn pattern, less clear errors, metaclass complexity
+
+**❌ All classes named after output, no "Base" prefix:**
+```python
+class IntervalScorer(BaseEstimator):  # Confusing - sounds like Protocol
+class Cost(IntervalScorer):           # Too generic
+```
+- Rejected: Ambiguous naming, "Base" prefix clarifies abstraction vs concrete
+
+### Summary
+
+**Scorer design principles:**
+1. ✅ **Base class over Protocol** for rich interfaces (5+ methods)
+2. ✅ **NotImplementedError over ABC** following sklearn
+3. ✅ **Asymmetric naming** - BaseIntervalScorer but PenalisedScore, L2Cost
+4. ✅ **"scorer" for variables** - generic term for BaseIntervalScorer instances
+5. ✅ **"score(s)" for values** - numeric results from evaluate()
+6. ✅ **Type-specific bases** named by output (BaseCost, BaseChangeScore)
 
 ---
 

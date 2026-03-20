@@ -3,11 +3,11 @@
 This module demonstrates how to implement custom scorers following sklearn
 conventions and the skchange API design.
 
-Protocol
---------
-IntervalScorer : Protocol
-    Defines the interface for all interval scorers. Use for type hints
-    and polymorphic detector code. No inheritance required.
+Base Class
+----------
+BaseIntervalScorer
+    Base class for all interval scorers. Custom scorers must inherit from this
+    class and implement the required abstract methods.
 
 Scorer Types
 ------------
@@ -18,19 +18,16 @@ Scorer Types
 
 Key Patterns
 ------------
-1. List model parameters in _model_params
-2. Use None to indicate "estimate mode" for model parameters
-3. Implement fit() to learn parameters from data
-4. Implement precompute() to validate and precompute (mandatory)
-5. Implement evaluate() to score intervals using precomputed data
-6. Implement min_size property for minimum interval size
-7. Implement get_default_penalty() for automatic penalty calculation
-8. Override __sklearn_tags__() to customize tags
+1. Inherit from BaseIntervalScorer (or type-specific bases like BaseCost)
+2. Implement fit() to learn parameters from data (required)
+3. Implement evaluate() to score intervals using precomputed data (required)
+4. Override precompute() if you need custom preprocessing (optional)
+5. Override min_size property if you need minimum interval size > 1 (optional)
+6. Override get_default_penalty() to support automatic penalty (optional)
+7. Override __sklearn_tags__() to customize tags (optional)
 """
 
 from __future__ import annotations
-
-from typing import Protocol, runtime_checkable
 
 import numpy as np
 from sklearn.base import BaseEstimator, clone
@@ -190,48 +187,64 @@ def _penalise_scores_nonlinear(
     return np.array(penalised_scores, dtype=np.float64)
 
 
-@runtime_checkable
-class IntervalScorer(Protocol):
-    """Protocol for interval scorers.
+class BaseIntervalScorer(BaseEstimator):
+    """Base class for interval scorers.
 
-    Defines the interface that all interval scorers must implement. Classes
-    implementing this protocol can be used polymorphically in detectors without
-    requiring inheritance.
+    All interval scorers must inherit from this class and implement the required
+    methods. This class provides default implementations for optional methods
+    and inherits get_params/set_params from sklearn.base.BaseEstimator.
 
-    Required Methods
-    ----------------
+    Required Methods (must implement)
+    ----------------------------------
     fit(X, y=None)
-        Learn model parameters from training data.
+        Learn parameters from training data. Must return self.
 
+    evaluate(precomputed, interval_specs)
+        Score intervals using precomputed data. Returns scores array.
+
+    Optional Methods (override as needed)
+    --------------------------------------
     precompute(X)
-        Validate and precompute statistics for efficient evaluation.
+        Validate and precompute statistics. Default validates X and returns dict.
 
-    evaluate(precomputed, cuts)
-        Score intervals using precomputed data.
+    interval_specs_width
+        Expected number of columns in interval_specs. Must override for wrappers
+        that delegate to other scorers (e.g., CostBasedChangeScore, PenalisedScore).
 
     min_size
-        Property returning minimum valid interval size.
+        Minimum valid interval size. Default returns 1.
 
-    get_default_penalty(n_samples, n_features)
-        Calculate default penalty for automatic penalty selection.
+    get_default_penalty()
+        Default penalty for automatic penalty selection. Override to support this.
+
+    __sklearn_tags__()
+        Scorer metadata (score_type, conditional, aggregated, penalised).
+        Override to customize tags.
 
     Examples
     --------
-    >>> def process_with_scorer(scorer: IntervalScorer, X, cuts):
-    ...     scorer.fit(X)
-    ...     precomputed = scorer.precompute(X)
-    ...     return scorer.evaluate(precomputed, cuts)
-    >>>
-    >>> # Any class implementing the protocol works
-    >>> from skchange.new_api.scorers import L2Cost
-    >>> cost = L2Cost()
-    >>> isinstance(cost, IntervalScorer)  # True with @runtime_checkable
-    True
+    >>> class MyScorer(BaseIntervalScorer):
+    ...     def __sklearn_tags__(self):
+    ...         tags = super().__sklearn_tags__()
+    ...         tags.interval_scorer_tags.score_type = "change_score"
+    ...         return tags
+    ...
+    ...     def fit(self, X, y=None):
+    ...         X = validate_data(self, X, ensure_2d=True, reset=True)
+    ...         self.threshold_ = np.std(X)
+    ...         return self
+    ...
+    ...     def evaluate(self, precomputed, interval_specs):
+    ...         X = precomputed["X"]
+    ...         interval_specs = np.asarray(interval_specs)
+    ...         scores = [
+    ...             np.abs(np.mean(X[s:e])) / self.threshold_ for s, e in interval_specs
+    ...         ]
+    ...         return np.array(scores)
 
     Notes
     -----
-    The @runtime_checkable decorator enables isinstance() checks at runtime,
-    though this only verifies method existence, not signatures.
+    This class follows sklearn conventions. Fitted attributes end with underscore.
     """
 
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
@@ -249,118 +262,94 @@ class IntervalScorer(Protocol):
         self
             Fitted scorer instance.
         """
-        ...
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement fit()"
+        )
 
-    def precompute(self, X: ArrayLike) -> dict:
-        """Precompute data for evaluation.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Data to precompute for evaluation.
-
-        Returns
-        -------
-        precomputed : dict
-            Dictionary containing at minimum the validated array under key 'X'.
-            May include additional precomputations for efficiency.
-        """
-        ...
-
-    def evaluate(self, precomputed: dict, cuts: ArrayLike) -> np.ndarray:
+    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate scorer on intervals.
 
         Parameters
         ----------
         precomputed : dict
             Precomputed data from precompute().
-        cuts : array-like of shape (n_cuts, 2)
-            Interval boundaries [start, end) to score.
+        interval_specs : 2d array-like
+            Each row specifies an interval and possibly split points, depending on
+            the scorer type. For example, shape (n_interval_specs, 2) for cost scorers
+            with columns [start, end), and shape (n_interval_specs, 3) for change scores
+            with columns (start, split, end), where the data is split into
+            [start, split) and [split, end). The expected format of interval_specs
+            is documented by each scorer implementation.
 
         Returns
         -------
-        scores : ndarray of shape (n_cuts,) or (n_cuts, n_features)
-            Scores for each interval.
+        scores : ndarray of shape (n_interval_specs,) or (n_interval_specs, n_features)
+            Scores for each interval. If the scorer computes aggregated scores across
+            features, the output shape is (n_interval_specs,). If the scorer computes
+            feature-wise scores, the output shape is (n_interval_specs, n_features).
         """
-        ...
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement evaluate()"
+        )
+
+    def precompute(self, X: ArrayLike) -> dict:
+        """Default precompute implementation that validates X.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Data to precompute.
+
+        Returns
+        -------
+        dict
+            Dictionary containing the validated array under key 'X'.
+        """
+        check_is_fitted(self)
+        X = validate_data(
+            self,
+            X,
+            ensure_2d=True,
+            dtype=np.float64,
+            reset=False,
+        )
+        return {"X": X}
+
+    @property
+    def interval_specs_width(self) -> int:
+        """Expected width of interval specifications for evaluation.
+
+        This property indicates the expected number of columns in the interval_specs
+        input to evaluate(). For example, cost scorers typically expect width 2
+        (start, end), while change scores expect width 3 (start, split, end).
+
+        In wrappers like CostBasedChangeScore or PenalisedScore, this delegates to the
+        wrapped scorer and may require fitting first.
+
+        Returns
+        -------
+        int
+            Expected number of columns in interval_specs for evaluation.
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement interval_specs_width property. "
+            f"Type-specific base classes (BaseCost, BaseChangeScore, etc.) provide "
+            f"this automatically."
+        )
 
     @property
     def min_size(self) -> int:
         """Minimum valid size of an interval to evaluate.
 
-        In general, min_size cannot be resolved until after fitting.
+        ``np.diff(interval_specs, axis=1)`` must be ``>= min_size`` for valid
+        evaluation.
 
         Returns
         -------
         int
             Minimum interval size.
         """
-        ...
-
-    def get_default_penalty(self, n_samples: int, n_features: int) -> float:
-        """Get default penalty value.
-
-        In general, default penalty cannot be resolved until after fitting.
-
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples in the data.
-        n_features : int
-            Number of features in the data.
-
-        Returns
-        -------
-        penalty : float
-            Default penalty value.
-        """
-        ...
-
-
-class BaseIntervalScorer(BaseEstimator):
-    """Base class for interval scorers with sensible defaults.
-
-    Provides default implementations for min_size and get_default_penalty,
-    inherits get_params/set_params from sklearn.base.BaseEstimator.
-
-    Subclasses must implement:
-    - fit(X, y=None)
-    - precompute(X)
-    - evaluate(precomputed, cuts)
-
-    Subclasses should override:
-    - __sklearn_tags__() to customize tags
-
-    Examples
-    --------
-    >>> class MyScorer(BaseIntervalScorer):
-    ...     def __sklearn_tags__(self):
-    ...         tags = super().__sklearn_tags__()
-    ...         tags.interval_scorer_tags.score_type = "change_score"
-    ...         return tags
-    ...
-    ...     def fit(self, X, y=None):
-    ...         X = check_array(X)
-    ...         self.threshold_ = np.std(X)
-    ...         return self
-    ...
-    ...     def precompute(self, X):
-    ...         check_is_fitted(self)
-    ...         X = check_array(X)
-    ...         return {"X": X}
-    ...
-    ...     def evaluate(self, precomputed, cuts):
-    ...         X = precomputed["X"]
-    ...         cuts = np.asarray(cuts)
-    ...         scores = [np.abs(np.mean(X[s:e])) / self.threshold_ for s, e in cuts]
-    ...         return np.array(scores)
-
-    Notes
-    -----
-    Inheriting from this base class is optional - you can implement the
-    IntervalScorer protocol directly. This class provides convenience
-    for common patterns.
-    """
+        return 1
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for the interval scorer.
@@ -378,66 +367,148 @@ class BaseIntervalScorer(BaseEstimator):
         tags.interval_scorer_tags = IntervalScorerTags()
         return tags
 
+
+class BaseCost(BaseIntervalScorer):
+    """Base class for cost scorers.
+
+    This is a convenience base class for cost scorers, which are a common
+    type of interval scorer.
+    """
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Get sklearn-compatible tags for costs.
+
+        Returns
+        -------
+        SkchangeTags
+            Tags object with default cost configuration.
+        """
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.score_type = "cost"
+        return tags
+
     @property
-    def min_size(self) -> int:
-        """Minimum valid size of an interval to evaluate.
+    def interval_specs_width(self) -> int:
+        """Expected width of interval specifications for costs.
 
         Returns
         -------
         int
-            Minimum interval size. Default is 1.
-
-        Notes
-        -----
-        Override this in subclasses if a larger minimum size is required
-        (e.g., for computing statistics that require multiple samples).
+            Number of columns expected in interval_specs for cost evaluation.
         """
-        return 1
+        return 2
 
-    def get_default_penalty(self, n_samples: int, n_features: int) -> float:
-        """Get default penalty value.
 
-        Uses BIC-style penalty: k * log(n) where k is the number of
-        model parameters per feature.
+class BaseChangeScore(BaseIntervalScorer):
+    """Base class for change score scorers.
 
-        Parameters
-        ----------
-        n_samples : int
-            Number of samples in the data.
-        n_features : int
-            Number of features in the data.
+    This is a convenience base class for change score scorers, which are a common
+    type of interval scorer.
+    """
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Get sklearn-compatible tags for change scores.
 
         Returns
         -------
-        penalty : float
-            Default penalty value based on model complexity.
-
-        Notes
-        -----
-        Override this in subclasses for scorer-specific penalty calculations.
-        The default assumes one parameter per feature.
+        SkchangeTags
+            Tags object with change score configuration.
         """
-        # Default: assume one model parameter per feature
-        n_params = n_features
-        return make_bic_penalty(n_params, n_samples)
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.score_type = "change_score"
+        return tags
+
+    @property
+    def interval_specs_width(self) -> int:
+        """Expected width of interval specifications for change scores.
+
+        Returns
+        -------
+        int
+            Number of columns expected in interval_specs for change score evaluation.
+        """
+        return 3
 
 
-class L2Cost(BaseIntervalScorer):
+class BaseSaving(BaseIntervalScorer):
+    """Base class for saving scorers.
+
+    This is a convenience base class for saving scorers, which are a common
+    type of interval scorer.
+    """
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Get sklearn-compatible tags for savings.
+
+        Returns
+        -------
+        SkchangeTags
+            Tags object with saving configuration.
+        """
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.score_type = "saving"
+        return tags
+
+    @property
+    def interval_specs_width(self) -> int:
+        """Expected width of interval specifications for saving scores.
+
+        Returns
+        -------
+        int
+            Number of columns expected in interval_specs for saving evaluation.
+        """
+        return 2
+
+
+class BaseLocalSaving(BaseIntervalScorer):
+    """Base class for local saving scorers.
+
+    This is a convenience base class for local saving scorers, which are a common
+    type of interval scorer.
+    """
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Get sklearn-compatible tags for local savings.
+
+        Returns
+        -------
+        SkchangeTags
+            Tags object with local saving configuration.
+        """
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.score_type = "local_saving"
+        return tags
+
+    @property
+    def interval_specs_width(self) -> int:
+        """Expected width of interval specifications for local saving scores.
+
+        Returns
+        -------
+        int
+            Number of columns expected in interval_specs for local saving evaluation.
+        """
+        return 4
+
+
+class L2Cost(BaseCost):
     r"""L2 (squared error) cost function.
 
     Computes sum of squared deviations from a mean parameter.
 
     .. math::
-        C(X) = \sum_{i=1}^{n} ||x_i - \mu||^2
+        C(X) = \sum_{i=1}^{n} ||x_i - \text{mean}||^2
 
     Parameters
     ----------
-    mu : array-like of shape (n_features,) or None, default=None
-        Fixed mean parameter. If None, estimated as sample mean.
+    mean : array-like of shape (n_features,), float, or None, default=None
+        Fixed mean parameter. If float, the value is broadcast across all features.
+        If None, estimated as sample mean.
 
     Attributes
     ----------
-    mu_ : ndarray of shape (n_features,)
+    mean_ : ndarray of shape (n_features,)
         Fitted mean parameter.
 
     Examples
@@ -451,11 +522,11 @@ class L2Cost(BaseIntervalScorer):
     >>> cost = L2Cost()
     >>> cost.fit(X)
     >>> precomputed = cost.precompute(X)
-    >>> cuts = np.array([[0, 50], [50, 100]])
-    >>> costs = cost.evaluate(precomputed, cuts)
+    >>> interval_specs = np.array([[0, 50], [50, 100]])
+    >>> costs = cost.evaluate(precomputed, interval_specs)
     >>>
     >>> # Fixed mode - user provides mean
-    >>> cost_fixed = L2Cost(mu=np.array([0.0, 0.0]))
+    >>> cost_fixed = L2Cost(mean=np.array([0.0, 0.0]))
     >>> cost_fixed.fit(X)
     >>> precomputed = cost_fixed.precompute(X)
 
@@ -466,10 +537,8 @@ class L2Cost(BaseIntervalScorer):
     the fixed version uses a user-specified reference mean.
     """
 
-    _model_params = ["mu"]
-
-    def __init__(self, mu: ArrayLike | None = None):
-        self.mu = mu
+    def __init__(self, mean: ArrayLike | float | None = None):
+        self.mean = mean
 
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit L2 cost to training data.
@@ -486,29 +555,19 @@ class L2Cost(BaseIntervalScorer):
         self : L2Cost
             Fitted cost function.
         """
-        X = validate_data(
-            self,
-            X,
-            ensure_2d=True,
-            dtype=np.float64,
-            reset=True,
-        )
+        X = validate_data(self, X, ensure_2d=True, reset=True)  # Sets n_features_in_
+        self.n_samples_fit_ = X.shape[0]  # Used for default penalty calculation
 
-        if self.mu is None:
-            self.mu_ = None
-            self._eval_mode = "optim"
-        else:
-            mu_arr = check_array(
-                self.mu,
-                ensure_2d=False,
-                dtype=np.float64,
-            )
-            if mu_arr.shape[0] != X.shape[1]:
+        if self.mean is not None:
+            if np.isscalar(self.mean):
+                mean_arr = np.repeat(self.mean, X.shape[1])
+            else:
+                mean_arr = check_array(self.mean, ensure_2d=False)
+            if mean_arr.shape[0] != X.shape[1]:
                 raise ValueError(
-                    f"mu must have {X.shape[1]} features, got {mu_arr.shape[0]}"
+                    f"mean must have {X.shape[1]} features, got {mean_arr.shape[0]}"
                 )
-            self.mu_ = mu_arr
-            self._eval_mode = "fixed"
+            self._mean = mean_arr
 
         return self
 
@@ -529,73 +588,58 @@ class L2Cost(BaseIntervalScorer):
             Precomputed data with validated array.
         """
         check_is_fitted(self)
-        X = validate_data(
-            self,
-            X,
-            ensure_2d=True,
-            dtype=np.float64,
-            reset=False,
-        )
+        X = validate_data(self, X, ensure_2d=True, reset=False)
         return {
             "sums": col_cumsum(X, init_zero=True),
             "sums2": col_cumsum(X**2, init_zero=True),
         }
 
-    def evaluate(self, precomputed: dict, cuts: ArrayLike) -> np.ndarray:
+    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate L2 cost on intervals.
 
         Parameters
         ----------
         precomputed : dict
             Precomputed data from precompute().
-        cuts : array-like of shape (n_cuts, 2)
-            Interval boundaries [start, end).
+        interval_specs : array-like of shape (n_interval_specs, 2)
+            Interval boundaries ``[start, end)`` to score.
 
         Returns
         -------
-        costs : ndarray of shape (n_cuts,)
-            L2 cost for each interval (summed across features).
+        costs : ndarray of shape (n_interval_specs, n_features)
+            L2 costs for each interval and features.
         """
-        check_is_fitted(self, ["mu_", "_eval_mode"])
+        check_is_fitted(self)
 
-        sums = precomputed["sums"]
-        sums2 = precomputed["sums2"]
+        interval_specs = check_array(
+            interval_specs,
+            ensure_2d=True,
+            ensure_min_features=self.interval_specs_width,
+        )
+        starts = interval_specs[:, 0]
+        ends = interval_specs[:, 1]
 
-        cuts = check_array(cuts, ensure_2d=True, dtype=np.int64)
-        starts = cuts[:, 0]
-        ends = cuts[:, 1]
+        sums, sums2 = precomputed["sums"], precomputed["sums2"]
+        if self.mean is None:
+            costs = l2_cost_optim(starts, ends, sums, sums2)
+        else:
+            costs = l2_cost_fixed(starts, ends, sums, sums2, self._mean)
 
-        costs = self._evaluate_dispatch(starts, ends, sums, sums2)
         return costs
 
-    def _evaluate_dispatch(
-        self,
-        starts: np.ndarray,
-        ends: np.ndarray,
-        sums: np.ndarray,
-        sums2: np.ndarray,
-    ) -> np.ndarray:
-        """Dispatch evaluation to mode-specific kernel."""
-        if self._eval_mode == "optim":
-            return l2_cost_optim(starts, ends, sums, sums2)
-        if self._eval_mode == "fixed":
-            return l2_cost_fixed(starts, ends, sums, sums2, self.mu_)
-        raise RuntimeError(f"Unknown evaluation mode: {self._eval_mode}")
-
-    def __sklearn_tags__(self) -> SkchangeTags:
-        """Get sklearn-compatible tags for the L2 cost.
+    def get_default_penalty(self) -> float:
+        """Get default penalty value for L2 cost.
 
         Returns
         -------
-        SkchangeTags
-            Tags object with L2 cost configuration.
+        float
+            Default penalty value for L2 cost.
         """
-        tags = super().__sklearn_tags__()
-        tags.interval_scorer_tags.score_type = "cost"
-        return tags
+        check_is_fitted(self)
+        return make_bic_penalty(self.n_features_in_, self.n_samples_fit_)
 
 
-class CUSUM(BaseIntervalScorer):
+class CUSUM(BaseChangeScore):
     """CUSUM change score for a change in mean.
 
     Computes the classical CUSUM statistic as the weighted absolute difference
@@ -622,13 +666,8 @@ class CUSUM(BaseIntervalScorer):
         self : CUSUM
             Fitted scorer.
         """
-        validate_data(
-            self,
-            X,
-            ensure_2d=True,
-            dtype=np.float64,
-            reset=True,
-        )
+        X = validate_data(self, X, ensure_2d=True, reset=True)  # Sets n_features_in_
+        self.n_samples_fit_ = X.shape[0]  # Used for default penalty calculation
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
@@ -645,47 +684,56 @@ class CUSUM(BaseIntervalScorer):
             Dictionary with cumulative sums under key ``"sums"``.
         """
         check_is_fitted(self)
-        X = validate_data(
-            self,
-            X,
-            ensure_2d=True,
-            dtype=np.float64,
-            reset=False,
-        )
+        X = validate_data(self, X, ensure_2d=True, reset=False)
         return {"sums": col_cumsum(X, init_zero=True)}
 
-    def evaluate(self, precomputed: dict, cuts: ArrayLike) -> np.ndarray:
+    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate CUSUM score at splits within intervals.
 
         Parameters
         ----------
         precomputed : dict
-            Precomputed data from :meth:`precompute`.
-        cuts : array-like of shape (n_cuts, 3)
+            Precomputed data from precompute().
+        interval_specs : array-like of shape (n_interval_specs, 3)
             Interval boundaries and split locations ``[start, split, end)``.
 
         Returns
         -------
-        scores : ndarray of shape (n_cuts, n_features)
-            CUSUM scores for each cut and feature.
+        scores : ndarray of shape (n_interval_specs, n_features)
+            CUSUM scores for each interval specification and feature.
         """
         check_is_fitted(self)
         sums = precomputed["sums"]
 
-        cuts = check_array(cuts, ensure_2d=True, dtype=np.int64)
-        if cuts.shape[1] != 3:
-            raise ValueError(f"cuts must have shape (n_cuts, 3), got {cuts.shape}.")
+        interval_specs = check_array(
+            interval_specs,
+            ensure_2d=True,
+            ensure_min_features=self.interval_specs_width,
+        )
+        if interval_specs.shape[1] != self.interval_specs_width:
+            raise ValueError(
+                f"interval_specs must have shape"
+                f" (n_interval_specs, {self.interval_specs_width}), "
+                f"got {interval_specs.shape}."
+            )
 
-        starts = cuts[:, 0]
-        splits = cuts[:, 1]
-        ends = cuts[:, 2]
+        starts = interval_specs[:, 0]
+        splits = interval_specs[:, 1]
+        ends = interval_specs[:, 2]
 
         if np.any(splits <= starts) or np.any(splits >= ends):
             raise ValueError(
-                "Each cut must satisfy start < split < end for CUSUM evaluation."
+                "Each interval specification must satisfy start < split < end "
+                "for CUSUM evaluation."
             )
 
         return cusum_score(starts, splits, ends, sums)
+
+    def get_default_penalty(self) -> float:
+        """Get default penalty value for the fitted CUSUM score."""
+        bic_penalty = make_bic_penalty(self.n_features_in_, self.n_samples_fit_)
+        # BIC works on a squared error scale, while CUSUM is on an absolute error scale.
+        return np.sqrt(bic_penalty)
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for CUSUM scorer."""
@@ -694,8 +742,8 @@ class CUSUM(BaseIntervalScorer):
         return tags
 
 
-class ChangeScore(BaseIntervalScorer):
-    """Change score wrapper constructed from a cost scorer.
+class CostBasedChangeScore(BaseChangeScore):
+    """Change scorer constructed from a cost scorer.
 
     Computes change score as the cost reduction of allowing a split within an interval:
 
@@ -707,14 +755,8 @@ class ChangeScore(BaseIntervalScorer):
 
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit wrapped cost scorer."""
-        X = validate_data(
-            self,
-            X,
-            ensure_2d=True,
-            dtype=np.float64,
-            reset=True,
-        )
-        self.cost_: IntervalScorer = clone(self.cost).fit(X, y)
+        X = validate_data(self, X, ensure_2d=True, reset=True)
+        self.cost_: BaseIntervalScorer = clone(self.cost).fit(X, y)
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
@@ -722,25 +764,42 @@ class ChangeScore(BaseIntervalScorer):
         check_is_fitted(self, ["cost_"])
         return {"cost_precomputed": self.cost_.precompute(X)}
 
-    def evaluate(self, precomputed: dict, cuts: ArrayLike) -> np.ndarray:
-        """Evaluate change score for cuts of shape ``(n_cuts, 3)``."""
-        check_is_fitted(self, ["cost_"])
-        cuts = check_array(cuts, ensure_2d=True, dtype=np.int64)
-        if cuts.shape[1] != 3:
-            raise ValueError(f"cuts must have shape (n_cuts, 3), got {cuts.shape}.")
+    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+        """Evaluate change score on interval specifications.
 
-        starts = cuts[:, 0]
-        splits = cuts[:, 1]
-        ends = cuts[:, 2]
+        Parameters
+        ----------
+        precomputed : dict
+            Precomputed data from precompute().
+        interval_specs : array-like of shape (n_interval_specs, 3)
+            Interval boundaries and split locations ``[start, split, end)``.
+
+        Returns
+        -------
+        scores : ndarray of shape (n_interval_specs,) or (n_interval_specs, n_features)
+            Change scores for each interval specification.
+        """
+        check_is_fitted(self, ["cost_"])
+        interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.int64)
+        if interval_specs.shape[1] != 3:
+            raise ValueError(
+                "interval_specs must have shape (n_interval_specs, 3), "
+                f"got {interval_specs.shape}."
+            )
+
+        starts = interval_specs[:, 0]
+        splits = interval_specs[:, 1]
+        ends = interval_specs[:, 2]
         if np.any(splits <= starts) or np.any(splits >= ends):
             raise ValueError(
-                "Each cut must satisfy start < split < end for change-score evaluation."
+                "Each interval specification must satisfy start < split < end "
+                "for change-score evaluation."
             )
 
         cost_precomputed = precomputed["cost_precomputed"]
-        left_intervals = cuts[:, [0, 1]]
-        right_intervals = cuts[:, [1, 2]]
-        full_intervals = cuts[:, [0, 2]]
+        left_intervals = interval_specs[:, [0, 1]]
+        right_intervals = interval_specs[:, [1, 2]]
+        full_intervals = interval_specs[:, [0, 2]]
 
         left_costs = self.cost_.evaluate(cost_precomputed, left_intervals)
         right_costs = self.cost_.evaluate(cost_precomputed, right_intervals)
@@ -772,14 +831,30 @@ class PenalisedScore(BaseIntervalScorer):
 
     Aggregates feature-wise scores and applies either constant, linear, or
     nonlinear penalties over the number of affected variables.
+
+    Let sorted_score be the k-th largest feature-wise score for an interval, then
+    the penalised score is computed as
+    ``np.max(np.cumsum(sorted_scores) - penalty_values)``.
+
+    For a constant penalty and a linear penalty, this reduces to simpler forms that can
+    be computed more efficiently.
+
+    Parameters
+    ----------
+    scorer : BaseIntervalScorer
+        The base interval scorer to wrap and penalise.
+    penalty : array-like of shape (n_features,), float, or None, default=None
+        Penalty values. `penalty[k]` is the penalty for including k features in the
+        aggregated penalised score. If float, the value is broadcast across all k.
+
     """
 
     def __init__(
         self,
-        score: BaseIntervalScorer,
+        scorer: BaseIntervalScorer,
         penalty: ArrayLike | float | None = None,
     ):
-        self.score = score
+        self.scorer = scorer
         self.penalty = penalty
 
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
@@ -792,28 +867,27 @@ class PenalisedScore(BaseIntervalScorer):
             reset=True,
         )
 
-        self.score_ = check_interval_scorer(
-            self.score,
+        self.scorer_ = check_interval_scorer(
+            self.scorer,
             required_tasks=["change_score", "saving", "local_saving"],
             allow_penalised=False,
             clone=True,
             caller_name=self.__class__.__name__,
-            arg_name="score",
+            arg_name="scorer",
         )
-        self.score_.fit(X, y)
+        self.scorer_.fit(X, y)
 
-        score_tags = self.score_.__sklearn_tags__().interval_scorer_tags
-        if score_tags.aggregated and self.penalty is not None:
+        scorer_tags = self.scorer_.__sklearn_tags__().interval_scorer_tags
+        if scorer_tags.aggregated and self.penalty is not None:
             penalty_arr = np.asarray(self.penalty).reshape(-1)
             if penalty_arr.size > 1:
                 raise ValueError(
                     "`penalty` must be scalar for aggregated input scores."
                 )
 
-        if self.penalty is None:
-            penalty = self.score_.get_default_penalty(X.shape[0], X.shape[1])
-        else:
-            penalty = self.penalty
+        penalty = (
+            self.scorer_.get_default_penalty() if self.penalty is None else self.penalty
+        )
         self.penalty_ = check_penalty(
             penalty,
             caller_name=self.__class__.__name__,
@@ -838,15 +912,33 @@ class PenalisedScore(BaseIntervalScorer):
 
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute wrapped scorer data for penalised evaluation."""
-        check_is_fitted(self, ["score_", "penalty_", "_penalty_mode"])
-        score_precomputed = self.score_.precompute(X)
-        return {"score_precomputed": score_precomputed}
+        check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
+        scorer_precomputed = self.scorer_.precompute(X)
+        return {"scorer_precomputed": scorer_precomputed}
 
-    def evaluate(self, precomputed: dict, cuts: ArrayLike) -> np.ndarray:
-        """Evaluate wrapped scores and apply penalty aggregation."""
-        check_is_fitted(self, ["score_", "penalty_", "_penalty_mode"])
+    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+        """Evaluate penalised scores on interval specifications.
 
-        scores = self.score_.evaluate(precomputed["score_precomputed"], cuts)
+        Parameters
+        ----------
+        precomputed : dict
+            Precomputed data from precompute().
+        interval_specs : array-like
+            Each row specifies an interval and possibly split points, depending on
+            the wrapped scorer type. The expected shape is determined by
+            ``self.scorer_``.
+
+        Returns
+        -------
+        scores : ndarray of shape (n_interval_specs, 1)
+            Penalised, aggregated score for each interval specification.
+        """
+        check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
+
+        scores = self.scorer_.evaluate(
+            precomputed["scorer_precomputed"],
+            interval_specs,
+        )
         scores = np.asarray(scores, dtype=np.float64)
         if scores.ndim == 1:
             scores = scores.reshape(-1, 1)
@@ -866,16 +958,22 @@ class PenalisedScore(BaseIntervalScorer):
         return penalised.reshape(-1, 1)
 
     @property
+    def interval_specs_width(self) -> int:
+        """Expected width of interval specifications inherited from wrapped scorer."""
+        check_is_fitted(self)
+        return self.scorer_.interval_specs_width
+
+    @property
     def min_size(self) -> int:
         """Minimum valid interval size inherited from wrapped scorer."""
         check_is_fitted(self)
-        return self.score_.min_size
+        return self.scorer_.min_size
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for penalised scorer."""
         tags = super().__sklearn_tags__()
         tags.interval_scorer_tags.score_type = (
-            self.score.__sklearn_tags__().interval_scorer_tags.score_type
+            self.scorer.__sklearn_tags__().interval_scorer_tags.score_type
         )
         tags.interval_scorer_tags.aggregated = True
         tags.interval_scorer_tags.penalised = True

@@ -53,8 +53,8 @@ class IntervalScorerTags:
 
     Attributes
     ----------
-    score_type : str, default="cost"
-        Type of score: "cost", "change_score", "saving", "local_saving".
+    score_type : str | None, default=None
+        Type of score: "cost", "change_score", "saving", "local_saving", None
     conditional : bool, default=False
         Whether the scorer uses some input variables as covariates.
         If True, requires at least two input variables.
@@ -64,9 +64,11 @@ class IntervalScorerTags:
     penalised : bool, default=False
         Whether the score is inherently penalised. If True, score > 0
         indicates change/anomaly. If False, external penalisation needed.
+    fixed_model : bool, default=False
+        Whether all model parameters in the scorer are fixed.
     """
 
-    score_type: str = "cost"
+    score_type: str | None = None
     conditional: bool = False
     aggregated: bool = False
     penalised: bool = False
@@ -565,9 +567,9 @@ def to_change_score(
         return scorer
 
     if score_type == "cost":
-        from skchange.new_api.scorers import ChangeScore
+        from skchange.new_api.scorers import CostBasedChangeScore
 
-        return ChangeScore(scorer)
+        return CostBasedChangeScore(scorer)
 
     if caller_name is None:
         caller_name = "to_change_score"
