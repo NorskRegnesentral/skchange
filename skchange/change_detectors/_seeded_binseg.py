@@ -25,7 +25,11 @@ def make_seeded_intervals(
     ends = [1]  # For numba to be able to compile type.
     step_factor = 1 - 1 / growth_factor
     max_length = min(max_length, n)
-    n_lengths = int(np.ceil(np.log(max_length / min_length) / np.log(growth_factor)))
+    if max_length < min_length:
+        return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+    n_lengths = max(
+        1, int(np.ceil(np.log(max_length / min_length) / np.log(growth_factor)))
+    )
     interval_lens = np.unique(np.round(np.geomspace(min_length, max_length, n_lengths)))
     for interval_len in interval_lens:
         step = max(1, np.round(step_factor * interval_len))
