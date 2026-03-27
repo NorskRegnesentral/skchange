@@ -8,11 +8,15 @@ on:
 
 jobs:
   pytests:
-    name: pytests (python=${{ matrix.python-version }}, with-numba=${{ matrix.with-numba }})
-    runs-on: ubuntu-latest
+    name: pytests (os=${{ matrix.os }}, python=${{ matrix.python-version }}, with-numba=${{ matrix.with-numba }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
-        python-version: ['3.10', '3.13.3', '3.14.3']
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.14']
         with-numba: [false, true]
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +27,13 @@ jobs:
       - name: Create virtual environment
         run: |
           python -m venv .venv
+      - name: Add venv to PATH
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$GITHUB_WORKSPACE/.venv/Scripts" >> $GITHUB_PATH
+          else
+            echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+          fi
       - name: Install dependencies
         run: |
           pip install uv
@@ -34,7 +45,7 @@ jobs:
           uv pip install -r requirements-test.txt
       - name: Run tests
         run: |
-          .venv/bin/python -m pytest --cov --cov-report=xml --cov-report=term
+          python -m pytest --cov --cov-report=xml --cov-report=term
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
