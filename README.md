@@ -9,9 +9,14 @@
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
 
 
-[skchange]((https://skchange.readthedocs.io/en/latest/)) provides [sktime](https://www.sktime.net/)-compatible change detection and changepoint-based anomaly detection algorithms.
+<!-- [skchange]((https://skchange.readthedocs.io/en/latest/)) provides [scikit-learn](https://scikit-learn.org/)-like changepoint detection algorithms. -->
 
-Experimental but maturing.
+**Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
+See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) for more details.
+If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a specific version:
+> ```sh
+> pip install "skchange==0.14.3"
+> ```
 
 
 ## Documentation
