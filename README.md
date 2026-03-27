@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/NorskRegnesentral/skchange/graph/badge.svg?token=QSS3AY45KY)](https://codecov.io/gh/NorskRegnesentral/skchange)
 [![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/test.yml/badge.svg)](https://github.com/NorskRegnesentral/skchange/actions/workflows/test.yml)
 [![docs](https://readthedocs.org/projects/skchange/badge/?version=latest)](https://skchange.readthedocs.io/en/latest/?badge=latest)
-[![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
+[![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
