@@ -38,15 +38,12 @@ from __future__ import annotations
 import numpy as np
 from sklearn.metrics import adjusted_rand_score, rand_score
 
-from skchange.new_api.typing import Segmentation
-from skchange.new_api.utils import sparse_to_dense
-
 # ==================== Changepoint Metrics ====================
 
 
 def hausdorff_metric(
-    y_true: Segmentation | np.ndarray,
-    y_pred: Segmentation | np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
     max_distance: float | None = None,
 ) -> float:
     """Hausdorff distance between true and predicted changepoints.
@@ -63,14 +60,10 @@ def hausdorff_metric(
 
     Parameters
     ----------
-    y_true : Segmentation | np.ndarray
-        True changepoint indices for a SINGLE series.
-        - Segmentation dict: extracts 'changepoints' field (preferred)
-        - np.ndarray: 1D array of changepoint indices
-    y_pred : Segmentation | np.ndarray
-        Predicted changepoint indices for a SINGLE series.
-        - Segmentation dict: extracts 'changepoints' field (preferred)
-        - np.ndarray: 1D array of changepoint indices
+    y_true : np.ndarray
+        True changepoint indices for a SINGLE series, shape (n_changepoints,).
+    y_pred : np.ndarray
+        Predicted changepoint indices for a SINGLE series, shape (n_changepoints,).
     max_distance : float | None, default=None
         Maximum distance to clip. If None, no clipping.
 
@@ -82,38 +75,14 @@ def hausdorff_metric(
 
     Examples
     --------
-    >>> # Using Segmentation dict (preferred)
-    >>> y_true = {
-    ...     "changepoints": np.array([10, 50, 90]),
-    ...     "labels": ...,
-    ...     "n_samples": 200
-    ... }
-    >>> result = detector.predict(X)
-    >>> score = hausdorff_metric(y_true, result)
-
-    >>> # Using arrays (convenience)
     >>> y_true = np.array([10, 50, 90])
     >>> y_pred = np.array([12, 51, 88])
     >>> score = hausdorff_metric(y_true, y_pred)
-
-    >>> # Multiple series - aggregate explicitly
-    >>> y_true_list = [{"changepoints": ..., ...}, {"changepoints": ..., ...}]
-    >>> y_pred_list = [detector.predict(X) for X in X_list]
-    >>> scores = [hausdorff_metric(yt, yp) for yt, yp in zip(y_true_list, y_pred_list)]
-    >>> mean_score = np.mean(scores)
-    >>> median_score = np.median(scores)  # User controls aggregation
     """
-    # Extract changepoints from Segmentation dicts
-    if isinstance(y_true, dict):
-        y_true = y_true["changepoints"]
-    if isinstance(y_pred, dict):
-        y_pred = y_pred["changepoints"]
-
-    # Validate types
     if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be Segmentation dict or np.ndarray")
+        raise TypeError("y_true must be np.ndarray")
     if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be Segmentation dict or np.ndarray")
+        raise TypeError("y_pred must be np.ndarray")
 
     # Handle empty cases
     if len(y_true) == 0 and len(y_pred) == 0:
@@ -137,8 +106,8 @@ def hausdorff_metric(
 
 
 def f1_score(
-    y_true: Segmentation | np.ndarray,
-    y_pred: Segmentation | np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
     tolerance: int = 5,
 ) -> float:
     """F1 score for changepoint detection with tolerance window.
@@ -151,14 +120,10 @@ def f1_score(
 
     Parameters
     ----------
-    y_true : Segmentation | np.ndarray
-        True changepoint indices for a SINGLE series.
-        - Segmentation dict: extracts 'changepoints' field (preferred)
-        - np.ndarray: 1D array of changepoint indices
-    y_pred : Segmentation | np.ndarray
-        Predicted changepoint indices for a SINGLE series.
-        - Segmentation dict: extracts 'changepoints' field (preferred)
-        - np.ndarray: 1D array of changepoint indices
+    y_true : np.ndarray
+        True changepoint indices for a SINGLE series, shape (n_changepoints,).
+    y_pred : np.ndarray
+        Predicted changepoint indices for a SINGLE series, shape (n_changepoints,).
     tolerance : int, default=5
         Maximum distance for a match to be considered correct.
 
@@ -170,33 +135,14 @@ def f1_score(
 
     Examples
     --------
-    >>> # Single series evaluation
-    >>> y_true = {
-    ...     "changepoints": np.array([10, 50, 90]),
-    ...     "labels": ...,
-    ...     "n_samples": 200
-    ... }
-    >>> result = detector.predict(X)
-    >>> score = f1_score(y_true, result, tolerance=5)
-
-    >>> # Multiple series - explicit aggregation
-    >>> scores = [
-    ...     f1_score(yt, yp, tolerance=5)
-    ...     for yt, yp in zip(y_true_list, y_pred_list)
-    ... ]
-    >>> mean_f1 = np.mean(scores)
+    >>> y_true = np.array([10, 50, 90])
+    >>> y_pred = np.array([12, 51, 88])
+    >>> score = f1_score(y_true, y_pred, tolerance=5)
     """
-    # Extract changepoints from Segmentation dicts
-    if isinstance(y_true, dict):
-        y_true = y_true["changepoints"]
-    if isinstance(y_pred, dict):
-        y_pred = y_pred["changepoints"]
-
-    # Validate types
     if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be Segmentation dict or np.ndarray")
+        raise TypeError("y_true must be np.ndarray")
     if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be Segmentation dict or np.ndarray")
+        raise TypeError("y_pred must be np.ndarray")
 
     # Handle empty cases
     if len(y_true) == 0 and len(y_pred) == 0:
@@ -235,8 +181,8 @@ def f1_score(
 
 
 def rand_index(
-    y_true: Segmentation | np.ndarray,
-    y_pred: Segmentation | np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
 ) -> float:
     """Rand index for segment clustering quality.
 
@@ -248,14 +194,10 @@ def rand_index(
 
     Parameters
     ----------
-    y_true : Segmentation | np.ndarray
-        True segment labels for a SINGLE series.
-        - Segmentation dict: converts sparse to dense labels (preferred)
-        - np.ndarray: dense labels, shape (n_samples,)
-    y_pred : Segmentation | np.ndarray
-        Predicted segment labels for a SINGLE series.
-        - Segmentation dict: converts sparse to dense labels (preferred)
-        - np.ndarray: dense labels, shape (n_samples,)
+    y_true : np.ndarray
+        True dense segment labels for a SINGLE series, shape (n_samples,).
+    y_pred : np.ndarray
+        Predicted dense segment labels for a SINGLE series, shape (n_samples,).
 
     Returns
     -------
@@ -264,46 +206,22 @@ def rand_index(
 
     Examples
     --------
-    >>> # Using Segmentation dict (preferred)
-    >>> y_true = {
-    ...     "changepoints": np.array([3, 6]),
-    ...     "labels": np.array([0, 1, 2]),
-    ...     "n_samples": 9
-    ... }
-    >>> result = detector.predict(X)
-    >>> score = rand_index(y_true, result)  # Auto-converts to dense
-
-    >>> # Using dense arrays (convenience)
     >>> y_true = np.array([0,0,0,1,1,1,2,2,2])
     >>> y_pred = np.array([0,0,0,1,1,1,2,2,2])
     >>> score = rand_index(y_true, y_pred)
-
-    >>> # Multiple series
-    >>> scores = [
-    ...     rand_index(yt, yp)
-    ...     for yt, yp in zip(y_true_list, y_pred_list)
-    ... ]
-    >>> mean_ri = np.mean(scores)
     """
-    # Convert Segmentation dicts to dense labels
-    if isinstance(y_true, dict):
-        y_true = sparse_to_dense(y_true)
-    if isinstance(y_pred, dict):
-        y_pred = sparse_to_dense(y_pred)
-
-    # Validate types
     if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be Segmentation dict or np.ndarray")
+        raise TypeError("y_true must be np.ndarray")
     if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be Segmentation dict or np.ndarray")
+        raise TypeError("y_pred must be np.ndarray")
 
     # Compute Rand index using sklearn
     return float(rand_score(y_true, y_pred))
 
 
 def adjusted_rand_index(
-    y_true: Segmentation | np.ndarray,
-    y_pred: Segmentation | np.ndarray,
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
 ) -> float:
     """Compute adjusted Rand index for segment clustering quality.
 
@@ -315,14 +233,10 @@ def adjusted_rand_index(
 
     Parameters
     ----------
-    y_true : Segmentation | np.ndarray
-        True segment labels for a SINGLE series.
-        - Segmentation dict: converts sparse to dense labels (preferred)
-        - np.ndarray: dense labels, shape (n_samples,)
-    y_pred : Segmentation | np.ndarray
-        Predicted segment labels for a SINGLE series.
-        - Segmentation dict: converts sparse to dense labels (preferred)
-        - np.ndarray: dense labels, shape (n_samples,)
+    y_true : np.ndarray
+        True dense segment labels for a SINGLE series, shape (n_samples,).
+    y_pred : np.ndarray
+        Predicted dense segment labels for a SINGLE series, shape (n_samples,).
 
     Returns
     -------
@@ -332,33 +246,14 @@ def adjusted_rand_index(
 
     Examples
     --------
-    >>> # Using Segmentation (preferred)
-    >>> y_true = {
-    ...     "changepoints": np.array([3, 6]),
-    ...     "labels": ...,
-    ...     "n_samples": 9
-    ... }
-    >>> result = detector.predict(X)
-    >>> score = adjusted_rand_index(y_true, result)
-
-    >>> # Multiple series
-    >>> scores = [
-    ...     adjusted_rand_index(yt, yp)
-    ...     for yt, yp in zip(y_true_list, y_pred_list)
-    ... ]
-    >>> mean_ari = np.mean(scores)
+    >>> y_true = np.array([0,0,0,1,1,1,2,2,2])
+    >>> y_pred = np.array([0,0,0,1,1,1,2,2,2])
+    >>> score = adjusted_rand_index(y_true, y_pred)
     """
-    # Convert Segmentation dicts to dense labels
-    if isinstance(y_true, dict):
-        y_true = sparse_to_dense(y_true)
-    if isinstance(y_pred, dict):
-        y_pred = sparse_to_dense(y_pred)
-
-    # Validate types
     if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be Segmentation dict or np.ndarray")
+        raise TypeError("y_true must be np.ndarray")
     if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be Segmentation dict or np.ndarray")
+        raise TypeError("y_pred must be np.ndarray")
 
     # Compute ARI using sklearn
     return float(adjusted_rand_score(y_true, y_pred))

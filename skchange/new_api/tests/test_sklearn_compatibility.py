@@ -95,7 +95,6 @@ def _expected_failed_checks(estimator: BaseEstimator) -> dict[str, str]:
     skchange change detectors intentionally differ from sklearn's typical estimator
     assumptions in a few places:
 
-    - ``predict`` returns a segmentation dict rather than ``np.ndarray`` labels.
     - Time-series estimators are order-sensitive by design.
     - Detectors require at least two samples.
     """
@@ -105,14 +104,6 @@ def _expected_failed_checks(estimator: BaseEstimator) -> dict[str, str]:
         return {}
 
     return {
-        "check_estimators_pickle": (
-            "Change detectors return segmentation dicts from predict(), not "
-            "numpy label arrays."
-        ),
-        "check_fit_idempotent": (
-            "Idempotence check assumes numpy array-like predict output, while "
-            "skchange detectors return segmentation dicts."
-        ),
         "check_methods_subset_invariance": (
             "Subset checks may create single-sample inputs, but change detection "
             "requires at least two samples."

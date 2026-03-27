@@ -11,21 +11,19 @@ from skchange.change_detectors._moving_window import (
     select_changepoints_by_detection_length,
     select_changepoints_by_local_optimum,
 )
-from skchange.new_api._utils_param_validation import (
+from skchange.new_api.detectors._base import BaseChangeDetector
+from skchange.new_api.interval_scorers._base import BaseIntervalScorer
+from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
+from skchange.new_api.interval_scorers._from_cost import to_change_score
+from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
+from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
     StrOptions,
     _fit_context,
 )
-from skchange.new_api.base import BaseChangeDetector
-from skchange.new_api.scorers import CUSUM, BaseIntervalScorer, PenalisedScore
-from skchange.new_api.typing import ArrayLike, Segmentation, Self
-from skchange.new_api.utils import (
-    check_interval_scorer,
-    check_penalty,
-    make_segmentation,
-    to_change_score,
-)
+from skchange.new_api.utils.validation import check_interval_scorer
 
 
 def transform_multiple_moving_window(
@@ -244,7 +242,7 @@ class MovingWindow(BaseChangeDetector):
 
         return self
 
-    def predict(self, X: ArrayLike) -> Segmentation:
+    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
         """Detect changepoints in a time series.
 
         Parameters
@@ -254,10 +252,8 @@ class MovingWindow(BaseChangeDetector):
 
         Returns
         -------
-        result : dict
-            Detection result as a dict with fields:
-
-            - "changepoints": np.ndarray, changepoint indices
+        changepoints : np.ndarray of shape (n_changepoints,)
+            Indices where structural breaks occur.
         """
         check_is_fitted(self)
         X = validate_data(
@@ -292,4 +288,4 @@ class MovingWindow(BaseChangeDetector):
                     scores, self.bandwidth_, self.local_optimum_fraction
                 )
 
-        return make_segmentation(changepoints=changepoints)
+        return changepoints
