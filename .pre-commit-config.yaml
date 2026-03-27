@@ -23,6 +23,7 @@ repos:
       - id: ruff-format
       - id: ruff
         args: [--fix]
+        exclude: "^interactive/"
 
   - repo: https://github.com/mgedmin/check-manifest
     rev: "0.49"

@@ -3,15 +3,20 @@
 [![codecov](https://codecov.io/gh/NorskRegnesentral/skchange/graph/badge.svg?token=QSS3AY45KY)](https://codecov.io/gh/NorskRegnesentral/skchange)
 [![tests](https://github.com/NorskRegnesentral/skchange/actions/workflows/test.yml/badge.svg)](https://github.com/NorskRegnesentral/skchange/actions/workflows/test.yml)
 [![docs](https://readthedocs.org/projects/skchange/badge/?version=latest)](https://skchange.readthedocs.io/en/latest/?badge=latest)
-[![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/sktime/sktime/blob/main/LICENSE)
+[![BSD 3-clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://github.com/NorskRegnesentral/skchange/blob/main/LICENSE)
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
 
 
-[skchange]((https://skchange.readthedocs.io/en/latest/)) provides [sktime](https://www.sktime.net/)-compatible change detection and changepoint-based anomaly detection algorithms.
+<!-- [skchange]((https://skchange.readthedocs.io/en/latest/)) provides [scikit-learn](https://scikit-learn.org/)-like changepoint detection algorithms. -->
 
-Experimental but maturing.
+**Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
+See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) for more details.
+If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a specific version:
+> ```sh
+> pip install "skchange==0.14.3"
+> ```
 
 
 ## Documentation

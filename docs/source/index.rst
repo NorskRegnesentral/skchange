@@ -5,8 +5,14 @@ Welcome to skchange
 ===================
 
 A python library for fast change point and segment anomaly detection.
-The library is designed to be compatible with `sktime <https://www.sktime.net>`_.
-`Numba <https://numba.readthedocs.io>`_ is used for computational speed.
+
+**Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
+See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) for more details.
+If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a specific version:
+
+.. code-block:: bash
+
+    pip install "skchange==0.14.3"
 
 Installation
 ------------
@@ -16,7 +22,7 @@ The library can be installed via pip:
 
     pip install skchange
 
-Requires python versions >= 3.10, < 3.14.
+Requires python versions >= 3.10, < 3.15.
 
 For better computational performance, it is recommended to install skchange with `numba <https://numba.readthedocs.io>`_:
 
@@ -28,7 +34,7 @@ Key features
 ------------
 
 - **Fast**: `Numba <https://numba.readthedocs.io>`_ is used for performance.
-- **Easy to use**: Follows the conventions of `sktime <https://www.sktime.net>`_ and `scikit-learn <https://scikit-learn.org>`_.
+- **Easy to use**: Follows the conventions of `scikit-learn <https://scikit-learn.org>`_.
 - **Easy to extend**: Make your own detectors by inheriting from the base class templates. Create custom detection scores and cost functions.
 - **Segment anomaly detection**: Detect intervals of anomalous behaviour in time series data.
 - **Subset anomaly detection**: Detect intervals of anomalous behaviour in time series data, and infer the subset of variables that are responsible for the anomaly.
