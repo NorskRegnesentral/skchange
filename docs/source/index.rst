@@ -5,8 +5,14 @@ Welcome to skchange
 ===================
 
 A python library for fast change point and segment anomaly detection.
-The library is designed to be compatible with `sktime <https://www.sktime.net>`_.
-`Numba <https://numba.readthedocs.io>`_ is used for computational speed.
+
+**Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
+See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) for more details.
+If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a specific version:
+
+.. code-block:: bash
+
+    pip install "skchange==0.14.3"
 
 Installation
 ------------
@@ -16,7 +22,7 @@ The library can be installed via pip:
 
     pip install skchange
 
-Requires python versions >= 3.10, < 3.14.
+Requires python versions >= 3.10, < 3.15.
 
 For better computational performance, it is recommended to install skchange with `numba <https://numba.readthedocs.io>`_:
 
