@@ -34,7 +34,7 @@ Key features
 ------------
 
 - **Fast**: `Numba <https://numba.readthedocs.io>`_ is used for performance.
-- **Easy to use**: Follows the conventions of `sktime <https://www.sktime.net>`_ and `scikit-learn <https://scikit-learn.org>`_.
+- **Easy to use**: Follows the conventions of `scikit-learn <https://scikit-learn.org>`_.
 - **Easy to extend**: Make your own detectors by inheriting from the base class templates. Create custom detection scores and cost functions.
 - **Segment anomaly detection**: Detect intervals of anomalous behaviour in time series data.
 - **Subset anomaly detection**: Detect intervals of anomalous behaviour in time series data, and infer the subset of variables that are responsible for the anomaly.
