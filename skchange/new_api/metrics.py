@@ -1,44 +1,20 @@
 """Metrics for changepoint detection evaluation.
 
-This module provides two families of metrics:
+All metrics follow a uniform interface: they take per-sample segment label
+arrays as ``y_true`` and ``y_pred``, matching the output of
+``BaseChangeDetector.predict()``. This makes all metrics interchangeable.
 
-1. **Changepoint metrics**: Operate on sparse changepoint indices
-   - Hausdorff distance
-   - F1 score with tolerance
-   - Covering metric
+If you have changepoint indices (e.g. from ``predict_changepoints()`` or
+external annotations), convert them first::
 
-2. **Segment metrics**: Operate on dense segment labels
-   - Rand index
-   - Adjusted Rand index
-   - Variation of information
-
-Design Principles
------------------
-**Per-Series Evaluation**
-- All metrics operate on a SINGLE series (not collections)
-- For multiple series, use list comprehension + aggregation:
-  ```python
-  scores = [metric(yt, yp) for yt, yp in zip(y_true_list, y_pred_list)]
-  mean_score = np.mean(scores)
-  ```
-
-**Input Format**
-- Primary: Segmentation dict (sparse-first principle)
-- Convenience: np.ndarray (meaning documented per metric)
-- Both y_true and y_pred accept same formats for symmetry
-
-**Sklearn Compatible**
-- Signature follows sklearn: metric(y_true, y_pred, ...)
-- Returns float (single score per series)
-- Use with make_scorer() for cross-validation
+    from skchange.new_api.utils import to_labels
+    y_true = to_labels(true_changepoints, n_samples=len(X))
 """
-
-from __future__ import annotations
 
 import numpy as np
 from sklearn.metrics import adjusted_rand_score, rand_score
 
-# ==================== Changepoint Metrics ====================
+from skchange.new_api.utils._conversion import to_changepoints
 
 
 def hausdorff_metric(
@@ -46,158 +22,129 @@ def hausdorff_metric(
     y_pred: np.ndarray,
     max_distance: float | None = None,
 ) -> float:
-    """Hausdorff distance between true and predicted changepoints.
+    """Compute the Hausdorff distance between the changepoint sets of two segmentations.
+
+    Accepts dense per-sample segment label arrays (output of ``predict()``).
+    Changepoint indices are extracted internally.
 
     Measures the maximum distance from any true changepoint to its nearest
-    predicted changepoint, and vice versa.
-
-    **Per-series metric** - evaluates a single time series. For multiple series,
-    use list comprehension:
-    ```python
-    scores = [hausdorff_metric(yt, yp) for yt, yp in zip(y_true, y_pred)]
-    mean_score = np.mean(scores)
-    ```
+    predicted changepoint, and vice versa. Lower is better.
 
     Parameters
     ----------
-    y_true : np.ndarray
-        True changepoint indices for a SINGLE series, shape (n_changepoints,).
-    y_pred : np.ndarray
-        Predicted changepoint indices for a SINGLE series, shape (n_changepoints,).
+    y_true : np.ndarray of shape (n_samples,)
+        True segment labels for a single series.
+    y_pred : np.ndarray of shape (n_samples,)
+        Predicted segment labels for a single series.
     max_distance : float | None, default=None
-        Maximum distance to clip. If None, no clipping.
+        Cap on the returned distance. If None, no cap is applied.
 
     Returns
     -------
     float
-        Hausdorff distance for this series. Lower is better.
-        Returns 0.0 if both empty, inf (or max_distance) if only one empty.
+        Hausdorff distance. Returns 0.0 if both have no changepoints,
+        inf (or max_distance) if exactly one has no changepoints.
 
     Examples
     --------
-    >>> y_true = np.array([10, 50, 90])
-    >>> y_pred = np.array([12, 51, 88])
-    >>> score = hausdorff_metric(y_true, y_pred)
+    >>> y_true = np.array([0]*10 + [1]*10 + [2]*10)
+    >>> y_pred = np.array([0]*12 + [1]*8 + [2]*10)
+    >>> hausdorff_metric(y_true, y_pred)
+    2.0
     """
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be np.ndarray")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be np.ndarray")
+    cp_true = to_changepoints(np.asarray(y_true))
+    cp_pred = to_changepoints(np.asarray(y_pred))
 
-    # Handle empty cases
-    if len(y_true) == 0 and len(y_pred) == 0:
+    if len(cp_true) == 0 and len(cp_pred) == 0:
         return 0.0
-    if len(y_true) == 0 or len(y_pred) == 0:
-        return float("inf") if max_distance is None else max_distance
+    if len(cp_true) == 0 or len(cp_pred) == 0:
+        return float("inf") if max_distance is None else float(max_distance)
 
-    # Compute Hausdorff distance
-    # Distance from true to predicted
-    dist_true_to_pred = np.array([np.min(np.abs(yt - y_pred)) for yt in y_true])
-    # Distance from predicted to true
-    dist_pred_to_true = np.array([np.min(np.abs(yp - y_true)) for yp in y_pred])
-
-    # Hausdorff is the maximum of the two directed distances
-    hausdorff = max(np.max(dist_true_to_pred), np.max(dist_pred_to_true))
+    dist_true_to_pred = np.array([np.min(np.abs(yt - cp_pred)) for yt in cp_true])
+    dist_pred_to_true = np.array([np.min(np.abs(yp - cp_true)) for yp in cp_pred])
+    hausdorff = float(max(np.max(dist_true_to_pred), np.max(dist_pred_to_true)))
 
     if max_distance is not None:
-        hausdorff = min(hausdorff, max_distance)
+        hausdorff = min(hausdorff, float(max_distance))
+    return hausdorff
 
-    return float(hausdorff)
 
-
-def f1_score(
+def changepoint_f1_score(
     y_true: np.ndarray,
     y_pred: np.ndarray,
     tolerance: int = 5,
 ) -> float:
-    """F1 score for changepoint detection with tolerance window.
+    """Compute the F1 score for changepoint detection with a tolerance window.
 
-    A predicted changepoint is considered a true positive if it falls within
-    `tolerance` samples of a true changepoint.
+    Accepts dense per-sample segment label arrays (output of ``predict()``).
+    Changepoint indices are extracted internally.
 
-    **Per-series metric** - evaluates a single time series. For multiple series,
-    use list comprehension and aggregate as needed.
+    A predicted changepoint is a true positive if it falls within ``tolerance``
+    samples of an unmatched true changepoint (greedy matching).
 
     Parameters
     ----------
-    y_true : np.ndarray
-        True changepoint indices for a SINGLE series, shape (n_changepoints,).
-    y_pred : np.ndarray
-        Predicted changepoint indices for a SINGLE series, shape (n_changepoints,).
+    y_true : np.ndarray of shape (n_samples,)
+        True segment labels for a single series.
+    y_pred : np.ndarray of shape (n_samples,)
+        Predicted segment labels for a single series.
     tolerance : int, default=5
-        Maximum distance for a match to be considered correct.
+        Maximum sample distance for a match to count as correct.
 
     Returns
     -------
     float
         F1 score in [0, 1]. Higher is better.
-        Returns 1.0 if both empty, 0.0 if only one empty.
+        Returns 1.0 if both have no changepoints, 0.0 if only one has none.
 
     Examples
     --------
-    >>> y_true = np.array([10, 50, 90])
-    >>> y_pred = np.array([12, 51, 88])
-    >>> score = f1_score(y_true, y_pred, tolerance=5)
+    >>> y_true = np.array([0]*10 + [1]*10 + [2]*10)
+    >>> y_pred = np.array([0]*12 + [1]*8 + [2]*10)
+    >>> changepoint_f1_score(y_true, y_pred, tolerance=5)
+    1.0
     """
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be np.ndarray")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be np.ndarray")
+    cp_true = to_changepoints(np.asarray(y_true))
+    cp_pred = to_changepoints(np.asarray(y_pred))
 
-    # Handle empty cases
-    if len(y_true) == 0 and len(y_pred) == 0:
-        return 1.0  # Perfect match
-    if len(y_true) == 0 or len(y_pred) == 0:
-        return 0.0  # No match possible
-
-    # Count true positives
-    tp = 0
-    matched_true = set()
-    for yp in y_pred:
-        # Find closest true changepoint
-        distances = np.abs(y_true - yp)
-        min_dist = np.min(distances)
-        if min_dist <= tolerance:
-            closest_idx = np.argmin(distances)
-            if closest_idx not in matched_true:
-                tp += 1
-                matched_true.add(closest_idx)
-
-    fp = len(y_pred) - tp
-    fn = len(y_true) - tp
-
-    # Compute F1
-    if tp == 0:
+    if len(cp_true) == 0 and len(cp_pred) == 0:
+        return 1.0
+    if len(cp_true) == 0 or len(cp_pred) == 0:
         return 0.0
 
+    tp = 0
+    matched_true = set()
+    for yp in cp_pred:
+        distances = np.abs(cp_true - yp)
+        min_dist_idx = int(np.argmin(distances))
+        if distances[min_dist_idx] <= tolerance and min_dist_idx not in matched_true:
+            tp += 1
+            matched_true.add(min_dist_idx)
+
+    fp = len(cp_pred) - tp
+    fn = len(cp_true) - tp
+    if tp == 0:
+        return 0.0
     precision = tp / (tp + fp)
     recall = tp / (tp + fn)
-    f1 = 2 * precision * recall / (precision + recall)
-
-    return float(f1)
-
-
-# ==================== Segment Metrics ====================
+    return float(2 * precision * recall / (precision + recall))
 
 
 def rand_index(
     y_true: np.ndarray,
     y_pred: np.ndarray,
 ) -> float:
-    """Rand index for segment clustering quality.
+    """Compute the Rand index for the segmentation.
 
-    Measures the similarity between two clusterings (segmentations) by
-    comparing all pairs of samples.
-
-    **Per-series metric** - evaluates a single time series. For multiple series,
-    use list comprehension and aggregate as needed.
+    Measures the similarity between two segmentations by comparing all pairs of
+    samples. Wraps ``sklearn.metrics.rand_score``.
 
     Parameters
     ----------
-    y_true : np.ndarray
-        True dense segment labels for a SINGLE series, shape (n_samples,).
-    y_pred : np.ndarray
-        Predicted dense segment labels for a SINGLE series, shape (n_samples,).
+    y_true : np.ndarray of shape (n_samples,)
+        True segment labels for a single series.
+    y_pred : np.ndarray of shape (n_samples,)
+        Predicted segment labels for a single series.
 
     Returns
     -------
@@ -206,16 +153,11 @@ def rand_index(
 
     Examples
     --------
-    >>> y_true = np.array([0,0,0,1,1,1,2,2,2])
-    >>> y_pred = np.array([0,0,0,1,1,1,2,2,2])
-    >>> score = rand_index(y_true, y_pred)
+    >>> y_true = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    >>> y_pred = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    >>> rand_index(y_true, y_pred)
+    1.0
     """
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be np.ndarray")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be np.ndarray")
-
-    # Compute Rand index using sklearn
     return float(rand_score(y_true, y_pred))
 
 
@@ -223,88 +165,29 @@ def adjusted_rand_index(
     y_true: np.ndarray,
     y_pred: np.ndarray,
 ) -> float:
-    """Compute adjusted Rand index for segment clustering quality.
+    """Compute the adjusted Rand index for the segmentation.
 
-    Similar to Rand index but adjusted for chance. Value of 0 indicates
-    random labeling, 1 indicates perfect agreement.
-
-    **Per-series metric** - evaluates a single time series. For multiple series,
-    use list comprehension and aggregate as needed.
+    Similar to Rand index but adjusted for chance. Wraps
+    ``sklearn.metrics.adjusted_rand_score``.
 
     Parameters
     ----------
-    y_true : np.ndarray
-        True dense segment labels for a SINGLE series, shape (n_samples,).
-    y_pred : np.ndarray
-        Predicted dense segment labels for a SINGLE series, shape (n_samples,).
+    y_true : np.ndarray of shape (n_samples,)
+        True segment labels for a single series.
+    y_pred : np.ndarray of shape (n_samples,)
+        Predicted segment labels for a single series.
 
     Returns
     -------
     float
         Adjusted Rand index in [-1, 1]. Higher is better.
-        1.0 = perfect agreement, 0.0 = random labeling.
+        1.0 = perfect agreement, ~0.0 = random labeling.
 
     Examples
     --------
-    >>> y_true = np.array([0,0,0,1,1,1,2,2,2])
-    >>> y_pred = np.array([0,0,0,1,1,1,2,2,2])
-    >>> score = adjusted_rand_index(y_true, y_pred)
+    >>> y_true = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    >>> y_pred = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    >>> adjusted_rand_index(y_true, y_pred)
+    1.0
     """
-    if not isinstance(y_true, np.ndarray):
-        raise TypeError("y_true must be np.ndarray")
-    if not isinstance(y_pred, np.ndarray):
-        raise TypeError("y_pred must be np.ndarray")
-
-    # Compute ARI using sklearn
     return float(adjusted_rand_score(y_true, y_pred))
-
-
-# ==================== Scorer Utilities ====================
-
-
-def make_changepoint_scorer(metric_func, needs_X=False):
-    """Create a scorer compatible with sklearn cross-validation.
-
-    sklearn's cross_val_score and GridSearchCV expect scorers with signature
-    scorer(estimator, X, y). This function wraps changepoint metrics to
-    match that interface.
-
-    Parameters
-    ----------
-    metric_func : callable
-        Metric function with signature metric(y_true, y_pred, X=None).
-        Should return a scalar score.
-    needs_X : bool, default=False
-        Whether the metric requires X data.
-        - If False: calls metric(y_true, y_pred)
-        - If True: calls metric(y_true, y_pred, X)
-
-    Returns
-    -------
-    scorer : callable
-        Scorer function with signature scorer(estimator, X, y) compatible
-        with sklearn's cross_val_score, GridSearchCV, etc.
-
-    Examples
-    --------
-    >>> from sklearn.model_selection import cross_val_score
-    >>> from skchange.metrics import hausdorff_metric, make_changepoint_scorer
-    >>>
-    >>> # Metric that doesn't need X
-    >>> scorer = make_changepoint_scorer(hausdorff_metric)
-    >>> scores = cross_val_score(detector, X_list, y_list, scoring=scorer)
-    >>>
-    >>> # Metric that needs X
-    >>> scorer = make_changepoint_scorer(segment_mse, needs_X=True)
-    >>> scores = cross_val_score(detector, X_list, y_list, scoring=scorer)
-    """
-
-    def scorer(estimator, X, y):
-        """Scorer wrapper for sklearn compatibility."""
-        y_pred = estimator.predict(X)
-        if needs_X:
-            return metric_func(y, y_pred, X)
-        else:
-            return metric_func(y, y_pred)
-
-    return scorer
