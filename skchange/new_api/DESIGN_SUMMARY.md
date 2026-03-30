@@ -36,7 +36,7 @@ Complete design documentation for the new changepoint detection API.
 - `predict(X) -> np.ndarray (n_samples,)` — segment labels for each sample
 mimics clustering output in sklearn, which is the closest task in sklearn: segment labels for each timepoint
 - `predict_changepoints(X) -> np.ndarray (n_changepoints,)` — changepoint indices
-- Subclasses implement `predict_changepoints()`; `predict()` is derived automatically via `to_labels()` for most common detectors.
+- Subclasses implement `predict_changepoints()`; `predict()` is derived automatically via `changepoints_to_labels()` for most common detectors.
 - Subclasses may override `predict()` directly when the algorithm natively produces dense labels
 
 **Why `predict()` returns dense labels:**
@@ -171,23 +171,23 @@ class BaseChangeDetector(BaseEstimator):
 ```python
 def predict(self, X):
     changepoints = self.predict_changepoints(X)
-    return to_labels(changepoints, n_samples=len(X))
+    return changepoints_to_labels(changepoints, n_samples=len(X))
 ```
 
-### `to_labels()` Utility
+### `changepoints_to_labels()` Utility
 
 Converts changepoint indices to a dense label array:
 
 ```python
-from skchange.new_api.utils import to_labels
+from skchange.new_api.utils import changepoints_to_labels
 
 changepoints = np.array([50, 100])
-labels = to_labels(changepoints, n_samples=150)
+labels = changepoints_to_labels(changepoints, n_samples=150)
 # labels: [0, 0, ..., 0, 1, 1, ..., 1, 2, 2, ..., 2]
 #          segment 0         segment 1         segment 2
 
 # Optional custom labels
-labels = to_labels(changepoints, n_samples=150, labels=np.array([0, 1, 0]))
+labels = changepoints_to_labels(changepoints, n_samples=150, labels=np.array([0, 1, 0]))
 # Recurring pattern: segments 0 and 2 share label 0
 ```
 
@@ -477,8 +477,8 @@ all_changepoints = Parallel(n_jobs=-1)(
 )
 
 # Convert changepoints to dense labels manually
-from skchange.new_api import to_labels
-labels = to_labels(changepoints, n_samples=len(X_test))
+from skchange.new_api.utils import changepoints_to_labels
+labels = changepoints_to_labels(changepoints, n_samples=len(X_test))
 ```
 
 ---

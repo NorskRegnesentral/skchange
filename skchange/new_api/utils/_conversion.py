@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def to_labels(
+def changepoints_to_labels(
     changepoints: np.ndarray,
     n_samples: int,
     labels: np.ndarray | None = None,
@@ -26,7 +26,7 @@ def to_labels(
     Examples
     --------
     >>> changepoints = np.array([50, 100])
-    >>> labels = to_labels(changepoints, n_samples=150)
+    >>> labels = changepoints_to_labels(changepoints, n_samples=150)
     >>> labels.shape
     (150,)
     >>> np.unique(labels)
@@ -51,7 +51,7 @@ def to_labels(
     return dense_labels
 
 
-def to_changepoints(labels: np.ndarray) -> np.ndarray:
+def labels_to_changepoints(labels: np.ndarray) -> np.ndarray:
     """Convert per-sample segment labels to changepoint indices.
 
     Parameters
@@ -67,7 +67,7 @@ def to_changepoints(labels: np.ndarray) -> np.ndarray:
     Examples
     --------
     >>> labels = np.array([0]*50 + [1]*50 + [2]*50)
-    >>> changepoints = to_changepoints(labels)
+    >>> changepoints = labels_to_changepoints(labels)
     >>> changepoints
     array([50, 100])
     """

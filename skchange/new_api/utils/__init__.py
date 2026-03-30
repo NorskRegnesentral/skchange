@@ -1,6 +1,9 @@
 """General purpose utility functions."""
 
-from skchange.new_api.utils._conversion import to_changepoints, to_labels
+from skchange.new_api.utils._conversion import (
+    changepoints_to_labels,
+    labels_to_changepoints,
+)
 from skchange.new_api.utils._tags import (
     ChangeDetectorTags,
     IntervalScorerTags,
@@ -16,6 +19,6 @@ __all__ = [
     "SkchangeTags",
     "check_interval_scorer",
     "check_penalty",
-    "to_changepoints",
-    "to_labels",
+    "changepoints_to_labels",
+    "labels_to_changepoints",
 ]

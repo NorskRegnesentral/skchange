@@ -7,14 +7,14 @@ arrays as ``y_true`` and ``y_pred``, matching the output of
 If you have changepoint indices (e.g. from ``predict_changepoints()`` or
 external annotations), convert them first::
 
-    from skchange.new_api.utils import to_labels
-    y_true = to_labels(true_changepoints, n_samples=len(X))
+    from skchange.new_api.utils import changepoints_to_labels
+    y_true = changepoints_to_labels(true_changepoints, n_samples=len(X))
 """
 
 import numpy as np
 from sklearn.metrics import adjusted_rand_score, rand_score
 
-from skchange.new_api.utils._conversion import to_changepoints
+from skchange.new_api.utils._conversion import labels_to_changepoints
 
 
 def hausdorff_metric(
@@ -52,8 +52,8 @@ def hausdorff_metric(
     >>> hausdorff_metric(y_true, y_pred)
     2.0
     """
-    cp_true = to_changepoints(np.asarray(y_true))
-    cp_pred = to_changepoints(np.asarray(y_pred))
+    cp_true = labels_to_changepoints(np.asarray(y_true))
+    cp_pred = labels_to_changepoints(np.asarray(y_pred))
 
     if len(cp_true) == 0 and len(cp_pred) == 0:
         return 0.0
@@ -104,8 +104,8 @@ def changepoint_f1_score(
     >>> changepoint_f1_score(y_true, y_pred, tolerance=5)
     1.0
     """
-    cp_true = to_changepoints(np.asarray(y_true))
-    cp_pred = to_changepoints(np.asarray(y_pred))
+    cp_true = labels_to_changepoints(np.asarray(y_true))
+    cp_pred = labels_to_changepoints(np.asarray(y_pred))
 
     if len(cp_true) == 0 and len(cp_pred) == 0:
         return 1.0

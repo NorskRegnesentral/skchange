@@ -15,7 +15,7 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._conversion import to_labels
+from skchange.new_api.utils._conversion import changepoints_to_labels
 from skchange.new_api.utils._tags import ChangeDetectorTags, SkchangeTags
 
 
@@ -96,7 +96,7 @@ class BaseChangeDetector(BaseEstimator):
         (n_samples,)
         """
         changepoints = self.predict_changepoints(X)
-        return to_labels(changepoints, n_samples=len(X))
+        return changepoints_to_labels(changepoints, n_samples=len(X))
 
     def fit_predict(self, X, y: ArrayLike | None = None, **fit_params) -> np.ndarray:
         """Fit to data, then predict changepoint indices.
