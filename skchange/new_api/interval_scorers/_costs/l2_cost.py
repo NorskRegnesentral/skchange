@@ -1,11 +1,11 @@
 """L2 cost function."""
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted, validate_data
+from sklearn.utils.validation import check_array, check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.typing import ArrayLike, Self
-from skchange.penalties import make_bic_penalty
+from skchange.new_api.utils.validation import validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
@@ -146,8 +146,7 @@ class L2Cost(BaseCost):
         self : L2Cost
             Fitted cost function.
         """
-        X = validate_data(self, X, ensure_2d=True, reset=True)  # Sets n_features_in_
-        self.n_samples_fit_ = X.shape[0]  # Used for default penalty calculation
+        X = validate_data(self, X, ensure_2d=True, reset=True)
 
         if self.mean is not None:
             if np.isscalar(self.mean):
@@ -217,14 +216,3 @@ class L2Cost(BaseCost):
             costs = l2_cost_fixed(starts, ends, sums, sums2, self._mean)
 
         return costs
-
-    def get_default_penalty(self) -> float:
-        """Get default penalty value for L2 cost.
-
-        Returns
-        -------
-        float
-            Default penalty value for L2 cost.
-        """
-        check_is_fitted(self)
-        return make_bic_penalty(self.n_features_in_, self.n_samples_fit_)

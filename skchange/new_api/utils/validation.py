@@ -5,12 +5,46 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+from sklearn.base import BaseEstimator
 from sklearn.base import clone as sklearn_clone
+from sklearn.utils.validation import validate_data as _sklearn_validate_data
 
 from skchange.new_api.typing import ArrayLike
 
 if TYPE_CHECKING:
     from skchange.new_api.interval_scorers._base import BaseIntervalScorer
+
+
+def validate_data(
+    _estimator: BaseEstimator,
+    /,
+    X: ArrayLike,
+    **kwargs,
+) -> np.ndarray:
+    """Validate X and set n_features_in_ and n_samples_in_ on the estimator.
+
+    Thin wrapper around sklearn's ``validate_data`` that additionally stores
+    the number of samples as ``_estimator.n_samples_in_`` when ``reset=True``
+    (i.e. during fit), which is required for default penalty computation.
+
+    Parameters
+    ----------
+    _estimator : BaseEstimator
+        The estimator being fitted or applied. Modified in-place.
+    X : array-like of shape (n_samples, n_features)
+        Data to validate.
+    **kwargs
+        Forwarded to ``sklearn.utils.validation.validate_data``.
+
+    Returns
+    -------
+    X : ndarray of shape (n_samples, n_features)
+        Validated array.
+    """
+    X = _sklearn_validate_data(_estimator, X, **kwargs)
+    if kwargs.get("reset", True):
+        _estimator.n_samples_in_ = X.shape[0]
+    return X
 
 
 def check_interval_scorer(

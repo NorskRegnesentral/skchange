@@ -2,7 +2,7 @@
 
 import numpy as np
 from sklearn.base import clone
-from sklearn.utils.validation import check_array, check_is_fitted, validate_data
+from sklearn.utils.validation import check_array, check_is_fitted
 
 from skchange.new_api.interval_scorers._base import (
     BaseChangeScore,
@@ -10,6 +10,7 @@ from skchange.new_api.interval_scorers._base import (
 )
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils.validation import validate_data
 
 
 def to_change_score(
@@ -122,6 +123,10 @@ class CostChangeScore(BaseChangeScore):
         """Minimum valid interval size inherited from wrapped cost scorer."""
         check_is_fitted(self)
         return self.cost_.min_size
+
+    def get_default_penalty(self) -> float:
+        """Get default penalty delegated to the wrapped cost scorer."""
+        return self.cost_.get_default_penalty()
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for change score wrapper."""

@@ -3,7 +3,7 @@
 from numbers import Integral, Real
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.change_detectors._moving_window import (
     make_extended_moving_window_cuts,
@@ -23,7 +23,7 @@ from skchange.new_api.utils._param_validation import (
     StrOptions,
     _fit_context,
 )
-from skchange.new_api.utils.validation import check_interval_scorer
+from skchange.new_api.utils.validation import check_interval_scorer, validate_data
 
 
 def transform_multiple_moving_window(

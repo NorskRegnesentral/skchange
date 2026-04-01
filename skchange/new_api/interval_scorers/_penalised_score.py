@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_scorer, check_penalty
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    check_penalty,
+    validate_data,
+)
 from skchange.utils.numba import njit
 
 
