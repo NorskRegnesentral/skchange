@@ -130,16 +130,16 @@ class PenalisedScore(BaseIntervalScorer):
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute wrapped scorer data for penalised evaluation."""
         check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
-        scorer_precomputed = self.scorer_.precompute(X)
-        return {"scorer_precomputed": scorer_precomputed}
+        scorer_cache = self.scorer_.precompute(X)
+        return {"scorer_cache": scorer_cache}
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate penalised scores on interval specifications.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : array-like
             Each row specifies an interval and possibly split points, depending on
             the wrapped scorer type. The expected shape is determined by
@@ -153,7 +153,7 @@ class PenalisedScore(BaseIntervalScorer):
         check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
 
         scores = self.scorer_.evaluate(
-            precomputed["scorer_precomputed"],
+            cache["scorer_cache"],
             interval_specs,
         )
         scores = np.asarray(scores, dtype=np.float64)
@@ -175,10 +175,10 @@ class PenalisedScore(BaseIntervalScorer):
         return penalised.reshape(-1, 1)
 
     @property
-    def interval_specs_width(self) -> int:
+    def interval_specs_ncols(self) -> int:
         """Expected width of interval specifications inherited from wrapped scorer."""
         check_is_fitted(self)
-        return self.scorer_.interval_specs_width
+        return self.scorer_.interval_specs_ncols
 
     @property
     def min_size(self) -> int:

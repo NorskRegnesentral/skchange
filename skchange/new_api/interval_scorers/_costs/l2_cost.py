@@ -112,14 +112,14 @@ class L2Cost(BaseCost):
     >>> # Estimated mode - learns mean from data
     >>> cost = L2Cost()
     >>> cost.fit(X)
-    >>> precomputed = cost.precompute(X)
+    >>> cache = cost.precompute(X)
     >>> interval_specs = np.array([[0, 50], [50, 100]])
-    >>> costs = cost.evaluate(precomputed, interval_specs)
+    >>> costs = cost.evaluate(cache, interval_specs)
     >>>
     >>> # Fixed mode - user provides mean
     >>> cost_fixed = L2Cost(mean=np.array([0.0, 0.0]))
     >>> cost_fixed.fit(X)
-    >>> precomputed = cost_fixed.precompute(X)
+    >>> cache = cost_fixed.precompute(X)
 
     Notes
     -----
@@ -175,8 +175,8 @@ class L2Cost(BaseCost):
 
         Returns
         -------
-        precomputed : dict
-            Precomputed data with validated array.
+        cache : dict
+            Cached data with cumulative sums.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, reset=False)
@@ -185,13 +185,13 @@ class L2Cost(BaseCost):
             "sums2": col_cumsum(X**2, init_zero=True),
         }
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate L2 cost on intervals.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : array-like of shape (n_interval_specs, 2)
             Interval boundaries ``[start, end)`` to score.
 
@@ -205,12 +205,12 @@ class L2Cost(BaseCost):
         interval_specs = check_array(
             interval_specs,
             ensure_2d=True,
-            ensure_min_features=self.interval_specs_width,
+            ensure_min_features=self.interval_specs_ncols,
         )
         starts = interval_specs[:, 0]
         ends = interval_specs[:, 1]
 
-        sums, sums2 = precomputed["sums"], precomputed["sums2"]
+        sums, sums2 = cache["sums"], cache["sums2"]
         if self.mean is None:
             costs = l2_cost_optim(starts, ends, sums, sums2)
         else:

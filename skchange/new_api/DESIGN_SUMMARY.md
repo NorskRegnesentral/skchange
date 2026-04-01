@@ -419,15 +419,15 @@ class SomeDetector(BaseChangeDetector):
 ### Type-Specific Base Classes
 
 ```
-BaseIntervalScorer               # Root: fit(), evaluate(), interval_specs_width
+BaseIntervalScorer               # Root: fit(), evaluate(), interval_specs_ncols
 ├── BaseCost                    # Costs between intervals
 │   ├── L2Cost
 │   └── MultivariateGaussianCost
 ├── BaseChangeScore             # Scores for change detection
 │   ├── CUSUM
-│   └── CostBasedChangeScore   # Adapter: cost → change score
+│   └── CostChangeScore         # Adapter: cost → change score
 ├── BaseSaving                  # Global segment savings
-└── BaseLocalSaving             # Local (per-changepoint) savings
+└── BaseTransientScore          # Transient (epidemic) segment scores
 ```
 
 ---

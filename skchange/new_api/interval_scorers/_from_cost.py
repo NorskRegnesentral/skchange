@@ -4,7 +4,10 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_array, check_is_fitted, validate_data
 
-from skchange.new_api.interval_scorers._base import BaseChangeScore, BaseIntervalScorer
+from skchange.new_api.interval_scorers._base import (
+    BaseChangeScore,
+    BaseIntervalScorer,
+)
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 
@@ -37,7 +40,7 @@ def to_change_score(
         return scorer
 
     if score_type == "cost":
-        return CostBasedChangeScore(scorer)
+        return CostChangeScore(scorer)
 
     if caller_name is None:
         caller_name = "to_change_score"
@@ -47,7 +50,7 @@ def to_change_score(
     )
 
 
-class CostBasedChangeScore(BaseChangeScore):
+class CostChangeScore(BaseChangeScore):
     """Change scorer constructed from a cost scorer.
 
     Computes change score as the cost reduction of allowing a split within an interval:
@@ -67,15 +70,15 @@ class CostBasedChangeScore(BaseChangeScore):
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute wrapped cost scorer data."""
         check_is_fitted(self, ["cost_"])
-        return {"cost_precomputed": self.cost_.precompute(X)}
+        return {"cost_cache": self.cost_.precompute(X)}
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate change score on interval specifications.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : array-like of shape (n_interval_specs, 3)
             Interval boundaries and split locations ``[start, split, end)``.
 
@@ -101,14 +104,14 @@ class CostBasedChangeScore(BaseChangeScore):
                 "for change-score evaluation."
             )
 
-        cost_precomputed = precomputed["cost_precomputed"]
+        cost_cache = cache["cost_cache"]
         left_intervals = interval_specs[:, [0, 1]]
         right_intervals = interval_specs[:, [1, 2]]
         full_intervals = interval_specs[:, [0, 2]]
 
-        left_costs = self.cost_.evaluate(cost_precomputed, left_intervals)
-        right_costs = self.cost_.evaluate(cost_precomputed, right_intervals)
-        no_change_costs = self.cost_.evaluate(cost_precomputed, full_intervals)
+        left_costs = self.cost_.evaluate(cost_cache, left_intervals)
+        right_costs = self.cost_.evaluate(cost_cache, right_intervals)
+        no_change_costs = self.cost_.evaluate(cost_cache, full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
         change_scores[(change_scores < 0) & (change_scores > -1e-8)] = 0.0
@@ -129,3 +132,7 @@ class CostBasedChangeScore(BaseChangeScore):
         tags.interval_scorer_tags.aggregated = cost_tags.aggregated
         tags.interval_scorer_tags.penalised = cost_tags.penalised
         return tags
+
+
+# class CostTransientScore(BaseTransientScore):
+#     pass

@@ -4,17 +4,17 @@ from skchange.new_api.interval_scorers._base import (
     BaseChangeScore,
     BaseCost,
     BaseIntervalScorer,
-    BaseLocalSaving,
     BaseSaving,
+    BaseTransientScore,
     is_change_score,
     is_cost,
-    is_local_saving,
     is_saving,
+    is_transient_score,
 )
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
 from skchange.new_api.interval_scorers._from_cost import (
-    CostBasedChangeScore,
+    CostChangeScore,
     to_change_score,
 )
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
@@ -23,15 +23,15 @@ __all__ = [
     "BaseCost",
     "BaseChangeScore",
     "BaseIntervalScorer",
-    "BaseLocalSaving",
+    "BaseTransientScore",
     "BaseSaving",
-    "CostBasedChangeScore",
+    "CostChangeScore",
     "CUSUM",
     "L2Cost",
     "PenalisedScore",
     "is_cost",
     "is_change_score",
     "is_saving",
-    "is_local_saving",
+    "is_transient_score",
     "to_change_score",
 ]

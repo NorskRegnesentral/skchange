@@ -49,7 +49,7 @@ def transform_multiple_moving_window(
     """
     check_is_fitted(fitted_score)
     n_samples = X.shape[0]
-    precomputed = fitted_score.precompute(X)
+    cache = fitted_score.precompute(X)
 
     scores = np.full((n_samples, len(bandwidths)), np.nan)
     for i, bw in enumerate(bandwidths):
@@ -58,7 +58,7 @@ def transform_multiple_moving_window(
             int(bw),
             fitted_score.min_size,
         )
-        interval_scores = fitted_score.evaluate(precomputed, interval_specs).reshape(-1)
+        interval_scores = fitted_score.evaluate(cache, interval_specs).reshape(-1)
         scores[interval_specs[:, 1], i] = interval_scores
 
     return scores
@@ -89,7 +89,7 @@ class MovingWindow(BaseChangeDetector):
     ----------
     change_score : BaseIntervalScorer, optional, default=CUSUM()
         The change score to use in the algorithm. If a cost is given, it is
-        converted to a change score using the `CostBasedChangeScore` class.
+        converted to a change score using the `CostChangeScore` class.
     penalty : np.ndarray or float, optional, default=None
         The penalty to use for change detection. If the score is
         penalised (`change_score.__sklearn_tags__().interval_scorer_tags.penalised`)
