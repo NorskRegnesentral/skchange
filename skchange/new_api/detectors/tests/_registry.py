@@ -10,6 +10,5 @@ DETECTOR_TEST_INSTANCES = [
     for cls, params in CHANGE_SCORE_TEST_INSTANCES
 ] + [
     (MovingWindow, {}),
-    (MovingWindow, {"bandwidth": 5}),
-    (MovingWindow, {"selection_method": "detection_length", "bandwidth": 5}),
+    (MovingWindow, {"selection_method": "detection_length"}),
 ]

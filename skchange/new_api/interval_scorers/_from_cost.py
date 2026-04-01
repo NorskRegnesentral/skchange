@@ -131,11 +131,14 @@ class CostChangeScore(BaseChangeScore):
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for change score wrapper."""
         tags = super().__sklearn_tags__()
-        cost_tags = self.cost.__sklearn_tags__().interval_scorer_tags
+        cost_tags = self.cost.__sklearn_tags__()
+        tags.input_tags = cost_tags.input_tags
         tags.interval_scorer_tags.score_type = "change_score"
-        tags.interval_scorer_tags.conditional = cost_tags.conditional
-        tags.interval_scorer_tags.aggregated = cost_tags.aggregated
-        tags.interval_scorer_tags.penalised = cost_tags.penalised
+        tags.interval_scorer_tags.conditional = (
+            cost_tags.interval_scorer_tags.conditional
+        )
+        tags.interval_scorer_tags.aggregated = cost_tags.interval_scorer_tags.aggregated
+        tags.interval_scorer_tags.penalised = cost_tags.interval_scorer_tags.penalised
         return tags
 
 

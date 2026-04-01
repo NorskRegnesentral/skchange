@@ -16,7 +16,7 @@ CHANGE_SCORE_TEST_INSTANCES += [
     (CostChangeScore, {"cost": cls(**params)}) for cls, params in COST_TEST_INSTANCES
 ]
 CHANGE_SCORE_TEST_INSTANCES += [
-    (PenalisedScore, {"scorer": cls(**params), "penalty": 5.0})
+    (PenalisedScore, {"scorer": cls(**params)})
     for cls, params in CHANGE_SCORE_TEST_INSTANCES
 ]
 

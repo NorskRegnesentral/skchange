@@ -17,6 +17,7 @@ from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._from_cost import to_change_score
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -179,6 +180,13 @@ class MovingWindow(BaseChangeDetector):
         self.min_detection_fraction = min_detection_fraction
         self.local_optimum_fraction = local_optimum_fraction
 
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Get tags, propagating input constraints from the wrapped scorer."""
+        tags = super().__sklearn_tags__()
+        scorer = self.change_score if self.change_score is not None else CUSUM()
+        tags.input_tags = scorer.__sklearn_tags__().input_tags
+        return tags
+
     @_fit_context(prefer_skip_nested_validation=False)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit the detector to training data.
@@ -288,4 +296,4 @@ class MovingWindow(BaseChangeDetector):
                     scores, self.bandwidth_, self.local_optimum_fraction
                 )
 
-        return changepoints
+        return np.array(changepoints, dtype=np.intp)

@@ -193,8 +193,10 @@ class PenalisedScore(BaseIntervalScorer):
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for penalised scorer."""
         tags = super().__sklearn_tags__()
+        scorer_tags = self.scorer.__sklearn_tags__()
+        tags.input_tags = scorer_tags.input_tags
         tags.interval_scorer_tags.score_type = (
-            self.scorer.__sklearn_tags__().interval_scorer_tags.score_type
+            scorer_tags.interval_scorer_tags.score_type
         )
         tags.interval_scorer_tags.aggregated = True
         tags.interval_scorer_tags.penalised = True
