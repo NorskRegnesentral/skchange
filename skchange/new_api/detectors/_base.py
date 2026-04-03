@@ -63,7 +63,10 @@ class BaseChangeDetector(BaseEstimator):
         Returns
         -------
         changepoints : np.ndarray of shape (n_changepoints,)
-            Indices where structural breaks occur. Empty array if none detected.
+            Sorted integer indices of detected changepoints. A changepoint at
+            index ``t`` means sample ``t`` is the first sample of a new segment,
+            i.e. a structural break occurs between samples ``t-1`` and ``t``.
+            Empty array if no changepoints are detected.
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement predict_changepoints()."
