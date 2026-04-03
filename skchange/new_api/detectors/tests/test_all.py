@@ -7,15 +7,17 @@ from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.conftest import (
     CHANGEPOINT,
-    estimator_id,
     make_no_change_X,
     make_single_change_X,
 )
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.detectors.tests._registry import DETECTOR_TEST_INSTANCES
 
-_params = pytest.mark.parametrize(
-    "estimator", DETECTOR_TEST_INSTANCES, indirect=True, ids=estimator_id
+# `estimator` is a pytest fixture defined in conftest.py that clones each
+# registry instance before passing it to the test, ensuring test isolation.
+# indirect=True is needed to parametrize over the fixture rather than the raw instances.
+_all_detectors = pytest.mark.parametrize(
+    "estimator", DETECTOR_TEST_INSTANCES, indirect=True
 )
 
 
@@ -24,13 +26,13 @@ _params = pytest.mark.parametrize(
 # ---------------------------------------------------------------------------
 
 
-@_params
+@_all_detectors
 def test_detector_is_base_change_detector(estimator):
     """All registered detectors must inherit from BaseChangeDetector."""
     assert isinstance(estimator, BaseChangeDetector)
 
 
-@_params
+@_all_detectors
 def test_detector_get_params_set_params(estimator):
     """get_params/set_params round-trip must be consistent (sklearn contract)."""
     got = estimator.get_params(deep=True)
@@ -38,7 +40,7 @@ def test_detector_get_params_set_params(estimator):
     assert estimator.get_params(deep=True) == got
 
 
-@_params
+@_all_detectors
 def test_detector_clone(estimator):
     """clone() must produce an unfitted copy with identical params."""
     cloned = clone(estimator)
@@ -51,14 +53,14 @@ def test_detector_clone(estimator):
 # ---------------------------------------------------------------------------
 
 
-@_params
+@_all_detectors
 def test_detector_fit_returns_self(estimator):
     """fit() must return self."""
     X = make_single_change_X(estimator)
     assert estimator.fit(X) is estimator
 
 
-@_params
+@_all_detectors
 def test_detector_fit_sets_n_features_in(estimator):
     """fit() must set n_features_in_."""
     X = make_single_change_X(estimator)
@@ -67,7 +69,7 @@ def test_detector_fit_sets_n_features_in(estimator):
     assert estimator.n_features_in_ == X.shape[1]
 
 
-@_params
+@_all_detectors
 def test_detector_fit_sets_n_samples_in(estimator):
     """fit() must set n_samples_in_."""
     X = make_single_change_X(estimator)
@@ -76,7 +78,7 @@ def test_detector_fit_sets_n_samples_in(estimator):
     assert estimator.n_samples_in_ == X.shape[0]
 
 
-@_params
+@_all_detectors
 def test_detector_is_fitted_after_fit(estimator):
     """check_is_fitted() must pass after fit()."""
     X = make_single_change_X(estimator)
@@ -84,7 +86,7 @@ def test_detector_is_fitted_after_fit(estimator):
     check_is_fitted(estimator)
 
 
-@_params
+@_all_detectors
 def test_detector_fit_does_not_alter_input(estimator):
     """fit() must not mutate the input array."""
     X = make_single_change_X(estimator)
@@ -98,7 +100,7 @@ def test_detector_fit_does_not_alter_input(estimator):
 # ---------------------------------------------------------------------------
 
 
-@_params
+@_all_detectors
 def test_detector_predict_changepoints_output_type(estimator):
     """predict_changepoints() must return a 1-D integer ndarray."""
     X = make_single_change_X(estimator)
@@ -109,7 +111,7 @@ def test_detector_predict_changepoints_output_type(estimator):
     assert np.issubdtype(cpts.dtype, np.integer)
 
 
-@_params
+@_all_detectors
 def test_detector_predict_changepoints_in_range(estimator):
     """All predicted changepoints must be valid sample indices."""
     X = make_single_change_X(estimator)
@@ -118,7 +120,7 @@ def test_detector_predict_changepoints_in_range(estimator):
     assert np.all(cpts >= 1) and np.all(cpts <= X.shape[0] - 1)
 
 
-@_params
+@_all_detectors
 def test_detector_predict_changepoints_sorted(estimator):
     """predict_changepoints() must return strictly sorted indices."""
     X = make_single_change_X(estimator)
@@ -132,7 +134,7 @@ def test_detector_predict_changepoints_sorted(estimator):
 # ---------------------------------------------------------------------------
 
 
-@_params
+@_all_detectors
 def test_detector_predict_output_shape(estimator):
     """predict() must return a 1-D integer array of length n_samples."""
     X = make_single_change_X(estimator)
@@ -143,7 +145,7 @@ def test_detector_predict_output_shape(estimator):
     assert np.issubdtype(labels.dtype, np.integer)
 
 
-@_params
+@_all_detectors
 def test_detector_predict_labels_contiguous(estimator):
     """predict() labels must be 0-indexed and contiguous integers."""
     X = make_single_change_X(estimator)
@@ -154,7 +156,7 @@ def test_detector_predict_labels_contiguous(estimator):
     assert np.array_equal(unique, np.arange(len(unique)))
 
 
-@_params
+@_all_detectors
 def test_detector_predict_consistent_with_predict_changepoints(estimator):
     """predict() segment boundaries must match predict_changepoints() indices."""
     X = make_single_change_X(estimator)
@@ -172,7 +174,7 @@ def test_detector_predict_consistent_with_predict_changepoints(estimator):
 # ---------------------------------------------------------------------------
 
 
-@_params
+@_all_detectors
 def test_detector_fit_predict_equals_fit_then_predict(estimator):
     """fit_predict() must give the same result as fit() then predict()."""
     X = make_single_change_X(estimator)
@@ -187,7 +189,7 @@ def test_detector_fit_predict_equals_fit_then_predict(estimator):
 # ---------------------------------------------------------------------------
 
 
-@_params
+@_all_detectors
 def test_detector_finds_single_changepoint(estimator):
     """Detectors must find the single changepoint in a simple two-segment problem."""
     X = make_single_change_X(estimator)
@@ -199,7 +201,7 @@ def test_detector_finds_single_changepoint(estimator):
     ), f"Changepoint {cpts[0]} is too far from the true changepoint {CHANGEPOINT}."
 
 
-@_params
+@_all_detectors
 def test_detector_finds_no_changepoint(estimator):
     """Detectors must not flag changepoints in stationary (no-change) data."""
     X = make_no_change_X(estimator)

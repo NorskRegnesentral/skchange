@@ -5,19 +5,18 @@ from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
 from skchange.new_api.interval_scorers._from_cost import CostChangeScore
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 
-COST_TEST_INSTANCES = [
-    (L2Cost, {}),
+_COST_TEST_INSTANCES = [
+    L2Cost(),
+]
+_CHANGE_SCORE_TEST_INSTANCES = [
+    CUSUM(),
+] + [CostChangeScore(cost) for cost in _COST_TEST_INSTANCES]
+_PENALISED_SCORE_TEST_INSTANCES = [
+    PenalisedScore(scorer) for scorer in _CHANGE_SCORE_TEST_INSTANCES
 ]
 
-CHANGE_SCORE_TEST_INSTANCES = [
-    (CUSUM, {}),
-]
-CHANGE_SCORE_TEST_INSTANCES += [
-    (CostChangeScore, {"cost": cls(**params)}) for cls, params in COST_TEST_INSTANCES
-]
-CHANGE_SCORE_TEST_INSTANCES += [
-    (PenalisedScore, {"scorer": cls(**params)})
-    for cls, params in CHANGE_SCORE_TEST_INSTANCES
-]
-
-INTERVAL_SCORER_TEST_INSTANCES = COST_TEST_INSTANCES + CHANGE_SCORE_TEST_INSTANCES
+INTERVAL_SCORER_TEST_INSTANCES = (
+    _COST_TEST_INSTANCES
+    + _CHANGE_SCORE_TEST_INSTANCES
+    + _PENALISED_SCORE_TEST_INSTANCES
+)

@@ -7,10 +7,7 @@ from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
 
-ALL_ESTIMATORS = [
-    cls(**params)
-    for cls, params in INTERVAL_SCORER_TEST_INSTANCES + DETECTOR_TEST_INSTANCES
-]
+ALL_ESTIMATORS = INTERVAL_SCORER_TEST_INSTANCES + DETECTOR_TEST_INSTANCES
 
 
 def _expected_failed_checks(estimator):

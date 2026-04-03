@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, clone
 
 _N_SAMPLES = 100
 CHANGEPOINT = 50
@@ -86,14 +86,7 @@ def make_no_change_X(estimator: BaseEstimator) -> np.ndarray:
     return X
 
 
-def estimator_id(cls_params: tuple) -> str:
-    """Return a readable pytest ID for a ``(cls, params)`` registry entry."""
-    cls, params = cls_params
-    return repr(cls(**params))
-
-
 @pytest.fixture
 def estimator(request):
-    """Construct a fresh estimator instance from a (cls, params) registry entry."""
-    cls, params = request.param
-    return cls(**params)
+    """Clone a fresh unfitted estimator from a registry instance."""
+    return clone(request.param)
