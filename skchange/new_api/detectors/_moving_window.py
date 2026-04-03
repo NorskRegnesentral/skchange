@@ -98,25 +98,24 @@ def get_candidate_changepoints(
 @njit
 def select_changepoints_by_detection_length(
     scores: np.ndarray, min_detection_interval: int
-) -> list:
+) -> np.ndarray:
     candidate_cpts, detection_intervals = get_candidate_changepoints(scores)
-    cpts = [
-        cpt
-        for cpt, interval in zip(candidate_cpts, detection_intervals)
-        if interval[1] - interval[0] >= min_detection_interval
-    ]
-
-    return cpts
+    cpts = []
+    for cpt, interval in zip(candidate_cpts, detection_intervals):
+        if interval[1] - interval[0] >= min_detection_interval:
+            cpts.append(cpt)
+    if not cpts:
+        return np.zeros(0, dtype=np.int64)
+    return np.array(cpts)
 
 
 @njit
 def select_changepoints_by_local_optimum(
     scores: np.ndarray, selection_bandwidth: int
-) -> list:
+) -> np.ndarray:
     candidate_cpts, _ = get_candidate_changepoints(scores)
-    cpts = [
-        cpt
-        for cpt in candidate_cpts
+    cpts = []
+    for cpt in candidate_cpts:
         if np.isclose(
             scores[cpt],
             np.max(
@@ -124,16 +123,17 @@ def select_changepoints_by_local_optimum(
                     max(cpt - selection_bandwidth, 0) : cpt + selection_bandwidth + 1
                 ]
             ),
-        )
-    ]
-
-    return cpts
+        ):
+            cpts.append(cpt)
+    if not cpts:
+        return np.zeros(0, dtype=np.int64)
+    return np.array(cpts)
 
 
 @njit
 def select_changepoints_by_bottom_up(
     scores: np.ndarray, bandwidths: np.ndarray, local_optimum_fraction: float
-) -> list:
+) -> np.ndarray:
     bandwidths = sorted(bandwidths)
     candidate_cpts = []
     for i, bw in enumerate(bandwidths):
@@ -145,7 +145,7 @@ def select_changepoints_by_bottom_up(
             candidate_cpts.append((candidate_cpt, bw))
 
     if not candidate_cpts:
-        return []
+        return np.zeros(0, dtype=np.int64)
 
     cpts = [candidate_cpts[0][0]]
     for candidate_cpt, bw in candidate_cpts[1:]:
@@ -154,7 +154,7 @@ def select_changepoints_by_bottom_up(
         if distance_to_closest >= local_optimum_bandwidth:
             cpts.append(candidate_cpt)
 
-    return cpts
+    return np.array(cpts)
 
 
 def _resolve_change_score(
@@ -379,4 +379,4 @@ class MovingWindow(BaseChangeDetector):
                     scores, self.bandwidth_, self.local_optimum_fraction
                 )
 
-        return np.array(changepoints, dtype=np.intp)
+        return changepoints.astype(np.intp)
