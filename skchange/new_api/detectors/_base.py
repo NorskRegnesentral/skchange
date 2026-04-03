@@ -8,8 +8,6 @@ Provides a minimal base class for change detectors that:
 Subclasses must implement fit() and predict_changepoints().
 """
 
-from __future__ import annotations
-
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags

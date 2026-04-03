@@ -10,45 +10,7 @@ from skchange.new_api.interval_scorers._base import (
 )
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils.validation import validate_data
-
-
-def to_change_score(
-    scorer: BaseIntervalScorer,
-    *,
-    caller_name: str | None = None,
-    arg_name: str = "scorer",
-) -> BaseIntervalScorer:
-    """Convert a compatible scorer to a change score.
-
-    Parameters
-    ----------
-    scorer : BaseIntervalScorer
-        Scorer to convert.
-    caller_name : str or None, default=None
-        Caller name used in error messages.
-    arg_name : str, default="scorer"
-        Argument name used in error messages.
-
-    Returns
-    -------
-    BaseIntervalScorer
-        Scorer with ``score_type='change_score'``.
-    """
-    score_type = scorer.__sklearn_tags__().interval_scorer_tags.score_type
-
-    if score_type == "change_score":
-        return scorer
-
-    if score_type == "cost":
-        return CostChangeScore(scorer)
-
-    if caller_name is None:
-        caller_name = "to_change_score"
-    raise ValueError(
-        f"`{arg_name}` in {caller_name} must have score_type 'cost' or "
-        f"'change_score'. Got score_type '{score_type}'."
-    )
+from skchange.new_api.utils.validation import check_interval_scorer, validate_data
 
 
 class CostChangeScore(BaseChangeScore):
@@ -65,6 +27,12 @@ class CostChangeScore(BaseChangeScore):
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit wrapped cost scorer."""
         X = validate_data(self, X, ensure_2d=True, reset=True)
+        check_interval_scorer(
+            self.cost,
+            ensure_score_type=["cost"],
+            caller_name=self.__class__.__name__,
+            arg_name="cost",
+        )
         self.cost_: BaseIntervalScorer = clone(self.cost).fit(X, y)
         return self
 

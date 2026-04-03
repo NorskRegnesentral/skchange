@@ -416,6 +416,30 @@ class SomeDetector(BaseChangeDetector):
 - **scorer** (object): An instance of BaseIntervalScorer
 - **score(s)** (values): Numeric values returned by `evaluate()`
 
+### Explicit Composition — No Magic Coercions
+
+**Decision: All scorer composition is explicit. No helper functions silently wrap scorers.**
+
+Detectors and scorers require the correct type to be passed in directly:
+
+```python
+# ✅ Explicit — type is clear at call site
+MovingWindow(change_score=PenalisedScore(CUSUM()))
+MovingWindow(change_score=PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0))
+
+# ❌ Not supported — no auto-wrapping of costs or unpenalised scores
+MovingWindow(change_score=CUSUM())       # raises: not penalised
+MovingWindow(change_score=L2Cost())      # raises: not penalised change score
+```
+
+**Rationale:**
+- ✅ **repr/get_params round-trip**: What you pass is what you see — no hidden wrappers
+- ✅ **No ambiguous state**: `change_score_` always reflects what actually ran
+- ✅ **One construction path**: No combinatorial edge cases from multiple equivalent paths
+- ✅ **sklearn pattern**: sklearn never silently promotes one estimator type to another
+
+The `to_change_score()` helper has been removed for this reason. Use `CostChangeScore` explicitly.
+
 ### Type-Specific Base Classes
 
 ```

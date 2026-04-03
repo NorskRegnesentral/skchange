@@ -8,6 +8,7 @@ from skchange.new_api.interval_scorers._base import (
     BaseTransientScore,
     is_change_score,
     is_cost,
+    is_penalised_score,
     is_saving,
     is_transient_score,
 )
@@ -15,7 +16,6 @@ from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
 from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
-    to_change_score,
 )
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 
@@ -31,7 +31,7 @@ __all__ = [
     "PenalisedScore",
     "is_cost",
     "is_change_score",
+    "is_penalised_score",
     "is_saving",
     "is_transient_score",
-    "to_change_score",
 ]

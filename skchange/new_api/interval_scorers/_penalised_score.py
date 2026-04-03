@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import numpy as np
+from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
@@ -88,14 +87,14 @@ class PenalisedScore(BaseIntervalScorer):
             reset=True,
         )
 
-        self.scorer_ = check_interval_scorer(
+        check_interval_scorer(
             self.scorer,
-            required_tasks=["change_score", "saving", "local_saving"],
+            ensure_score_type=["change_score", "saving", "local_saving"],
             allow_penalised=False,
-            clone=True,
             caller_name=self.__class__.__name__,
             arg_name="scorer",
         )
+        self.scorer_ = clone(self.scorer)
         self.scorer_.fit(X, y)
 
         scorer_tags = self.scorer_.__sklearn_tags__().interval_scorer_tags

@@ -19,8 +19,6 @@ is_cost, is_change_score, is_saving, is_transient_score
     Return True if an estimator is of the given interval scorer type.
 """
 
-from __future__ import annotations
-
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
@@ -385,3 +383,28 @@ def is_transient_score(estimator) -> bool:
     """
     scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
     return scorer_tags is not None and scorer_tags.score_type == "transient_score"
+
+
+def is_penalised_score(estimator) -> bool:
+    """Return True if the given estimator is a penalised interval scorer.
+
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator object to test.
+
+    Returns
+    -------
+    out : bool
+        True if estimator is penalised and False otherwise.
+
+    Examples
+    --------
+    >>> from skchange.new_api.interval_scorers import CUSUM, PenalisedScore
+    >>> is_penalised_score(PenalisedScore(CUSUM()))
+    True
+    >>> is_penalised_score(CUSUM())
+    False
+    """
+    scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
+    return scorer_tags is not None and scorer_tags.penalised
