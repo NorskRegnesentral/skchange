@@ -39,7 +39,7 @@ class CostChangeScore(BaseChangeScore):
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute wrapped cost scorer data."""
         check_is_fitted(self, ["cost_"])
-        return {"cost_cache": self.cost_.precompute(X)}
+        return self.cost_.precompute(X)
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate change score on interval specifications.
@@ -73,14 +73,13 @@ class CostChangeScore(BaseChangeScore):
                 "for change-score evaluation."
             )
 
-        cost_cache = cache["cost_cache"]
         left_intervals = interval_specs[:, [0, 1]]
         right_intervals = interval_specs[:, [1, 2]]
         full_intervals = interval_specs[:, [0, 2]]
 
-        left_costs = self.cost_.evaluate(cost_cache, left_intervals)
-        right_costs = self.cost_.evaluate(cost_cache, right_intervals)
-        no_change_costs = self.cost_.evaluate(cost_cache, full_intervals)
+        left_costs = self.cost_.evaluate(cache, left_intervals)
+        right_costs = self.cost_.evaluate(cache, right_intervals)
+        no_change_costs = self.cost_.evaluate(cache, full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
         change_scores[(change_scores < 0) & (change_scores > -1e-8)] = 0.0

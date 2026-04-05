@@ -133,8 +133,7 @@ class PenalisedScore(BaseIntervalScorer):
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute wrapped scorer data for penalised evaluation."""
         check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
-        scorer_cache = self.scorer_.precompute(X)
-        return {"scorer_cache": scorer_cache}
+        return self.scorer_.precompute(X)
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate penalised scores on interval specifications.
@@ -156,7 +155,7 @@ class PenalisedScore(BaseIntervalScorer):
         check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
 
         scores = self.scorer_.evaluate(
-            cache["scorer_cache"],
+            cache,
             interval_specs,
         )
         scores = np.asarray(scores, dtype=np.float64)
