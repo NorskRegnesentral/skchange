@@ -5,18 +5,27 @@ from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
 from skchange.new_api.interval_scorers._from_cost import CostChangeScore
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 
-_COST_TEST_INSTANCES = [
+# ---------------------------------------------------------------------------
+# Raw instances of each type of interval scorer
+# ---------------------------------------------------------------------------
+_COSTS = [
     L2Cost(),
 ]
-_CHANGE_SCORE_TEST_INSTANCES = [
+_CHANGE_SCORES = [
     CUSUM(),
-] + [CostChangeScore(cost) for cost in _COST_TEST_INSTANCES]
-_PENALISED_SCORE_TEST_INSTANCES = [
-    PenalisedScore(scorer) for scorer in _CHANGE_SCORE_TEST_INSTANCES
 ]
 
+# ---------------------------------------------------------------------------
+# Composite instances
+# ---------------------------------------------------------------------------
+_COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS]
+_PENALISED_SCORES = [
+    PenalisedScore(scorer) for scorer in _CHANGE_SCORES + _COST_COMPOSITES
+]
+
+# ---------------------------------------------------------------------------
+# All test instances
+# ---------------------------------------------------------------------------
 INTERVAL_SCORER_TEST_INSTANCES = (
-    _COST_TEST_INSTANCES
-    + _CHANGE_SCORE_TEST_INSTANCES
-    + _PENALISED_SCORE_TEST_INSTANCES
+    _COSTS + _CHANGE_SCORES + _COST_COMPOSITES + _PENALISED_SCORES
 )
