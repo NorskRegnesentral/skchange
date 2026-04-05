@@ -1,5 +1,7 @@
 """Classes to construct other types of interval scorers from costs."""
 
+import warnings
+
 import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_array, check_is_fitted
@@ -82,8 +84,15 @@ class CostChangeScore(BaseChangeScore):
         no_change_costs = self.cost_.evaluate(cache, full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
-        change_scores[(change_scores < 0) & (change_scores > -1e-8)] = 0.0
-        return change_scores
+        min_score = np.min(change_scores)
+        if min_score < -1e-6:
+            warnings.warn(
+                f"{self.cost.__class__.__name__} produced negative change scores "
+                f"(min={min_score:.3g}). The cost may not be subadditive.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        return np.maximum(change_scores, 0.0)
 
     @property
     def min_size(self) -> int:
