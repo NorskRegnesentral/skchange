@@ -17,7 +17,7 @@ from skchange.new_api.detectors.tests._registry import DETECTOR_TEST_INSTANCES
 # registry instance before passing it to the test, ensuring test isolation.
 # indirect=True is needed to parametrize over the fixture rather than the raw instances.
 _all_detectors = pytest.mark.parametrize(
-    "estimator", DETECTOR_TEST_INSTANCES, indirect=True
+    "estimator", DETECTOR_TEST_INSTANCES, indirect=True, ids=repr
 )
 
 
