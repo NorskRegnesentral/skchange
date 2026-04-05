@@ -85,7 +85,7 @@ def test_interval_scorer_sklearn_tags_type(estimator):
 @_all_interval_scorers
 def test_interval_scorer_score_type_valid(estimator):
     """score_type tag must be one of the recognised values."""
-    valid = {"cost", "change_score", "saving", "local_saving", "transient_score"}
+    valid = {"cost", "change_score", "saving", "transient_score"}
     score_type = estimator.__sklearn_tags__().interval_scorer_tags.score_type
     assert score_type in valid, f"Unexpected score_type: {score_type!r}"
 

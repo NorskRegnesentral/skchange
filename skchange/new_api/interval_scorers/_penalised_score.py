@@ -89,7 +89,7 @@ class PenalisedScore(BaseIntervalScorer):
 
         check_interval_scorer(
             self.scorer,
-            ensure_score_type=["change_score", "saving", "local_saving"],
+            ensure_score_type=["change_score", "saving", "transient_score"],
             allow_penalised=False,
             caller_name=self.__class__.__name__,
             arg_name="scorer",
