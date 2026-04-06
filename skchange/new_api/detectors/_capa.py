@@ -235,11 +235,14 @@ class CAPA(BaseChangeDetector):
         Penalised saving for point anomaly detection.
         Must have ``interval_scorer_tags.penalised = True`` and ``min_size == 1``.
         If ``None``, defaults to ``PenalisedScore(L2Saving())``.
-    min_segment_length : int, default=2
-        Minimum number of samples in a segment anomaly. The effective minimum
-        is ``max(min_segment_length, segment_saving.min_size)`` after fitting.
-    max_segment_length : int, default=1000
-        Maximum number of samples in a segment anomaly.
+    min_segment_length : int or None, default=None
+        Minimum number of samples in a segment anomaly. Defaults to
+        ``segment_saving.min_size`` when ``None``. If an integer is given and
+        is less than ``segment_saving.min_size``, a ``ValueError`` is raised
+        during ``fit``.
+    max_segment_length : int or None, default=None
+        Maximum number of samples in a segment anomaly. Defaults to
+        ``n_samples // 2`` when ``None``, with a minimum of ``min_segment_length``.
     include_point_anomalies : bool, default=False
         If ``True``, detected point anomalies are included alongside segment
         anomalies in the output of ``predict``, ``predict_segment_anomalies``,
@@ -281,8 +284,8 @@ class CAPA(BaseChangeDetector):
     _parameter_constraints = {
         "segment_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "point_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
-        "min_segment_length": [Interval(Integral, 2, None, closed="left")],
-        "max_segment_length": [Interval(Integral, 2, None, closed="left")],
+        "min_segment_length": [Interval(Integral, 2, None, closed="left"), None],
+        "max_segment_length": [Interval(Integral, 2, None, closed="left"), None],
         "include_point_anomalies": ["boolean"],
     }
 
@@ -290,8 +293,8 @@ class CAPA(BaseChangeDetector):
         self,
         segment_saving: BaseIntervalScorer | None = None,
         point_saving: BaseIntervalScorer | None = None,
-        min_segment_length: int = 2,
-        max_segment_length: int = 1000,
+        min_segment_length: int | None = None,
+        max_segment_length: int | None = None,
         include_point_anomalies: bool = False,
     ):
         self.segment_saving = segment_saving
@@ -349,13 +352,27 @@ class CAPA(BaseChangeDetector):
                 f"got min_size={self.point_saving_.min_size}."
             )
 
-        self._min_segment_length = max(
-            self.min_segment_length, self.segment_saving_.min_size
-        )
-        if self._min_segment_length > self.max_segment_length:
+        min_size = self.segment_saving_.min_size
+        if self.min_segment_length is None:
+            self._min_segment_length = min_size
+        elif self.min_segment_length < min_size:
             raise ValueError(
-                f"Effective min_segment_length ({self._min_segment_length}) must not "
-                f"exceed max_segment_length ({self.max_segment_length})."
+                f"`min_segment_length={self.min_segment_length}` is less than "
+                f"`segment_saving.min_size={min_size}`. "
+                f"Set `min_segment_length=None` to use `min_size` as the default."
+            )
+        else:
+            self._min_segment_length = self.min_segment_length
+
+        self._max_segment_length = (
+            max(self.n_samples_in_ // 2, self._min_segment_length)
+            if self.max_segment_length is None
+            else self.max_segment_length
+        )
+        if self._min_segment_length > self._max_segment_length:
+            raise ValueError(
+                f"min_segment_length ({self._min_segment_length}) must not "
+                f"exceed max_segment_length ({self._max_segment_length})."
             )
 
         return self
@@ -402,7 +419,7 @@ class CAPA(BaseChangeDetector):
             point_cache,
             X.shape[0],
             self._min_segment_length,
-            self.max_segment_length,
+            self._max_segment_length,
         )
         segment_anomalies, point_anomalies = _extract_anomalies(opt_anomaly_starts)
 
