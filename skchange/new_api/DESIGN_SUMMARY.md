@@ -11,7 +11,8 @@ Complete design documentation for the new changepoint detection API.
 4. [Sklearn Compatibility](#sklearn-compatibility)
 5. [Meta-Estimator Pattern](#meta-estimator-pattern)
 6. [Interval Scorer Design](#interval-scorer-design)
-7. [Quick Reference](#quick-reference)
+7. [Metrics Design](#metrics-design)
+8. [Quick Reference](#quick-reference)
 
 ---
 
@@ -93,6 +94,14 @@ result = detector.fit(X).predict_all(X)
 - `check_methods_sample_order_invariance` — time series is inherently order-sensitive
 - `check_methods_subset_invariance` — detection requires ≥ 2 samples
 - `GridSearchCV` / `cross_val_score` — concatenates series across folds, destroying series boundaries (see [Sklearn Compatibility](#sklearn-compatibility))
+
+### 5. Terminology
+**"Interval" vs "Segment"**
+
+- **Interval**: A structural `[start, end)` index range — a pair of integers used to index into an array. Used in `BaseIntervalScorer` (`interval_specs`), cost and score `evaluate(cache, intervals)` calls, output type of `predict_segment_anomalies`, and the `segment_anomaly` metrics input type.
+- **Segment**: A semantically meaningful contiguous portion of the time series — a regime, a homogeneous run, or an anomalous period.
+
+The distinction is not strictly enforced and the terms are often used interchangeably in practice. As a guide: `BaseIntervalScorer` operates over *intervals*; names like `min_segment_length`, `predict_segment_anomalies`, and the `segment_anomaly` metric submodule deal with *segments* as semantic concepts.
 
 ---
 
