@@ -95,7 +95,7 @@ def test_metric_does_not_mutate_inputs(case):
 @_all_metrics
 def test_metric_both_empty_returns_defined(case):
     """metric(empty, empty) must return a finite float without raising."""
-    empty = case["empty"]
+    empty = np.empty((0,) + np.asarray(case["true"]).shape[1:], dtype=int)
     result = case["func"](empty, empty)
     assert isinstance(result, float)
     assert math.isfinite(result)
@@ -109,7 +109,7 @@ def test_metric_one_empty_returns_defined(case):
     """
     if case.get("requires_equal_length", False):
         pytest.skip("metric requires equal-length inputs")
-    empty = case["empty"]
+    empty = np.empty((0,) + np.asarray(case["true"]).shape[1:], dtype=int)
     result_true_only = case["func"](case["true"], empty)
     result_pred_only = case["func"](empty, case["true"].copy())
     assert isinstance(result_true_only, float)

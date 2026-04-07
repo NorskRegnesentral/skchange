@@ -15,14 +15,9 @@ Each entry has the following keys:
     The metric function under test.
 ``true`` : array-like
     A representative ground-truth input.
-``pred_same`` is not a key — tests derive it as ``np.asarray(case["true"]).copy()``
-internally. "Same prediction" is definitionally a copy of ``true``.
 ``pred_different`` : array-like
     A prediction that meaningfully differs from ``true``, used to verify the
     output range.  Should *not* be identical to ``true``.
-``empty`` : array-like
-    The "empty" version of the input type (empty 1-D array for changepoints /
-    labels; empty ``(0, 2)`` array for interval metrics).
 ``perfect_value`` : float
     The expected return value of ``func(true, true.copy())``.  Typically ``0.0``
     for lower-is-better metrics, ``1.0`` for higher-is-better.
@@ -53,8 +48,8 @@ from skchange.new_api.metrics import (
 # Test data shared across metric types
 # ---------------------------------------------------------------------------
 
-_CP_TRUE = np.array([10, 20, 30])
-_CP_DIFF = np.array([11, 20, 29])
+_CHANGEPOINTS_TRUE = np.array([10, 20, 30])
+_CHANGEPOINTS_DIFF = np.array([11, 20, 29])
 
 _LABELS_TRUE = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
 _LABELS_DIFF = np.array([0, 0, 1, 1, 2, 2, 0, 0, 1])
@@ -67,36 +62,32 @@ METRIC_TEST_CASES = [
     {
         "id": "hausdorff_metric",
         "func": hausdorff_metric,
-        "true": _CP_TRUE,
-        "pred_different": _CP_DIFF,
-        "empty": np.array([], dtype=int),
+        "true": _CHANGEPOINTS_TRUE,
+        "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 0.0,
         "lower_better": True,
     },
     {
         "id": "changepoint_precision",
         "func": changepoint_precision,
-        "true": _CP_TRUE,
-        "pred_different": _CP_DIFF,
-        "empty": np.array([], dtype=int),
+        "true": _CHANGEPOINTS_TRUE,
+        "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
     },
     {
         "id": "changepoint_recall",
         "func": changepoint_recall,
-        "true": _CP_TRUE,
-        "pred_different": _CP_DIFF,
-        "empty": np.array([], dtype=int),
+        "true": _CHANGEPOINTS_TRUE,
+        "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
     },
     {
         "id": "changepoint_f1_score",
         "func": changepoint_f1_score,
-        "true": _CP_TRUE,
-        "pred_different": _CP_DIFF,
-        "empty": np.array([], dtype=int),
+        "true": _CHANGEPOINTS_TRUE,
+        "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
     },
@@ -105,7 +96,6 @@ METRIC_TEST_CASES = [
         "func": rand_index,
         "true": _LABELS_TRUE,
         "pred_different": _LABELS_DIFF,
-        "empty": np.array([], dtype=int),
         "perfect_value": 1.0,
         "lower_better": False,
         "requires_equal_length": True,
@@ -115,7 +105,6 @@ METRIC_TEST_CASES = [
         "func": adjusted_rand_index,
         "true": _LABELS_TRUE,
         "pred_different": _LABELS_DIFF,
-        "empty": np.array([], dtype=int),
         "perfect_value": 1.0,
         "lower_better": False,
         "requires_equal_length": True,
@@ -125,7 +114,6 @@ METRIC_TEST_CASES = [
         "func": segment_anomaly_precision,
         "true": _INTERVALS_TRUE,
         "pred_different": _INTERVALS_DIFF,
-        "empty": np.empty((0, 2), dtype=int),
         "perfect_value": 1.0,
         "lower_better": False,
     },
@@ -134,7 +122,6 @@ METRIC_TEST_CASES = [
         "func": segment_anomaly_recall,
         "true": _INTERVALS_TRUE,
         "pred_different": _INTERVALS_DIFF,
-        "empty": np.empty((0, 2), dtype=int),
         "perfect_value": 1.0,
         "lower_better": False,
     },
@@ -143,7 +130,6 @@ METRIC_TEST_CASES = [
         "func": segment_anomaly_f1_score,
         "true": _INTERVALS_TRUE,
         "pred_different": _INTERVALS_DIFF,
-        "empty": np.empty((0, 2), dtype=int),
         "perfect_value": 1.0,
         "lower_better": False,
     },
