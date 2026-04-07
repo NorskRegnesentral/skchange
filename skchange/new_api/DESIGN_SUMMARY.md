@@ -33,11 +33,19 @@ Complete design documentation for the new changepoint detection API.
 ### 2. Dual Output Format
 **Dense labels from `predict()`, sparse changepoints from `predict_changepoints()`**
 
-- `predict(X) -> np.ndarray (n_samples,)` — segment labels for each sample
-mimics clustering output in sklearn, which is the closest task in sklearn: segment labels for each timepoint
-- `predict_changepoints(X) -> np.ndarray (n_changepoints,)` — changepoint indices
-- Subclasses implement `predict_changepoints()`; `predict()` is derived automatically via `changepoints_to_labels()` for most common detectors.
-- Subclasses may override `predict()` directly when the algorithm natively produces dense labels
+Both methods are part of the universal interface — all detectors implement them:
+
+- `predict_changepoints(X) -> np.ndarray (n_changepoints,)` — sorted indices of
+  segment boundaries. The primary method subclasses implement.
+- `predict(X) -> np.ndarray (n_samples,)` — one segment label per input sample.
+  Labels are integers; they can reoccur across non-contiguous segments (e.g. two
+  normal runs both get label 0 in an anomaly detector). This mirrors sklearn
+  clusterers and classifiers returning per-sample labels from `predict()`.
+
+`predict` is derived from `predict_changepoints` by default. Subclasses that
+natively produce labels (e.g. CAPA uses `0 = normal, 1..K = anomaly`) override
+`predict` directly and also override `predict_changepoints` to derive boundaries
+from the labels.
 
 **Why `predict()` returns dense labels:**
 - ✅ **Sklearn standard** — sklearn clusterers and classifiers return per-sample labels as arrays from `predict()`
@@ -58,6 +66,10 @@ def predict_scores(self, X) -> np.ndarray: # per-sample test statistic
 def predict_proba(self, X) -> np.ndarray:  # posterior probability per sample
 ```
 
+**Convention: `predict_segment_anoamlies -> np.ndarray`**
+
+When a detector identifies anomalous segments, it may expose a `predict_segment_anomalies()` method returning an array of shape `(n_anomalies, 2)` with start/end indices of anomalous segments.
+
 **Convention: `predict_all(X) -> dict`**
 
 When a detector computes several outputs in a single pass, it may expose a `predict_all()` method returning all outputs as a dict. This is a **convenience method for power users** — not part of `BaseChangeDetector` and not a stable cross-detector contract:
@@ -68,8 +80,6 @@ result = detector.fit(X).predict_all(X)
 # Keys are detector-specific, e.g.:
 # {"changepoints": np.ndarray, "scores": np.ndarray, "affected_features": list}
 ```
-
-The typed `predict_*` methods remain the stable API. `predict_all()` is purely for convenience when the user wants everything in one call.
 
 ### 4. Sklearn Alignment (Where Possible)
 **Follow scikit-learn conventions unless domain requirements prevent it**

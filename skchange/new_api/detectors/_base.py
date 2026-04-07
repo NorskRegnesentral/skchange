@@ -1,12 +1,4 @@
-"""Base detector implementation providing sklearn compatibility.
-
-Provides a minimal base class for change detectors that:
-- Inherits from sklearn.base.BaseEstimator for compatibility
-- Defines custom tags via __sklearn_tags__()
-- Provides default predict() derived from predict_changepoints()
-
-Subclasses must implement fit() and predict_changepoints().
-"""
+"""Base class for all change and anomaly detectors in the new API."""
 
 import numpy as np
 from sklearn.base import BaseEstimator
@@ -18,23 +10,30 @@ from skchange.new_api.utils._tags import ChangeDetectorTags, SkchangeTags
 
 
 class BaseChangeDetector(BaseEstimator):
-    """Base class for change detectors providing sklearn compatibility.
+    """Base class for all detectors providing sklearn compatibility.
 
-    Inherits from sklearn.base.BaseEstimator for sklearn compatibility,
-    including cloning, pipeline support, and get_params/set_params.
-
-    This base class provides:
-    - Custom tags via __sklearn_tags__() for change detection metadata
-    - Default predict() returning dense (n_samples,) segment labels
-    - Default fit_predict() convenience method
+    Inherits from ``sklearn.base.BaseEstimator`` for cloning, pipeline support,
+    and ``get_params`` / ``set_params``.
 
     Subclasses must implement:
-    - fit(X, y=None) -> self
-    - predict_changepoints(X) -> np.ndarray of changepoint indices
 
-    predict() is derived automatically from predict_changepoints().
-    Subclasses may override predict() directly when the algorithm natively
-    produces dense labels.
+    - ``fit(X, y=None) -> self``
+    - ``predict_changepoints(X) -> np.ndarray`` of sorted boundary indices
+
+    Both ``predict`` and ``predict_changepoints`` are the universal interface:
+    every detector supports both. ``predict_changepoints`` returns sorted
+    boundary indices; ``predict`` returns one segment label per input sample
+    (labels are integers and may reoccur across non-contiguous segments).
+
+    ``predict`` is derived from ``predict_changepoints`` by default. Subclasses
+    that natively produce labels (e.g. CAPA uses ``0 = normal, 1..K = anomaly``)
+    override ``predict`` directly and also override ``predict_changepoints``
+    to derive boundaries from the labels.
+
+    Additional capabilities such as ``predict_all()`` or
+    ``predict_segment_anomalies()`` are duck-typed: add them on the concrete
+    class when the algorithm supports them. No intermediate base class is
+    needed.
 
     Examples
     --------
