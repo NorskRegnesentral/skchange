@@ -396,7 +396,7 @@ class CAPA(BaseChangeDetector):
                 Each row is ``[start, end)`` of a contiguous segment anomaly.
             ``"point_anomalies"`` : np.ndarray of shape (n_point_anomalies,)
                 Sorted sample indices of point anomalies.
-            ``"scores"`` : np.ndarray of shape (n_samples,)
+            ``"cumulative_optimal_savings"`` : np.ndarray of shape (n_samples,)
                 Cumulative optimal savings from the dynamic programme.
             ``"segment_anomaly_features"`` : list of np.ndarray
                 One array per segment anomaly. Each array holds 0-based feature
@@ -440,7 +440,7 @@ class CAPA(BaseChangeDetector):
         return {
             "segment_anomalies": segment_anomalies,
             "point_anomalies": point_anomalies,
-            "scores": opt_savings,
+            "cumulative_optimal_savings": opt_savings,
             "segment_anomaly_features": segment_anomaly_features,
             "point_anomaly_features": point_anomaly_features,
         }
@@ -507,7 +507,7 @@ class CAPA(BaseChangeDetector):
             )
         if len(anomalies) == 0:
             return np.empty(0, dtype=np.intp)
-        n_samples = len(result["scores"])
+        n_samples = len(result["cumulative_optimal_savings"])
         boundaries = np.unique(anomalies)
         return boundaries[(boundaries > 0) & (boundaries < n_samples)].astype(np.intp)
 
@@ -528,7 +528,7 @@ class CAPA(BaseChangeDetector):
             single-sample intervals and numbered together with segment anomalies.
         """
         result = self.predict_all(X)
-        n_samples = len(result["scores"])
+        n_samples = len(result["cumulative_optimal_savings"])
         labels = np.zeros(n_samples, dtype=np.intp)
 
         intervals = list(result["segment_anomalies"])

@@ -686,8 +686,8 @@ class PELT(BaseChangeDetector):
 
         return self
 
-    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
-        """Detect changepoints in a time series.
+    def predict_all(self, X: ArrayLike) -> dict:
+        """Run PELT and return all outputs in a single pass.
 
         Parameters
         ----------
@@ -696,8 +696,16 @@ class PELT(BaseChangeDetector):
 
         Returns
         -------
-        changepoints : np.ndarray of shape (n_changepoints,)
-            Sorted integer indices of detected changepoints.
+        result : dict with keys:
+
+            ``"changepoints"`` : np.ndarray of shape (n_changepoints,)
+                Sorted integer indices of detected changepoints.
+            ``"cumulative_optimal_costs"`` : np.ndarray of shape (n_samples,)
+                Cumulative optimal costs.
+            ``"previous_changepoints"`` : np.ndarray of shape (n_samples,)
+                For each sample, the start of the optimal segment ending there.
+            ``"pruning_fraction"`` : float
+                Fraction of candidate starts pruned vs. optimal partitioning.
         """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
@@ -734,4 +742,24 @@ class PELT(BaseChangeDetector):
                 pruning_margin=self.pruning_margin,
             )
 
-        return pelt_result.changepoints.astype(np.intp)
+        return {
+            "changepoints": pelt_result.changepoints.astype(np.intp),
+            "cumulative_optimal_costs": pelt_result.optimal_costs,
+            "previous_changepoints": pelt_result.previous_change_points,
+            "pruning_fraction": pelt_result.pruning_fraction,
+        }
+
+    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
+        """Detect changepoints in a time series.
+
+        Parameters
+        ----------
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series to analyse for changepoints.
+
+        Returns
+        -------
+        changepoints : np.ndarray of shape (n_changepoints,)
+            Sorted integer indices of detected changepoints.
+        """
+        return self.predict_all(X)["changepoints"]

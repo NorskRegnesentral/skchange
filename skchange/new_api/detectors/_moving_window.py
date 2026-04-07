@@ -332,8 +332,8 @@ class MovingWindow(BaseChangeDetector):
 
         return self
 
-    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
-        """Detect changepoints in a time series.
+    def predict_all(self, X: ArrayLike) -> dict:
+        """Detect changepoints and return all outputs in a single pass.
 
         Parameters
         ----------
@@ -342,11 +342,13 @@ class MovingWindow(BaseChangeDetector):
 
         Returns
         -------
-        changepoints : np.ndarray of shape (n_changepoints,)
-            Sorted integer indices of detected changepoints. A changepoint at
-            index ``t`` means sample ``t`` is the first sample of a new segment,
-            i.e. a structural break occurs between samples ``t-1`` and ``t``.
-            Empty array if no changepoints are detected.
+        result : dict with keys:
+
+            ``"changepoints"`` : np.ndarray of shape (n_changepoints,)
+                Sorted integer indices of detected changepoints.
+            ``"scores"`` : np.ndarray of shape (n_samples, n_bandwidths)
+                Moving-window penalised scores. The i'th column corresponds to the
+                scores for self.bandwidth_[i]. NaN where the window does not fit.
         """
         check_is_fitted(self)
         X = validate_data(
@@ -379,4 +381,25 @@ class MovingWindow(BaseChangeDetector):
                     scores, self.bandwidth_, self.local_optimum_fraction
                 )
 
-        return changepoints.astype(np.intp)
+        return {
+            "changepoints": changepoints.astype(np.intp),
+            "scores": scores,
+        }
+
+    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
+        """Detect changepoints in a time series.
+
+        Parameters
+        ----------
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series to analyze for changepoints.
+
+        Returns
+        -------
+        changepoints : np.ndarray of shape (n_changepoints,)
+            Sorted integer indices of detected changepoints. A changepoint at
+            index ``t`` means sample ``t`` is the first sample of a new segment,
+            i.e. a structural break occurs between samples ``t-1`` and ``t``.
+            Empty array if no changepoints are detected.
+        """
+        return self.predict_all(X)["changepoints"]
