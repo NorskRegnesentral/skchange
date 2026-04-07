@@ -30,7 +30,7 @@ To make a release, follow these steps:
 5. Commit and push the version changes.
 6. Open a pull request to the main branch of the Skchange repository with the title: ``release: Skchange <version-number>``.
 7. Wait for the GitHub Actions checks to pass, then squash and merge your pull request.
-8. Go to the `release <https://github.com/NorskRegnesentral/skchange/actions/workflows/release.yaml>`_
+8. Go to the `release <https://github.com/NorskRegnesentral/skchange/actions/workflows/release.yml>`_
    workflow, click "Run workflow" in the top right,
    select the workflow inputs in the drop-down menu,
    and finally click the "Run workflow" button below the selected inputs.
