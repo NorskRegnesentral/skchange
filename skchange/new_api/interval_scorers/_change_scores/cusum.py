@@ -1,10 +1,11 @@
 """CUSUM score."""
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted, validate_data
+from sklearn.utils.validation import check_array, check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.utils.validation import validate_data
 from skchange.penalties import make_bic_penalty
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
@@ -72,8 +73,7 @@ class CUSUM(BaseChangeScore):
         self : CUSUM
             Fitted scorer.
         """
-        X = validate_data(self, X, ensure_2d=True, reset=True)  # Sets n_features_in_
-        self.n_samples_fit_ = X.shape[0]  # Used for default penalty calculation
+        X = validate_data(self, X, ensure_2d=True, reset=True)
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
@@ -86,20 +86,20 @@ class CUSUM(BaseChangeScore):
 
         Returns
         -------
-        precomputed : dict
+        cache : dict
             Dictionary with cumulative sums under key ``"sums"``.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, reset=False)
         return {"sums": col_cumsum(X, init_zero=True)}
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate CUSUM score at splits within intervals.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : array-like of shape (n_interval_specs, 3)
             Interval boundaries and split locations ``[start, split, end)``.
 
@@ -109,17 +109,17 @@ class CUSUM(BaseChangeScore):
             CUSUM scores for each interval specification and feature.
         """
         check_is_fitted(self)
-        sums = precomputed["sums"]
+        sums = cache["sums"]
 
         interval_specs = check_array(
             interval_specs,
             ensure_2d=True,
-            ensure_min_features=self.interval_specs_width,
+            ensure_min_features=self.interval_specs_ncols,
         )
-        if interval_specs.shape[1] != self.interval_specs_width:
+        if interval_specs.shape[1] != self.interval_specs_ncols:
             raise ValueError(
                 f"interval_specs must have shape"
-                f" (n_interval_specs, {self.interval_specs_width}), "
+                f" (n_interval_specs, {self.interval_specs_ncols}), "
                 f"got {interval_specs.shape}."
             )
 
@@ -137,6 +137,6 @@ class CUSUM(BaseChangeScore):
 
     def get_default_penalty(self) -> float:
         """Get default penalty value for the fitted CUSUM score."""
-        bic_penalty = make_bic_penalty(self.n_features_in_, self.n_samples_fit_)
+        bic_penalty = make_bic_penalty(self.n_features_in_, self.n_samples_in_)
         # BIC works on a squared error scale, while CUSUM is on an absolute error scale.
         return np.sqrt(bic_penalty)

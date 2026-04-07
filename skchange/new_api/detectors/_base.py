@@ -1,42 +1,39 @@
-"""Base detector implementation providing sklearn compatibility.
-
-Provides a minimal base class for change detectors that:
-- Inherits from sklearn.base.BaseEstimator for compatibility
-- Defines custom tags via __sklearn_tags__()
-- Provides default predict() derived from predict_changepoints()
-
-Subclasses must implement fit() and predict_changepoints().
-"""
-
-from __future__ import annotations
+"""Base class for all change and anomaly detectors in the new API."""
 
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._conversion import to_labels
+from skchange.new_api.utils._conversion import changepoints_to_labels
 from skchange.new_api.utils._tags import ChangeDetectorTags, SkchangeTags
 
 
 class BaseChangeDetector(BaseEstimator):
-    """Base class for change detectors providing sklearn compatibility.
+    """Base class for all detectors providing sklearn compatibility.
 
-    Inherits from sklearn.base.BaseEstimator for sklearn compatibility,
-    including cloning, pipeline support, and get_params/set_params.
-
-    This base class provides:
-    - Custom tags via __sklearn_tags__() for change detection metadata
-    - Default predict() returning dense (n_samples,) segment labels
-    - Default fit_predict() convenience method
+    Inherits from ``sklearn.base.BaseEstimator`` for cloning, pipeline support,
+    and ``get_params`` / ``set_params``.
 
     Subclasses must implement:
-    - fit(X, y=None) -> self
-    - predict_changepoints(X) -> np.ndarray of changepoint indices
 
-    predict() is derived automatically from predict_changepoints().
-    Subclasses may override predict() directly when the algorithm natively
-    produces dense labels.
+    - ``fit(X, y=None) -> self``
+    - ``predict_changepoints(X) -> np.ndarray`` of sorted boundary indices
+
+    Both ``predict`` and ``predict_changepoints`` are the universal interface:
+    every detector supports both. ``predict_changepoints`` returns sorted
+    boundary indices; ``predict`` returns one segment label per input sample
+    (labels are integers and may reoccur across non-contiguous segments).
+
+    ``predict`` is derived from ``predict_changepoints`` by default. Subclasses
+    that natively produce labels (e.g. CAPA uses ``0 = normal, 1..K = anomaly``)
+    override ``predict`` directly and also override ``predict_changepoints``
+    to derive boundaries from the labels.
+
+    Additional capabilities such as ``predict_all()`` or
+    ``predict_segment_anomalies()`` are duck-typed: add them on the concrete
+    class when the algorithm supports them. No intermediate base class is
+    needed.
 
     Examples
     --------
@@ -65,7 +62,10 @@ class BaseChangeDetector(BaseEstimator):
         Returns
         -------
         changepoints : np.ndarray of shape (n_changepoints,)
-            Indices where structural breaks occur. Empty array if none detected.
+            Sorted integer indices of detected changepoints. A changepoint at
+            index ``t`` means sample ``t`` is the first sample of a new segment,
+            i.e. a structural break occurs between samples ``t-1`` and ``t``.
+            Empty array if no changepoints are detected.
         """
         raise NotImplementedError(
             f"{self.__class__.__name__} must implement predict_changepoints()."
@@ -96,7 +96,7 @@ class BaseChangeDetector(BaseEstimator):
         (n_samples,)
         """
         changepoints = self.predict_changepoints(X)
-        return to_labels(changepoints, n_samples=len(X))
+        return changepoints_to_labels(changepoints, n_samples=len(X))
 
     def fit_predict(self, X, y: ArrayLike | None = None, **fit_params) -> np.ndarray:
         """Fit to data, then predict changepoint indices.

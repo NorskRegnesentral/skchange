@@ -1,12 +1,15 @@
-from __future__ import annotations
-
 import numpy as np
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.base import clone
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_scorer, check_penalty
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    check_penalty,
+    validate_data,
+)
 from skchange.utils.numba import njit
 
 
@@ -84,14 +87,14 @@ class PenalisedScore(BaseIntervalScorer):
             reset=True,
         )
 
-        self.scorer_ = check_interval_scorer(
+        check_interval_scorer(
             self.scorer,
-            required_tasks=["change_score", "saving", "local_saving"],
+            ensure_score_type=["change_score", "saving", "transient_score"],
             allow_penalised=False,
-            clone=True,
             caller_name=self.__class__.__name__,
             arg_name="scorer",
         )
+        self.scorer_ = clone(self.scorer)
         self.scorer_.fit(X, y)
 
         scorer_tags = self.scorer_.__sklearn_tags__().interval_scorer_tags
@@ -130,16 +133,15 @@ class PenalisedScore(BaseIntervalScorer):
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute wrapped scorer data for penalised evaluation."""
         check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
-        scorer_precomputed = self.scorer_.precompute(X)
-        return {"scorer_precomputed": scorer_precomputed}
+        return self.scorer_.precompute(X)
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate penalised scores on interval specifications.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : array-like
             Each row specifies an interval and possibly split points, depending on
             the wrapped scorer type. The expected shape is determined by
@@ -153,7 +155,7 @@ class PenalisedScore(BaseIntervalScorer):
         check_is_fitted(self, ["scorer_", "penalty_", "_penalty_mode"])
 
         scores = self.scorer_.evaluate(
-            precomputed["scorer_precomputed"],
+            cache,
             interval_specs,
         )
         scores = np.asarray(scores, dtype=np.float64)
@@ -175,10 +177,10 @@ class PenalisedScore(BaseIntervalScorer):
         return penalised.reshape(-1, 1)
 
     @property
-    def interval_specs_width(self) -> int:
+    def interval_specs_ncols(self) -> int:
         """Expected width of interval specifications inherited from wrapped scorer."""
         check_is_fitted(self)
-        return self.scorer_.interval_specs_width
+        return self.scorer_.interval_specs_ncols
 
     @property
     def min_size(self) -> int:
@@ -189,8 +191,10 @@ class PenalisedScore(BaseIntervalScorer):
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for penalised scorer."""
         tags = super().__sklearn_tags__()
+        scorer_tags = self.scorer.__sklearn_tags__()
+        tags.input_tags = scorer_tags.input_tags
         tags.interval_scorer_tags.score_type = (
-            self.scorer.__sklearn_tags__().interval_scorer_tags.score_type
+            scorer_tags.interval_scorer_tags.score_type
         )
         tags.interval_scorer_tags.aggregated = True
         tags.interval_scorer_tags.penalised = True

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def to_labels(
+def changepoints_to_labels(
     changepoints: np.ndarray,
     n_samples: int,
     labels: np.ndarray | None = None,
@@ -26,7 +26,7 @@ def to_labels(
     Examples
     --------
     >>> changepoints = np.array([50, 100])
-    >>> labels = to_labels(changepoints, n_samples=150)
+    >>> labels = changepoints_to_labels(changepoints, n_samples=150)
     >>> labels.shape
     (150,)
     >>> np.unique(labels)
@@ -49,3 +49,33 @@ def to_labels(
             dense_labels[start:end] = labels[seg_id]
 
     return dense_labels
+
+
+def labels_to_changepoints(labels: np.ndarray) -> np.ndarray:
+    """Convert per-sample segment labels to changepoint indices.
+
+    Parameters
+    ----------
+    labels : np.ndarray
+        Segment labels, shape (n_samples,).
+
+    Returns
+    -------
+    np.ndarray
+        Changepoint indices, shape (n_changepoints,). Empty if no changepoints.
+
+    Examples
+    --------
+    >>> labels = np.array([0]*50 + [1]*50 + [2]*50)
+    >>> changepoints = labels_to_changepoints(labels)
+    >>> changepoints
+    array([50, 100])
+    """
+    labels = np.asarray(labels, dtype=int)
+    if labels.ndim != 1:
+        raise ValueError("labels must be a 1D array.")
+    if len(labels) == 0:
+        return np.array([], dtype=int)
+
+    changepoints = np.where(labels[1:] != labels[:-1])[0] + 1
+    return changepoints.astype(int)

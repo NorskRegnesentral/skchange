@@ -1,11 +1,11 @@
 """L2 cost function."""
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted, validate_data
+from sklearn.utils.validation import check_array, check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.typing import ArrayLike, Self
-from skchange.penalties import make_bic_penalty
+from skchange.new_api.utils.validation import validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
@@ -112,14 +112,14 @@ class L2Cost(BaseCost):
     >>> # Estimated mode - learns mean from data
     >>> cost = L2Cost()
     >>> cost.fit(X)
-    >>> precomputed = cost.precompute(X)
+    >>> cache = cost.precompute(X)
     >>> interval_specs = np.array([[0, 50], [50, 100]])
-    >>> costs = cost.evaluate(precomputed, interval_specs)
+    >>> costs = cost.evaluate(cache, interval_specs)
     >>>
     >>> # Fixed mode - user provides mean
     >>> cost_fixed = L2Cost(mean=np.array([0.0, 0.0]))
     >>> cost_fixed.fit(X)
-    >>> precomputed = cost_fixed.precompute(X)
+    >>> cache = cost_fixed.precompute(X)
 
     Notes
     -----
@@ -146,8 +146,7 @@ class L2Cost(BaseCost):
         self : L2Cost
             Fitted cost function.
         """
-        X = validate_data(self, X, ensure_2d=True, reset=True)  # Sets n_features_in_
-        self.n_samples_fit_ = X.shape[0]  # Used for default penalty calculation
+        X = validate_data(self, X, ensure_2d=True, reset=True)
 
         if self.mean is not None:
             if np.isscalar(self.mean):
@@ -175,8 +174,8 @@ class L2Cost(BaseCost):
 
         Returns
         -------
-        precomputed : dict
-            Precomputed data with validated array.
+        cache : dict
+            Cached data with cumulative sums.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, reset=False)
@@ -185,13 +184,13 @@ class L2Cost(BaseCost):
             "sums2": col_cumsum(X**2, init_zero=True),
         }
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate L2 cost on intervals.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : array-like of shape (n_interval_specs, 2)
             Interval boundaries ``[start, end)`` to score.
 
@@ -205,26 +204,15 @@ class L2Cost(BaseCost):
         interval_specs = check_array(
             interval_specs,
             ensure_2d=True,
-            ensure_min_features=self.interval_specs_width,
+            ensure_min_features=self.interval_specs_ncols,
         )
         starts = interval_specs[:, 0]
         ends = interval_specs[:, 1]
 
-        sums, sums2 = precomputed["sums"], precomputed["sums2"]
+        sums, sums2 = cache["sums"], cache["sums2"]
         if self.mean is None:
             costs = l2_cost_optim(starts, ends, sums, sums2)
         else:
             costs = l2_cost_fixed(starts, ends, sums, sums2, self._mean)
 
         return costs
-
-    def get_default_penalty(self) -> float:
-        """Get default penalty value for L2 cost.
-
-        Returns
-        -------
-        float
-            Default penalty value for L2 cost.
-        """
-        check_is_fitted(self)
-        return make_bic_penalty(self.n_features_in_, self.n_samples_fit_)

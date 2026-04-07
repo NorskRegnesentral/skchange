@@ -11,7 +11,8 @@ Complete design documentation for the new changepoint detection API.
 4. [Sklearn Compatibility](#sklearn-compatibility)
 5. [Meta-Estimator Pattern](#meta-estimator-pattern)
 6. [Interval Scorer Design](#interval-scorer-design)
-7. [Quick Reference](#quick-reference)
+7. [Metrics Design](#metrics-design)
+8. [Quick Reference](#quick-reference)
 
 ---
 
@@ -33,11 +34,19 @@ Complete design documentation for the new changepoint detection API.
 ### 2. Dual Output Format
 **Dense labels from `predict()`, sparse changepoints from `predict_changepoints()`**
 
-- `predict(X) -> np.ndarray (n_samples,)` — segment labels for each sample
-mimics clustering output in sklearn, which is the closest task in sklearn: segment labels for each timepoint
-- `predict_changepoints(X) -> np.ndarray (n_changepoints,)` — changepoint indices
-- Subclasses implement `predict_changepoints()`; `predict()` is derived automatically via `to_labels()` for most common detectors.
-- Subclasses may override `predict()` directly when the algorithm natively produces dense labels
+Both methods are part of the universal interface — all detectors implement them:
+
+- `predict_changepoints(X) -> np.ndarray (n_changepoints,)` — sorted indices of
+  segment boundaries. The primary method subclasses implement.
+- `predict(X) -> np.ndarray (n_samples,)` — one segment label per input sample.
+  Labels are integers; they can reoccur across non-contiguous segments (e.g. two
+  normal runs both get label 0 in an anomaly detector). This mirrors sklearn
+  clusterers and classifiers returning per-sample labels from `predict()`.
+
+`predict` is derived from `predict_changepoints` by default. Subclasses that
+natively produce labels (e.g. CAPA uses `0 = normal, 1..K = anomaly`) override
+`predict` directly and also override `predict_changepoints` to derive boundaries
+from the labels.
 
 **Why `predict()` returns dense labels:**
 - ✅ **Sklearn standard** — sklearn clusterers and classifiers return per-sample labels as arrays from `predict()`
@@ -58,6 +67,10 @@ def predict_scores(self, X) -> np.ndarray: # per-sample test statistic
 def predict_proba(self, X) -> np.ndarray:  # posterior probability per sample
 ```
 
+**Convention: `predict_segment_anoamlies -> np.ndarray`**
+
+When a detector identifies anomalous segments, it may expose a `predict_segment_anomalies()` method returning an array of shape `(n_anomalies, 2)` with start/end indices of anomalous segments.
+
 **Convention: `predict_all(X) -> dict`**
 
 When a detector computes several outputs in a single pass, it may expose a `predict_all()` method returning all outputs as a dict. This is a **convenience method for power users** — not part of `BaseChangeDetector` and not a stable cross-detector contract:
@@ -68,8 +81,6 @@ result = detector.fit(X).predict_all(X)
 # Keys are detector-specific, e.g.:
 # {"changepoints": np.ndarray, "scores": np.ndarray, "affected_features": list}
 ```
-
-The typed `predict_*` methods remain the stable API. `predict_all()` is purely for convenience when the user wants everything in one call.
 
 ### 4. Sklearn Alignment (Where Possible)
 **Follow scikit-learn conventions unless domain requirements prevent it**
@@ -83,6 +94,14 @@ The typed `predict_*` methods remain the stable API. `predict_all()` is purely f
 - `check_methods_sample_order_invariance` — time series is inherently order-sensitive
 - `check_methods_subset_invariance` — detection requires ≥ 2 samples
 - `GridSearchCV` / `cross_val_score` — concatenates series across folds, destroying series boundaries (see [Sklearn Compatibility](#sklearn-compatibility))
+
+### 5. Terminology
+**"Interval" vs "Segment"**
+
+- **Interval**: A structural `[start, end)` index range — a pair of integers used to index into an array. Used in `BaseIntervalScorer` (`interval_specs`), cost and score `evaluate(cache, intervals)` calls, output type of `predict_segment_anomalies`, and the `segment_anomaly` metrics input type.
+- **Segment**: A semantically meaningful contiguous portion of the time series — a regime, a homogeneous run, or an anomalous period.
+
+The distinction is not strictly enforced and the terms are often used interchangeably in practice. As a guide: `BaseIntervalScorer` operates over *intervals*; names like `min_segment_length`, `predict_segment_anomalies`, and the `segment_anomaly` metric submodule deal with *segments* as semantic concepts.
 
 ---
 
@@ -171,23 +190,23 @@ class BaseChangeDetector(BaseEstimator):
 ```python
 def predict(self, X):
     changepoints = self.predict_changepoints(X)
-    return to_labels(changepoints, n_samples=len(X))
+    return changepoints_to_labels(changepoints, n_samples=len(X))
 ```
 
-### `to_labels()` Utility
+### `changepoints_to_labels()` Utility
 
 Converts changepoint indices to a dense label array:
 
 ```python
-from skchange.new_api.utils import to_labels
+from skchange.new_api.utils import changepoints_to_labels
 
 changepoints = np.array([50, 100])
-labels = to_labels(changepoints, n_samples=150)
+labels = changepoints_to_labels(changepoints, n_samples=150)
 # labels: [0, 0, ..., 0, 1, 1, ..., 1, 2, 2, ..., 2]
 #          segment 0         segment 1         segment 2
 
 # Optional custom labels
-labels = to_labels(changepoints, n_samples=150, labels=np.array([0, 1, 0]))
+labels = changepoints_to_labels(changepoints, n_samples=150, labels=np.array([0, 1, 0]))
 # Recurring pattern: segments 0 and 2 share label 0
 ```
 
@@ -416,18 +435,42 @@ class SomeDetector(BaseChangeDetector):
 - **scorer** (object): An instance of BaseIntervalScorer
 - **score(s)** (values): Numeric values returned by `evaluate()`
 
+### Explicit Composition — No Magic Coercions
+
+**Decision: All scorer composition is explicit. No helper functions silently wrap scorers.**
+
+Detectors and scorers require the correct type to be passed in directly:
+
+```python
+# ✅ Explicit — type is clear at call site
+MovingWindow(change_score=PenalisedScore(CUSUM()))
+MovingWindow(change_score=PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0))
+
+# ❌ Not supported — no auto-wrapping of costs or unpenalised scores
+MovingWindow(change_score=CUSUM())       # raises: not penalised
+MovingWindow(change_score=L2Cost())      # raises: not penalised change score
+```
+
+**Rationale:**
+- ✅ **repr/get_params round-trip**: What you pass is what you see — no hidden wrappers
+- ✅ **No ambiguous state**: `change_score_` always reflects what actually ran
+- ✅ **One construction path**: No combinatorial edge cases from multiple equivalent paths
+- ✅ **sklearn pattern**: sklearn never silently promotes one estimator type to another
+
+The `to_change_score()` helper has been removed for this reason. Use `CostChangeScore` explicitly.
+
 ### Type-Specific Base Classes
 
 ```
-BaseIntervalScorer               # Root: fit(), evaluate(), interval_specs_width
+BaseIntervalScorer               # Root: fit(), evaluate(), interval_specs_ncols
 ├── BaseCost                    # Costs between intervals
 │   ├── L2Cost
 │   └── MultivariateGaussianCost
 ├── BaseChangeScore             # Scores for change detection
 │   ├── CUSUM
-│   └── CostBasedChangeScore   # Adapter: cost → change score
+│   └── CostChangeScore         # Adapter: cost → change score
 ├── BaseSaving                  # Global segment savings
-└── BaseLocalSaving             # Local (per-changepoint) savings
+└── BaseTransientScore          # Transient (epidemic) segment scores
 ```
 
 ---
@@ -477,8 +520,8 @@ all_changepoints = Parallel(n_jobs=-1)(
 )
 
 # Convert changepoints to dense labels manually
-from skchange.new_api import to_labels
-labels = to_labels(changepoints, n_samples=len(X_test))
+from skchange.new_api.utils import changepoints_to_labels
+labels = changepoints_to_labels(changepoints, n_samples=len(X_test))
 ```
 
 ---

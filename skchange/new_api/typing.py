@@ -1,11 +1,11 @@
 """Centralised typing definitions for the new skchange API."""
 
-from __future__ import annotations
+from typing import TypeAlias
 
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
-    from typing_extensions import Self  # Python 3.8-3.10
+    from typing_extensions import Self  # Python 3.10
 
 import numpy as np
 
@@ -13,7 +13,7 @@ import numpy as np
 # but we find it more convenient than using Any. Defining it here allows us to easily
 # modify it in the future if needed, and provides a single source of truth for the
 # expected array-like types across the new API.
-ArrayLike = np.typing.ArrayLike
+ArrayLike: TypeAlias = np.typing.ArrayLike
 
 __all__ = [
     "ArrayLike",

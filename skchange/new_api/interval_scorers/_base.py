@@ -10,24 +10,24 @@ BaseChangeScore
     Base class for change score scorers (score_type='change_score').
 BaseSaving
     Base class for saving scorers (score_type='saving').
-BaseLocalSaving
-    Base class for local saving scorers (score_type='local_saving').
+BaseTransientScore
+    Base class for transient score scorers (score_type='transient_score').
 
 Type-checking Utilities
 -----------------------
-is_cost, is_change_score, is_saving, is_local_saving
+is_cost, is_change_score, is_saving, is_transient_score
     Return True if an estimator is of the given interval scorer type.
 """
-
-from __future__ import annotations
 
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
-from sklearn.utils.validation import check_is_fitted, validate_data
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
+from skchange.new_api.utils.validation import validate_data
+from skchange.penalties import make_bic_penalty
 
 
 class BaseIntervalScorer(BaseEstimator):
@@ -42,7 +42,7 @@ class BaseIntervalScorer(BaseEstimator):
     fit(X, y=None)
         Learn parameters from training data. Must return self.
 
-    evaluate(precomputed, interval_specs)
+    evaluate(cache, interval_specs)
         Score intervals using precomputed data. Returns scores array.
 
     Optional Methods (override as needed)
@@ -50,11 +50,9 @@ class BaseIntervalScorer(BaseEstimator):
     precompute(X)
         Validate and precompute statistics. Default validates X and returns dict.
 
-    interval_specs_width
+    interval_specs_ncols
         Expected number of columns in interval_specs. Must override for wrappers
-        that delegate to other scorers (e.g., CostBasedChangeScore, PenalisedScore).
-
-    min_size
+        that delegate to other scorers (e.g., CostChangeScore, PenalisedScore).
         Minimum valid interval size. Default returns 1.
 
     get_default_penalty()
@@ -77,8 +75,8 @@ class BaseIntervalScorer(BaseEstimator):
     ...         self.threshold_ = np.std(X)
     ...         return self
     ...
-    ...     def evaluate(self, precomputed, interval_specs):
-    ...         X = precomputed["X"]
+    ...     def evaluate(self, cache, interval_specs):
+    ...         X = cache["X"]
     ...         interval_specs = np.asarray(interval_specs)
     ...         scores = [
     ...             np.abs(np.mean(X[s:e])) / self.threshold_ for s, e in interval_specs
@@ -133,13 +131,13 @@ class BaseIntervalScorer(BaseEstimator):
         )
         return {"X": X}
 
-    def evaluate(self, precomputed: dict, interval_specs: ArrayLike) -> np.ndarray:
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate scorer on intervals.
 
         Parameters
         ----------
-        precomputed : dict
-            Precomputed data from precompute().
+        cache : dict
+            Cache from precompute().
         interval_specs : 2d array-like
             Each row specifies an interval and possibly split points, depending on
             the scorer type. For example, shape (n_interval_specs, 2) for cost scorers
@@ -160,23 +158,22 @@ class BaseIntervalScorer(BaseEstimator):
         )
 
     @property
-    def interval_specs_width(self) -> int:
-        """Expected width of interval specifications for evaluation.
+    def interval_specs_ncols(self) -> int:
+        """Expected number of columns in interval_specs for evaluation.
 
-        This property indicates the expected number of columns in the interval_specs
-        input to evaluate(). For example, cost scorers typically expect width 2
-        (start, end), while change scores expect width 3 (start, split, end).
+        For example, cost scorers typically expect 2 columns (start, end), while
+        change scores expect 3 (start, split, end).
 
-        In wrappers like CostBasedChangeScore or PenalisedScore, this delegates to the
+        In wrappers like CostChangeScore or PenalisedScore, this delegates to the
         wrapped scorer and may require fitting first.
 
         Returns
         -------
         int
-            Expected number of columns in interval_specs for evaluation.
+            Expected number of columns in interval_specs.
         """
         raise NotImplementedError(
-            f"{self.__class__.__name__} must implement interval_specs_width property. "
+            f"{self.__class__.__name__} must implement interval_specs_ncols property. "
             f"Type-specific base classes (BaseCost, BaseChangeScore, etc.) provide "
             f"this automatically."
         )
@@ -194,6 +191,17 @@ class BaseIntervalScorer(BaseEstimator):
             Minimum interval size.
         """
         return 1
+
+    def get_default_penalty(self) -> float:
+        """Get default penalty value for L2 cost.
+
+        Returns
+        -------
+        float
+            Default penalty value for L2 cost.
+        """
+        check_is_fitted(self)
+        return make_bic_penalty(self.n_features_in_, self.n_samples_in_)
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for the interval scorer.
@@ -216,7 +224,7 @@ class BaseCost(BaseIntervalScorer):
     """Base class for cost scorers.
 
     Convenience base class that sets ``score_type='cost'`` and
-    ``interval_specs_width=2``. Subclasses receive interval specs with columns
+    ``interval_specs_ncols=2``. Subclasses receive interval specs with columns
     ``[start, end)``.
     """
 
@@ -227,7 +235,7 @@ class BaseCost(BaseIntervalScorer):
         return tags
 
     @property
-    def interval_specs_width(self) -> int:
+    def interval_specs_ncols(self) -> int:
         """Return 2 (columns: start, end)."""
         return 2
 
@@ -236,7 +244,7 @@ class BaseChangeScore(BaseIntervalScorer):
     """Base class for change score scorers.
 
     Convenience base class that sets ``score_type='change_score'`` and
-    ``interval_specs_width=3``. Subclasses receive interval specs with columns
+    ``interval_specs_ncols=3``. Subclasses receive interval specs with columns
     ``[start, split, end)``.
     """
 
@@ -247,7 +255,7 @@ class BaseChangeScore(BaseIntervalScorer):
         return tags
 
     @property
-    def interval_specs_width(self) -> int:
+    def interval_specs_ncols(self) -> int:
         """Return 3 (columns: start, split, end)."""
         return 3
 
@@ -256,7 +264,7 @@ class BaseSaving(BaseIntervalScorer):
     """Base class for saving scorers.
 
     Convenience base class that sets ``score_type='saving'`` and
-    ``interval_specs_width=2``. Subclasses receive interval specs with columns
+    ``interval_specs_ncols=2``. Subclasses receive interval specs with columns
     ``[start, end)``.
     """
 
@@ -267,26 +275,28 @@ class BaseSaving(BaseIntervalScorer):
         return tags
 
     @property
-    def interval_specs_width(self) -> int:
+    def interval_specs_ncols(self) -> int:
         """Return 2 (columns: start, end)."""
         return 2
 
 
-class BaseLocalSaving(BaseIntervalScorer):
-    """Base class for local saving scorers.
+class BaseTransientScore(BaseIntervalScorer):
+    """Base class for transient score scorers.
 
-    Convenience base class that sets ``score_type='local_saving'`` and
-    ``interval_specs_width=4``. Subclasses receive interval specs with four columns.
+    Convenience base class that sets ``score_type='transient_score'`` and
+    ``interval_specs_ncols=4``. Subclasses receive interval specs with four columns
+    representing a segment that deviates from a reference (background) distribution
+    and then returns to it — the epidemic changepoint model.
     """
 
     def __sklearn_tags__(self) -> SkchangeTags:
-        """Return tags with ``score_type='local_saving'``."""
+        """Return tags with ``score_type='transient_score'``."""
         tags = super().__sklearn_tags__()
-        tags.interval_scorer_tags.score_type = "local_saving"
+        tags.interval_scorer_tags.score_type = "transient_score"
         return tags
 
     @property
-    def interval_specs_width(self) -> int:
+    def interval_specs_ncols(self) -> int:
         """Return 4."""
         return 4
 
@@ -358,8 +368,8 @@ def is_saving(estimator) -> bool:
     return scorer_tags is not None and scorer_tags.score_type == "saving"
 
 
-def is_local_saving(estimator) -> bool:
-    """Return True if the given estimator is (probably) a local saving scorer.
+def is_transient_score(estimator) -> bool:
+    """Return True if the given estimator is (probably) a transient score scorer.
 
     Parameters
     ----------
@@ -369,7 +379,32 @@ def is_local_saving(estimator) -> bool:
     Returns
     -------
     out : bool
-        True if estimator is a local saving scorer and False otherwise.
+        True if estimator is a transient score scorer and False otherwise.
     """
     scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
-    return scorer_tags is not None and scorer_tags.score_type == "local_saving"
+    return scorer_tags is not None and scorer_tags.score_type == "transient_score"
+
+
+def is_penalised_score(estimator) -> bool:
+    """Return True if the given estimator is a penalised interval scorer.
+
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator object to test.
+
+    Returns
+    -------
+    out : bool
+        True if estimator is penalised and False otherwise.
+
+    Examples
+    --------
+    >>> from skchange.new_api.interval_scorers import CUSUM, PenalisedScore
+    >>> is_penalised_score(PenalisedScore(CUSUM()))
+    True
+    >>> is_penalised_score(CUSUM())
+    False
+    """
+    scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
+    return scorer_tags is not None and scorer_tags.penalised

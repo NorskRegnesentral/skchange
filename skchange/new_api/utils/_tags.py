@@ -42,7 +42,7 @@ class IntervalScorerTags:
     Attributes
     ----------
     score_type : str | None, default=None
-        Type of score: "cost", "change_score", "saving", "local_saving", None
+        Type of score: "cost", "change_score", "saving", "transient_score", None
     conditional : bool, default=False
         Whether the scorer uses some input variables as covariates.
         If True, requires at least two input variables.

@@ -1,11 +1,10 @@
 """Functions to validate inputs and parameters in skchange."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import numpy as np
-from sklearn.base import clone as sklearn_clone
+from sklearn.base import BaseEstimator
+from sklearn.utils.validation import validate_data as _sklearn_validate_data
 
 from skchange.new_api.typing import ArrayLike
 
@@ -13,44 +12,72 @@ if TYPE_CHECKING:
     from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 
 
+def validate_data(
+    _estimator: BaseEstimator,
+    /,
+    X: ArrayLike,
+    **kwargs,
+) -> np.ndarray:
+    """Validate X and set n_features_in_ and n_samples_in_ on the estimator.
+
+    Thin wrapper around sklearn's ``validate_data`` that additionally stores
+    the number of samples as ``_estimator.n_samples_in_`` when ``reset=True``
+    (i.e. during fit), which is required for default penalty computation.
+
+    Parameters
+    ----------
+    _estimator : BaseEstimator
+        The estimator being fitted or applied. Modified in-place.
+    X : array-like of shape (n_samples, n_features)
+        Data to validate.
+    **kwargs
+        Forwarded to ``sklearn.utils.validation.validate_data``.
+
+    Returns
+    -------
+    X : ndarray of shape (n_samples, n_features)
+        Validated array.
+    """
+    X = _sklearn_validate_data(_estimator, X, **kwargs)
+    if kwargs.get("reset", True):
+        _estimator.n_samples_in_ = X.shape[0]
+    return X
+
+
 def check_interval_scorer(
-    scorer: BaseIntervalScorer,
-    required_tasks: list | None = None,
+    scorer: "BaseIntervalScorer",
+    ensure_score_type: list | None = None,
+    ensure_penalised: bool = False,
     allow_penalised: bool = True,
-    clone: bool = True,
     caller_name: str | None = None,
     arg_name: str = "",
-) -> BaseIntervalScorer:
+) -> None:
     """Check if the given scorer is a valid interval scorer.
 
     Parameters
     ----------
     scorer : BaseIntervalScorer
         The scorer to check.
-    required_tasks : list of str or None, default=None
+    ensure_score_type : list of str or None, default=None
         If specified, the scorer's score_type tag must be one of these.
+    ensure_penalised : bool, default=False
+        If True, raises an error if the scorer is not penalised.
     allow_penalised : bool, default=True
-        Whether to allow penalised scorers. If False, raises error if scorer has
-        penalised tag True.
-    clone: bool, default=True
-        Whether to clone the scorer before returning.
+        If False, raises an error if the scorer is penalised.
     caller_name : str or None, default=None
         Name of the caller for error messages.
     arg_name : str, default=""
         Name of the argument for error messages.
 
-    Returns
-    -------
-    BaseIntervalScorer
-        The validated input scorer.
+    Raises
+    ------
+    ValueError
+        If any of the checks fail.
 
     """
-    if clone:
-        scorer = sklearn_clone(scorer)
-
     score_type = scorer.__sklearn_tags__().interval_scorer_tags.score_type
-    if required_tasks and score_type not in required_tasks:
-        _required_tasks = [f'"{task}"' for task in required_tasks]
+    if ensure_score_type and score_type not in ensure_score_type:
+        _required_tasks = [f'"{task}"' for task in ensure_score_type]
         tasks_str = (
             ", ".join(_required_tasks[:-1]) + " or " + _required_tasks[-1]
             if len(_required_tasks) > 1
@@ -59,13 +86,26 @@ def check_interval_scorer(
         raise ValueError(
             f"{caller_name} requires `{arg_name}` to have score_type {tasks_str}"
             f" ({arg_name}.__sklearn_tags__().interval_scorer_tags.score_type "
-            f"in {required_tasks}). "
+            f"in {ensure_score_type}). "
             f'Got {scorer.__class__.__name__}, which has score_type "{score_type}".'
         )
+    if (
+        ensure_penalised
+        and not scorer.__sklearn_tags__().interval_scorer_tags.penalised
+    ):
+        raise ValueError(
+            f"{caller_name} requires `{arg_name}` to be a penalised scorer "
+            f"({arg_name}.__sklearn_tags__().interval_scorer_tags.penalised == True). "
+            f"Got {scorer.__class__.__name__}, which is not penalised. "
+            f"Wrap it with PenalisedScore: "
+            f"PenalisedScore({scorer.__class__.__name__}())."
+        )
     if not allow_penalised and scorer.__sklearn_tags__().interval_scorer_tags.penalised:
-        raise ValueError(f"`{arg_name}` cannot be a penalised score.")
-
-    return scorer
+        raise ValueError(
+            f"{caller_name} requires `{arg_name}` to be an unpenalised scorer "
+            f"({arg_name}.__sklearn_tags__().interval_scorer_tags.penalised == False). "
+            f"Got {scorer.__class__.__name__}, which is penalised."
+        )
 
 
 def check_penalty(
