@@ -4,14 +4,23 @@ Functions in this module take **dense per-sample label arrays** as their native
 input — the integer arrays returned by ``predict()``.
 """
 
-import numpy as np
 from sklearn.metrics import adjusted_rand_score as _adjusted_rand_score
 from sklearn.metrics import rand_score as _rand_score
+from sklearn.utils._param_validation import validate_params
+
+from skchange.new_api.typing import ArrayLike
 
 
+@validate_params(
+    {
+        "y_true": ["array-like"],
+        "y_pred": ["array-like"],
+    },
+    prefer_skip_nested_validation=True,
+)
 def rand_index(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
 ) -> float:
     """Compute the Rand index for two segmentations.
 
@@ -20,9 +29,9 @@ def rand_index(
 
     Parameters
     ----------
-    y_true : np.ndarray of shape (n_samples,)
+    y_true : array-like of shape (n_samples,)
         True segment labels, as returned by ``predict()``.
-    y_pred : np.ndarray of shape (n_samples,)
+    y_pred : array-like of shape (n_samples,)
         Predicted segment labels, as returned by ``predict()``.
 
     Returns
@@ -32,15 +41,22 @@ def rand_index(
 
     Examples
     --------
-    >>> rand_index(np.array([0, 0, 0, 1, 1, 1]), np.array([0, 0, 0, 1, 1, 1]))
+    >>> rand_index([0, 0, 0, 1, 1, 1], [0, 0, 0, 1, 1, 1])
     1.0
     """
     return float(_rand_score(y_true, y_pred))
 
 
+@validate_params(
+    {
+        "y_true": ["array-like"],
+        "y_pred": ["array-like"],
+    },
+    prefer_skip_nested_validation=True,
+)
 def adjusted_rand_index(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
 ) -> float:
     """Compute the adjusted Rand index for two segmentations.
 
@@ -49,9 +65,9 @@ def adjusted_rand_index(
 
     Parameters
     ----------
-    y_true : np.ndarray of shape (n_samples,)
+    y_true : array-like of shape (n_samples,)
         True segment labels, as returned by ``predict()``.
-    y_pred : np.ndarray of shape (n_samples,)
+    y_pred : array-like of shape (n_samples,)
         Predicted segment labels, as returned by ``predict()``.
 
     Returns
@@ -62,7 +78,7 @@ def adjusted_rand_index(
 
     Examples
     --------
-    >>> adjusted_rand_index(np.array([0, 0, 0, 1, 1, 1]), np.array([0, 0, 0, 1, 1, 1]))
+    >>> adjusted_rand_index([0, 0, 0, 1, 1, 1], [0, 0, 0, 1, 1, 1])
     1.0
     """
     return float(_adjusted_rand_score(y_true, y_pred))

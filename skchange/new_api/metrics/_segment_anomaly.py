@@ -6,6 +6,9 @@ index pair, as returned by ``predict_segment_anomalies()``.
 """
 
 import numpy as np
+from sklearn.utils._param_validation import validate_params
+
+from skchange.new_api.typing import ArrayLike
 
 
 def _count_tp(it: np.ndarray, ip: np.ndarray) -> int:
@@ -23,9 +26,16 @@ def _count_tp(it: np.ndarray, ip: np.ndarray) -> int:
     return tp
 
 
+@validate_params(
+    {
+        "intervals_true": ["array-like"],
+        "intervals_pred": ["array-like"],
+    },
+    prefer_skip_nested_validation=True,
+)
 def segment_anomaly_precision(
-    intervals_true: np.ndarray,
-    intervals_pred: np.ndarray,
+    intervals_true: ArrayLike,
+    intervals_pred: ArrayLike,
 ) -> float:
     """Compute detection precision for segment anomalies.
 
@@ -36,10 +46,10 @@ def segment_anomaly_precision(
 
     Parameters
     ----------
-    intervals_true : np.ndarray of shape (n_true, 2)
+    intervals_true : array-like of shape (n_true, 2)
         True anomalous intervals, as returned by ``predict_segment_anomalies()``.
         Each row is a ``[start, end)`` index pair.
-    intervals_pred : np.ndarray of shape (n_pred, 2)
+    intervals_pred : array-like of shape (n_pred, 2)
         Predicted anomalous intervals, as returned by
         ``predict_segment_anomalies()``. Each row is a ``[start, end)`` index pair.
 
@@ -50,7 +60,7 @@ def segment_anomaly_precision(
 
     Examples
     --------
-    >>> segment_anomaly_precision(np.array([[10, 20]]), np.array([[12, 22]]))
+    >>> segment_anomaly_precision([[10, 20]], [[12, 22]])
     1.0
     """
     it = np.asarray(intervals_true)
@@ -65,9 +75,16 @@ def segment_anomaly_precision(
     return float(tp / len(ip))
 
 
+@validate_params(
+    {
+        "intervals_true": ["array-like"],
+        "intervals_pred": ["array-like"],
+    },
+    prefer_skip_nested_validation=True,
+)
 def segment_anomaly_recall(
-    intervals_true: np.ndarray,
-    intervals_pred: np.ndarray,
+    intervals_true: ArrayLike,
+    intervals_pred: ArrayLike,
 ) -> float:
     """Compute detection recall for segment anomalies.
 
@@ -78,10 +95,10 @@ def segment_anomaly_recall(
 
     Parameters
     ----------
-    intervals_true : np.ndarray of shape (n_true, 2)
+    intervals_true : array-like of shape (n_true, 2)
         True anomalous intervals, as returned by ``predict_segment_anomalies()``.
         Each row is a ``[start, end)`` index pair.
-    intervals_pred : np.ndarray of shape (n_pred, 2)
+    intervals_pred : array-like of shape (n_pred, 2)
         Predicted anomalous intervals, as returned by
         ``predict_segment_anomalies()``. Each row is a ``[start, end)`` index pair.
 
@@ -92,7 +109,7 @@ def segment_anomaly_recall(
 
     Examples
     --------
-    >>> segment_anomaly_recall(np.array([[10, 20]]), np.array([[12, 22]]))
+    >>> segment_anomaly_recall([[10, 20]], [[12, 22]])
     1.0
     """
     it = np.asarray(intervals_true)
@@ -107,9 +124,16 @@ def segment_anomaly_recall(
     return float(tp / len(it))
 
 
+@validate_params(
+    {
+        "intervals_true": ["array-like"],
+        "intervals_pred": ["array-like"],
+    },
+    prefer_skip_nested_validation=True,
+)
 def segment_anomaly_f1_score(
-    intervals_true: np.ndarray,
-    intervals_pred: np.ndarray,
+    intervals_true: ArrayLike,
+    intervals_pred: ArrayLike,
 ) -> float:
     """Compute the F1 score for segment anomaly detection.
 
@@ -121,10 +145,10 @@ def segment_anomaly_f1_score(
 
     Parameters
     ----------
-    intervals_true : np.ndarray of shape (n_true, 2)
+    intervals_true : array-like of shape (n_true, 2)
         True anomalous intervals, as returned by ``predict_segment_anomalies()``.
         Each row is a ``[start, end)`` index pair.
-    intervals_pred : np.ndarray of shape (n_pred, 2)
+    intervals_pred : array-like of shape (n_pred, 2)
         Predicted anomalous intervals, as returned by
         ``predict_segment_anomalies()``.  Each row is a ``[start, end)`` index
         pair.
@@ -137,9 +161,7 @@ def segment_anomaly_f1_score(
 
     Examples
     --------
-    >>> intervals_true = np.array([[10, 20], [50, 60]])
-    >>> intervals_pred = np.array([[12, 22], [50, 60]])
-    >>> segment_anomaly_f1_score(intervals_true, intervals_pred)
+    >>> segment_anomaly_f1_score([[10, 20], [50, 60]], [[12, 22], [50, 60]])
     1.0
     """
     precision = segment_anomaly_precision(intervals_true, intervals_pred)

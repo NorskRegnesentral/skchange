@@ -4,12 +4,26 @@ Functions in this module take **changepoint index arrays** as their native input
 the sorted integer arrays returned by ``predict_changepoints()``.
 """
 
+import numbers
+
 import numpy as np
+from sklearn.utils._param_validation import Interval, validate_params
+
+from skchange.new_api.typing import ArrayLike
 
 
+@validate_params(
+    {
+        "changepoints_true": ["array-like"],
+        "changepoints_pred": ["array-like"],
+        "max_distance": [Interval(numbers.Real, 0, None, closed="left"), None],
+    },
+    prefer_skip_nested_validation=True,
+)
 def hausdorff_metric(
-    changepoints_true: np.ndarray,
-    changepoints_pred: np.ndarray,
+    changepoints_true: ArrayLike,
+    changepoints_pred: ArrayLike,
+    *,
     max_distance: float | None = None,
 ) -> float:
     """Compute the Hausdorff distance between two changepoint sets.
@@ -19,9 +33,9 @@ def hausdorff_metric(
 
     Parameters
     ----------
-    changepoints_true : np.ndarray of shape (n_changepoints_true,)
+    changepoints_true : array-like of shape (n_changepoints_true,)
         True changepoint indices, as returned by ``predict_changepoints()``.
-    changepoints_pred : np.ndarray of shape (n_changepoints_pred,)
+    changepoints_pred : array-like of shape (n_changepoints_pred,)
         Predicted changepoint indices, as returned by ``predict_changepoints()``.
     max_distance : float | None, default=None
         Cap on the returned distance. If None, no cap is applied.
@@ -34,7 +48,7 @@ def hausdorff_metric(
 
     Examples
     --------
-    >>> hausdorff_metric(np.array([10, 20]), np.array([12, 20]))
+    >>> hausdorff_metric([10, 20], [12, 20])
     2.0
     """
     cp_true = np.asarray(changepoints_true)
@@ -71,9 +85,18 @@ def _count_tp(
     return tp
 
 
+@validate_params(
+    {
+        "changepoints_true": ["array-like"],
+        "changepoints_pred": ["array-like"],
+        "tolerance": [Interval(numbers.Integral, 0, None, closed="left")],
+    },
+    prefer_skip_nested_validation=True,
+)
 def changepoint_precision(
-    changepoints_true: np.ndarray,
-    changepoints_pred: np.ndarray,
+    changepoints_true: ArrayLike,
+    changepoints_pred: ArrayLike,
+    *,
     tolerance: int = 5,
 ) -> float:
     """Compute detection precision for changepoints with a tolerance window.
@@ -85,9 +108,9 @@ def changepoint_precision(
 
     Parameters
     ----------
-    changepoints_true : np.ndarray of shape (n_changepoints_true,)
+    changepoints_true : array-like of shape (n_changepoints_true,)
         True changepoint indices, as returned by ``predict_changepoints()``.
-    changepoints_pred : np.ndarray of shape (n_changepoints_pred,)
+    changepoints_pred : array-like of shape (n_changepoints_pred,)
         Predicted changepoint indices, as returned by ``predict_changepoints()``.
     tolerance : int, default=5
         Maximum sample distance for a match to count as correct.
@@ -99,7 +122,7 @@ def changepoint_precision(
 
     Examples
     --------
-    >>> changepoint_precision(np.array([10, 20]), np.array([12, 20]), tolerance=5)
+    >>> changepoint_precision([10, 20], [12, 20], tolerance=5)
     1.0
     """
     cp_true = np.asarray(changepoints_true)
@@ -114,9 +137,18 @@ def changepoint_precision(
     return float(tp / len(cp_pred))
 
 
+@validate_params(
+    {
+        "changepoints_true": ["array-like"],
+        "changepoints_pred": ["array-like"],
+        "tolerance": [Interval(numbers.Integral, 0, None, closed="left")],
+    },
+    prefer_skip_nested_validation=True,
+)
 def changepoint_recall(
-    changepoints_true: np.ndarray,
-    changepoints_pred: np.ndarray,
+    changepoints_true: ArrayLike,
+    changepoints_pred: ArrayLike,
+    *,
     tolerance: int = 5,
 ) -> float:
     """Compute detection recall for changepoints with a tolerance window.
@@ -128,9 +160,9 @@ def changepoint_recall(
 
     Parameters
     ----------
-    changepoints_true : np.ndarray of shape (n_changepoints_true,)
+    changepoints_true : array-like of shape (n_changepoints_true,)
         True changepoint indices, as returned by ``predict_changepoints()``.
-    changepoints_pred : np.ndarray of shape (n_changepoints_pred,)
+    changepoints_pred : array-like of shape (n_changepoints_pred,)
         Predicted changepoint indices, as returned by ``predict_changepoints()``.
     tolerance : int, default=5
         Maximum sample distance for a match to count as correct.
@@ -142,7 +174,7 @@ def changepoint_recall(
 
     Examples
     --------
-    >>> changepoint_recall(np.array([10, 20]), np.array([12, 20]), tolerance=5)
+    >>> changepoint_recall([10, 20], [12, 20], tolerance=5)
     1.0
     """
     cp_true = np.asarray(changepoints_true)
@@ -157,9 +189,18 @@ def changepoint_recall(
     return float(tp / len(cp_true))
 
 
+@validate_params(
+    {
+        "changepoints_true": ["array-like"],
+        "changepoints_pred": ["array-like"],
+        "tolerance": [Interval(numbers.Integral, 0, None, closed="left")],
+    },
+    prefer_skip_nested_validation=True,
+)
 def changepoint_f1_score(
-    changepoints_true: np.ndarray,
-    changepoints_pred: np.ndarray,
+    changepoints_true: ArrayLike,
+    changepoints_pred: ArrayLike,
+    *,
     tolerance: int = 5,
 ) -> float:
     """Compute the F1 score for changepoint detection with a tolerance window.
@@ -170,9 +211,9 @@ def changepoint_f1_score(
 
     Parameters
     ----------
-    changepoints_true : np.ndarray of shape (n_changepoints_true,)
+    changepoints_true : array-like of shape (n_changepoints_true,)
         True changepoint indices, as returned by ``predict_changepoints()``.
-    changepoints_pred : np.ndarray of shape (n_changepoints_pred,)
+    changepoints_pred : array-like of shape (n_changepoints_pred,)
         Predicted changepoint indices, as returned by ``predict_changepoints()``.
     tolerance : int, default=5
         Maximum sample distance for a match to count as correct.
@@ -185,11 +226,15 @@ def changepoint_f1_score(
 
     Examples
     --------
-    >>> changepoint_f1_score(np.array([10, 20]), np.array([12, 20]), tolerance=5)
+    >>> changepoint_f1_score([10, 20], [12, 20], tolerance=5)
     1.0
     """
-    precision = changepoint_precision(changepoints_true, changepoints_pred, tolerance)
-    recall = changepoint_recall(changepoints_true, changepoints_pred, tolerance)
+    precision = changepoint_precision(
+        changepoints_true, changepoints_pred, tolerance=tolerance
+    )
+    recall = changepoint_recall(
+        changepoints_true, changepoints_pred, tolerance=tolerance
+    )
     if precision + recall == 0.0:
         return 0.0
     return float(2 * precision * recall / (precision + recall))
