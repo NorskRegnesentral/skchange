@@ -734,5 +734,4 @@ class PELT(BaseChangeDetector):
                 pruning_margin=self.pruning_margin,
             )
 
-        self._pelt_result = pelt_result
         return pelt_result.changepoints.astype(np.intp)
