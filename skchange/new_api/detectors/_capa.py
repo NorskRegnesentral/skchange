@@ -9,7 +9,7 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.interval_scorers._savings._l2_saving import L2Saving
+from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context

@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils.validation import check_array, check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils.validation import validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
@@ -73,25 +73,6 @@ class L2Saving(BaseSaving):
     >>> interval_specs = np.array([[0, 50], [50, 100]])
     >>> scorer.evaluate(cache, interval_specs)
     """
-
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
-        """Fit L2 saving to training data.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data.
-        y : None
-            Ignored.
-
-        Returns
-        -------
-        self : L2Saving
-            Fitted scorer.
-        """
-        X = validate_data(self, X, ensure_2d=True, reset=True)
-        self.n_samples_in_ = X.shape[0]
-        return self
 
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute cumulative sums for fast interval evaluation.

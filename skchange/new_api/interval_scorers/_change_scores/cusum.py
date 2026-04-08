@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.utils.validation import check_array, check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils.validation import validate_data
 from skchange.penalties import make_bic_penalty
 from skchange.utils.numba import njit
@@ -57,24 +57,6 @@ class CUSUM(BaseChangeScore):
     Unlike `L2Cost`, this scorer has no fixed-vs-optim parameter variants,
     so no mode dispatch logic is required.
     """
-
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
-        """Fit CUSUM scorer.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data. Used to validate shape and feature count.
-        y : None
-            Ignored.
-
-        Returns
-        -------
-        self : CUSUM
-            Fitted scorer.
-        """
-        X = validate_data(self, X, ensure_2d=True, reset=True)
-        return self
 
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute cumulative sums for CUSUM evaluation.

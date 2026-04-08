@@ -91,6 +91,10 @@ class BaseIntervalScorer(BaseEstimator):
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit the scorer to training data.
 
+        The default implementation validates ``X`` and stores ``n_features_in_``
+        and ``n_samples_in_``. Override when the scorer needs to learn parameters
+        from the training data.
+
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
@@ -103,7 +107,8 @@ class BaseIntervalScorer(BaseEstimator):
         self
             Fitted scorer instance.
         """
-        raise NotImplementedError(f"{self.__class__.__name__} must implement fit()")
+        validate_data(self, X, ensure_2d=True, reset=True)
+        return self
 
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute statistics from data to speed up evaluate.

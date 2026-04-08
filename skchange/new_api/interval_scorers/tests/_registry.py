@@ -4,7 +4,7 @@ from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
 from skchange.new_api.interval_scorers._from_cost import CostChangeScore
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.interval_scorers._savings._l2_saving import L2Saving
+from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 
 # ---------------------------------------------------------------------------
 # Raw instances of each type of interval scorer

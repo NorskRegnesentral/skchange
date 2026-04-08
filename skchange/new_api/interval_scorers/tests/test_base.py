@@ -16,11 +16,6 @@ from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
 class _StubScorer(BaseIntervalScorer):
     """Minimal concrete scorer that uses the default precompute and min_size."""
 
-    def fit(self, X, y=None):
-        self.n_features_in_ = X.shape[1]
-        self.n_samples_in_ = X.shape[0]
-        return self
-
     def evaluate(self, cache, interval_specs):
         return np.zeros((len(interval_specs), self.n_features_in_))
 
@@ -37,20 +32,9 @@ _X = np.random.default_rng(0).normal(size=(50, 2))
 # ---------------------------------------------------------------------------
 
 
-def test_fit_not_implemented():
-    class Bare(BaseIntervalScorer):
-        pass
-
-    with pytest.raises(NotImplementedError):
-        Bare().fit(_X)
-
-
 def test_evaluate_not_implemented():
     class Bare(BaseIntervalScorer):
-        def fit(self, X, y=None):
-            self.n_features_in_ = X.shape[1]
-            self.n_samples_in_ = X.shape[0]
-            return self
+        pass
 
     scorer = Bare().fit(_X)
     with pytest.raises(NotImplementedError):

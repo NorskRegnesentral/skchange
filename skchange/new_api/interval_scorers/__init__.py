@@ -18,7 +18,7 @@ from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
 )
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.interval_scorers._savings._l2_saving import L2Saving
+from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 
 __all__ = [
     "BaseCost",
