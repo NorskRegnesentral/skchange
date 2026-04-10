@@ -10,19 +10,11 @@ from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
+from skchange.new_api.penalties import linear_chi2_penalty
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
 from skchange.new_api.utils.validation import check_interval_scorer, validate_data
-
-
-def _resolve_saving(saving: BaseIntervalScorer | None) -> BaseIntervalScorer:
-    """Return saving or the default PenalisedScore(L2Saving()).
-
-    Used in both fit() and __sklearn_tags__() so that input tags are propagated
-    consistently whether or not a saving is explicitly provided.
-    """
-    return saving if saving is not None else PenalisedScore(L2Saving())
 
 
 def _run_capa(
@@ -213,6 +205,34 @@ def _get_changed_features(
     return changed
 
 
+def _resolve_segment_saving(saving: BaseIntervalScorer | None) -> BaseIntervalScorer:
+    """Return saving or the default PenalisedScore(L2Saving()).
+
+    Used in both fit() and __sklearn_tags__() so that input tags are propagated
+    consistently whether or not a saving is explicitly provided.
+    """
+    return saving if saving is not None else PenalisedScore(L2Saving())
+
+
+def _resolve_point_saving(
+    point_saving: BaseIntervalScorer | None,
+    segment_saving_: BaseIntervalScorer,
+) -> BaseIntervalScorer:
+    """Return saving or the default PenalisedScore(L2Saving()).
+
+    Used in fit().
+    consistently whether or not a saving is explicitly provided.
+    """
+    if point_saving is not None:
+        return point_saving
+    else:
+        n_samples = segment_saving_.n_samples_in_
+        n_features = segment_saving_.n_features_in_
+        point_saving = clone(segment_saving_)
+        point_saving.set_params(penalty=linear_chi2_penalty(n_samples, n_features))
+        return point_saving
+
+
 class CAPA(BaseChangeDetector):
     """Collective and Point Anomaly (CAPA) detection algorithm.
 
@@ -234,7 +254,8 @@ class CAPA(BaseChangeDetector):
     point_saving : BaseIntervalScorer or None, default=None
         Penalised saving for point anomaly detection.
         Must have ``interval_scorer_tags.penalised = True`` and ``min_size == 1``.
-        If ``None``, defaults to ``PenalisedScore(L2Saving())``.
+        If ``None``, defaults to a clone of `segment_saving` with penalty array
+        given by ``linear_chi2_penalty``.
     min_segment_length : int or None, default=None
         Minimum number of samples in a segment anomaly. Defaults to
         ``segment_saving.min_size`` when ``None``. If an integer is given and
@@ -307,7 +328,7 @@ class CAPA(BaseChangeDetector):
         """Get tags, propagating input constraints from the segment saving."""
         tags = super().__sklearn_tags__()
         tags.input_tags = (
-            _resolve_saving(self.segment_saving).__sklearn_tags__().input_tags
+            _resolve_segment_saving(self.segment_saving).__sklearn_tags__().input_tags
         )
         return tags
 
@@ -329,7 +350,7 @@ class CAPA(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        segment_saving = _resolve_saving(self.segment_saving)
+        segment_saving = _resolve_segment_saving(self.segment_saving)
         check_interval_scorer(
             segment_saving,
             ensure_penalised=True,
@@ -338,7 +359,7 @@ class CAPA(BaseChangeDetector):
         )
         self.segment_saving_ = clone(segment_saving).fit(X, y)
 
-        point_saving = _resolve_saving(self.point_saving)
+        point_saving = _resolve_point_saving(self.point_saving, self.segment_saving_)
         check_interval_scorer(
             point_saving,
             ensure_penalised=True,

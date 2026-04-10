@@ -4,7 +4,6 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
-from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils.validation import check_interval_specs
 from skchange.utils.numba import njit
@@ -93,9 +92,3 @@ class L1Cost(BaseCost):
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         return l1_cost(starts, ends, cache["X"])
-
-    def get_default_penalty(self) -> float:
-        """Get default penalty value for the fitted L1 cost."""
-        penalty = bic_penalty(self.n_samples_in_, self.n_features_in_)
-        # BIC works on a squared error scale, while L1 is on an absolute error scale.
-        return np.sqrt(penalty)

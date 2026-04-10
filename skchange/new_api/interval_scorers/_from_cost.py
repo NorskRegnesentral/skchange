@@ -95,8 +95,14 @@ class CostChangeScore(BaseChangeScore):
         check_is_fitted(self)
         return self.cost_.min_size
 
-    def get_default_penalty(self) -> float:
-        """Get default penalty delegated to the wrapped cost scorer."""
+    def get_default_penalty(self) -> float | np.ndarray:
+        """Get the default penalty delegated to the wrapped cost scorer.
+
+        Returns
+        -------
+        float or np.ndarray
+            Default penalty value from the wrapped cost scorer.
+        """
         return self.cost_.get_default_penalty()
 
     def __sklearn_tags__(self) -> SkchangeTags:

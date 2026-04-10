@@ -24,7 +24,7 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.penalties import bic_penalty
+from skchange.new_api.penalties import bic_penalty, mvcapa_penalty
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
 from skchange.new_api.utils.validation import validate_data
@@ -197,16 +197,17 @@ class BaseIntervalScorer(BaseEstimator):
         """
         return 1
 
-    def get_default_penalty(self) -> float:
-        """Get default penalty value for L2 cost.
+    def get_default_penalty(self) -> float | np.ndarray:
+        """Get the default BIC penalty value for the fitted scorer.
 
         Returns
         -------
-        float
-            Default penalty value for L2 cost.
+        float or np.ndarray
+            Default penalty value. Scalar for univariate/constant penalties,
+            array of shape ``(n_features,)`` for multivariate penalties.
         """
         check_is_fitted(self)
-        return bic_penalty(self.n_features_in_, self.n_samples_in_)
+        return bic_penalty(self.n_samples_in_, self.n_features_in_)
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for the interval scorer.
@@ -283,6 +284,20 @@ class BaseSaving(BaseIntervalScorer):
     def interval_specs_ncols(self) -> int:
         """Return 2 (columns: start, end)."""
         return 2
+
+    def get_default_penalty(self) -> np.ndarray:
+        """Get the default penalty for the fitted saving.
+
+        The default penalty is given by
+        ``mvcapa_penalty(self.n_samples_in_, self.n_features_in_)``
+
+        Returns
+        -------
+        np.ndarray of shape (n_features,)
+            Default penalty value for each number of affected features.
+        """
+        check_is_fitted(self)
+        return mvcapa_penalty(self.n_samples_in_, self.n_features_in_)
 
 
 class BaseTransientScore(BaseIntervalScorer):

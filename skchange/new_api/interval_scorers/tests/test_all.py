@@ -237,7 +237,7 @@ def test_interval_scorer_get_default_penalty_positive(estimator):
     X = make_single_change_X(estimator)
     estimator.fit(X)
     penalty = estimator.get_default_penalty()
-    assert isinstance(penalty, (int, float))
+    assert isinstance(penalty, (int, float, np.ndarray))
     assert penalty > 0, f"Default penalty must be positive, got {penalty}."
 
 

@@ -179,14 +179,23 @@ class PenalisedScore(BaseIntervalScorer):
     @property
     def interval_specs_ncols(self) -> int:
         """Expected width of interval specifications inherited from wrapped scorer."""
-        check_is_fitted(self)
         return self.scorer_.interval_specs_ncols
 
     @property
     def min_size(self) -> int:
         """Minimum valid interval size inherited from wrapped scorer."""
-        check_is_fitted(self)
         return self.scorer_.min_size
+
+    def get_default_penalty(self) -> float | np.ndarray:
+        """Get the default penalty for the fitted scorer.
+
+        Returns
+        -------
+        float or np.ndarray
+            Default penalty value. Scalar for univariate/constant penalties,
+            array of shape ``(n_features,)`` for multivariate penalties.
+        """
+        return self.scorer_.get_default_penalty()
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for penalised scorer."""
