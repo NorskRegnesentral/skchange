@@ -12,13 +12,15 @@ from skchange.new_api.utils._param_validation import Interval, validate_params
 
 @validate_params(
     {
-        "n_params_per_variable": [Interval(numbers.Integral, 1, None, closed="left")],
-        "n": [Interval(numbers.Integral, 1, None, closed="left")],
-        "p": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_features": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_params_per_feature": [Interval(numbers.Integral, 1, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
 )
-def nonlinear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
+def nonlinear_chi2_penalty(
+    n_samples: int, n_features: int, n_params_per_feature: int = 1
+) -> np.ndarray:
     """Create a nonlinear chi-square penalty.
 
     The penalty is a piece of the default penalty for the `MVCAPA` algorithm. It is
@@ -27,18 +29,18 @@ def nonlinear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.nda
 
     Parameters
     ----------
-    n_params_per_variable : int
-        Number of model parameters per variable and segment.
-    n : int
+    n_samples : int
         Sample size.
-    p : int
-        Number of variables/columns in the data being analysed.
+    n_features : int
+        Number of features/columns in the data being analysed.
+    n_params_per_feature : int, default=1
+        Number of model parameters per feature and segment.
 
     Returns
     -------
-    np.ndarray of shape (p,)
+    np.ndarray of shape (n_features,)
         The non-decreasing nonlinear chi-square penalty values. Element ``i`` is the
-        penalty for ``i+1`` variables being affected by a change or anomaly.
+        penalty for ``i+1`` features being affected by a change or anomaly.
 
     References
     ----------
@@ -48,42 +50,45 @@ def nonlinear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.nda
 
     Examples
     --------
-    >>> nonlinear_chi2_penalty(1, 100, 3)
+    >>> nonlinear_chi2_penalty(100, 3)
     array([...])
     """
-    if p == 1:
-        # Not defined for p = 1; fall back to constant chi2 penalty.
-        return np.array([chi2_penalty(n_params_per_variable, n)])
+    if n_features == 1:
+        # Not defined for n_features = 1; fall back to constant chi2 penalty.
+        return np.array([chi2_penalty(n_samples, n_params_per_feature)])
 
     def penalty_func(j: int) -> float:
-        psi = np.log(n)
-        c_j = chi2.ppf(1 - j / p, n_params_per_variable)
-        f_j = chi2.pdf(c_j, n_params_per_variable)
+        psi = np.log(n_samples)
+        c_j = chi2.ppf(1 - j / n_features, n_params_per_feature)
+        f_j = chi2.pdf(c_j, n_params_per_feature)
         return (
-            2 * (psi + np.log(p))
-            + j * n_params_per_variable
-            + 2 * p * c_j * f_j
+            2 * (psi + np.log(n_features))
+            + j * n_params_per_feature
+            + 2 * n_features * c_j * f_j
             + 2
             * np.sqrt(
-                (j * n_params_per_variable + 2 * p * c_j * f_j) * (psi + np.log(p))
+                (j * n_params_per_feature + 2 * n_features * c_j * f_j)
+                * (psi + np.log(n_features))
             )
         )
 
-    penalties = np.zeros(p, dtype=float)
-    penalties[:-1] = np.vectorize(penalty_func)(np.arange(1, p))
+    penalties = np.zeros(n_features, dtype=float)
+    penalties[:-1] = np.vectorize(penalty_func)(np.arange(1, n_features))
     penalties[-1] = penalties[-2]
     return penalties
 
 
 @validate_params(
     {
-        "n_params_per_variable": [Interval(numbers.Integral, 1, None, closed="left")],
-        "n": [Interval(numbers.Integral, 1, None, closed="left")],
-        "p": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_features": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_params_per_feature": [Interval(numbers.Integral, 1, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
 )
-def mvcapa_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
+def mvcapa_penalty(
+    n_samples: int, n_features: int, n_params_per_feature: int = 1
+) -> np.ndarray:
     """Create the default penalty for the MVCAPA algorithm.
 
     The penalty is the pointwise minimum of the constant, linear, and nonlinear
@@ -93,18 +98,18 @@ def mvcapa_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
 
     Parameters
     ----------
-    n_params_per_variable : int
-        Number of model parameters per variable and segment.
-    n : int
+    n_samples : int
         Sample size.
-    p : int
-        Number of variables/columns in the data being analysed.
+    n_features : int
+        Number of features/columns in the data being analysed.
+    n_params_per_feature : int, default=1
+        Number of model parameters per feature and segment.
 
     Returns
     -------
-    np.ndarray of shape (p,)
+    np.ndarray of shape (n_features,)
         The pointwise minimum penalty values. Element ``i`` is the penalty for
-        ``i+1`` variables being affected by a change or anomaly.
+        ``i+1`` features being affected by a change or anomaly.
 
     References
     ----------
@@ -114,11 +119,11 @@ def mvcapa_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
 
     Examples
     --------
-    >>> mvcapa_penalty(1, 100, 3)
+    >>> mvcapa_penalty(100, 3)
     array([...])
     """
-    n_params_total = n_params_per_variable * p
-    constant_part = chi2_penalty(n_params_total, n)
-    linear_part = linear_chi2_penalty(n_params_per_variable, n, p)
-    nonlinear_part = nonlinear_chi2_penalty(n_params_per_variable, n, p)
+    n_params_total = n_params_per_feature * n_features
+    constant_part = chi2_penalty(n_samples, n_params_total)
+    linear_part = linear_chi2_penalty(n_samples, n_features, n_params_per_feature)
+    nonlinear_part = nonlinear_chi2_penalty(n_samples, n_features, n_params_per_feature)
     return np.fmin(constant_part, np.fmin(linear_part, nonlinear_part))

@@ -96,6 +96,6 @@ class L1Cost(BaseCost):
 
     def get_default_penalty(self) -> float:
         """Get default penalty value for the fitted L1 cost."""
-        penalty = bic_penalty(self.n_features_in_, self.n_samples_in_)
+        penalty = bic_penalty(self.n_samples_in_, self.n_features_in_)
         # BIC works on a squared error scale, while L1 is on an absolute error scale.
         return np.sqrt(penalty)

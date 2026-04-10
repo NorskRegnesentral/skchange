@@ -107,6 +107,6 @@ class CUSUM(BaseChangeScore):
 
     def get_default_penalty(self) -> float:
         """Get default penalty value for the fitted CUSUM score."""
-        penalty = bic_penalty(self.n_features_in_, self.n_samples_in_)
+        penalty = bic_penalty(self.n_samples_in_, self.n_features_in_)
         # BIC works on a squared error scale, while CUSUM is on an absolute error scale.
         return np.sqrt(penalty)

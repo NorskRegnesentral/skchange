@@ -9,71 +9,73 @@ from skchange.new_api.utils._param_validation import Interval, validate_params
 
 @validate_params(
     {
+        "n_features": [Interval(numbers.Integral, 1, None, closed="left")],
         "intercept": [Interval(numbers.Real, 0, None, closed="left")],
         "slope": [Interval(numbers.Real, 0, None, closed="left")],
-        "p": [Interval(numbers.Integral, 1, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
 )
-def linear_penalty(intercept: float, slope: float, p: int) -> np.ndarray:
+def linear_penalty(n_features: int, intercept: float, slope: float) -> np.ndarray:
     """Create a linear penalty.
 
-    The penalty is given by ``intercept + slope * (1, 2, ..., p)``, where `p` is the
-    number of variables/columns in the data being analysed. The penalty is
-    non-decreasing.
+    The penalty is given by ``intercept + slope * (1, 2, ..., n_features)``, where
+    `n_features` is the number of features/columns in the data being analysed. The
+    penalty is non-decreasing.
 
     Parameters
     ----------
+    n_features : int
+        Number of features/columns in the data being analysed.
     intercept : float
         Intercept of the linear penalty.
     slope : float
         Slope of the linear penalty.
-    p : int
-        Number of variables/columns in the data being analysed.
 
     Returns
     -------
-    np.ndarray of shape (p,)
+    np.ndarray of shape (n_features,)
         The non-decreasing linear penalty values. Element ``i`` is the penalty for
-        ``i+1`` variables being affected by a change or anomaly.
+        ``i+1`` features being affected by a change or anomaly.
 
     Examples
     --------
-    >>> linear_penalty(1.0, 2.0, 3)
+    >>> linear_penalty(3, 1.0, 2.0)
     array([3., 5., 7.])
     """
-    return intercept + slope * np.arange(1, p + 1)
+    return intercept + slope * np.arange(1, n_features + 1)
 
 
 @validate_params(
     {
-        "n_params_per_variable": [Interval(numbers.Integral, 1, None, closed="left")],
-        "n": [Interval(numbers.Integral, 1, None, closed="left")],
-        "p": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_features": [Interval(numbers.Integral, 1, None, closed="left")],
+        "n_params_per_feature": [Interval(numbers.Integral, 1, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
 )
-def linear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarray:
+def linear_chi2_penalty(
+    n_samples: int, n_features: int, n_params_per_feature: int = 1
+) -> np.ndarray:
     """Create a linear chi-square penalty.
 
     The penalty is a piece of the default penalty for the `MVCAPA` algorithm. It is
     described as "penalty regime 2" in the MVCAPA article [1]_, suitable for detecting
-    sparse anomalies in the data. Sparse anomalies only affect a few variables.
+    sparse anomalies in the data. Sparse anomalies only affect a few features.
 
     Parameters
     ----------
-    n_params_per_variable : int
-        Number of model parameters per variable and segment.
-    n : int
+    n_samples : int
         Sample size.
-    p : int
-        Number of variables/columns in the data being analysed.
+    n_features : int
+        Number of features/columns in the data being analysed.
+    n_params_per_feature : int, default=1
+        Number of model parameters per feature and segment.
 
     Returns
     -------
-    np.ndarray of shape (p,)
+    np.ndarray of shape (n_features,)
         The non-decreasing linear chi-square penalty values. Element ``i`` is the
-        penalty for ``i+1`` variables being affected by a change or anomaly.
+        penalty for ``i+1`` features being affected by a change or anomaly.
 
     References
     ----------
@@ -83,9 +85,9 @@ def linear_chi2_penalty(n_params_per_variable: int, n: int, p: int) -> np.ndarra
 
     Examples
     --------
-    >>> linear_chi2_penalty(1, 100, 3)
+    >>> linear_chi2_penalty(100, 3)
     array([...])
     """
-    psi = np.log(n)
-    component_penalty = 2 * np.log(n_params_per_variable * p)
-    return 2 * psi + 2 * np.cumsum(np.full(p, component_penalty))
+    psi = np.log(n_samples)
+    component_penalty = 2 * np.log(n_params_per_feature * n_features)
+    return 2 * psi + 2 * np.cumsum(np.full(n_features, component_penalty))
