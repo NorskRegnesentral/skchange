@@ -91,10 +91,6 @@ class BaseIntervalScorer(BaseEstimator):
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit the scorer to training data.
 
-        The default implementation validates ``X`` and stores ``n_features_in_``
-        and ``n_samples_in_``. Override when the scorer needs to learn parameters
-        from the training data.
-
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
@@ -106,15 +102,19 @@ class BaseIntervalScorer(BaseEstimator):
         -------
         self
             Fitted scorer instance.
+
+        Attributes
+        ----------
+        n_features_in_ : int
+            Number of features/columns in the training data.
+        n_samples_in_ : int
+            Number of samples/rows in the training data.
         """
         validate_data(self, X, ensure_2d=True, reset=True)
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
         """Precompute statistics from data to speed up evaluate.
-
-        Defaults to validating X and returning it in a dict. Override to precompute
-        specific statistics needed for evaluation.
 
         Parameters
         ----------
@@ -142,7 +142,7 @@ class BaseIntervalScorer(BaseEstimator):
         Parameters
         ----------
         cache : dict
-            Cache from precompute().
+            The output from precompute().
         interval_specs : 2d array-like
             Each row specifies an interval and possibly split points, depending on
             the scorer type. For example, shape (n_interval_specs, 2) for cost scorers

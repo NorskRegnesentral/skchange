@@ -91,7 +91,7 @@ class L2Cost(BaseCost):
         Parameters
         ----------
         cache : dict
-            Cache from precompute().
+            The output from precompute().
         interval_specs : array-like of shape (n_interval_specs, 2)
             Interval boundaries ``[start, end)`` to score.
 
