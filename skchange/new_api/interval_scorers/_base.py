@@ -24,10 +24,10 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 from sklearn.utils.validation import check_is_fitted
 
+from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
 from skchange.new_api.utils.validation import validate_data
-from skchange.penalties import make_bic_penalty
 
 
 class BaseIntervalScorer(BaseEstimator):
@@ -206,7 +206,7 @@ class BaseIntervalScorer(BaseEstimator):
             Default penalty value for L2 cost.
         """
         check_is_fitted(self)
-        return make_bic_penalty(self.n_features_in_, self.n_samples_in_)
+        return bic_penalty(self.n_features_in_, self.n_samples_in_)
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for the interval scorer.

@@ -1,8 +1,6 @@
 """Test instances for change detectors in ``skchange.new_api.detectors``."""
 
-from skchange.new_api.detectors._capa import CAPA
-from skchange.new_api.detectors._moving_window import MovingWindow
-from skchange.new_api.detectors._pelt import PELT
+from skchange.new_api.detectors import CAPA, PELT, MovingWindow
 from skchange.new_api.interval_scorers import (
     is_change_score,
     is_cost,

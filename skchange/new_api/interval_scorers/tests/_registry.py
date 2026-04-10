@@ -1,21 +1,27 @@
 """Test instances for interval scorers in ``skchange.new_api.interval_scorers``."""
 
-from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
-from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.interval_scorers._from_cost import CostChangeScore
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
+from skchange.new_api.interval_scorers import (
+    CUSUM,
+    CostChangeScore,
+    L1Cost,
+    L1Saving,
+    L2Cost,
+    L2Saving,
+    PenalisedScore,
+)
 
 # ---------------------------------------------------------------------------
 # Raw instances of each type of interval scorer
 # ---------------------------------------------------------------------------
 _COSTS = [
+    L1Cost(),
     L2Cost(),
 ]
 _CHANGE_SCORES = [
     CUSUM(),
 ]
 _SAVINGS = [
+    L1Saving(),
     L2Saving(),
 ]
 
