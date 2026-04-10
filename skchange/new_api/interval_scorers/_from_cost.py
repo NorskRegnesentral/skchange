@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 from sklearn.base import clone
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import (
     BaseChangeScore,
@@ -12,7 +12,11 @@ from skchange.new_api.interval_scorers._base import (
 )
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    check_interval_specs,
+    validate_data,
+)
 
 
 class CostChangeScore(BaseChangeScore):
@@ -59,21 +63,12 @@ class CostChangeScore(BaseChangeScore):
             Change scores for each interval specification.
         """
         check_is_fitted(self, ["cost_"])
-        interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.int64)
-        if interval_specs.shape[1] != 3:
-            raise ValueError(
-                "interval_specs must have shape (n_interval_specs, 3), "
-                f"got {interval_specs.shape}."
-            )
-
-        starts = interval_specs[:, 0]
-        splits = interval_specs[:, 1]
-        ends = interval_specs[:, 2]
-        if np.any(splits <= starts) or np.any(splits >= ends):
-            raise ValueError(
-                "Each interval specification must satisfy start < split < end "
-                "for change-score evaluation."
-            )
+        interval_specs = check_interval_specs(
+            interval_specs,
+            self.interval_specs_ncols,
+            check_sorted=True,
+            caller_name=self.__class__.__name__,
+        )
 
         left_intervals = interval_specs[:, [0, 1]]
         right_intervals = interval_specs[:, [1, 2]]

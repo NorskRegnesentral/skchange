@@ -12,6 +12,7 @@ from skchange.new_api.utils._tags import (
 )
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
+    check_interval_specs,
     check_penalty,
     validate_data,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "SkchangeInputTags",
     "SkchangeTags",
     "check_interval_scorer",
+    "check_interval_specs",
     "check_penalty",
     "changepoints_to_labels",
     "validate_data",

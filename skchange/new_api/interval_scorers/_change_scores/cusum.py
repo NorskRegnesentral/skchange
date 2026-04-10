@@ -1,11 +1,11 @@
 """CUSUM score."""
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils.validation import validate_data
+from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.penalties import make_bic_penalty
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
@@ -93,27 +93,15 @@ class CUSUM(BaseChangeScore):
         check_is_fitted(self)
         sums = cache["sums"]
 
-        interval_specs = check_array(
+        interval_specs = check_interval_specs(
             interval_specs,
-            ensure_2d=True,
-            ensure_min_features=self.interval_specs_ncols,
+            self.interval_specs_ncols,
+            check_sorted=True,
+            caller_name=self.__class__.__name__,
         )
-        if interval_specs.shape[1] != self.interval_specs_ncols:
-            raise ValueError(
-                f"interval_specs must have shape"
-                f" (n_interval_specs, {self.interval_specs_ncols}), "
-                f"got {interval_specs.shape}."
-            )
-
         starts = interval_specs[:, 0]
         splits = interval_specs[:, 1]
         ends = interval_specs[:, 2]
-
-        if np.any(splits <= starts) or np.any(splits >= ends):
-            raise ValueError(
-                "Each interval specification must satisfy start < split < end "
-                "for CUSUM evaluation."
-            )
 
         return cusum_score(starts, splits, ends, sums)
 

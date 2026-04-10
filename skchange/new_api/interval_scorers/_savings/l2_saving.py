@@ -1,11 +1,11 @@
 """L2 saving for a zero-valued baseline mean."""
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils.validation import validate_data
+from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
@@ -108,7 +108,10 @@ class L2Saving(BaseSaving):
             L2 savings for each interval and feature.
         """
         check_is_fitted(self)
-        interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.int64)
-        starts = interval_specs[:, 0]
-        ends = interval_specs[:, 1]
+        interval_specs = check_interval_specs(
+            interval_specs,
+            self.interval_specs_ncols,
+            caller_name=self.__class__.__name__,
+        )
+        starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         return l2_saving(starts, ends, cache["sums"])

@@ -1,11 +1,11 @@
 """L2 cost function."""
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils.validation import validate_data
+from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
@@ -101,11 +101,10 @@ class L2Cost(BaseCost):
             L2 costs for each interval and features.
         """
         check_is_fitted(self)
-
-        interval_specs = check_array(
+        interval_specs = check_interval_specs(
             interval_specs,
-            ensure_2d=True,
-            ensure_min_features=self.interval_specs_ncols,
+            self.interval_specs_ncols,
+            caller_name=self.__class__.__name__,
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         sums, sums2 = cache["sums"], cache["sums2"]
