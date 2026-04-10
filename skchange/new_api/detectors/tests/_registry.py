@@ -31,7 +31,7 @@ _CAPA_INSTANCES = [
         if is_penalised_score(scorer) and is_saving(scorer)
     ],
     *[
-        CAPA(segment_saving=scorer, point_saving=scorer, include_point_anomalies=True)
+        CAPA(segment_saving=scorer, include_point_anomalies=True)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
         if is_penalised_score(scorer) and is_saving(scorer)
     ],
