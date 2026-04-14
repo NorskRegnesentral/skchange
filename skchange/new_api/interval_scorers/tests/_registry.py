@@ -3,6 +3,8 @@
 from skchange.new_api.interval_scorers import (
     CUSUM,
     CostChangeScore,
+    GaussianCost,
+    GaussianSaving,
     L1Cost,
     L1Saving,
     L2Cost,
@@ -14,6 +16,7 @@ from skchange.new_api.interval_scorers import (
 # Raw instances of each type of interval scorer
 # ---------------------------------------------------------------------------
 _COSTS = [
+    GaussianCost(),
     L1Cost(),
     L2Cost(),
 ]
@@ -21,6 +24,7 @@ _CHANGE_SCORES = [
     CUSUM(),
 ]
 _SAVINGS = [
+    GaussianSaving(),
     L1Saving(),
     L2Saving(),
 ]

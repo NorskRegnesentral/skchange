@@ -560,9 +560,9 @@ class PELT(BaseChangeDetector):
         Penalty incurred for each added changepoint. Must be non-negative.
         If ``None``, defaults to ``cost_.get_default_penalty()`` after fitting
         (BIC-based penalty).
-    min_segment_length : int, default=1
-        Minimum number of samples in a segment. Must be at least 1. If
-        ``step_size > 1``, this must be less than or equal to ``step_size``.
+    min_segment_length : int or None, default=None
+        Minimum number of samples in a segment. Must be at least ``cost.min_size``.
+        If ``None``, defaults to ``cost.min_size`` after fitting.
     step_size : int, default=1
         Only indices that are multiples of ``step_size`` from the start are
         considered as potential changepoints. Implicitly ensures that
@@ -616,7 +616,7 @@ class PELT(BaseChangeDetector):
     _parameter_constraints = {
         "cost": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": [Interval(Real, 0, None, closed="left"), None],
-        "min_segment_length": [Interval(Integral, 1, None, closed="left")],
+        "min_segment_length": [Interval(Integral, 1, None, closed="left"), None],
         "step_size": [Interval(Integral, 1, None, closed="left")],
         "split_cost": [Interval(Real, 0, None, closed="left")],
         "prune": ["boolean"],
@@ -627,7 +627,7 @@ class PELT(BaseChangeDetector):
         self,
         cost: BaseCost | None = None,
         penalty: float | None = None,
-        min_segment_length: int = 1,
+        min_segment_length: int | None = None,
         step_size: int = 1,
         split_cost: float = 0.0,
         prune: bool = True,
@@ -665,12 +665,6 @@ class PELT(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        if self.step_size > 1 and self.min_segment_length > self.step_size:
-            raise ValueError(
-                f"`min_segment_length` (={self.min_segment_length}) cannot be "
-                f"greater than `step_size` (={self.step_size}) when step_size > 1."
-            )
-
         cost = _resolve_cost(self.cost)
         check_interval_scorer(
             cost,
@@ -680,6 +674,24 @@ class PELT(BaseChangeDetector):
             arg_name="cost",
         )
         self.cost_ = clone(cost).fit(X, y)
+
+        min_segment_length = (
+            self.cost_.min_size
+            if self.min_segment_length is None
+            else self.min_segment_length
+        )
+        if min_segment_length < self.cost_.min_size:
+            raise ValueError(
+                f"`min_segment_length` (={min_segment_length}) must be at least "
+                f"`cost.min_size` (={self.cost_.min_size})."
+            )
+        if self.step_size > 1 and min_segment_length > self.step_size:
+            raise ValueError(
+                f"`min_segment_length` (={min_segment_length}) cannot be "
+                f"greater than `step_size` (={self.step_size}) when step_size > 1."
+            )
+        self.min_segment_length_ = min_segment_length
+
         self.penalty_ = (
             self.cost_.get_default_penalty() if self.penalty is None else self.penalty
         )
@@ -722,7 +734,7 @@ class PELT(BaseChangeDetector):
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
             )
-        elif self.min_segment_length == 1:
+        elif self.min_segment_length_ == 1:
             pelt_result = _run_pelt_min_segment_length_one(
                 cost=cost,
                 X=X,
@@ -736,7 +748,7 @@ class PELT(BaseChangeDetector):
                 cost=cost,
                 X=X,
                 penalty=self.penalty_,
-                min_segment_length=self.min_segment_length,
+                min_segment_length=self.min_segment_length_,
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,

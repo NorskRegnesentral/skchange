@@ -218,19 +218,20 @@ def _resolve_point_saving(
     point_saving: BaseIntervalScorer | None,
     segment_saving_: BaseIntervalScorer,
 ) -> BaseIntervalScorer:
-    """Return saving or the default PenalisedScore(L2Saving()).
-
-    Used in fit().
-    consistently whether or not a saving is explicitly provided.
-    """
+    """Return a point saving or a default based on the fitted segment saving."""
     if point_saving is not None:
         return point_saving
-    else:
-        n_samples = segment_saving_.n_samples_in_
-        n_features = segment_saving_.n_features_in_
+
+    n_samples = segment_saving_.n_samples_in_
+    n_features = segment_saving_.n_features_in_
+    point_penalty = 2 * linear_chi2_penalty(n_samples, n_features)
+    if segment_saving_.min_size == 1:
         point_saving = clone(segment_saving_)
-        point_saving.set_params(penalty=linear_chi2_penalty(n_samples, n_features))
-        return point_saving
+        point_saving.set_params(penalty=point_penalty)
+    else:
+        point_saving = PenalisedScore(L2Saving(), penalty=point_penalty)
+
+    return point_saving
 
 
 class CAPA(BaseChangeDetector):

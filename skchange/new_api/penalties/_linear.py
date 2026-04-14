@@ -4,6 +4,7 @@ import numbers
 
 import numpy as np
 
+from skchange.new_api.penalties._constant import chi2_penalty
 from skchange.new_api.utils._param_validation import Interval, validate_params
 
 
@@ -88,6 +89,10 @@ def linear_chi2_penalty(
     >>> linear_chi2_penalty(100, 3)
     array([...])
     """
+    if n_features == 1:
+        # Not valid for n_features == 1; fall back to constant chi2 penalty.
+        return np.array([chi2_penalty(n_samples, n_params_per_feature)])
+
     psi = np.log(n_samples)
     component_penalty = 2 * np.log(n_params_per_feature * n_features)
     return 2 * psi + 2 * np.cumsum(np.full(n_features, component_penalty))
