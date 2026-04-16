@@ -1,5 +1,7 @@
 """Base class for all change and anomaly detectors in the new API."""
 
+__author__ = ["Tveten"]
+
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags

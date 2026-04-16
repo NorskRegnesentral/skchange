@@ -1,5 +1,7 @@
 """CAPA: Collective and Point Anomaly detection algorithm."""
 
+__author__ = ["Tveten"]
+
 from numbers import Integral
 
 import numpy as np

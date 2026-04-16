@@ -1,5 +1,7 @@
 """Moving window change-point detection algorithm."""
 
+__author__ = ["Tveten"]
+
 from numbers import Integral, Real
 
 import numpy as np

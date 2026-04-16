@@ -19,6 +19,8 @@ is_cost, is_change_score, is_saving, is_transient_score
     Return True if an estimator is of the given interval scorer type.
 """
 
+__author__ = ["Tveten", "johannvk", "fkiraly"]
+
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags

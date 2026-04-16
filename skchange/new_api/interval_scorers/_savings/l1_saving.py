@@ -1,5 +1,7 @@
 """L1 saving for a fixed median baseline."""
 
+__author__ = ["johannvk"]
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 

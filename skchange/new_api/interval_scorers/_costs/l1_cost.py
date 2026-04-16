@@ -1,5 +1,7 @@
 """L1 cost function."""
 
+__author__ = ["johannvk"]
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 

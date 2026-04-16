@@ -1,5 +1,7 @@
 """L2 saving for a zero-valued baseline mean."""
 
+__author__ = ["Tveten"]
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 

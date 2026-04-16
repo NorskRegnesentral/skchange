@@ -1,5 +1,7 @@
 """CUSUM score."""
 
+__author__ = ["Tveten"]
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
