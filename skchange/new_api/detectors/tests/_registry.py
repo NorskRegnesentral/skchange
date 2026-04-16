@@ -41,7 +41,7 @@ _PELT_INSTANCES = [
     PELT(),
     PELT(min_segment_length=5),
     PELT(penalty=10.0),
-    PELT(step_size=2),
+    PELT(step_size=5),
     *[
         PELT(cost=scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES

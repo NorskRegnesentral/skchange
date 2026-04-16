@@ -5,7 +5,7 @@ import pytest
 from sklearn.base import BaseEstimator, clone
 
 _N_SAMPLES = 100
-CHANGEPOINT = 50
+CHANGEPOINT = 75
 
 
 def make_single_change_X(

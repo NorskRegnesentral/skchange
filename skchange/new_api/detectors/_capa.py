@@ -11,6 +11,7 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
+from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.penalties import linear_chi2_penalty
 from skchange.new_api.typing import ArrayLike, Self
@@ -231,7 +232,7 @@ def _resolve_point_saving(
         point_saving = clone(segment_saving_)
         point_saving.set_params(penalty=point_penalty)
     else:
-        point_saving = PenalisedScore(L2Saving(), penalty=point_penalty)
+        point_saving = PenalisedScore(L1Saving(), penalty=point_penalty)
 
     return point_saving
 

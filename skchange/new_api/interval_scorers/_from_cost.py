@@ -79,6 +79,8 @@ class CostChangeScore(BaseChangeScore):
         no_change_costs = self.cost_.evaluate(cache, full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
+        if change_scores.size == 0:
+            return change_scores
         min_score = np.min(change_scores)
         if min_score < -1e-6:
             warnings.warn(

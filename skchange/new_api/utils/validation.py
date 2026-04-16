@@ -90,8 +90,14 @@ def check_interval_specs(
     ValueError
         If any check fails.
     """
-    interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.intp)
+    interval_specs = np.asarray(interval_specs, dtype=np.intp)
 
+    # Empty inputs may occur. E.g. in MovingWindow for large window sizes and
+    # short series.
+    if interval_specs.size == 0:
+        return interval_specs
+
+    interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.intp)
     if interval_specs.shape[1] != n_cols:
         raise ValueError(
             f"`{arg_name}` must have {n_cols} columns, "
