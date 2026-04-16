@@ -3,6 +3,7 @@
 from skchange.new_api.interval_scorers import (
     CUSUM,
     CostChangeScore,
+    EDFCost,
     GaussianCost,
     GaussianSaving,
     L1Cost,
@@ -16,6 +17,7 @@ from skchange.new_api.interval_scorers import (
 # Raw instances of each type of interval scorer
 # ---------------------------------------------------------------------------
 _COSTS = [
+    EDFCost(),
     GaussianCost(),
     L1Cost(),
     L2Cost(),
