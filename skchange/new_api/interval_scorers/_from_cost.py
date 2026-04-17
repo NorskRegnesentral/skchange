@@ -105,6 +105,7 @@ class CostChangeScore(BaseChangeScore):
         float or np.ndarray
             Default penalty value from the wrapped cost scorer.
         """
+        check_is_fitted(self)
         return self.cost_.get_default_penalty()
 
     def __sklearn_tags__(self) -> SkchangeTags:

@@ -129,6 +129,16 @@ def test_detector_predict_changepoints_sorted(estimator):
     assert np.all(np.diff(cpts) > 0), "Changepoint indices must be strictly sorted."
 
 
+@_all_detectors
+def test_detector_predict_changepoints_does_not_alter_input(estimator):
+    """predict_changepoints() must not mutate the input array."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    X_copy = X.copy()
+    estimator.predict_changepoints(X)
+    np.testing.assert_array_equal(X, X_copy)
+
+
 # ---------------------------------------------------------------------------
 # predict() contract tests
 # ---------------------------------------------------------------------------
@@ -167,6 +177,30 @@ def test_detector_predict_consistent_with_predict_changepoints(estimator):
         assert (
             labels[cpt - 1] != labels[cpt]
         ), f"Expected label change at changepoint {cpt}."
+
+
+@_all_detectors
+def test_detector_predict_does_not_alter_input(estimator):
+    """predict() must not mutate the input array."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    X_copy = X.copy()
+    estimator.predict(X)
+    np.testing.assert_array_equal(X, X_copy)
+
+
+@_all_detectors
+def test_detector_predict_label_count(estimator):
+    """The number of unique labels must equal n_changepoints + 1."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    labels = estimator.predict(X)
+    cpts = estimator.predict_changepoints(X)
+    n_unique = len(np.unique(labels))
+    assert n_unique == len(cpts) + 1, (
+        f"Expected {len(cpts) + 1} unique labels for {len(cpts)} changepoints, "
+        f"got {n_unique}."
+    )
 
 
 # ---------------------------------------------------------------------------

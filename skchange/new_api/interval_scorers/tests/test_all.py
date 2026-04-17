@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 from sklearn.base import clone
+from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.conftest import make_no_change_X, make_single_change_X
@@ -161,9 +162,14 @@ def test_interval_scorer_precompute_does_not_alter_input(estimator):
     np.testing.assert_array_equal(X, X_copy)
 
 
-# ---------------------------------------------------------------------------
-# evaluate() contract tests
-# ---------------------------------------------------------------------------
+@_all_interval_scorers
+def test_interval_scorer_precompute_wrong_n_features_raises(estimator):
+    """precompute() with a mismatched number of features must raise ValueError."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    X_wrong = np.ones((X.shape[0], X.shape[1] + 1))
+    with pytest.raises(ValueError):
+        estimator.precompute(X_wrong)
 
 
 @_all_interval_scorers
@@ -201,6 +207,81 @@ def test_interval_scorer_evaluate_output_finite(estimator):
     assert np.all(np.isfinite(scores)), "evaluate() returned non-finite values."
 
 
+@_all_interval_scorers
+def test_interval_scorer_evaluate_output_dtype(estimator):
+    """evaluate() must return floating-point values."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    cache = estimator.precompute(X)
+    specs = make_interval_specs(estimator)
+    scores = estimator.evaluate(cache, specs)
+    assert np.issubdtype(
+        scores.dtype, np.floating
+    ), f"evaluate() must return float dtype, got {scores.dtype}."
+
+
+@_all_interval_scorers
+def test_interval_scorer_evaluate_empty_intervals(estimator):
+    """evaluate() on empty interval_specs must return shape (0, k) without error."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    cache = estimator.precompute(X)
+    empty_specs = np.empty((0, estimator.interval_specs_ncols), dtype=np.int64)
+    scores = estimator.evaluate(cache, empty_specs)
+    assert isinstance(scores, np.ndarray)
+    assert scores.ndim == 2
+    assert scores.shape[0] == 0
+
+
+@_all_interval_scorers
+def test_interval_scorer_evaluate_does_not_alter_cache(estimator):
+    """evaluate() must not mutate the cache returned by precompute()."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    cache = estimator.precompute(X)
+    cache_snapshot = {
+        k: v.copy() if isinstance(v, np.ndarray) else v for k, v in cache.items()
+    }
+    specs = make_interval_specs(estimator)
+    estimator.evaluate(cache, specs)
+    for k, v_orig in cache_snapshot.items():
+        if isinstance(v_orig, np.ndarray):
+            np.testing.assert_array_equal(
+                cache[k],
+                v_orig,
+                err_msg=f"Cache key {k!r} was mutated by evaluate().",
+            )
+
+
+@_all_interval_scorers
+def test_interval_scorer_evaluate_at_min_size(estimator):
+    """evaluate() must work correctly for intervals of exactly min_size."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    min_s = estimator.min_size
+    cache = estimator.precompute(X)
+    ncols = estimator.interval_specs_ncols
+    # Build minimum-size specs: each sub-interval is exactly min_s wide.
+    if ncols == 2:
+        specs = np.array([[0, min_s]], dtype=np.int64)
+    elif ncols == 3:
+        specs = np.array([[0, min_s, 2 * min_s]], dtype=np.int64)
+    elif ncols == 4:
+        specs = np.array([[0, min_s, 2 * min_s, 3 * min_s]], dtype=np.int64)
+    else:
+        pytest.skip(f"Unsupported interval_specs_ncols={ncols}")
+    max_idx = specs.max()
+    n = X.shape[0]
+    if max_idx >= n:
+        pytest.skip(
+            f"Not enough samples ({n}) to form min_size specs (need {max_idx + 1})."
+        )
+    scores = estimator.evaluate(cache, specs)
+    assert np.all(
+        np.isfinite(scores)
+    ), "evaluate() at min_size returned non-finite values."
+
+
 # ---------------------------------------------------------------------------
 # interval_specs_ncols property test
 # ---------------------------------------------------------------------------
@@ -229,6 +310,13 @@ def test_interval_scorer_min_size(estimator):
 # ---------------------------------------------------------------------------
 # get_default_penalty() test
 # ---------------------------------------------------------------------------
+
+
+@_all_interval_scorers
+def test_interval_scorer_get_default_penalty_before_fit_raises(estimator):
+    """get_default_penalty() must raise NotFittedError before fit is called."""
+    with pytest.raises(NotFittedError):
+        estimator.get_default_penalty()
 
 
 @_all_interval_scorers
