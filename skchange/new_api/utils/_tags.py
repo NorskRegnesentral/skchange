@@ -15,10 +15,14 @@ class SkchangeInputTags(InputTags):
         Whether the estimator can handle multivariate data (n_features > 1).
     integer_only : bool, default=False
         Whether the estimator requires integer-valued input data (e.g., for count data).
+    conditional : bool, default=False
+        Whether the estimator uses some input columns as covariates. If True,
+        at least two input columns are required (one response, one+ covariates).
     """
 
     multivariate: bool = True
     integer_only: bool = False
+    conditional: bool = False
 
 
 @dataclass(slots=True)
@@ -43,9 +47,6 @@ class IntervalScorerTags:
     ----------
     score_type : str | None, default=None
         Type of score: "cost", "change_score", "saving", "transient_score", None
-    conditional : bool, default=False
-        Whether the scorer uses some input variables as covariates.
-        If True, requires at least two input variables.
     aggregated : bool, default=False
         Whether the scorer always returns a single value per cut,
         irrespective of input data shape.
@@ -57,7 +58,6 @@ class IntervalScorerTags:
     """
 
     score_type: str | None = None
-    conditional: bool = False
     aggregated: bool = False
     penalised: bool = False
 

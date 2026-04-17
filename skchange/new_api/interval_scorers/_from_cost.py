@@ -113,9 +113,6 @@ class CostChangeScore(BaseChangeScore):
         cost_tags = self.cost.__sklearn_tags__()
         tags.input_tags = cost_tags.input_tags
         tags.interval_scorer_tags.score_type = "change_score"
-        tags.interval_scorer_tags.conditional = (
-            cost_tags.interval_scorer_tags.conditional
-        )
         tags.interval_scorer_tags.aggregated = cost_tags.interval_scorer_tags.aggregated
         tags.interval_scorer_tags.penalised = cost_tags.interval_scorer_tags.penalised
         return tags

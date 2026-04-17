@@ -18,6 +18,9 @@ from skchange.new_api.interval_scorers._costs.gaussian_cost import GaussianCost
 from skchange.new_api.interval_scorers._costs.l1_cost import L1Cost
 from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
 from skchange.new_api.interval_scorers._costs.laplace_cost import LaplaceCost
+from skchange.new_api.interval_scorers._costs.linear_regression_cost import (
+    LinearRegressionCost,
+)
 from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
 )
@@ -26,6 +29,9 @@ from skchange.new_api.interval_scorers._savings.gaussian_saving import GaussianS
 from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.interval_scorers._savings.laplace_saving import LaplaceSaving
+from skchange.new_api.interval_scorers._savings.linear_regression_saving import (
+    LinearRegressionSaving,
+)
 
 __all__ = [
     "BaseCost",
@@ -44,6 +50,8 @@ __all__ = [
     "L2Saving",
     "LaplaceCost",
     "LaplaceSaving",
+    "LinearRegressionCost",
+    "LinearRegressionSaving",
     "PenalisedScore",
     "is_cost",
     "is_change_score",

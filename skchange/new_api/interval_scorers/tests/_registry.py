@@ -12,6 +12,8 @@ from skchange.new_api.interval_scorers import (
     L2Saving,
     LaplaceCost,
     LaplaceSaving,
+    LinearRegressionCost,
+    LinearRegressionSaving,
     PenalisedScore,
 )
 
@@ -24,6 +26,7 @@ _COSTS = [
     L1Cost(),
     L2Cost(),
     LaplaceCost(),
+    LinearRegressionCost(),
 ]
 _CHANGE_SCORES = [
     CUSUM(),
@@ -33,6 +36,7 @@ _SAVINGS = [
     L1Saving(),
     L2Saving(),
     LaplaceSaving(),
+    LinearRegressionSaving(),
 ]
 
 # ---------------------------------------------------------------------------
