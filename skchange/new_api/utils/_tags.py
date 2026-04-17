@@ -27,16 +27,7 @@ class SkchangeInputTags(InputTags):
 
 @dataclass(slots=True)
 class ChangeDetectorTags:
-    """Tags specific to change detection estimators.
-
-    Attributes
-    ----------
-    variable_identification : bool, default=False
-        Whether the detector can identify which variables are affected
-        at each changepoint.
-    """
-
-    variable_identification: bool = False
+    """Tags specific to change detection estimators."""
 
 
 @dataclass(slots=True)
@@ -48,13 +39,11 @@ class IntervalScorerTags:
     score_type : str | None, default=None
         Type of score: "cost", "change_score", "saving", "transient_score", None
     aggregated : bool, default=False
-        Whether the scorer always returns a single value per cut,
+        Whether the scorer always returns a single value per ``interval_spec``,
         irrespective of input data shape.
     penalised : bool, default=False
         Whether the score is inherently penalised. If True, score > 0
         indicates change/anomaly. If False, external penalisation needed.
-    fixed_model : bool, default=False
-        Whether all model parameters in the scorer are fixed.
     """
 
     score_type: str | None = None
