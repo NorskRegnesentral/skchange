@@ -161,7 +161,7 @@ class LinearRegressionCost(BaseCost):
               ``(n_samples, n_covariates)``.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, ensure_2d=True, reset=False)
+        X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
         return {
             "X_response": X[:, self.response_col_],
             "X_covariates": X[:, self.covariate_cols_],
