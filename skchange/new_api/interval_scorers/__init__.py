@@ -25,6 +25,7 @@ from skchange.new_api.interval_scorers._costs.linear_trend_cost import LinearTre
 from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
     MultivariateGaussianCost,
 )
+from skchange.new_api.interval_scorers._costs.poisson_cost import PoissonCost
 from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
 )
@@ -42,6 +43,7 @@ from skchange.new_api.interval_scorers._savings.linear_trend_saving import (
 from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving import (
     MultivariateGaussianSaving,
 )
+from skchange.new_api.interval_scorers._savings.poisson_saving import PoissonSaving
 
 __all__ = [
     "BaseCost",
@@ -67,6 +69,8 @@ __all__ = [
     "MultivariateGaussianCost",
     "MultivariateGaussianSaving",
     "PenalisedScore",
+    "PoissonCost",
+    "PoissonSaving",
     "is_cost",
     "is_change_score",
     "is_penalised_score",

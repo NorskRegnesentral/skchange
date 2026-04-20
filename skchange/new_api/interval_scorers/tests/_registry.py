@@ -19,6 +19,8 @@ from skchange.new_api.interval_scorers import (
     MultivariateGaussianCost,
     MultivariateGaussianSaving,
     PenalisedScore,
+    PoissonCost,
+    PoissonSaving,
 )
 
 # ---------------------------------------------------------------------------
@@ -33,6 +35,7 @@ _COSTS = [
     LinearRegressionCost(),
     LinearTrendCost(),
     MultivariateGaussianCost(),
+    PoissonCost(),
 ]
 _CHANGE_SCORES = [
     CUSUM(),
@@ -45,6 +48,7 @@ _SAVINGS = [
     LinearRegressionSaving(),
     LinearTrendSaving(),
     MultivariateGaussianSaving(),
+    PoissonSaving(),
 ]
 
 # ---------------------------------------------------------------------------
