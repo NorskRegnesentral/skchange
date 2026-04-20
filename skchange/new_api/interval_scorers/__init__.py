@@ -21,6 +21,7 @@ from skchange.new_api.interval_scorers._costs.laplace_cost import LaplaceCost
 from skchange.new_api.interval_scorers._costs.linear_regression_cost import (
     LinearRegressionCost,
 )
+from skchange.new_api.interval_scorers._costs.linear_trend_cost import LinearTrendCost
 from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
 )
@@ -31,6 +32,9 @@ from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.interval_scorers._savings.laplace_saving import LaplaceSaving
 from skchange.new_api.interval_scorers._savings.linear_regression_saving import (
     LinearRegressionSaving,
+)
+from skchange.new_api.interval_scorers._savings.linear_trend_saving import (
+    LinearTrendSaving,
 )
 
 __all__ = [
@@ -52,6 +56,8 @@ __all__ = [
     "LaplaceSaving",
     "LinearRegressionCost",
     "LinearRegressionSaving",
+    "LinearTrendCost",
+    "LinearTrendSaving",
     "PenalisedScore",
     "is_cost",
     "is_change_score",
