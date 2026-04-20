@@ -142,4 +142,6 @@ class GaussianCost(BaseCost):
             Default penalty value.
         """
         check_is_fitted(self)
+        # Scaling BIC penalty by 1.5 is done to pass the sanity checks in the
+        # test suite for PELT.
         return 1.5 * bic_penalty(self.n_samples_in_, 2 * self.n_features_in_)
