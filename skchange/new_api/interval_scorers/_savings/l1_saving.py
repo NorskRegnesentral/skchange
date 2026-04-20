@@ -2,11 +2,14 @@
 
 __author__ = ["johannvk"]
 
+from numbers import Real
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_median
@@ -90,9 +93,14 @@ class L1Saving(BaseSaving):
     >>> scorer.evaluate(cache, interval_specs)
     """
 
+    _parameter_constraints: dict = {
+        "baseline_location": ["array-like", Real],
+    }
+
     def __init__(self, baseline_location: ArrayLike | float = 0.0):
         self.baseline_location = baseline_location
 
+    @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit L1 saving, validating and broadcasting the baseline location.
 

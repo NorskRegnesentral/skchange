@@ -2,12 +2,15 @@
 
 __author__ = ["johannvk"]
 
+from numbers import Integral
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
@@ -162,6 +165,10 @@ class EDFCost(BaseCost):
     >>> cost.evaluate(cache, interval_specs)
     """
 
+    _parameter_constraints: dict = {
+        "n_approximation_quantiles": [Interval(Integral, 1, None, closed="left"), None],
+    }
+
     def __init__(self, n_approximation_quantiles: int | None = None):
         self.n_approximation_quantiles = n_approximation_quantiles
 
@@ -171,6 +178,7 @@ class EDFCost(BaseCost):
         check_is_fitted(self)
         return self.n_quantiles_
 
+    @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the EDF cost, computing quantile points from training data.
 

@@ -11,6 +11,7 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
 )
 from skchange.new_api.penalties import chi2_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
@@ -116,6 +117,11 @@ class MultivariateGaussianSaving(BaseSaving):
     >>> scorer.evaluate(cache, np.array([[0, 50], [50, 100]]))
     """
 
+    _parameter_constraints: dict = {
+        "baseline_mean": ["array-like", None],
+        "baseline_cov": ["array-like", None],
+    }
+
     def __init__(
         self,
         baseline_mean: ArrayLike | None = None,
@@ -136,6 +142,7 @@ class MultivariateGaussianSaving(BaseSaving):
         check_is_fitted(self)
         return self.n_features_in_ + 1
 
+    @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the saving, estimating baseline parameters from training data if needed.
 

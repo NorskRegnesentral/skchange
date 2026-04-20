@@ -7,12 +7,15 @@ and a best fit linear trend line within each interval.
 
 __author__ = ["johannvk"]
 
+from numbers import Integral
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 
@@ -216,6 +219,10 @@ class LinearTrendCost(BaseCost):
     >>> scorer.evaluate(cache, np.array([[0, 50], [50, 100]]))
     """
 
+    _parameter_constraints: dict = {
+        "time_col": [Interval(Integral, 0, None, closed="left"), None],
+    }
+
     def __init__(self, time_col: int | None = None):
         self.time_col = time_col
 
@@ -233,6 +240,7 @@ class LinearTrendCost(BaseCost):
         """
         return 3
 
+    @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the cost, storing time stamps and validating fixed parameters.
 

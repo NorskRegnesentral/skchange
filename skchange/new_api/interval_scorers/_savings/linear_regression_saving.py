@@ -2,12 +2,15 @@
 
 __author__ = ["johannvk"]
 
+from numbers import Integral
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.penalties import chi2_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
@@ -108,6 +111,11 @@ class LinearRegressionSaving(BaseSaving):
     >>> scorer.evaluate(cache, np.array([[0, 50], [50, 100]]))
     """
 
+    _parameter_constraints: dict = {
+        "response_col": [Interval(Integral, 0, None, closed="left")],
+        "baseline_coeffs": ["array-like", None],
+    }
+
     def __init__(
         self,
         response_col: int = 0,
@@ -129,6 +137,7 @@ class LinearRegressionSaving(BaseSaving):
         check_is_fitted(self)
         return self.n_covariates_ + 1
 
+    @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the saving, splitting ``X`` and estimating baseline if needed.
 
