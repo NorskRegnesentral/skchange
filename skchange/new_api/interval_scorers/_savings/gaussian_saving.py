@@ -119,22 +119,6 @@ class GaussianSaving(BaseSaving):
         """Minimum segment size (2, required for MLE variance estimation)."""
         return 2
 
-    def get_default_penalty(self) -> np.ndarray:
-        """Get the default penalty for the fitted saving.
-
-        The default penalty is given by
-        ``mvcapa_penalty(self.n_samples_in_, self.n_features_in_)``
-
-        Returns
-        -------
-        np.ndarray of shape (n_features,)
-            Default penalty value for each number of affected features.
-        """
-        check_is_fitted(self)
-        # Scaling mvcapa penalty by 1.5 is done to pass the sanity checks in the
-        # test suite for CAPA.
-        return 1.5 * mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 2)
-
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit Gaussian saving, validating and broadcasting the baseline parameters.
 
@@ -228,3 +212,19 @@ class GaussianSaving(BaseSaving):
             self.baseline_mean_,
             self.baseline_var_,
         )
+
+    def get_default_penalty(self) -> np.ndarray:
+        """Get the default penalty for the fitted saving.
+
+        The default penalty is given by
+        ``mvcapa_penalty(self.n_samples_in_, self.n_features_in_)``
+
+        Returns
+        -------
+        np.ndarray of shape (n_features,)
+            Default penalty value for each number of affected features.
+        """
+        check_is_fitted(self)
+        # Scaling mvcapa penalty by 1.5 is done to pass the sanity checks in the
+        # test suite for CAPA.
+        return 1.5 * mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 2)

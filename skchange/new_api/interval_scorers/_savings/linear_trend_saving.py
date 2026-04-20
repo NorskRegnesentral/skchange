@@ -206,39 +206,6 @@ class LinearTrendSaving(BaseSaving):
         """
         return 3
 
-    def _resolve_param(
-        self,
-        param: ArrayLike | float | None,
-        ols_values: np.ndarray,
-        name: str,
-    ) -> np.ndarray:
-        """Resolve a baseline parameter to shape (n_value_cols_,).
-
-        Parameters
-        ----------
-        param : array-like, float, or None
-            User-provided parameter value.
-        ols_values : np.ndarray of shape (n_value_cols_,)
-            OLS estimates to fall back to when param is None.
-        name : str
-            Parameter name for error messages.
-
-        Returns
-        -------
-        np.ndarray of shape (n_value_cols_,)
-        """
-        if param is None:
-            return ols_values.copy()
-        arr = np.asarray(param, dtype=np.float64)
-        if arr.ndim == 0:
-            return np.full(self.n_value_cols_, float(arr))
-        if arr.shape != (self.n_value_cols_,):
-            raise ValueError(
-                f"{name} must be a scalar or array of shape "
-                f"({self.n_value_cols_},), got shape {arr.shape}."
-            )
-        return arr
-
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the saving, estimating baseline trend if needed.
 
@@ -382,3 +349,36 @@ class LinearTrendSaving(BaseSaving):
         check_is_fitted(self)
         # 2 d.o.f. per column: slope and intercept
         return chi2_penalty(self.n_samples_in_, 2 * self.n_value_cols_)
+
+    def _resolve_param(
+        self,
+        param: ArrayLike | float | None,
+        ols_values: np.ndarray,
+        name: str,
+    ) -> np.ndarray:
+        """Resolve a baseline parameter to shape (n_value_cols_,).
+
+        Parameters
+        ----------
+        param : array-like, float, or None
+            User-provided parameter value.
+        ols_values : np.ndarray of shape (n_value_cols_,)
+            OLS estimates to fall back to when param is None.
+        name : str
+            Parameter name for error messages.
+
+        Returns
+        -------
+        np.ndarray of shape (n_value_cols_,)
+        """
+        if param is None:
+            return ols_values.copy()
+        arr = np.asarray(param, dtype=np.float64)
+        if arr.ndim == 0:
+            return np.full(self.n_value_cols_, float(arr))
+        if arr.shape != (self.n_value_cols_,):
+            raise ValueError(
+                f"{name} must be a scalar or array of shape "
+                f"({self.n_value_cols_},), got shape {arr.shape}."
+            )
+        return arr

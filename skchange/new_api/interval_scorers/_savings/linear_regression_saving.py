@@ -108,13 +108,6 @@ class LinearRegressionSaving(BaseSaving):
     >>> scorer.evaluate(cache, np.array([[0, 50], [50, 100]]))
     """
 
-    def __sklearn_tags__(self) -> SkchangeTags:
-        """Return tags with ``input_tags.conditional=True`` and ``aggregated=True``."""
-        tags = super().__sklearn_tags__()
-        tags.input_tags.conditional = True
-        tags.interval_scorer_tags.aggregated = True
-        return tags
-
     def __init__(
         self,
         response_col: int = 0,
@@ -122,6 +115,13 @@ class LinearRegressionSaving(BaseSaving):
     ):
         self.response_col = response_col
         self.baseline_coeffs = baseline_coeffs
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Return tags with ``input_tags.conditional=True`` and ``aggregated=True``."""
+        tags = super().__sklearn_tags__()
+        tags.input_tags.conditional = True
+        tags.interval_scorer_tags.aggregated = True
+        return tags
 
     @property
     def min_size(self) -> int:
