@@ -12,7 +12,15 @@ from skchange.new_api.interval_scorers._base import (
     is_saving,
     is_transient_score,
 )
+from skchange.new_api.interval_scorers._change_scores.continuous_linear_trend_score import (  # noqa: E501
+    ContinuousLinearTrendScore,
+)
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
+from skchange.new_api.interval_scorers._change_scores.esac_score import ESACScore
+from skchange.new_api.interval_scorers._change_scores.multivariate_gaussian_score import (  # noqa: E501
+    MultivariateGaussianScore,
+)
+from skchange.new_api.interval_scorers._change_scores.rank_score import RankScore
 from skchange.new_api.interval_scorers._costs.edf_cost import EDFCost
 from skchange.new_api.interval_scorers._costs.gaussian_cost import GaussianCost
 from skchange.new_api.interval_scorers._costs.l1_cost import L1Cost
@@ -58,8 +66,10 @@ __all__ = [
     "BaseIntervalScorer",
     "BaseTransientScore",
     "BaseSaving",
+    "ContinuousLinearTrendScore",
     "CostChangeScore",
     "CUSUM",
+    "ESACScore",
     "EDFCost",
     "GaussianCost",
     "GaussianSaving",
@@ -75,12 +85,14 @@ __all__ = [
     "LinearTrendSaving",
     "MultivariateGaussianCost",
     "MultivariateGaussianSaving",
+    "MultivariateGaussianScore",
     "MultivariateTCost",
     "MultivariateTSaving",
     "PenalisedScore",
     "PoissonCost",
     "PoissonSaving",
     "RankCost",
+    "RankScore",
     "is_cost",
     "is_change_score",
     "is_penalised_score",
