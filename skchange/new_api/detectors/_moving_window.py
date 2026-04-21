@@ -136,7 +136,7 @@ def select_changepoints_by_local_optimum(
 def select_changepoints_by_bottom_up(
     scores: np.ndarray, bandwidths: np.ndarray, local_optimum_fraction: float
 ) -> np.ndarray:
-    bandwidths = sorted(bandwidths)
+    # bandwidths is expected to be sorted ascending; scores[:, i] matches bandwidths[i]
     candidate_cpts = []
     for i, bw in enumerate(bandwidths):
         local_optimum_bandwidth = int(local_optimum_fraction * bw)
@@ -152,11 +152,11 @@ def select_changepoints_by_bottom_up(
     cpts = [candidate_cpts[0][0]]
     for candidate_cpt, bw in candidate_cpts[1:]:
         distance_to_closest = np.min(np.abs(candidate_cpt - np.array(cpts)))
-        local_optimum_bandwidth = int(local_optimum_fraction * bw)
-        if distance_to_closest >= local_optimum_bandwidth:
+        min_distance = max(1, int(local_optimum_fraction * bw))
+        if distance_to_closest >= min_distance:
             cpts.append(candidate_cpt)
 
-    return np.array(cpts)
+    return np.sort(np.array(cpts))
 
 
 def _resolve_change_score(
@@ -203,14 +203,18 @@ class MovingWindow(BaseChangeDetector):
         * ``PenalisedScore(CUSUM())`` — CUSUM with default BIC penalty
         * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` — L2 cost with
           fixed penalty
-    bandwidth : int or list of int, default=None
-        The bandwidth is the number of samples on either side of a candidate
-        change-point. Must be 1 or greater. If ``None``, a data-dependent default
-        is chosen in ``fit`` as ``max(1, min(50, n_samples // 10))``. If a list of
-        bandwidths is given, the algorithm will run for each bandwidth in the list
-        and combine the results according to the "bottom-up" merging approach
-        described in [2]_. A fibonacci sequence of bandwidths is recommended for
-        multiple bandwidths by the authors in [2]_.
+    bandwidth : int, list of int, or None, default=None
+        The number of samples on either side of a candidate change-point. Must be
+        1 or greater. If ``None``, bandwidths are set automatically at ``fit`` time:
+
+        * ``"local_optimum"`` (default): up to 5 exponentially spaced bandwidths
+          between ``max(scorer.min_size, 5)`` and
+          ``max(scorer.min_size, n_samples // 5)``.
+        * ``"detection_length"``: a single bandwidth of
+          ``max(scorer.min_size, min(50, n_samples // 5))``.
+
+        User-supplied values must all be ``>= scorer.min_size`` (checked at fit).
+        Multiple bandwidths use the bottom-up merging approach of [2]_.
     selection_method : str, default="local_optimum"
         The method used to select the final set of change-points from a set of candidate
         change-points. The options are:
@@ -225,12 +229,14 @@ class MovingWindow(BaseChangeDetector):
           in [2]_. This method is used within the "bottom-up" merging approach if
           multiple bandwidths are given.
     min_detection_fraction : float, default=0.2
-        The minimum size of the detection interval for a candidate change-point to be
-        accepted in the ``"detection_length"`` selection method.
-        be between ``0`` (exclusive) and ``1/2`` (exclusive).
-    local_optimum_fraction : float, default=0.4
-        The size of the neighbourhood around a candidate change-point used in the
-        ``"local_optimum"`` selection method. Must be larger than or equal to ``0``.
+        Minimum fraction of the bandwidth that must have consecutive positive
+        penalised scores for a candidate to be accepted. Only used with
+        ``selection_method="detection_length"``. Must be in ``(0, 0.5)``.
+    local_optimum_fraction : float, default=0.8
+        Neighbourhood size (as a fraction of bandwidth) for the local-optimum
+        criterion. A candidate is accepted if it is the maximum within
+        ``local_optimum_fraction * bandwidth`` samples of itself. Only used
+        with ``selection_method="local_optimum"``. Must be ``>= 0``.
 
     References
     ----------
@@ -268,7 +274,7 @@ class MovingWindow(BaseChangeDetector):
         bandwidth: ArrayLike | int | None = None,
         selection_method: str = "local_optimum",
         min_detection_fraction: float = 0.2,
-        local_optimum_fraction: float = 0.4,
+        local_optimum_fraction: float = 0.8,
     ):
         self.change_score = change_score
         self.bandwidth = bandwidth
@@ -279,8 +285,10 @@ class MovingWindow(BaseChangeDetector):
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get tags, propagating input constraints from the wrapped scorer."""
         tags = super().__sklearn_tags__()
-        tags.input_tags = (
-            _resolve_change_score(self.change_score).__sklearn_tags__().input_tags
+        scorer_tags = _resolve_change_score(self.change_score).__sklearn_tags__()
+        tags.input_tags = scorer_tags.input_tags
+        tags.change_detector_tags.linear_trend_segment = (
+            scorer_tags.interval_scorer_tags.linear_trend_segment
         )
         return tags
 
@@ -313,18 +321,34 @@ class MovingWindow(BaseChangeDetector):
         )
         self.change_score_ = clone(scorer).fit(X, y)
 
+        min_size = self.change_score_.min_size
+        if X.shape[0] < 2 * min_size:
+            raise ValueError(
+                f"`MovingWindow` requires at least 2 * change_score_.min_size = "
+                f"{2 * min_size} samples to fit, got n_samples={X.shape[0]}."
+            )
+
         if self.bandwidth is None:
-            auto_bw = max(1, min(50, X.shape[0] // 10))
-            bw = np.array([auto_bw], dtype=int)
+            min_bw = max(min_size, 5)
+            max_bw = max(min_bw, X.shape[0] // 5)
+            if self.selection_method == "detection_length" or max_bw == min_bw:
+                bw = np.array([min(50, max_bw)], dtype=int)
+            else:
+                bw = np.unique(np.round(np.geomspace(min_bw, max_bw, 5)).astype(int))
         else:
             bw = np.asarray(self.bandwidth)
             if bw.ndim == 0:
                 bw = bw.reshape(1)
             if bw.size == 0:
                 raise ValueError("`bandwidth` must be non-empty.")
-            if np.any(bw < 1):
-                raise ValueError("All elements of `bandwidth` must be 1 or larger.")
-        self.bandwidth_ = bw.astype(int, copy=False)
+            if np.any(bw < min_size):
+                raise ValueError(
+                    f"All elements of `bandwidth` must be >= the scorer's "
+                    f"`min_size` ({min_size}). Got bandwidth={bw.tolist()}."
+                )
+        # Sort so that bandwidth_[i] always corresponds to scores[:, i] in predict,
+        # ensuring the bottom-up merging traverses bandwidths in ascending order.
+        self.bandwidth_ = np.sort(bw.astype(int, copy=False))
 
         if self.selection_method == "detection_length" and len(self.bandwidth_) > 1:
             raise ValueError(
@@ -353,34 +377,40 @@ class MovingWindow(BaseChangeDetector):
                 scores for self.bandwidth_[i]. NaN where the window does not fit.
         """
         check_is_fitted(self)
-        X = validate_data(
-            self,
-            X,
-            reset=False,
-            ensure_2d=True,
-            ensure_min_samples=2 * int(np.max(self.bandwidth_)),
-        )
+        X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        scores = transform_multiple_moving_window(
-            self.change_score_, X, self.bandwidth_
+        active_mask = 2 * self.bandwidth_ <= X.shape[0]
+        active_bws = self.bandwidth_[active_mask]
+
+        if len(active_bws) == 0:
+            raise ValueError(
+                f"`MovingWindow.predict_*` requires at least "
+                f"2 * min(bandwidth_) = {2 * int(np.min(self.bandwidth_))} "
+                f"samples, got n_samples={X.shape[0]}."
+            )
+        scores = np.full((X.shape[0], len(self.bandwidth_)), np.nan)
+
+        scores_active = transform_multiple_moving_window(
+            self.change_score_, X, active_bws
         )
+        scores[:, active_mask] = scores_active
 
         if self.selection_method == "detection_length":
-            min_detection_length = int(self.min_detection_fraction * self.bandwidth_[0])
+            min_detection_length = int(self.min_detection_fraction * active_bws[0])
             changepoints = select_changepoints_by_detection_length(
-                scores.reshape(-1), min_detection_length
+                scores_active.reshape(-1), min_detection_length
             )
         else:
-            if len(self.bandwidth_) == 1:
+            if len(active_bws) == 1:
                 local_optimum_bandwidth = int(
-                    self.local_optimum_fraction * self.bandwidth_[0]
+                    self.local_optimum_fraction * active_bws[0]
                 )
                 changepoints = select_changepoints_by_local_optimum(
-                    scores.reshape(-1), local_optimum_bandwidth
+                    scores_active.reshape(-1), local_optimum_bandwidth
                 )
             else:
                 changepoints = select_changepoints_by_bottom_up(
-                    scores, self.bandwidth_, self.local_optimum_fraction
+                    scores_active, active_bws, self.local_optimum_fraction
                 )
 
         return {
