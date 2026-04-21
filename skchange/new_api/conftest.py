@@ -56,6 +56,52 @@ def _make_regression_X(
     return np.column_stack([y, Z])
 
 
+def _make_kink_X(
+    n_samples: int,
+    n_features: int,
+    changepoint: int,
+    slope_before: float = -0.5,
+    slope_after: float = 0.5,
+    noise_std: float = 0.2,
+    seed: int = 0,
+) -> np.ndarray:
+    """Generate piecewise-linear data with a change in slope (kink) at ``changepoint``.
+
+    The signal is continuous: both segments share the same value at ``changepoint``.
+
+    Parameters
+    ----------
+    n_samples : int
+        Total number of observations.
+    n_features : int
+        Number of independent columns.
+    changepoint : int
+        Index of the first sample in the second segment.
+    slope_before : float, default=-0.5
+        Slope of the first segment.
+    slope_after : float, default=0.5
+        Slope of the second segment.
+    noise_std : float, default=0.2
+        Standard deviation of added Gaussian noise.
+    seed : int, default=0
+        Random seed.
+
+    Returns
+    -------
+    X : np.ndarray of shape (n_samples, n_features)
+    """
+    rng = np.random.default_rng(seed)
+    t = np.arange(n_samples, dtype=float)
+    kink_value = slope_before * changepoint
+    signal = np.where(
+        t < changepoint,
+        slope_before * t,
+        kink_value + slope_after * (t - changepoint),
+    )
+    noise = rng.normal(scale=noise_std, size=(n_samples, n_features))
+    return signal[:, np.newaxis] + noise
+
+
 def make_single_change_X(
     estimator: BaseEstimator, n_features: int | None = None
 ) -> np.ndarray:
@@ -77,6 +123,9 @@ def make_single_change_X(
         Two-segment data with a structural break at sample ``CHANGEPOINT``.
         Data type is chosen based on estimator tags:
 
+        - ``interval_scorer_tags.linear_trend_segment=True`` or
+          ``change_detector_tags.linear_trend_segment=True``: Piecewise linear signal
+          with a kink (change in slope) at ``CHANGEPOINT``.
         - ``input_tags.conditional=True``: Linear regression data with a coefficient
           shift. Column 0 is the response; columns 1+ are covariates.
         - ``input_tags.integer_only=True``: Poisson count data with a rate shift.
@@ -87,6 +136,14 @@ def make_single_change_X(
 
     if n_features is None:
         n_features = 2 if input_tags.conditional else 1
+
+    scorer_tags = tags.interval_scorer_tags
+    detector_tags = tags.change_detector_tags
+    linear_trend_segment = (
+        scorer_tags is not None and scorer_tags.linear_trend_segment
+    ) or (detector_tags is not None and detector_tags.linear_trend_segment)
+    if linear_trend_segment:
+        return _make_kink_X(_N_SAMPLES, n_features, CHANGEPOINT, seed=51)
 
     if input_tags.conditional:
         n_covariates = n_features - 1

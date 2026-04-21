@@ -2,8 +2,10 @@
 
 from skchange.new_api.interval_scorers import (
     CUSUM,
+    ContinuousLinearTrendScore,
     CostChangeScore,
     EDFCost,
+    ESACScore,
     GaussianCost,
     GaussianSaving,
     L1Cost,
@@ -18,12 +20,15 @@ from skchange.new_api.interval_scorers import (
     LinearTrendSaving,
     MultivariateGaussianCost,
     MultivariateGaussianSaving,
+    MultivariateGaussianScore,
     MultivariateTCost,
     MultivariateTSaving,
     PenalisedScore,
     PoissonCost,
     PoissonSaving,
     RankCost,
+    RankScore,
+    is_penalised_score,
 )
 
 # ---------------------------------------------------------------------------
@@ -44,6 +49,10 @@ _COSTS = [
 ]
 _CHANGE_SCORES = [
     CUSUM(),
+    ContinuousLinearTrendScore(),
+    ESACScore(),
+    MultivariateGaussianScore(),
+    RankScore(),
 ]
 _SAVINGS = [
     GaussianSaving(),
@@ -62,7 +71,9 @@ _SAVINGS = [
 # ---------------------------------------------------------------------------
 _COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS]
 _PENALISED_SCORES = [
-    PenalisedScore(scorer) for scorer in _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES
+    PenalisedScore(scorer)
+    for scorer in _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES
+    if not is_penalised_score(scorer)
 ]
 
 # ---------------------------------------------------------------------------

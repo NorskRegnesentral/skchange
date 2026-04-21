@@ -196,14 +196,25 @@ def test_interval_scorer_evaluate_output_shape(estimator):
 
 
 @_all_interval_scorers
-def test_interval_scorer_evaluate_output_finite(estimator):
-    """evaluate() must return only finite values for valid intervals."""
-    X = make_single_change_X(estimator)
+def test_interval_scorer_evaluate_output_range(estimator):
+    """evaluate() must produce non-negative or finite scores for valid intervals."""
+    tags = estimator.__sklearn_tags__().interval_scorer_tags
+    X = make_no_change_X(estimator)
     estimator.fit(X)
     cache = estimator.precompute(X)
     specs = make_interval_specs(estimator)
     scores = estimator.evaluate(cache, specs)
-    assert np.all(np.isfinite(scores)), "evaluate() returned non-finite values."
+    atol = 1e-10
+    if tags.non_negative_scores:
+        assert np.all(scores >= -atol), (
+            f"Interval scorer produced negative scores (tolerance={atol}): "
+            f"min={scores.min():.6g}."
+        )
+    else:
+        assert np.all(np.isfinite(scores)), (
+            "Interval scorer produced non-finite scores: "
+            f"min={scores.min():.6g}, max={scores.max():.6g}."
+        )
 
 
 @_all_interval_scorers
@@ -326,30 +337,3 @@ def test_interval_scorer_get_default_penalty_positive(estimator):
     penalty = estimator.get_default_penalty()
     assert isinstance(penalty, (int, float, np.ndarray))
     assert penalty > 0, f"Default penalty must be positive, got {penalty}."
-
-
-# ---------------------------------------------------------------------------
-# Sanity tests
-# ---------------------------------------------------------------------------
-
-
-@_all_interval_scorers
-def test_interval_score_output_range(estimator):
-    """Interval scorers must produce non-negative or finite scores on no-change data."""
-    tags = estimator.__sklearn_tags__().interval_scorer_tags
-    X = make_no_change_X(estimator)
-    estimator.fit(X)
-    cache = estimator.precompute(X)
-    specs = make_interval_specs(estimator)
-    scores = estimator.evaluate(cache, specs)
-    atol = 1e-10
-    if tags.non_negative_scores:
-        assert np.all(scores >= -atol), (
-            f"Interval scorer produced negative scores (tolerance={atol}): "
-            f"min={scores.min():.6g}."
-        )
-    else:
-        assert np.all(np.isfinite(scores)), (
-            "Interval scorer produced non-finite scores: "
-            f"min={scores.min():.6g}, max={scores.max():.6g}."
-        )

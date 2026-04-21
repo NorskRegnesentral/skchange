@@ -27,7 +27,17 @@ class SkchangeInputTags(InputTags):
 
 @dataclass(slots=True)
 class ChangeDetectorTags:
-    """Tags specific to change detection estimators."""
+    """Tags specific to change detection estimators.
+
+    Attributes
+    ----------
+    linear_trend_segment : bool, default=False
+        Whether the detector is designed for data where each segment follows a
+        linear trend. When ``True``, test fixtures will generate piecewise linear
+        data with a kink at the changepoint rather than a mean shift.
+    """
+
+    linear_trend_segment: bool = False
 
 
 @dataclass(slots=True)
@@ -49,12 +59,17 @@ class IntervalScorerTags:
         homogeneous data. Most costs and savings satisfy this. Set to False
         for costs that are test statistics which can be <= 0 by construction
         (e.g. ``RankCost``).
+    linear_trend_segment : bool, default=False
+        Whether the scorer is designed for data where each segment follows a
+        linear trend. When ``True``, test fixtures will generate piecewise linear
+        data with a kink at the changepoint rather than a mean shift.
     """
 
     score_type: str | None = None
     aggregated: bool = False
     penalised: bool = False
     non_negative_scores: bool = True
+    linear_trend_segment: bool = False
 
 
 @dataclass

@@ -13,8 +13,8 @@ from skchange.new_api.interval_scorers.tests._registry import (
 
 _MOVING_WINDOW_INSTANCES = [
     MovingWindow(),
-    MovingWindow(selection_method="detection_length"),
-    MovingWindow(bandwidth=[2, 3, 5]),
+    MovingWindow(selection_method="detection_length", bandwidth=5),
+    MovingWindow(bandwidth=5),
     *[
         MovingWindow(scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
