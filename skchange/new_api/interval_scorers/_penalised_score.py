@@ -210,4 +210,7 @@ class PenalisedScore(BaseIntervalScorer):
         tags.interval_scorer_tags.aggregated = True
         tags.interval_scorer_tags.penalised = True
         tags.interval_scorer_tags.non_negative_scores = False
+        tags.interval_scorer_tags.linear_trend_segment = (
+            scorer_tags.interval_scorer_tags.linear_trend_segment
+        )
         return tags

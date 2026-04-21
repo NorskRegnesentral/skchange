@@ -116,6 +116,9 @@ class CostChangeScore(BaseChangeScore):
         tags.interval_scorer_tags.score_type = "change_score"
         tags.interval_scorer_tags.aggregated = cost_tags.interval_scorer_tags.aggregated
         tags.interval_scorer_tags.penalised = cost_tags.interval_scorer_tags.penalised
+        tags.interval_scorer_tags.linear_trend_segment = (
+            cost_tags.interval_scorer_tags.linear_trend_segment
+        )
         return tags
 
 

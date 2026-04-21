@@ -331,8 +331,10 @@ class CAPA(BaseChangeDetector):
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get tags, propagating input constraints from the segment saving."""
         tags = super().__sklearn_tags__()
-        tags.input_tags = (
-            _resolve_segment_saving(self.segment_saving).__sklearn_tags__().input_tags
+        scorer_tags = _resolve_segment_saving(self.segment_saving).__sklearn_tags__()
+        tags.input_tags = scorer_tags.input_tags
+        tags.change_detector_tags.linear_trend_segment = (
+            scorer_tags.interval_scorer_tags.linear_trend_segment
         )
         return tags
 
