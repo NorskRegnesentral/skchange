@@ -130,9 +130,10 @@ class EDFCost(BaseCost):
 
     Parameters
     ----------
-    n_approximation_quantiles : int or None, default=None
+    n_quantiles : int or None, default=None
         Number of quantiles used to approximate the EDF integral. If ``None``,
-        defaults to ``ceil(4 * log(n_samples))`` at fit time.
+        defaults to ``min(10, max(1, n_samples // 5))`` at fit time, which caps
+        at 10 but scales down for short series.
 
     Attributes
     ----------
@@ -166,11 +167,11 @@ class EDFCost(BaseCost):
     """
 
     _parameter_constraints: dict = {
-        "n_approximation_quantiles": [Interval(Integral, 1, None, closed="left"), None],
+        "n_quantiles": [Interval(Integral, 1, None, closed="left"), None],
     }
 
-    def __init__(self, n_approximation_quantiles: int | None = None):
-        self.n_approximation_quantiles = n_approximation_quantiles
+    def __init__(self, n_quantiles: int | None = None):
+        self.n_quantiles = n_quantiles
 
     @property
     def min_size(self) -> int:
@@ -196,10 +197,10 @@ class EDFCost(BaseCost):
         X = validate_data(self, X, ensure_2d=True, reset=True)
         n_samples = X.shape[0]
 
-        if self.n_approximation_quantiles is None:
-            self.n_quantiles_ = int(np.ceil(4 * np.log(n_samples)))
+        if self.n_quantiles is None:
+            self.n_quantiles_ = min(10, max(1, n_samples // 5))
         else:
-            self.n_quantiles_ = self.n_approximation_quantiles
+            self.n_quantiles_ = self.n_quantiles
 
         self.quantile_points_, _ = _edf_quantile_points(X, self.n_quantiles_)
         return self
