@@ -23,6 +23,7 @@ from skchange.new_api.interval_scorers import (
     PenalisedScore,
     PoissonCost,
     PoissonSaving,
+    RankCost,
 )
 
 # ---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ _COSTS = [
     MultivariateGaussianCost(),
     MultivariateTCost(),
     PoissonCost(),
+    RankCost(),
 ]
 _CHANGE_SCORES = [
     CUSUM(),

@@ -29,6 +29,7 @@ from skchange.new_api.interval_scorers._costs.multivariate_t_cost import (
     MultivariateTCost,
 )
 from skchange.new_api.interval_scorers._costs.poisson_cost import PoissonCost
+from skchange.new_api.interval_scorers._costs.rank_cost import RankCost
 from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
 )
@@ -79,6 +80,7 @@ __all__ = [
     "PenalisedScore",
     "PoissonCost",
     "PoissonSaving",
+    "RankCost",
     "is_cost",
     "is_change_score",
     "is_penalised_score",
