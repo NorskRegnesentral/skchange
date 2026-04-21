@@ -44,11 +44,17 @@ class IntervalScorerTags:
     penalised : bool, default=False
         Whether the score is inherently penalised. If True, score > 0
         indicates change/anomaly. If False, external penalisation needed.
+    non_negative_scores : bool, default=True
+        Whether the scorer is guaranteed to return non-negative values on
+        homogeneous data. Most costs and savings satisfy this. Set to False
+        for costs that are test statistics which can be <= 0 by construction
+        (e.g. ``RankCost``).
     """
 
     score_type: str | None = None
     aggregated: bool = False
     penalised: bool = False
+    non_negative_scores: bool = True
 
 
 @dataclass

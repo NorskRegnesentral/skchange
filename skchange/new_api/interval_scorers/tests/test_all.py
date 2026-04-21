@@ -9,7 +9,6 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.conftest import make_no_change_X, make_single_change_X
 from skchange.new_api.interval_scorers._base import (
     BaseIntervalScorer,
-    is_penalised_score,
 )
 from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
@@ -321,7 +320,7 @@ def test_interval_scorer_get_default_penalty_before_fit_raises(estimator):
 
 @_all_interval_scorers
 def test_interval_scorer_get_default_penalty_positive(estimator):
-    """get_default_penalty() must return a positive scalar after fitting."""
+    """get_default_penalty() must return positive values after fitting."""
     X = make_single_change_X(estimator)
     estimator.fit(X)
     penalty = estimator.get_default_penalty()
@@ -335,17 +334,22 @@ def test_interval_scorer_get_default_penalty_positive(estimator):
 
 
 @_all_interval_scorers
-def test_interval_scores_non_negative(estimator):
-    """Interval scorers must produce non-negative scores on representative intervals."""
-    if is_penalised_score(estimator):
-        pytest.skip("Only for unpenalised scorers.")
+def test_interval_score_output_range(estimator):
+    """Interval scorers must produce non-negative or finite scores on no-change data."""
+    tags = estimator.__sklearn_tags__().interval_scorer_tags
     X = make_no_change_X(estimator)
     estimator.fit(X)
     cache = estimator.precompute(X)
     specs = make_interval_specs(estimator)
     scores = estimator.evaluate(cache, specs)
     atol = 1e-10
-    assert np.all(scores >= -atol), (
-        f"Interval scorer produced negative scores (tolerance={atol}): "
-        f"min={scores.min():.6g}."
-    )
+    if tags.non_negative_scores:
+        assert np.all(scores >= -atol), (
+            f"Interval scorer produced negative scores (tolerance={atol}): "
+            f"min={scores.min():.6g}."
+        )
+    else:
+        assert np.all(np.isfinite(scores)), (
+            "Interval scorer produced non-finite scores: "
+            f"min={scores.min():.6g}, max={scores.max():.6g}."
+        )
