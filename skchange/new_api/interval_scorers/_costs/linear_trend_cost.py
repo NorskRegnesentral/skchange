@@ -16,6 +16,7 @@ from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import Interval, _fit_context
+from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 
@@ -225,6 +226,12 @@ class LinearTrendCost(BaseCost):
 
     def __init__(self, time_col: int | None = None):
         self.time_col = time_col
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Return tags marking this cost as requiring linear-trend segment data."""
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.linear_trend_segment = True
+        return tags
 
     @property
     def min_size(self) -> int:
