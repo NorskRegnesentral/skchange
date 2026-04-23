@@ -10,7 +10,7 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._param_validation import Interval
+from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
@@ -266,6 +266,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         """Minimum interval size (2: at least 1 sample on each side of the split)."""
         return 2
 
+    @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
         """Fit the score by storing data and extracting time stamps if needed.
 
@@ -362,4 +363,4 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         float
         """
         check_is_fitted(self)
-        return bic_penalty(self.n_samples_in_, n_params=3)
+        return bic_penalty(self.n_samples_in_, 3 * self.n_features_in_)
