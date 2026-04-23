@@ -102,10 +102,10 @@ def _edf_mle_cost(
         segment_edf[:] = (cumulative_edf[end, :] - cumulative_edf[start, :]) / float(n)
         ll = 0.0
         for q in segment_edf:
-            if q > 1e-10:
+            if q > 0.0:
                 ll += q * np.log(q)
             one_minus_q = 1.0 - q
-            if one_minus_q > 1e-10:
+            if one_minus_q > 0.0:
                 ll += one_minus_q * np.log(one_minus_q)
         ll *= (-2.0 * edf_scale / n_quantiles) * n
         out[i] = -2.0 * ll

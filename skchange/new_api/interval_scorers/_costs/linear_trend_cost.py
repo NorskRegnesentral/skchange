@@ -182,7 +182,7 @@ class LinearTrendCost(BaseCost):
     a straight line is fitted (or provided as a fixed parameter) and the squared
     differences between the actual data points and the fitted line are summed.
 
-    By default the time steps are assumed to be [0, 1, 2, ..., (start - end) - 1] for
+    By default the time steps are assumed to be [0, 1, 2, ..., (end - start) - 1] for
     each segment. If a time column is provided, time steps are taken from that column.
 
     Inspired by [1]_ who propose the same cost function for detecting changes in

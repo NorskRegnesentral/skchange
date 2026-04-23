@@ -254,13 +254,23 @@ def test_interval_scorer_evaluate_does_not_alter_cache(estimator):
     }
     specs = make_interval_specs(estimator)
     estimator.evaluate(cache, specs)
+
+    assert set(cache.keys()) == set(cache_snapshot.keys()), (
+        f"evaluate() added or removed cache keys. "
+        f"Before: {set(cache_snapshot.keys())}, after: {set(cache.keys())}."
+    )
     for k, v_orig in cache_snapshot.items():
+        v_now = cache[k]
         if isinstance(v_orig, np.ndarray):
             np.testing.assert_array_equal(
-                cache[k],
+                v_now,
                 v_orig,
                 err_msg=f"Cache key {k!r} was mutated by evaluate().",
             )
+        else:
+            assert (
+                v_now == v_orig
+            ), f"Cache key {k!r} was mutated by evaluate(): {v_orig!r} -> {v_now!r}."
 
 
 @_all_interval_scorers
@@ -337,3 +347,99 @@ def test_interval_scorer_get_default_penalty_positive(estimator):
     penalty = estimator.get_default_penalty()
     assert isinstance(penalty, (int, float, np.ndarray))
     assert penalty > 0, f"Default penalty must be positive, got {penalty}."
+
+
+# ---------------------------------------------------------------------------
+# Statelessness tests
+# ---------------------------------------------------------------------------
+
+
+@_all_interval_scorers
+def test_interval_scorer_precompute_does_not_alter_fitted_state(estimator):
+    """precompute() must not modify the estimator's fitted attributes.
+
+    Calling precompute() twice on different data should leave the estimator
+    in exactly the same fitted state as after fit().
+    """
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+
+    fitted_state = {
+        k: v.copy() if isinstance(v, np.ndarray) else v
+        for k, v in estimator.__dict__.items()
+    }
+
+    # Call precompute twice with different data to stress-test statefulness.
+    X2 = make_no_change_X(estimator)
+    estimator.precompute(X)
+    estimator.precompute(X2)
+
+    for k, v_orig in fitted_state.items():
+        v_now = estimator.__dict__[k]
+        if isinstance(v_orig, np.ndarray):
+            np.testing.assert_array_equal(
+                v_now,
+                v_orig,
+                err_msg=f"Attribute {k!r} was modified by precompute().",
+            )
+        else:
+            assert v_now == v_orig, (
+                f"Attribute {k!r} was modified by precompute(): "
+                f"{v_orig!r} -> {v_now!r}."
+            )
+
+
+@_all_interval_scorers
+def test_interval_scorer_evaluate_does_not_alter_fitted_state(estimator):
+    """evaluate() must not modify the estimator's fitted attributes.
+
+    Calling evaluate() on different interval_specs using the same cache must
+    leave the estimator's fitted state unchanged.
+    """
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    cache = estimator.precompute(X)
+
+    fitted_state = {
+        k: v.copy() if isinstance(v, np.ndarray) else v
+        for k, v in estimator.__dict__.items()
+    }
+
+    specs = make_interval_specs(estimator, n_intervals=5)
+    specs2 = make_interval_specs(estimator, n_intervals=3)
+    estimator.evaluate(cache, specs)
+    estimator.evaluate(cache, specs2)
+
+    for k, v_orig in fitted_state.items():
+        v_now = estimator.__dict__[k]
+        if isinstance(v_orig, np.ndarray):
+            np.testing.assert_array_equal(
+                v_now,
+                v_orig,
+                err_msg=f"Attribute {k!r} was modified by evaluate().",
+            )
+        else:
+            assert (
+                v_now == v_orig
+            ), f"Attribute {k!r} was modified by evaluate(): {v_orig!r} -> {v_now!r}."
+
+
+@_all_interval_scorers
+def test_interval_scorer_evaluate_same_result_on_repeated_calls(estimator):
+    """evaluate() must return identical results when called repeatedly with the same
+    cache and interval_specs (i.e. no hidden mutable state affects the output).
+    """
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    cache = estimator.precompute(X)
+    specs = make_interval_specs(estimator)
+
+    scores1 = estimator.evaluate(cache, specs)
+    scores2 = estimator.evaluate(cache, specs)
+
+    np.testing.assert_array_equal(
+        scores1,
+        scores2,
+        err_msg="evaluate() returned different results on repeated calls with the "
+        "same cache and interval_specs.",
+    )

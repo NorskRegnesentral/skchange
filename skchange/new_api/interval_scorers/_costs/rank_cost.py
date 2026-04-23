@@ -56,6 +56,30 @@ def _rank_cost(
     return costs
 
 
+def _compute_centered_ranks(X: np.ndarray) -> np.ndarray:
+    """Compute centered data ranks for a data array.
+
+    Parameters
+    ----------
+    X : np.ndarray of shape (n_samples, n_features)
+
+    Returns
+    -------
+    centered_data_ranks : np.ndarray of shape (n_samples, n_features)
+    """
+    n_samples, n_variables = X.shape
+    X_sorted = np.sort(X, axis=0)
+    data_ranks = np.zeros_like(X, dtype=np.float64)
+
+    for col in range(n_variables):
+        # Average lower and upper ranks to handle ties correctly.
+        lower = np.searchsorted(X_sorted[:, col], X[:, col], side="left")
+        upper = np.searchsorted(X_sorted[:, col], X[:, col], side="right")
+        data_ranks[:, col] = (1 + lower + upper) / 2.0
+
+    return data_ranks - (n_samples + 1) / 2.0
+
+
 def _compute_ranks_and_pinv_cdf_cov(
     X: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -70,22 +94,14 @@ def _compute_ranks_and_pinv_cdf_cov(
     centered_data_ranks : np.ndarray of shape (n_samples, n_features)
     pinv_cdf_cov : np.ndarray of shape (n_features, n_features)
     """
-    n_samples, n_variables = X.shape
-    X_sorted = np.sort(X, axis=0)
-    data_ranks = np.zeros_like(X, dtype=np.float64)
+    n_samples = X.shape[0]
+    centered_data_ranks = _compute_centered_ranks(X)
 
-    for col in range(n_variables):
-        # Average lower and upper ranks to handle ties correctly.
-        lower = np.searchsorted(X_sorted[:, col], X[:, col], side="left")
-        upper = np.searchsorted(X_sorted[:, col], X[:, col], side="right")
-        data_ranks[:, col] = (1 + lower + upper) / 2.0
-
-    cdf_values = data_ranks / n_samples
+    cdf_values = (centered_data_ranks + (n_samples + 1) / 2.0) / n_samples
     centered_cdf = cdf_values - 0.5
     cdf_cov = 4.0 * (centered_cdf.T @ centered_cdf) / n_samples
     pinv_cdf_cov = pinvh(cdf_cov)
 
-    centered_data_ranks = data_ranks - (n_samples + 1) / 2.0
     return centered_data_ranks, pinv_cdf_cov
 
 
@@ -178,9 +194,8 @@ class RankCost(BaseCost):
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, reset=False)
-        centered_ranks, _ = _compute_ranks_and_pinv_cdf_cov(X)
         return {
-            "centered_data_ranks": centered_ranks,
+            "centered_data_ranks": _compute_centered_ranks(X),
             "pinv_rank_cov": self._pinv_rank_cov_,
         }
 

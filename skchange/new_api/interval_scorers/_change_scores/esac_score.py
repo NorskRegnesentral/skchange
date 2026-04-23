@@ -217,6 +217,7 @@ class ESACScore(BaseChangeScore):
         Returns
         -------
         cache : dict
+            Dictionary with key ``"sums"`` (cumulative column sums).
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
@@ -244,7 +245,7 @@ class ESACScore(BaseChangeScore):
         ends = interval_specs[:, 2]
 
         raw_cusum = cusum_score(starts, splits, ends, cache["sums"])
-        scores, self.sargmaxes_ = _transform_esac(
+        scores, _ = _transform_esac(
             raw_cusum,
             self._a_s_,
             self._nu_s_,

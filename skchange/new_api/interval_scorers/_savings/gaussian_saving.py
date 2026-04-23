@@ -92,9 +92,9 @@ class GaussianSaving(BaseSaving):
     Parameters
     ----------
     baseline_mean : float or array-like of shape (n_features,), default=0.0
-        Fixed baseline mean.
+        Fixed baseline mean per input feature.
     baseline_var : float or array-like of shape (n_features,), default=1.0
-        Fixed baseline variance. Must be positive.
+        Fixed baseline variance per input feature. Must be positive.
 
     Examples
     --------
