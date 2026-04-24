@@ -18,11 +18,15 @@ class SkchangeInputTags(InputTags):
     conditional : bool, default=False
         Whether the estimator uses some input columns as covariates. If True,
         at least two input columns are required (one response, one+ covariates).
+    timestamps : bool, default=False
+        Whether the estimator expects one column of the input to contain timestamps
+        (time steps for fitting linear trends).
     """
 
     multivariate: bool = True
     integer_only: bool = False
     conditional: bool = False
+    timestamps: bool = False
 
 
 @dataclass(slots=True)

@@ -231,6 +231,7 @@ class LinearTrendCost(BaseCost):
         """Return tags marking this cost as requiring linear-trend segment data."""
         tags = super().__sklearn_tags__()
         tags.interval_scorer_tags.linear_trend_segment = True
+        tags.input_tags.timestamps = self.time_col is not None
         return tags
 
     @property
@@ -270,6 +271,12 @@ class LinearTrendCost(BaseCost):
                 raise ValueError(
                     f"time_col={self.time_col} is out of range for data with "
                     f"{self.n_features_in_} columns."
+                )
+            if self.n_features_in_ < 2:
+                raise ValueError(
+                    f"LinearTrendCost with time_col={self.time_col} requires at least "
+                    f"2 features (1 timestamp + 1 value column), but got "
+                    f"n_features={self.n_features_in_}."
                 )
             self.value_cols_ = [
                 c for c in range(self.n_features_in_) if c != self.time_col

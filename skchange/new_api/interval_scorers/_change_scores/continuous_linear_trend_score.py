@@ -259,6 +259,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         """Return tags marking this scorer as detecting continuous (kink) changes."""
         tags = super().__sklearn_tags__()
         tags.interval_scorer_tags.linear_trend_segment = True
+        tags.input_tags.timestamps = self.time_col is not None
         return tags
 
     @property
@@ -284,6 +285,17 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
 
         if self.time_col is not None:
+            if not (0 <= self.time_col < X.shape[1]):
+                raise ValueError(
+                    f"time_col={self.time_col} is out of range for data with "
+                    f"{X.shape[1]} columns."
+                )
+            if X.shape[1] < 2:
+                raise ValueError(
+                    f"ContinuousLinearTrendScore with time_col={self.time_col} "
+                    f"requires at least 2 features (1 timestamp + 1 value column), "
+                    f"but got n_features={X.shape[1]}."
+                )
             all_cols = np.arange(X.shape[1])
             self.value_cols_ = all_cols[all_cols != self.time_col]
         else:

@@ -7,7 +7,7 @@ segment-wise best-fit linear trend versus a fixed baseline trend.
 
 __author__ = ["johannvk"]
 
-from numbers import Integral, Real
+from numbers import Real
 
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
@@ -15,70 +15,16 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.interval_scorers._costs.linear_trend_cost import (
     fit_indexed_linear_trend,
-    fit_linear_trend,
 )
 from skchange.new_api.penalties import chi2_penalty
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._param_validation import Interval, _fit_context
+from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 
 
 @njit
-def linear_trend_saving_mle(
-    starts: np.ndarray,
-    ends: np.ndarray,
-    X: np.ndarray,
-    time_stamps: np.ndarray,
-    baseline_params: np.ndarray,
-) -> np.ndarray:
-    """Evaluate the linear trend saving against fixed baseline parameters.
-
-    Saving = RSS(fixed trend) - RSS(OLS trend) for each interval and column.
-
-    Parameters
-    ----------
-    starts : np.ndarray
-        Start indices of the intervals (inclusive).
-    ends : np.ndarray
-        End indices of the intervals (exclusive).
-    X : np.ndarray
-        Data to evaluate. Must be a 2D array.
-    time_stamps : np.ndarray
-        Global time stamps of shape (n_samples,).
-    baseline_params : np.ndarray
-        Fixed baseline trend parameters of shape (n_columns, 2), where each row
-        is ``[slope, intercept]`` for the corresponding column.
-
-    Returns
-    -------
-    savings : np.ndarray
-        A 2D array of savings, shape (n_intervals, n_columns).
-    """
-    n_intervals = len(starts)
-    n_columns = X.shape[1]
-    savings = np.zeros((n_intervals, n_columns))
-
-    for i in range(n_intervals):
-        start, end = starts[i], ends[i]
-        segment_ts = time_stamps[start:end]
-        for col in range(n_columns):
-            segment_data = X[start:end, col]
-            # Fixed-coefficient RSS:
-            slope_0, intercept_0 = baseline_params[col, :]
-            r_fixed = segment_data - (intercept_0 + slope_0 * segment_ts)
-            fixed_rss = np.sum(r_fixed * r_fixed)
-            # OLS RSS:
-            slope_mle, intercept_mle = fit_linear_trend(segment_ts, segment_data)
-            r_mle = segment_data - (intercept_mle + slope_mle * segment_ts)
-            mle_rss = np.sum(r_mle * r_mle)
-            savings[i, col] = fixed_rss - mle_rss
-
-    return savings
-
-
-@njit
-def linear_trend_saving_index_times(
+def linear_trend_saving_index(
     starts: np.ndarray,
     ends: np.ndarray,
     X: np.ndarray,
@@ -145,27 +91,21 @@ class LinearTrendSaving(BaseSaving):
     baseline trend is a poor fit for the segment.
 
     By default the time steps are assumed to be ``[0, 1, ..., (end-start)-1]``
-    within each segment. If a ``time_col`` is provided, global time stamps are
-    used instead.
+    within each segment.
 
     Inspired by [1]_ who propose the same cost function for detecting changes in
     piecewise-linear signals.
 
     Parameters
     ----------
-    baseline_slope : float or array-like of shape (n_value_cols,), default=0
+    baseline_slope : float or array-like of shape (n_features,), default=0
         Fixed baseline slope for each value column. If a scalar, the same slope is
         used for all columns.
-    baseline_intercept : float, array-like of shape (n_value_cols,), or None,\
+    baseline_intercept : float, array-like of shape (n_features,), or None,\
  default=None
         Fixed baseline intercept for each value column. If a scalar, the same
         intercept is used for all columns. If ``None``, the OLS intercept fitted
         on the training data is used.
-    time_col : int or None, default=None
-        By default time steps within each segment are ``[0, 1, ..., n-1]``.
-        If a time column index is provided, its values are used as global time
-        stamps. The time column is excluded from the trend data. Values must be
-        convertible to ``float`` dtype.
 
     References
     ----------
@@ -188,18 +128,21 @@ class LinearTrendSaving(BaseSaving):
     _parameter_constraints: dict = {
         "baseline_slope": ["array-like", Real],
         "baseline_intercept": ["array-like", Real, None],
-        "time_col": [Interval(Integral, 0, None, closed="left"), None],
     }
 
     def __init__(
         self,
         baseline_slope: ArrayLike | float = 0,
         baseline_intercept: ArrayLike | float | None = None,
-        time_col: int | None = None,
     ):
         self.baseline_slope = baseline_slope
         self.baseline_intercept = baseline_intercept
-        self.time_col = time_col
+
+    def __sklearn_tags__(self):
+        """Return tags marking this saving as requiring linear-trend segment data."""
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.linear_trend_segment = True
+        return tags
 
     @property
     def min_size(self) -> int:
@@ -222,8 +165,7 @@ class LinearTrendSaving(BaseSaving):
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-            Training data. If ``time_col`` is set, that column is used for
-            the time steps and is excluded from the trend data.
+            Training data.
         y : None
             Ignored.
 
@@ -234,23 +176,7 @@ class LinearTrendSaving(BaseSaving):
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
         n_features = X.shape[1]
 
-        if self.time_col is not None:
-            if not (0 <= self.time_col < n_features):
-                raise ValueError(
-                    f"time_col={self.time_col} is out of range for data with "
-                    f"{n_features} columns."
-                )
-            # If a time column is provided, convert it to float
-            # dtype for numba compatibility:
-            time_stamps = X[:, self.time_col].copy()
-            # Start at time zero for the first data point:
-            time_stamps -= time_stamps[0]
-            self.value_cols_ = [c for c in range(n_features) if c != self.time_col]
-        else:
-            # No time column: use per-segment index times.
-            time_stamps = None
-            self.value_cols_ = list(range(n_features))
-
+        self.value_cols_ = list(range(n_features))
         X_values = X[:, self.value_cols_]
 
         # Default baseline estimation:
@@ -287,25 +213,13 @@ class LinearTrendSaving(BaseSaving):
         Returns
         -------
         cache : dict
-            Dictionary with keys:
+            Dictionary with key:
 
-            - ``"values"``: 2D trend data of shape ``(n_samples, n_value_cols)``,
-              with the time column removed if applicable.
-            - ``"time_stamps"``: 1D float array of shape ``(n_samples,)``, or
-              ``None`` if using per-segment index times.
+            - ``"values"``: 2D data array of shape ``(n_samples, n_features)``.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
-        if self.time_col is not None:
-            # Extract time stamps from this data and start at zero:
-            time_stamps = X[:, self.time_col].copy()
-            time_stamps -= time_stamps[0]
-        else:
-            time_stamps = None
-        return {
-            "values": np.ascontiguousarray(X[:, self.value_cols_]),
-            "time_stamps": time_stamps,
-        }
+        return {"values": np.ascontiguousarray(X[:, self.value_cols_])}
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate linear trend saving on intervals.
@@ -330,16 +244,7 @@ class LinearTrendSaving(BaseSaving):
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         values = cache["values"]
-        time_stamps = cache["time_stamps"]
-
-        if time_stamps is not None:
-            return linear_trend_saving_mle(
-                starts, ends, values, time_stamps, self._baseline_params
-            )
-        else:
-            return linear_trend_saving_index_times(
-                starts, ends, values, self._baseline_params
-            )
+        return linear_trend_saving_index(starts, ends, values, self._baseline_params)
 
     def get_default_penalty(self) -> float:
         r"""Get the default penalty for the fitted linear trend saving.

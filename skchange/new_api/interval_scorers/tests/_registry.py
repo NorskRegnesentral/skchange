@@ -42,6 +42,7 @@ _COSTS = [
     LaplaceCost(),
     LinearRegressionCost(),
     LinearTrendCost(),
+    LinearTrendCost(time_col=0),
     MultivariateGaussianCost(),
     MultivariateTCost(),
     PoissonCost(),
@@ -50,6 +51,7 @@ _COSTS = [
 _CHANGE_SCORES = [
     CUSUM(),
     ContinuousLinearTrendScore(),
+    ContinuousLinearTrendScore(time_col=0),
     ESACScore(),
     MultivariateGaussianScore(),
     RankScore(),

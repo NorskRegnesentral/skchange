@@ -60,8 +60,8 @@ def _make_kink_X(
     n_samples: int,
     n_features: int,
     changepoint: int,
-    slope_before: float = -0.5,
-    slope_after: float = 0.5,
+    slope_before: float = 0.0,
+    slope_after: float = 1.0,
     noise_std: float = 0.2,
     seed: int = 0,
 ) -> np.ndarray:
@@ -77,9 +77,9 @@ def _make_kink_X(
         Number of independent columns.
     changepoint : int
         Index of the first sample in the second segment.
-    slope_before : float, default=-0.5
+    slope_before : float, default=0.0
         Slope of the first segment.
-    slope_after : float, default=0.5
+    slope_after : float, default=1.0
         Slope of the second segment.
     noise_std : float, default=0.2
         Standard deviation of added Gaussian noise.
@@ -121,7 +121,7 @@ def make_single_change_X(
     -------
     X : ndarray of shape (n_samples, n_features)
         Two-segment data with a structural break at sample ``CHANGEPOINT``.
-        Data type is chosen based on estimator tags:
+        Signal type is chosen based on estimator tags:
 
         - ``interval_scorer_tags.linear_trend_segment=True`` or
           ``change_detector_tags.linear_trend_segment=True``: Piecewise linear signal
@@ -130,46 +130,60 @@ def make_single_change_X(
           shift. Column 0 is the response; columns 1+ are covariates.
         - ``input_tags.integer_only=True``: Poisson count data with a rate shift.
         - ``input_tags.integer_only=False``: Gaussian data with a mean shift.
+
+        When ``input_tags.timestamps=True``, one column is reserved for monotonically
+        increasing integer time steps (at index ``estimator.time_col``). The remaining
+        ``n_features - 1`` columns carry the signal determined above. The timestamp
+        column is inserted last, after the signal is generated.
     """
     tags = estimator.__sklearn_tags__()
     input_tags = tags.input_tags
 
     if n_features is None:
-        n_features = 2 if input_tags.conditional else 1
+        n_features = 2 if (input_tags.conditional or input_tags.timestamps) else 1
+
+    n_signal = n_features - 1 if input_tags.timestamps else n_features
 
     scorer_tags = tags.interval_scorer_tags
     detector_tags = tags.change_detector_tags
     linear_trend_segment = (
         scorer_tags is not None and scorer_tags.linear_trend_segment
     ) or (detector_tags is not None and detector_tags.linear_trend_segment)
-    if linear_trend_segment:
-        return _make_kink_X(_N_SAMPLES, n_features, CHANGEPOINT, seed=51)
 
-    if input_tags.conditional:
-        n_covariates = n_features - 1
+    if linear_trend_segment:
+        data = _make_kink_X(_N_SAMPLES, n_signal, CHANGEPOINT, seed=51)
+    elif input_tags.conditional:
+        n_covariates = n_signal - 1
         coef_before = np.ones(n_covariates)
         coef_after = 5.0 * np.ones(n_covariates)
-        return _make_regression_X(
-            _N_SAMPLES, n_features, coef_before, coef_after, CHANGEPOINT, seed=51
+        data = _make_regression_X(
+            _N_SAMPLES, n_signal, coef_before, coef_after, CHANGEPOINT, seed=51
         )
-
-    rng = np.random.default_rng(51)
-    if input_tags.integer_only:
-        return np.concatenate(
-            [
-                rng.poisson(lam=2.0, size=(CHANGEPOINT, n_features)),
-                rng.poisson(lam=10.0, size=(_N_SAMPLES - CHANGEPOINT, n_features)),
-            ]
-        ).astype(float)
     else:
-        return np.concatenate(
-            [
-                rng.normal(loc=0.0, scale=1.0, size=(CHANGEPOINT, n_features)),
-                rng.normal(
-                    loc=10.0, scale=1.0, size=(_N_SAMPLES - CHANGEPOINT, n_features)
-                ),
-            ]
-        )
+        rng = np.random.default_rng(51)
+        if input_tags.integer_only:
+            data = np.concatenate(
+                [
+                    rng.poisson(lam=2.0, size=(CHANGEPOINT, n_signal)),
+                    rng.poisson(lam=10.0, size=(_N_SAMPLES - CHANGEPOINT, n_signal)),
+                ]
+            ).astype(float)
+        else:
+            data = np.concatenate(
+                [
+                    rng.normal(loc=0.0, scale=1.0, size=(CHANGEPOINT, n_signal)),
+                    rng.normal(
+                        loc=10.0, scale=1.0, size=(_N_SAMPLES - CHANGEPOINT, n_signal)
+                    ),
+                ]
+            )
+
+    if input_tags.timestamps:
+        time_col = getattr(estimator, "time_col", 0)
+        t = np.arange(_N_SAMPLES, dtype=float)
+        return np.insert(data, time_col, t, axis=1)
+
+    return data
 
 
 def make_no_change_X(
@@ -191,31 +205,43 @@ def make_no_change_X(
     -------
     X : ndarray of shape (n_samples, n_features)
         Homogeneous data drawn from a single distribution throughout.
-        Data type is chosen based on estimator tags:
+        Signal type is chosen based on estimator tags:
 
         - ``input_tags.conditional=True``: Linear regression data with constant
           coefficients. Column 0 is the response; columns 1+ are covariates.
         - ``input_tags.integer_only=True``: Poisson count data with constant rate.
         - ``input_tags.integer_only=False``: Gaussian data with constant mean.
+
+        When ``input_tags.timestamps=True``, one column is reserved for monotonically
+        increasing integer time steps (at index ``estimator.time_col``). The remaining
+        ``n_features - 1`` columns carry the signal determined above. The timestamp
+        column is inserted last, after the signal is generated.
     """
     tags = estimator.__sklearn_tags__()
     input_tags = tags.input_tags
 
     if n_features is None:
-        n_features = 2 if input_tags.conditional else 1
+        n_features = 2 if (input_tags.conditional or input_tags.timestamps) else 1
+
+    n_signal = n_features - 1 if input_tags.timestamps else n_features
 
     if input_tags.conditional:
-        n_covariates = n_features - 1
+        n_covariates = n_signal - 1
         coef = np.ones(n_covariates)
-        return _make_regression_X(
-            _N_SAMPLES, n_features, coef, coef, _N_SAMPLES, seed=42
-        )
-
-    rng = np.random.default_rng(42)
-    if input_tags.integer_only:
-        return rng.poisson(lam=5.0, size=(_N_SAMPLES, n_features)).astype(float)
+        data = _make_regression_X(_N_SAMPLES, n_signal, coef, coef, _N_SAMPLES, seed=42)
     else:
-        return rng.normal(loc=0.0, scale=1.0, size=(_N_SAMPLES, n_features))
+        rng = np.random.default_rng(42)
+        if input_tags.integer_only:
+            data = rng.poisson(lam=5.0, size=(_N_SAMPLES, n_signal)).astype(float)
+        else:
+            data = rng.normal(loc=0.0, scale=1.0, size=(_N_SAMPLES, n_signal))
+
+    if input_tags.timestamps:
+        time_col = getattr(estimator, "time_col", 0)
+        t = np.arange(_N_SAMPLES, dtype=float)
+        return np.insert(data, time_col, t, axis=1)
+
+    return data
 
 
 @pytest.fixture

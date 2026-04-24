@@ -185,13 +185,16 @@ def test_interval_scorer_evaluate_output_shape(estimator):
     assert isinstance(scores, np.ndarray)
     assert scores.ndim == 2, "evaluate() must return a 2-D array."
     assert scores.shape[0] == len(specs)
-    tags = estimator.__sklearn_tags__().interval_scorer_tags
+    skchange_tags = estimator.__sklearn_tags__()
+    tags = skchange_tags.interval_scorer_tags
     if tags.aggregated:
         assert scores.shape[1] == 1, "Aggregated scorer must return exactly 1 column."
     else:
-        assert scores.shape[1] == n_features, (
-            f"Non-aggregated scorer must return 1 column per feature, "
-            f"expected {n_features}, got {scores.shape[1]}."
+        timestamps = skchange_tags.input_tags.timestamps
+        n_signal_features = n_features - 1 if timestamps else n_features
+        assert scores.shape[1] == n_signal_features, (
+            f"Non-aggregated scorer must return 1 column per signal feature, "
+            f"expected {n_signal_features}, got {scores.shape[1]}."
         )
 
 
