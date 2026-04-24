@@ -115,7 +115,7 @@ class LinearRegressionCost(BaseCost):
     def min_size(self) -> int:
         """Minimum segment size (n_covariates + 1 for at least one residual d.o.f.)."""
         check_is_fitted(self)
-        return self.n_covariates_ + 1
+        return len(self.covariate_cols_) + 1
 
     @_fit_context(prefer_skip_nested_validation=True)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None):
@@ -145,10 +145,7 @@ class LinearRegressionCost(BaseCost):
                 f"response_col={self.response_col} is out of range for "
                 f"data with {n_features} columns."
             )
-        covariate_cols = [c for c in range(n_features) if c != self.response_col]
-        self.response_col_ = self.response_col
-        self.covariate_cols_ = covariate_cols
-        self.n_covariates_ = len(covariate_cols)
+        self.covariate_cols_ = [c for c in range(n_features) if c != self.response_col]
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
@@ -171,7 +168,7 @@ class LinearRegressionCost(BaseCost):
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
         return {
-            "X_response": X[:, self.response_col_],
+            "X_response": X[:, self.response_col],
             "X_covariates": X[:, self.covariate_cols_],
         }
 
@@ -212,4 +209,4 @@ class LinearRegressionCost(BaseCost):
             Default BIC penalty value.
         """
         check_is_fitted(self)
-        return bic_penalty(self.n_samples_in_, self.n_covariates_)
+        return bic_penalty(self.n_samples_in_, len(self.covariate_cols_))

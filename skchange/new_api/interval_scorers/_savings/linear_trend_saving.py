@@ -240,20 +240,17 @@ class LinearTrendSaving(BaseSaving):
                     f"time_col={self.time_col} is out of range for data with "
                     f"{n_features} columns."
                 )
-            self.time_col_ = self.time_col
             # If a time column is provided, convert it to float
             # dtype for numba compatibility:
-            time_stamps = X[:, self.time_col_].copy()
+            time_stamps = X[:, self.time_col].copy()
             # Start at time zero for the first data point:
             time_stamps -= time_stamps[0]
-            self.value_cols_ = [c for c in range(n_features) if c != self.time_col_]
+            self.value_cols_ = [c for c in range(n_features) if c != self.time_col]
         else:
-            self.time_col_ = None
             # No time column: use per-segment index times.
             time_stamps = None
             self.value_cols_ = list(range(n_features))
 
-        self.n_value_cols_ = len(self.value_cols_)
         X_values = X[:, self.value_cols_]
 
         # Default baseline estimation:
@@ -268,7 +265,7 @@ class LinearTrendSaving(BaseSaving):
         default_intercepts = np.median(X_values, axis=0)
 
         self.baseline_slope_ = self._resolve_param(
-            self.baseline_slope, np.zeros(self.n_value_cols_), "baseline_slope"
+            self.baseline_slope, np.zeros(len(self.value_cols_)), "baseline_slope"
         )
         self.baseline_intercept_ = self._resolve_param(
             self.baseline_intercept, default_intercepts, "baseline_intercept"
@@ -299,9 +296,9 @@ class LinearTrendSaving(BaseSaving):
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
-        if self.time_col_ is not None:
+        if self.time_col is not None:
             # Extract time stamps from this data and start at zero:
-            time_stamps = X[:, self.time_col_].copy()
+            time_stamps = X[:, self.time_col].copy()
             time_stamps -= time_stamps[0]
         else:
             time_stamps = None
@@ -358,7 +355,7 @@ class LinearTrendSaving(BaseSaving):
         """
         check_is_fitted(self)
         # 2 d.o.f. per column: slope and intercept
-        return chi2_penalty(self.n_samples_in_, 2 * self.n_value_cols_)
+        return chi2_penalty(self.n_samples_in_, 2 * len(self.value_cols_))
 
     def _resolve_param(
         self,
@@ -385,10 +382,10 @@ class LinearTrendSaving(BaseSaving):
             return ols_values.copy()
         arr = np.asarray(param, dtype=np.float64)
         if arr.ndim == 0:
-            return np.full(self.n_value_cols_, float(arr))
-        if arr.shape != (self.n_value_cols_,):
+            return np.full(len(self.value_cols_), float(arr))
+        if arr.shape != (len(self.value_cols_),):
             raise ValueError(
                 f"{name} must be a scalar or array of shape "
-                f"({self.n_value_cols_},), got shape {arr.shape}."
+                f"({len(self.value_cols_)},), got shape {arr.shape}."
             )
         return arr

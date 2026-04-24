@@ -264,21 +264,19 @@ class LinearTrendCost(BaseCost):
         self : LinearTrendCost
         """
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
-        n_features = X.shape[1]
 
         if self.time_col is not None:
-            if not (0 <= self.time_col < n_features):
+            if not (0 <= self.time_col < self.n_features_in_):
                 raise ValueError(
                     f"time_col={self.time_col} is out of range for data with "
-                    f"{n_features} columns."
+                    f"{self.n_features_in_} columns."
                 )
-            self.time_col_ = self.time_col
-            self.value_cols_ = [c for c in range(n_features) if c != self.time_col_]
+            self.value_cols_ = [
+                c for c in range(self.n_features_in_) if c != self.time_col
+            ]
         else:
-            self.time_col_ = None
-            self.value_cols_ = list(range(n_features))
+            self.value_cols_ = list(range(self.n_features_in_))
 
-        self.n_value_cols_ = len(self.value_cols_)
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
@@ -301,9 +299,9 @@ class LinearTrendCost(BaseCost):
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
-        if self.time_col_ is not None:
+        if self.time_col is not None:
             # Extract time stamps from this data and start at zero:
-            time_stamps = X[:, self.time_col_].copy()
+            time_stamps = X[:, self.time_col].copy()
             time_stamps -= time_stamps[0]
         else:
             time_stamps = None
@@ -356,4 +354,4 @@ class LinearTrendCost(BaseCost):
         """
         check_is_fitted(self)
         # For each column we need 2 parameters: slope and intercept
-        return bic_penalty(self.n_samples_in_, 2 * self.n_value_cols_)
+        return bic_penalty(self.n_samples_in_, 2 * len(self.value_cols_))

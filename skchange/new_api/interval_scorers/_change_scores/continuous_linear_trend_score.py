@@ -284,14 +284,10 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
 
         if self.time_col is not None:
-            times = X[:, self.time_col].astype(np.float64)
-            self._time_stamps_ = times - times[0]
             all_cols = np.arange(X.shape[1])
-            data_cols = all_cols[all_cols != self.time_col]
-            self._data_cols_ = data_cols
+            self.value_cols_ = all_cols[all_cols != self.time_col]
         else:
-            self._time_stamps_ = None
-            self._data_cols_ = None
+            self.value_cols_ = list(range(X.shape[1]))
 
         return self
 
@@ -310,12 +306,11 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
 
-        if self._data_cols_ is not None:
-            data = X[:, self._data_cols_]
+        data = X[:, self.value_cols_]
+        if self.time_col is not None:
             times = X[:, self.time_col].astype(np.float64)
             times = times - times[0]
         else:
-            data = X
             times = None
 
         return {"X": data, "times": times}
