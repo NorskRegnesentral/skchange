@@ -12,7 +12,11 @@ from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_time_col,
+    validate_data,
+)
 from skchange.utils.numba import njit
 
 
@@ -228,7 +232,11 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     time_col : int or None, default=None
         Column index to use as time stamps for calculating the piecewise linear
         trends. If ``None``, time steps are assumed to be evenly spaced and the
-        analytical formulation is used.
+        analytical formulation is used. The column must be strictly monotonically
+        increasing.
+
+        .. experimental::
+            Support for ``time_col`` is experimental and the API may change.
 
     References
     ----------
@@ -285,17 +293,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
 
         if self.time_col is not None:
-            if not (0 <= self.time_col < X.shape[1]):
-                raise ValueError(
-                    f"time_col={self.time_col} is out of range for data with "
-                    f"{X.shape[1]} columns."
-                )
-            if X.shape[1] < 2:
-                raise ValueError(
-                    f"ContinuousLinearTrendScore with time_col={self.time_col} "
-                    f"requires at least 2 features (1 timestamp + 1 value column), "
-                    f"but got n_features={X.shape[1]}."
-                )
+            check_time_col(X, self.time_col, self.__class__.__name__)
             all_cols = np.arange(X.shape[1])
             self.value_cols_ = all_cols[all_cols != self.time_col]
         else:

@@ -19,8 +19,9 @@ class SkchangeInputTags(InputTags):
         Whether the estimator uses some input columns as covariates. If True,
         at least two input columns are required (one response, one+ covariates).
     timestamps : bool, default=False
-        Whether the estimator expects one column of the input to contain timestamps
-        (time steps for fitting linear trends).
+        Whether the estimator expects one column of the input to contain timestamps.
+        **Experimental**: support for timestamp columns is not yet stable and may
+        change in future releases.
     """
 
     multivariate: bool = True

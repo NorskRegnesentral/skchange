@@ -45,6 +45,59 @@ def validate_data(
     return X
 
 
+def check_time_col(
+    X: np.ndarray,
+    time_col: int,
+    caller_name: str,
+) -> None:
+    """Validate the timestamp column of ``X`` for linear trend estimators.
+
+    .. experimental::
+        This helper supports the experimental ``time_col`` feature. Its interface
+        may change as the feature stabilises.
+
+    Checks that ``time_col`` is in range, that at least one value column
+    remains, and that the timestamp column contains finite, strictly
+    monotonically increasing values.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features)
+        Already-validated data array.
+    time_col : int
+        Index of the timestamp column.
+    caller_name : str
+        Name of the calling estimator, used in error messages.
+
+    Raises
+    ------
+    ValueError
+        If any of the above conditions are violated.
+    """
+    n_features = X.shape[1]
+    if not (0 <= time_col < n_features):
+        raise ValueError(
+            f"{caller_name}: time_col={time_col} is out of range for data "
+            f"with {n_features} columns."
+        )
+    if n_features < 2:
+        raise ValueError(
+            f"{caller_name} with time_col={time_col} requires at least 2 "
+            f"features (1 timestamp + 1 value column), but got "
+            f"n_features={n_features}."
+        )
+    time_stamps = X[:, time_col]
+    if not np.all(np.isfinite(time_stamps)):
+        raise ValueError(
+            f"{caller_name}: time_col contains non-finite values. "
+            "Timestamps must be finite numbers."
+        )
+    if not np.all(np.diff(time_stamps) > 0):
+        raise ValueError(
+            f"{caller_name}: time_col must be strictly monotonically increasing."
+        )
+
+
 def check_interval_specs(
     interval_specs: ArrayLike,
     n_cols: int,

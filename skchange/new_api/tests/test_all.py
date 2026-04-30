@@ -7,7 +7,11 @@ from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
 
-ALL_ESTIMATORS = INTERVAL_SCORER_TEST_INSTANCES + DETECTOR_TEST_INSTANCES
+ALL_ESTIMATORS = [
+    estimator
+    for estimator in (INTERVAL_SCORER_TEST_INSTANCES + DETECTOR_TEST_INSTANCES)
+    if not estimator.__sklearn_tags__().input_tags.timestamps  # Experimental
+]
 
 
 def _expected_failed_checks(estimator):

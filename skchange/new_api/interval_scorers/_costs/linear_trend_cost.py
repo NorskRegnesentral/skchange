@@ -17,7 +17,11 @@ from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_time_col,
+    validate_data,
+)
 from skchange.utils.numba import njit
 
 
@@ -200,7 +204,11 @@ class LinearTrendCost(BaseCost):
         calculating the linear trends. The time column values must be convertible to
         ``float`` dtype.  The time column is excluded from the trend data and does not
         contribute to the cost. If your time column is of ``datetime.datetime`` type,
-        convert it to a numeric column first.
+        convert it to a numeric column first. The column must be strictly monotonically
+        increasing.
+
+        .. experimental::
+            Support for ``time_col`` is experimental and the API may change.
 
     References
     ----------
@@ -267,17 +275,7 @@ class LinearTrendCost(BaseCost):
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
 
         if self.time_col is not None:
-            if not (0 <= self.time_col < self.n_features_in_):
-                raise ValueError(
-                    f"time_col={self.time_col} is out of range for data with "
-                    f"{self.n_features_in_} columns."
-                )
-            if self.n_features_in_ < 2:
-                raise ValueError(
-                    f"LinearTrendCost with time_col={self.time_col} requires at least "
-                    f"2 features (1 timestamp + 1 value column), but got "
-                    f"n_features={self.n_features_in_}."
-                )
+            check_time_col(X, self.time_col, self.__class__.__name__)
             self.value_cols_ = [
                 c for c in range(self.n_features_in_) if c != self.time_col
             ]
@@ -307,6 +305,7 @@ class LinearTrendCost(BaseCost):
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
         if self.time_col is not None:
+            check_time_col(X, self.time_col, self.__class__.__name__)
             # Extract time stamps from this data and start at zero:
             time_stamps = X[:, self.time_col].copy()
             time_stamps -= time_stamps[0]
