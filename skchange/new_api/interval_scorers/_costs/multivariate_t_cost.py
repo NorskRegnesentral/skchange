@@ -197,7 +197,9 @@ def maximum_likelihood_mv_t_scale_matrix(
     max_iter : int
         Maximum number of fixed-point iterations.
     loo_index : int, default=-1
-        Index of the leave-one-out sample. -1 means use all samples.
+        Internal leave-one-out switch used by the LOO degrees-of-freedom
+        refinement. If ``loo_index >= 0``, the sample at that index is excluded
+        from scale-matrix updates. Use ``-1`` for the standard full-sample MLE.
 
     Returns
     -------
@@ -518,7 +520,9 @@ def _estimate_mv_t_dof(
     infinite_dof_threshold : float
         Above this value the distribution is treated as Gaussian.
     refine_dof_threshold : int
-        If n_samples <= this, apply the LOO refinement.
+        If ``n_samples <= refine_dof_threshold``, apply the LOO dof refinement
+        from [3]_. This is the parameter that governs whether ``loo_index`` is
+        used in the internal MLE-scale updates.
     mle_scale_abs_tol, mle_scale_rel_tol : float
         Convergence tolerances for scale-matrix estimation.
     mle_scale_max_iter : int
@@ -611,6 +615,10 @@ class MultivariateTCost(BaseCost):
         Number of training samples below which a leave-one-out iterative dof
         refinement is applied. Defaults to 1000 when Numba is available and 100
         otherwise.
+
+        This parameter controls whether leave-one-out (LOO) updates are used
+        in internal scale-matrix estimation. If ``n_samples <= refine_dof_threshold``,
+        LOO refinement is run; otherwise the non-LOO iterative dof estimate is used.
     mle_scale_abs_tol : float, default=1e-2
         Absolute convergence tolerance for the MLE scale-matrix fixed-point
         iterations.
