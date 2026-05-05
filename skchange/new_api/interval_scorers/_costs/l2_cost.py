@@ -1,17 +1,19 @@
 """L2 cost function."""
 
+__author__ = ["Tveten"]
+
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
-from skchange.new_api.typing import ArrayLike, Self
-from skchange.new_api.utils.validation import validate_data
+from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils.validation import check_interval_specs, validate_data
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
 
 @njit
-def l2_cost_optim(
+def l2_cost(
     starts: np.ndarray,
     ends: np.ndarray,
     sums: np.ndarray,
@@ -45,127 +47,28 @@ def l2_cost_optim(
     return costs
 
 
-@njit
-def l2_cost_fixed(
-    starts: np.ndarray,
-    ends: np.ndarray,
-    sums: np.ndarray,
-    sums2: np.ndarray,
-    mean: np.ndarray,
-) -> np.ndarray:
-    """Calculate the L2 cost for a fixed constant mean for each segment.
-
-    Parameters
-    ----------
-    starts : np.ndarray
-        Start indices of the segments.
-    ends : np.ndarray
-        End indices of the segments.
-    sums : np.ndarray
-        Cumulative sum of the input data, with a row of 0-entries as the first row.
-    sums2 : np.ndarray
-        Cumulative sum of the squared input data, with a row of 0-entries as the first
-        row.
-    mean : np.ndarray
-        Fixed mean for the cost calculation.
-
-    Returns
-    -------
-    costs : np.ndarray
-        A 2D array of costs. One row for each interval. The number of columns
-        is equal to the number of columns in the input data, where each column
-        represents the univariate cost for the corresponding input data column.
-    """
-    partial_sums = sums[ends] - sums[starts]
-    partial_sums2 = sums2[ends] - sums2[starts]
-    n = (ends - starts).reshape(-1, 1)
-    costs = partial_sums2 - 2 * mean * partial_sums + n * mean**2
-    return costs
-
-
 class L2Cost(BaseCost):
     r"""L2 (squared error) cost function.
 
-    Computes sum of squared deviations from a mean parameter.
+    Computes the sum of squared deviations from the sample mean for each segment.
 
     .. math::
-        C(X) = \sum_{i=1}^{n} ||x_i - \text{mean}||^2
-
-    Parameters
-    ----------
-    mean : array-like of shape (n_features,), float, or None, default=None
-        Fixed mean parameter. If float, the value is broadcast across all features.
-        If None, estimated as sample mean.
-
-    Attributes
-    ----------
-    mean_ : ndarray of shape (n_features,)
-        Fitted mean parameter.
+        C(X_{s:e}) = \sum_{i=s}^{e-1} ||x_i - \bar{x}_{s:e}||^2
 
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.scorers import L2Cost
-    >>>
+    >>> from skchange.new_api.interval_scorers import L2Cost
     >>> X = np.random.randn(100, 2)
-    >>>
-    >>> # Estimated mode - learns mean from data
     >>> cost = L2Cost()
     >>> cost.fit(X)
     >>> cache = cost.precompute(X)
     >>> interval_specs = np.array([[0, 50], [50, 100]])
     >>> costs = cost.evaluate(cache, interval_specs)
-    >>>
-    >>> # Fixed mode - user provides mean
-    >>> cost_fixed = L2Cost(mean=np.array([0.0, 0.0]))
-    >>> cost_fixed.fit(X)
-    >>> cache = cost_fixed.precompute(X)
-
-    Notes
-    -----
-    This is a simple cost function useful for detecting mean shifts in
-    Gaussian data. The estimated version computes the sample mean, while
-    the fixed version uses a user-specified reference mean.
     """
 
-    def __init__(self, mean: ArrayLike | float | None = None):
-        self.mean = mean
-
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
-        """Fit L2 cost to training data.
-
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training data to learn mean from.
-        y : None
-            Ignored.
-
-        Returns
-        -------
-        self : L2Cost
-            Fitted cost function.
-        """
-        X = validate_data(self, X, ensure_2d=True, reset=True)
-
-        if self.mean is not None:
-            if np.isscalar(self.mean):
-                mean_arr = np.repeat(self.mean, X.shape[1])
-            else:
-                mean_arr = check_array(self.mean, ensure_2d=False)
-            if mean_arr.shape[0] != X.shape[1]:
-                raise ValueError(
-                    f"mean must have {X.shape[1]} features, got {mean_arr.shape[0]}"
-                )
-            self._mean = mean_arr
-
-        return self
-
     def precompute(self, X: ArrayLike) -> dict:
-        """Precompute data for L2 cost evaluation.
-
-        For simple usage, just validates. Could be extended with
-        cumulative sums for more efficient evaluation.
+        """Precompute cumulative sums for efficient interval evaluation.
 
         Parameters
         ----------
@@ -175,7 +78,7 @@ class L2Cost(BaseCost):
         Returns
         -------
         cache : dict
-            Cached data with cumulative sums.
+            Cached cumulative sums.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, reset=False)
@@ -190,7 +93,7 @@ class L2Cost(BaseCost):
         Parameters
         ----------
         cache : dict
-            Cache from precompute().
+            The output from precompute().
         interval_specs : array-like of shape (n_interval_specs, 2)
             Interval boundaries ``[start, end)`` to score.
 
@@ -200,19 +103,11 @@ class L2Cost(BaseCost):
             L2 costs for each interval and features.
         """
         check_is_fitted(self)
-
-        interval_specs = check_array(
+        interval_specs = check_interval_specs(
             interval_specs,
-            ensure_2d=True,
-            ensure_min_features=self.interval_specs_ncols,
+            self.interval_specs_ncols,
+            caller_name=self.__class__.__name__,
         )
-        starts = interval_specs[:, 0]
-        ends = interval_specs[:, 1]
-
+        starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         sums, sums2 = cache["sums"], cache["sums2"]
-        if self.mean is None:
-            costs = l2_cost_optim(starts, ends, sums, sums2)
-        else:
-            costs = l2_cost_fixed(starts, ends, sums, sums2, self._mean)
-
-        return costs
+        return l2_cost(starts, ends, sums, sums2)

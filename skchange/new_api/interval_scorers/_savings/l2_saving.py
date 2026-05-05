@@ -1,11 +1,22 @@
-"""L2 saving for a zero-valued baseline mean."""
+"""L2 saving for a fixed baseline mean."""
+
+__author__ = ["Tveten"]
+
+from numbers import Real
 
 import numpy as np
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
-from skchange.new_api.typing import ArrayLike, Self
-from skchange.new_api.utils.validation import validate_data
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location,
+)
+from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import _fit_context
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    validate_data,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
@@ -39,19 +50,25 @@ def l2_saving(
 
 
 class L2Saving(BaseSaving):
-    r"""L2 saving for a zero-valued baseline mean.
+    r"""L2 saving for a fixed baseline mean.
 
     The L2 saving measures the reduction in squared error when fitting an optimal
-    mean to a segment compared to a fixed zero baseline. It is computed directly
+    mean to a segment compared to a fixed baseline mean. It is computed directly
     from cumulative sums, making evaluation O(1) per interval after a linear-time
     precomputation step.
 
     .. math::
-        S([s, e)) = \frac{1}{e - s}\left(\sum_{i=s}^{e-1} x_i\right)^2
+        S([s, e)) = \frac{1}{e - s}\left(\sum_{i=s}^{e-1} (x_i - \mu_0)\right)^2
 
-    Note that this saving assumes a **zero-valued baseline mean**. The data should
-    be preprocessed accordingly, e.g. by subtracting the median as a robust
-    estimator of the background level, before fitting this scorer.
+    where :math:`\mu_0` is the baseline mean.
+
+    See [1]_ for theoretical background.
+
+    Parameters
+    ----------
+    baseline_mean : float, array-like of shape (n_features,), or None, default=None
+        Fixed baseline mean per feature. If ``None``, estimated as the column-wise
+        median of the training data.
 
     See [1]_ for theoretical background.
 
@@ -74,8 +91,16 @@ class L2Saving(BaseSaving):
     >>> scorer.evaluate(cache, interval_specs)
     """
 
-    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
-        """Fit L2 saving to training data.
+    _parameter_constraints: dict = {
+        "baseline_mean": ["array-like", Real, None],
+    }
+
+    def __init__(self, baseline_mean: ArrayLike | float | None = None):
+        self.baseline_mean = baseline_mean
+
+    @_fit_context(prefer_skip_nested_validation=True)
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None):
+        """Fit L2 saving, estimating the baseline mean if not provided.
 
         Parameters
         ----------
@@ -87,10 +112,9 @@ class L2Saving(BaseSaving):
         Returns
         -------
         self : L2Saving
-            Fitted scorer.
         """
         X = validate_data(self, X, ensure_2d=True, reset=True)
-        self.n_samples_in_ = X.shape[0]
+        self.baseline_mean_ = resolve_baseline_location(self.baseline_mean, X)
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
@@ -104,12 +128,13 @@ class L2Saving(BaseSaving):
         Returns
         -------
         cache : dict
-            Dictionary with key ``"sums"``: cumulative column sums with a leading
-            row of zeros, shape ``(n_samples + 1, n_features)``.
+            Dictionary with key ``"sums"``: cumulative column sums of
+            ``(X - baseline_mean_)`` with a leading row of zeros,
+            shape ``(n_samples + 1, n_features)``.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, reset=False)
-        return {"sums": col_cumsum(X, init_zero=True)}
+        return {"sums": col_cumsum(X - self.baseline_mean_, init_zero=True)}
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate L2 saving on intervals.
@@ -127,7 +152,10 @@ class L2Saving(BaseSaving):
             L2 savings for each interval and feature.
         """
         check_is_fitted(self)
-        interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.int64)
-        starts = interval_specs[:, 0]
-        ends = interval_specs[:, 1]
+        interval_specs = check_interval_specs(
+            interval_specs,
+            self.interval_specs_ncols,
+            caller_name=self.__class__.__name__,
+        )
+        starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         return l2_saving(starts, ends, cache["sums"])

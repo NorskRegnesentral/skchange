@@ -179,7 +179,6 @@ class PenalisedScore(BaseIntervalScorer):
     @property
     def interval_specs_ncols(self) -> int:
         """Expected width of interval specifications inherited from wrapped scorer."""
-        check_is_fitted(self)
         return self.scorer_.interval_specs_ncols
 
     @property
@@ -187,6 +186,18 @@ class PenalisedScore(BaseIntervalScorer):
         """Minimum valid interval size inherited from wrapped scorer."""
         check_is_fitted(self)
         return self.scorer_.min_size
+
+    def get_default_penalty(self) -> float | np.ndarray:
+        """Get the default penalty for the fitted scorer.
+
+        Returns
+        -------
+        float or np.ndarray
+            Default penalty value. Scalar for univariate/constant penalties,
+            array of shape ``(n_features,)`` for multivariate penalties.
+        """
+        check_is_fitted(self)
+        return self.scorer_.get_default_penalty()
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get sklearn-compatible tags for penalised scorer."""
@@ -198,4 +209,8 @@ class PenalisedScore(BaseIntervalScorer):
         )
         tags.interval_scorer_tags.aggregated = True
         tags.interval_scorer_tags.penalised = True
+        tags.interval_scorer_tags.non_negative_scores = False
+        tags.interval_scorer_tags.linear_trend_segment = (
+            scorer_tags.interval_scorer_tags.linear_trend_segment
+        )
         return tags

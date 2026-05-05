@@ -7,9 +7,9 @@ the sorted integer arrays returned by ``predict_changepoints()``.
 import numbers
 
 import numpy as np
-from sklearn.utils._param_validation import Interval, validate_params
 
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import Interval, validate_params
 
 
 @validate_params(

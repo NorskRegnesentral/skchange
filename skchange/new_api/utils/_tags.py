@@ -15,10 +15,19 @@ class SkchangeInputTags(InputTags):
         Whether the estimator can handle multivariate data (n_features > 1).
     integer_only : bool, default=False
         Whether the estimator requires integer-valued input data (e.g., for count data).
+    conditional : bool, default=False
+        Whether the estimator uses some input columns as covariates. If True,
+        at least two input columns are required (one response, one+ covariates).
+    timestamps : bool, default=False
+        Whether the estimator expects one column of the input to contain timestamps.
+        **Experimental**: support for timestamp columns is not yet stable and may
+        change in future releases.
     """
 
     multivariate: bool = True
     integer_only: bool = False
+    conditional: bool = False
+    timestamps: bool = False
 
 
 @dataclass(slots=True)
@@ -27,12 +36,13 @@ class ChangeDetectorTags:
 
     Attributes
     ----------
-    variable_identification : bool, default=False
-        Whether the detector can identify which variables are affected
-        at each changepoint.
+    linear_trend_segment : bool, default=False
+        Whether the detector is designed for data where each segment follows a
+        linear trend. When ``True``, test fixtures will generate piecewise linear
+        data with a kink at the changepoint rather than a mean shift.
     """
 
-    variable_identification: bool = False
+    linear_trend_segment: bool = False
 
 
 @dataclass(slots=True)
@@ -43,23 +53,28 @@ class IntervalScorerTags:
     ----------
     score_type : str | None, default=None
         Type of score: "cost", "change_score", "saving", "transient_score", None
-    conditional : bool, default=False
-        Whether the scorer uses some input variables as covariates.
-        If True, requires at least two input variables.
     aggregated : bool, default=False
-        Whether the scorer always returns a single value per cut,
+        Whether the scorer always returns a single value per ``interval_spec``,
         irrespective of input data shape.
     penalised : bool, default=False
         Whether the score is inherently penalised. If True, score > 0
         indicates change/anomaly. If False, external penalisation needed.
-    fixed_model : bool, default=False
-        Whether all model parameters in the scorer are fixed.
+    non_negative_scores : bool, default=True
+        Whether the scorer is guaranteed to return non-negative values on
+        homogeneous data. Most costs and savings satisfy this. Set to False
+        for costs that are test statistics which can be <= 0 by construction
+        (e.g. ``RankCost``).
+    linear_trend_segment : bool, default=False
+        Whether the scorer is designed for data where each segment follows a
+        linear trend. When ``True``, test fixtures will generate piecewise linear
+        data with a kink at the changepoint rather than a mean shift.
     """
 
     score_type: str | None = None
-    conditional: bool = False
     aggregated: bool = False
     penalised: bool = False
+    non_negative_scores: bool = True
+    linear_trend_segment: bool = False
 
 
 @dataclass

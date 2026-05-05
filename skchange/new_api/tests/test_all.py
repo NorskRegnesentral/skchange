@@ -7,7 +7,11 @@ from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
 
-ALL_ESTIMATORS = INTERVAL_SCORER_TEST_INSTANCES + DETECTOR_TEST_INSTANCES
+ALL_ESTIMATORS = [
+    estimator
+    for estimator in (INTERVAL_SCORER_TEST_INSTANCES + DETECTOR_TEST_INSTANCES)
+    if not estimator.__sklearn_tags__().input_tags.timestamps  # Experimental
+]
 
 
 def _expected_failed_checks(estimator):
@@ -26,7 +30,7 @@ def _expected_failed_checks(estimator):
     if not is_change_detector:
         return {}
 
-    return {
+    failed = {
         "check_methods_subset_invariance": (
             "Subset checks may create single-sample inputs, but change detection "
             "requires at least two samples."
@@ -36,6 +40,8 @@ def _expected_failed_checks(estimator):
             "meaningful and not invariant under permutation."
         ),
     }
+
+    return failed
 
 
 @parametrize_with_checks(

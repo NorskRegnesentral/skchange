@@ -1,22 +1,72 @@
 """Test instances for interval scorers in ``skchange.new_api.interval_scorers``."""
 
-from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
-from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.interval_scorers._from_cost import CostChangeScore
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.interval_scorers._savings._l2_saving import L2Saving
+from skchange.new_api.interval_scorers import (
+    CUSUM,
+    ContinuousLinearTrendScore,
+    CostChangeScore,
+    EDFCost,
+    ESACScore,
+    GaussianCost,
+    GaussianSaving,
+    L1Cost,
+    L1Saving,
+    L2Cost,
+    L2Saving,
+    LaplaceCost,
+    LaplaceSaving,
+    LinearRegressionCost,
+    LinearRegressionSaving,
+    LinearTrendCost,
+    LinearTrendSaving,
+    MultivariateGaussianCost,
+    MultivariateGaussianSaving,
+    MultivariateGaussianScore,
+    MultivariateTCost,
+    MultivariateTSaving,
+    PenalisedScore,
+    PoissonCost,
+    PoissonSaving,
+    RankCost,
+    RankScore,
+    is_penalised_score,
+)
 
 # ---------------------------------------------------------------------------
 # Raw instances of each type of interval scorer
 # ---------------------------------------------------------------------------
 _COSTS = [
+    EDFCost(),
+    GaussianCost(),
+    L1Cost(),
     L2Cost(),
+    LaplaceCost(),
+    LinearRegressionCost(),
+    LinearTrendCost(),
+    LinearTrendCost(time_col=0),
+    MultivariateGaussianCost(),
+    MultivariateTCost(),
+    PoissonCost(),
+    RankCost(),
 ]
 _CHANGE_SCORES = [
     CUSUM(),
+    ContinuousLinearTrendScore(),
+    ContinuousLinearTrendScore(time_col=0),
+    ESACScore(),
+    MultivariateGaussianScore(),
+    MultivariateGaussianScore(apply_bartlett_correction=False),
+    RankScore(),
 ]
 _SAVINGS = [
+    GaussianSaving(),
+    L1Saving(),
     L2Saving(),
+    LaplaceSaving(),
+    LinearRegressionSaving(),
+    LinearTrendSaving(),
+    MultivariateGaussianSaving(),
+    MultivariateTSaving(),
+    PoissonSaving(),
 ]
 
 # ---------------------------------------------------------------------------
@@ -24,7 +74,9 @@ _SAVINGS = [
 # ---------------------------------------------------------------------------
 _COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS]
 _PENALISED_SCORES = [
-    PenalisedScore(scorer) for scorer in _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES
+    PenalisedScore(scorer)
+    for scorer in _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES
+    if not is_penalised_score(scorer)
 ]
 
 # ---------------------------------------------------------------------------

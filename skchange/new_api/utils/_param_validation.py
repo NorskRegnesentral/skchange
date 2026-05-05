@@ -26,6 +26,7 @@ from sklearn.utils._param_validation import (
     HasMethods,
     Interval,
     StrOptions,
+    validate_params,
 )
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "HasMethods",
     "Interval",
     "StrOptions",
+    "validate_params",
 ]

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from sklearn.base import BaseEstimator
+from sklearn.utils.validation import check_array
 from sklearn.utils.validation import validate_data as _sklearn_validate_data
 
 from skchange.new_api.typing import ArrayLike
@@ -44,8 +45,149 @@ def validate_data(
     return X
 
 
+def check_time_col(
+    X: np.ndarray,
+    time_col: int,
+    caller_name: str,
+) -> None:
+    """Validate the timestamp column of ``X`` for linear trend estimators.
+
+    .. experimental::
+        This helper supports the experimental ``time_col`` feature. Its interface
+        may change as the feature stabilises.
+
+    Checks that ``time_col`` is in range, that at least one value column
+    remains, and that the timestamp column contains finite, strictly
+    monotonically increasing values.
+
+    Parameters
+    ----------
+    X : ndarray of shape (n_samples, n_features)
+        Already-validated data array.
+    time_col : int
+        Index of the timestamp column.
+    caller_name : str
+        Name of the calling estimator, used in error messages.
+
+    Raises
+    ------
+    ValueError
+        If any of the above conditions are violated.
+    """
+    n_features = X.shape[1]
+    if not (0 <= time_col < n_features):
+        raise ValueError(
+            f"{caller_name}: time_col={time_col} is out of range for data "
+            f"with {n_features} columns."
+        )
+    if n_features < 2:
+        raise ValueError(
+            f"{caller_name} with time_col={time_col} requires at least 2 "
+            f"features (1 timestamp + 1 value column), but got "
+            f"n_features={n_features}."
+        )
+    time_stamps = X[:, time_col]
+    if not np.all(np.isfinite(time_stamps)):
+        raise ValueError(
+            f"{caller_name}: time_col contains non-finite values. "
+            "Timestamps must be finite numbers."
+        )
+    if not np.all(np.diff(time_stamps) > 0):
+        raise ValueError(
+            f"{caller_name}: time_col must be strictly monotonically increasing."
+        )
+
+
+def check_interval_specs(
+    interval_specs: ArrayLike,
+    n_cols: int,
+    *,
+    n_samples: int | None = None,
+    check_sorted: bool = False,
+    min_size: int | None = None,
+    caller_name: str | None = None,
+    arg_name: str = "interval_specs",
+) -> np.ndarray:
+    """Validate an interval_specs array.
+
+    Always checks that the input is a 2D integer array with exactly ``n_cols``
+    columns. Heavier checks are opt-in.
+
+    Parameters
+    ----------
+    interval_specs : array-like of shape (n_interval_specs, n_cols)
+        Interval specifications to validate.
+    n_cols : int
+        Required number of columns.
+    n_samples : int or None, default=None
+        If given, checks that all entries are in ``[0, n_samples]``.
+    check_sorted : bool, default=False
+        If ``True``, checks that each row is strictly increasing, i.e.
+        ``interval_specs[i, 0] < interval_specs[i, 1] < ...`` for every row.
+    min_size : int or None, default=None
+        If given, checks that adjacent entries in each row differ by at least
+        ``min_size``, i.e. ``interval_specs[i, j+1] - interval_specs[i, j] >= min_size``
+        for every row and column pair. Implies strict ordering when ``min_size >= 1``.
+    caller_name : str or None, default=None
+        Name of the calling function or class. Used in error messages.
+    arg_name : str, default="interval_specs"
+        Name of the argument being validated. Used in error messages.
+
+    Returns
+    -------
+    interval_specs : ndarray of shape (n_interval_specs, n_cols)
+        Validated array with dtype ``np.intp``.
+
+    Raises
+    ------
+    ValueError
+        If any check fails.
+    """
+    interval_specs = np.asarray(interval_specs, dtype=np.intp)
+
+    # Empty inputs may occur. E.g. in MovingWindow for large window sizes and
+    # short series.
+    if interval_specs.size == 0:
+        return interval_specs
+
+    interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.intp)
+    if interval_specs.shape[1] != n_cols:
+        raise ValueError(
+            f"`{arg_name}` must have {n_cols} columns, "
+            f"got {interval_specs.shape[1]} in {caller_name}."
+        )
+
+    if interval_specs.size > 0 and (check_sorted or min_size is not None):
+        diffs = np.diff(interval_specs, axis=1)
+        if check_sorted and min_size is None and np.any(diffs <= 0):
+            raise ValueError(
+                f"Each row in `{arg_name}` must be strictly increasing "
+                f"(i.e. {arg_name}[i, 0] < {arg_name}[i, 1] < ...) in {caller_name}."
+            )
+        if min_size is not None and np.any(diffs < min_size):
+            raise ValueError(
+                f"Adjacent entries in each row of `{arg_name}` must differ by at "
+                f"least {min_size} "
+                f"(i.e. {arg_name}[i, j+1] - {arg_name}[i, j] >= {min_size}) "
+                f"in {caller_name}."
+            )
+
+    if n_samples is not None and interval_specs.size > 0:
+        out_of_range = interval_specs[
+            (interval_specs < 0) | (interval_specs > n_samples)
+        ]
+        if out_of_range.size > 0:
+            raise ValueError(
+                f"`{arg_name}` entries must be in [0, {n_samples}], "
+                f"got e.g. {out_of_range[0]} in {caller_name}."
+            )
+
+    return interval_specs
+
+
 def check_interval_scorer(
     scorer: "BaseIntervalScorer",
+    *,
     ensure_score_type: list | None = None,
     ensure_penalised: bool = False,
     allow_penalised: bool = True,
@@ -110,10 +252,11 @@ def check_interval_scorer(
 
 def check_penalty(
     penalty: float | ArrayLike,
+    *,
     ensure_non_decreasing: bool = True,
     copy: bool = True,
     caller_name: str | None = None,
-    arg_name: str = "",
+    arg_name: str = "penalty",
 ) -> float | np.ndarray:
     """Check if the given penalty is valid.
 
@@ -127,11 +270,9 @@ def check_penalty(
         Whether to copy the penalty array. Ignored if penalty is a scalar.
     caller_name : str | None, default=None
         The name of the caller. Used for error messages.
-    arg_name : str
+    arg_name : str, default="penalty"
         The name of the argument. Used for error messages.
     """
-    from sklearn.utils.validation import check_array
-
     penalty = np.asarray(penalty).squeeze()
     if penalty.ndim == 0:
         penalty = penalty.reshape(1)

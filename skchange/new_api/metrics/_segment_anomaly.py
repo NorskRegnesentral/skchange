@@ -6,9 +6,9 @@ index pair, as returned by ``predict_segment_anomalies()``.
 """
 
 import numpy as np
-from sklearn.utils._param_validation import validate_params
 
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._param_validation import validate_params
 
 
 def _count_tp(it: np.ndarray, ip: np.ndarray) -> int:
