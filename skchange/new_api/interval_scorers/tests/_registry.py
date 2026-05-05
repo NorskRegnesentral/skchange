@@ -54,6 +54,7 @@ _CHANGE_SCORES = [
     ContinuousLinearTrendScore(time_col=0),
     ESACScore(),
     MultivariateGaussianScore(),
+    MultivariateGaussianScore(apply_bartlett_correction=False),
     RankScore(),
 ]
 _SAVINGS = [
