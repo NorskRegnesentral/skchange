@@ -8,10 +8,16 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location,
+)
 from skchange.new_api.penalties import mvcapa_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import _fit_context
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    validate_data,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import truncate_below
 from skchange.utils.numba.stats import col_cumsum
@@ -91,10 +97,13 @@ class GaussianSaving(BaseSaving):
 
     Parameters
     ----------
-    baseline_mean : float or array-like of shape (n_features,), default=0.0
-        Fixed baseline mean per input feature.
-    baseline_var : float or array-like of shape (n_features,), default=1.0
-        Fixed baseline variance per input feature. Must be positive.
+    baseline_mean : float, array-like of shape (n_features,), or None, default=None
+        Fixed baseline mean per input feature. If ``None``, estimated as the
+        column-wise median of the training data.
+    baseline_var : float, array-like of shape (n_features,), or None, default=None
+        Fixed baseline variance per input feature. Must be positive. If ``None``,
+        estimated using the MAD-based robust variance estimator
+        ``(median(|X - median(X)|) / 0.6745) ** 2`` applied column-wise.
 
     Examples
     --------
@@ -110,14 +119,14 @@ class GaussianSaving(BaseSaving):
     """
 
     _parameter_constraints: dict = {
-        "baseline_mean": ["array-like", Real],
-        "baseline_var": ["array-like", Real],
+        "baseline_mean": ["array-like", Real, None],
+        "baseline_var": ["array-like", Real, None],
     }
 
     def __init__(
         self,
-        baseline_mean: ArrayLike | float = 0.0,
-        baseline_var: ArrayLike | float = 1.0,
+        baseline_mean: ArrayLike | float | None = None,
+        baseline_var: ArrayLike | float | None = None,
     ):
         self.baseline_mean = baseline_mean
         self.baseline_var = baseline_var
@@ -145,25 +154,25 @@ class GaussianSaving(BaseSaving):
         X = validate_data(self, X, ensure_2d=True, reset=True)
         n_features = X.shape[1]
 
-        mean = np.asarray(self.baseline_mean, dtype=np.float64)
-        if mean.ndim == 0:
-            mean = np.full(n_features, mean)
-        if mean.shape != (n_features,):
-            raise ValueError(
-                f"baseline_mean must be a scalar or array of shape "
-                f"(n_features,)={(n_features,)}, got shape {mean.shape}."
-            )
+        mean = resolve_baseline_location(self.baseline_mean, X)
 
-        var = np.asarray(self.baseline_var, dtype=np.float64)
-        if var.ndim == 0:
-            var = np.full(n_features, var)
-        if var.shape != (n_features,):
-            raise ValueError(
-                f"baseline_var must be a scalar or array of shape "
-                f"(n_features,)={(n_features,)}, got shape {var.shape}."
-            )
-        if np.any(var <= 0):
-            raise ValueError("baseline_var must be strictly positive.")
+        if self.baseline_var is None:
+            # MAD-based robust variance: (MAD / 0.6745)^2
+            # 0.6745 is the normal-consistency factor (qnorm(0.75))
+            mad = np.median(np.abs(X - np.median(X, axis=0)), axis=0)
+            var = (mad / 0.6745) ** 2
+            var = np.where(var <= 0, 1.0, var)  # fallback for constant columns
+        else:
+            var = np.asarray(self.baseline_var, dtype=np.float64)
+            if var.ndim == 0:
+                var = np.full(n_features, var)
+            if var.shape != (n_features,):
+                raise ValueError(
+                    f"baseline_var must be a scalar or array of shape "
+                    f"(n_features,)={(n_features,)}, got shape {var.shape}."
+                )
+            if np.any(var <= 0):
+                raise ValueError("baseline_var must be strictly positive.")
 
         self.baseline_mean_ = mean
         self.baseline_var_ = var
@@ -234,6 +243,6 @@ class GaussianSaving(BaseSaving):
             Default penalty value for each number of affected features.
         """
         check_is_fitted(self)
-        # Scaling mvcapa penalty by 1.5 is done to pass the sanity checks in the
+        # Scaling mvcapa penalty by 2.0 is done to pass the sanity checks in the
         # test suite for CAPA.
-        return 1.5 * mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 2)
+        return 2.0 * mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 2)

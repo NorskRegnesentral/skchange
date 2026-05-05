@@ -8,6 +8,9 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location,
+)
 from skchange.new_api.penalties import mvcapa_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import _fit_context
@@ -165,22 +168,15 @@ class PoissonSaving(BaseSaving):
                 "Negative values in data passed to PoissonSaving. "
                 "PoissonSaving requires non-negative count data."
             )
-        n_features = X.shape[1]
 
-        if self.baseline_rate is None:
-            rate = np.median(X, axis=0).astype(np.float64)
-            rate = np.maximum(rate, 1e-10)
-        else:
-            rate = np.asarray(self.baseline_rate, dtype=np.float64)
-            if rate.ndim == 0:
-                rate = np.full(n_features, float(rate))
-            if rate.shape != (n_features,):
-                raise ValueError(
-                    f"baseline_rate must be a scalar or array of shape "
-                    f"(n_features,)={(n_features,)}, got shape {rate.shape}."
-                )
-            if not np.all(rate > 0):
+        rate = resolve_baseline_location(
+            self.baseline_rate, X, param_name="baseline_rate"
+        )
+        if not np.all(rate > 0):
+            if self.baseline_rate is not None:
                 raise ValueError("baseline_rate must be strictly positive.")
+            # Data-adaptive estimate may be zero (e.g. many zero counts); clamp.
+            rate = np.maximum(rate, 1e-10)
 
         self.baseline_rate_ = rate
         return self

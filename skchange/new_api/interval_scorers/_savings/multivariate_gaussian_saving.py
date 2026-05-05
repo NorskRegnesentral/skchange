@@ -2,12 +2,17 @@
 
 __author__ = ["johannvk", "Tveten"]
 
+from numbers import Real
+
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
     _multivariate_gaussian_cost_mle,
+)
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location_and_scatter,
 )
 from skchange.new_api.penalties import chi2_penalty
 from skchange.new_api.typing import ArrayLike
@@ -85,12 +90,15 @@ class MultivariateGaussianSaving(BaseSaving):
 
     Parameters
     ----------
-    baseline_mean : array-like of shape (n_features,) or None, default=None
+    baseline_mean : float, array-like of shape (n_features,), or None, default=None
         Fixed baseline mean vector. If ``None``, estimated from training data
         using the Minimum Covariance Determinant (MCD) robust location estimate
         (see ``baseline_cov`` for details).
-    baseline_cov : array-like of shape (n_features, n_features) or None, default=None
+    baseline_cov : float, array-like of shape (n_features, n_features), or None,
+            default=None
         Fixed baseline covariance matrix. Must be symmetric positive definite.
+        If a scalar is passed, it is interpreted as an isotropic covariance
+        ``scalar * I``.
         If ``None``, estimated jointly with ``baseline_mean`` using the
         Minimum Covariance Determinant (MCD) estimator
         (:class:`sklearn.covariance.MinCovDet`). MCD finds the subset of
@@ -118,14 +126,14 @@ class MultivariateGaussianSaving(BaseSaving):
     """
 
     _parameter_constraints: dict = {
-        "baseline_mean": ["array-like", None],
-        "baseline_cov": ["array-like", None],
+        "baseline_mean": ["array-like", Real, None],
+        "baseline_cov": ["array-like", Real, None],
     }
 
     def __init__(
         self,
-        baseline_mean: ArrayLike | None = None,
-        baseline_cov: ArrayLike | None = None,
+        baseline_mean: ArrayLike | float | None = None,
+        baseline_cov: ArrayLike | float | None = None,
     ):
         self.baseline_mean = baseline_mean
         self.baseline_cov = baseline_cov
@@ -158,53 +166,14 @@ class MultivariateGaussianSaving(BaseSaving):
         self : MultivariateGaussianSaving
         """
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=True)
-        n, p = X.shape
 
-        if self.baseline_mean is None and self.baseline_cov is None:
-            # Use MCD for jointly robust (location, scatter) estimation.
-            # MCD selects ~75% of observations with the smallest-determinant
-            # covariance, naturally excluding a shifted segment at the end.
-            if n <= p:
-                raise ValueError(
-                    f"Cannot estimate a {p}x{p} covariance matrix from "
-                    f"n_samples={n}. Provide at least {p + 1} samples, or "
-                    "supply baseline_mean and baseline_cov explicitly."
-                )
-            from sklearn.covariance import MinCovDet
-
-            mcd = MinCovDet(store_precision=True, assume_centered=False)
-            mcd.fit(X)
-            self.baseline_mean_ = mcd.location_
-            self.baseline_cov_ = mcd.covariance_
-        else:
-            # At least one parameter is user-supplied; resolve each independently.
-            if self.baseline_mean is None:
-                self.baseline_mean_ = np.median(X, axis=0)
-            else:
-                mean = np.asarray(self.baseline_mean, dtype=np.float64)
-                if mean.shape != (p,):
-                    raise ValueError(
-                        f"baseline_mean must have shape ({p},), got {mean.shape}."
-                    )
-                self.baseline_mean_ = mean
-
-            if self.baseline_cov is None:
-                if n <= p:
-                    raise ValueError(
-                        f"Cannot estimate a {p}x{p} covariance matrix from "
-                        f"n_samples={n}. Provide at least {p + 1} samples, or "
-                        "supply baseline_cov explicitly."
-                    )
-                # Center at the provided/robust mean and compute the scatter matrix.
-                centered = X - self.baseline_mean_
-                self.baseline_cov_ = (centered.T @ centered) / n
-            else:
-                cov = np.asarray(self.baseline_cov, dtype=np.float64)
-                if cov.shape != (p, p):
-                    raise ValueError(
-                        f"baseline_cov must have shape ({p}, {p}), got {cov.shape}."
-                    )
-                self.baseline_cov_ = cov
+        self.baseline_mean_, self.baseline_cov_ = resolve_baseline_location_and_scatter(
+            self.baseline_mean,
+            self.baseline_cov,
+            X,
+            mean_param_name="baseline_mean",
+            scatter_param_name="baseline_cov",
+        )
 
         sign, logdet = np.linalg.slogdet(self.baseline_cov_)
         if sign <= 0:

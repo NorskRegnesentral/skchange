@@ -8,9 +8,15 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location,
+)
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import _fit_context
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    validate_data,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_median
 
@@ -77,8 +83,9 @@ class L1Saving(BaseSaving):
 
     Parameters
     ----------
-    baseline_location : float or array-like of shape (n_features,), default=0.0
+    baseline_location : float, array-like of shape (n_features,), or None, default=None
         Fixed baseline location (median) to compare against the optimal median.
+        If ``None``, estimated as the column-wise median of the training data.
 
     Examples
     --------
@@ -94,10 +101,10 @@ class L1Saving(BaseSaving):
     """
 
     _parameter_constraints: dict = {
-        "baseline_location": ["array-like", Real],
+        "baseline_location": ["array-like", Real, None],
     }
 
-    def __init__(self, baseline_location: ArrayLike | float = 0.0):
+    def __init__(self, baseline_location: ArrayLike | float | None = None):
         self.baseline_location = baseline_location
 
     @_fit_context(prefer_skip_nested_validation=True)
@@ -116,15 +123,9 @@ class L1Saving(BaseSaving):
         self : L1Saving
         """
         X = validate_data(self, X, ensure_2d=True, reset=True)
-        location = np.asarray(self.baseline_location, dtype=np.float64)
-        if location.ndim == 0:
-            location = np.full(X.shape[1], location)
-        if location.shape != (X.shape[1],):
-            raise ValueError(
-                f"baseline_location must be a scalar or array of shape "
-                f"(n_features,)={(X.shape[1],)}, got shape {location.shape}."
-            )
-        self.baseline_location_ = location
+        self.baseline_location_ = resolve_baseline_location(
+            self.baseline_location, X, param_name="baseline_location"
+        )
         return self
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:

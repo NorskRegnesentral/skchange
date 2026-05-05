@@ -8,6 +8,9 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location,
+)
 from skchange.new_api.penalties import mvcapa_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import _fit_context
@@ -151,19 +154,10 @@ class LaplaceSaving(BaseSaving):
         self : LaplaceSaving
         """
         X = validate_data(self, X, ensure_2d=True, reset=True)
-        n_features = X.shape[1]
 
-        if self.baseline_location is None:
-            location = np.median(X, axis=0)
-        else:
-            location = np.asarray(self.baseline_location, dtype=np.float64)
-            if location.ndim == 0:
-                location = np.full(n_features, float(location))
-            if location.shape != (n_features,):
-                raise ValueError(
-                    f"baseline_location must be a scalar or array of shape "
-                    f"(n_features,)={(n_features,)}, got shape {location.shape}."
-                )
+        location = resolve_baseline_location(
+            self.baseline_location, X, param_name="baseline_location"
+        )
 
         if self.baseline_scale is None:
             scale = np.median(np.abs(X - location), axis=0) / np.log(2)
@@ -171,11 +165,11 @@ class LaplaceSaving(BaseSaving):
         else:
             scale = np.asarray(self.baseline_scale, dtype=np.float64)
             if scale.ndim == 0:
-                scale = np.full(n_features, float(scale))
-            if scale.shape != (n_features,):
+                scale = np.full(self.n_features_in_, float(scale))
+            if scale.shape != (self.n_features_in_,):
                 raise ValueError(
                     f"baseline_scale must be a scalar or array of shape "
-                    f"(n_features,)={(n_features,)}, got shape {scale.shape}."
+                    f"(n_features,)={(self.n_features_in_,)}, got shape {scale.shape}."
                 )
             if not np.all(scale > 0):
                 raise ValueError("baseline_scale must be strictly positive.")

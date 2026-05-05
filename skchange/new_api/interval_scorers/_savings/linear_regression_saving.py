@@ -2,7 +2,7 @@
 
 __author__ = ["johannvk"]
 
-from numbers import Integral
+from numbers import Integral, Real
 
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
@@ -89,12 +89,14 @@ class LinearRegressionSaving(BaseSaving):
     response_col : int, default=0
         Column index in ``X`` to use as the response variable. All other
         columns are used as predictors.
-    baseline_coeffs : array-like of shape (n_covariates,) or None, default=None
+    baseline_coeffs : float, array-like of shape (n_covariates,), or None, default=None
         Fixed baseline regression coefficients. If ``None``, coefficients are
         estimated from the training data using
         :class:`sklearn.linear_model.HuberRegressor` (a robust M-estimator),
         which down-weights observations far from the fitted line. This makes
         the baseline robust when the training window contains changepoints.
+        If a scalar or a length-1 array is passed, it is broadcast to all
+        covariates.
         To use a different estimation strategy, estimate the coefficients
         externally and pass them here.
 
@@ -113,13 +115,13 @@ class LinearRegressionSaving(BaseSaving):
 
     _parameter_constraints: dict = {
         "response_col": [Interval(Integral, 0, None, closed="left")],
-        "baseline_coeffs": ["array-like", None],
+        "baseline_coeffs": ["array-like", Real, None],
     }
 
     def __init__(
         self,
         response_col: int = 0,
-        baseline_coeffs: ArrayLike | None = None,
+        baseline_coeffs: ArrayLike | float | None = None,
     ):
         self.response_col = response_col
         self.baseline_coeffs = baseline_coeffs
@@ -177,9 +179,13 @@ class LinearRegressionSaving(BaseSaving):
             self.baseline_coeffs_ = reg.coef_
         else:
             coeffs = np.asarray(self.baseline_coeffs, dtype=np.float64).ravel()
-            if coeffs.shape != (len(self.covariate_cols_),):
+            n_covariates = len(self.covariate_cols_)
+            if coeffs.size == 1:
+                coeffs = np.full(n_covariates, float(coeffs[0]))
+            if coeffs.shape != (n_covariates,):
                 raise ValueError(
-                    f"baseline_coeffs must have shape ({len(self.covariate_cols_)},), "
+                    f"baseline_coeffs must be a scalar, length-1 array, or "
+                    f"have shape ({n_covariates},), "
                     f"got {coeffs.shape}."
                 )
             self.baseline_coeffs_ = coeffs

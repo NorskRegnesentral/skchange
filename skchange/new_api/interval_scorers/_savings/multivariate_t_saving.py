@@ -15,6 +15,9 @@ from skchange.new_api.interval_scorers._costs.multivariate_t_cost import (
     _estimate_mv_t_dof,
     multivariate_t_cost_mle_params,
 )
+from skchange.new_api.interval_scorers._savings._utils import (
+    resolve_baseline_location_and_scatter,
+)
 from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving import (
     _multivariate_gaussian_cost_fixed,
 )
@@ -123,11 +126,14 @@ class MultivariateTSaving(BaseSaving):
 
     Parameters
     ----------
-    baseline_mean : array-like of shape (n_features,) or None, default=None
+    baseline_mean : float, array-like of shape (n_features,), or None, default=None
         Fixed baseline mean vector. If ``None``, estimated from training data
         using a median-based trimmed estimator.
-    baseline_scale : array-like of shape (n_features, n_features) or None, default=None
+    baseline_scale : float, array-like of shape (n_features, n_features), or None,
+            default=None
         Fixed baseline scale matrix. Must be symmetric positive definite. If
+        a scalar is passed, it is interpreted as an isotropic scale
+        ``scalar * I``. If
         ``None``, estimated jointly with ``baseline_mean`` by discarding the 25%
         of observations furthest from the componentwise median (measured in
         MAD-scaled distance) and computing the sample covariance of the remaining
@@ -176,8 +182,8 @@ class MultivariateTSaving(BaseSaving):
     """
 
     _parameter_constraints: dict = {
-        "baseline_mean": ["array-like", None],
-        "baseline_scale": ["array-like", None],
+        "baseline_mean": ["array-like", Real, None],
+        "baseline_scale": ["array-like", Real, None],
         "fixed_dof": [Interval(Real, 0, None, closed="neither"), None],
         "infinite_dof_threshold": [Interval(Real, 0, None, closed="neither")],
         "refine_dof_threshold": [Interval(Integral, 1, None, closed="left"), None],
@@ -188,8 +194,8 @@ class MultivariateTSaving(BaseSaving):
 
     def __init__(
         self,
-        baseline_mean: ArrayLike | None = None,
-        baseline_scale: ArrayLike | None = None,
+        baseline_mean: ArrayLike | float | None = None,
+        baseline_scale: ArrayLike | float | None = None,
         fixed_dof: float | None = None,
         infinite_dof_threshold: float = 50.0,
         refine_dof_threshold: int | None = None,
@@ -263,40 +269,15 @@ class MultivariateTSaving(BaseSaving):
             self.dof_ = float(self.fixed_dof)
 
         # --- Estimate baseline mean and scale matrix ---
-        if self.baseline_mean is None and self.baseline_scale is None:
-            if n <= p:
-                raise ValueError(
-                    f"Cannot estimate a {p}x{p} scale matrix from "
-                    f"n_samples={n}. Provide at least {p + 1} samples, or "
-                    "supply baseline_mean and baseline_scale explicitly."
-                )
-            from sklearn.covariance import MinCovDet
-
-            mcd = MinCovDet(store_precision=True, assume_centered=False)
-            mcd.fit(X)
-            self.baseline_mean_ = mcd.location_
-            self.baseline_scale_ = mcd.covariance_
-        else:
-            if self.baseline_mean is None:
-                self.baseline_mean_ = np.median(X, axis=0)
-            else:
-                mean = np.asarray(self.baseline_mean, dtype=np.float64)
-                if mean.shape != (p,):
-                    raise ValueError(
-                        f"baseline_mean must have shape ({p},), got {mean.shape}."
-                    )
-                self.baseline_mean_ = mean
-
-            if self.baseline_scale is None:
-                centered = X - self.baseline_mean_
-                self.baseline_scale_ = np.atleast_2d(np.cov(centered.T))
-            else:
-                scale = np.asarray(self.baseline_scale, dtype=np.float64)
-                if scale.shape != (p, p):
-                    raise ValueError(
-                        f"baseline_scale must have shape ({p}, {p}), got {scale.shape}."
-                    )
-                self.baseline_scale_ = scale
+        self.baseline_mean_, self.baseline_scale_ = (
+            resolve_baseline_location_and_scatter(
+                self.baseline_mean,
+                self.baseline_scale,
+                X,
+                mean_param_name="baseline_mean",
+                scatter_param_name="baseline_scale",
+            )
+        )
 
         sign, logdet = np.linalg.slogdet(self.baseline_scale_)
         if sign <= 0:
