@@ -4,11 +4,13 @@ from skchange.new_api.detectors._base import BaseChangeDetector, is_change_detec
 from skchange.new_api.detectors._capa import CAPA
 from skchange.new_api.detectors._moving_window import MovingWindow
 from skchange.new_api.detectors._pelt import PELT
+from skchange.new_api.detectors._seeded_binseg import SeededBinarySegmentation
 
 __all__ = [
     "BaseChangeDetector",
     "CAPA",
     "MovingWindow",
     "PELT",
+    "SeededBinarySegmentation",
     "is_change_detector",
 ]

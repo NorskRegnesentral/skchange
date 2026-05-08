@@ -1,6 +1,11 @@
 """Test instances for change detectors in ``skchange.new_api.detectors``."""
 
-from skchange.new_api.detectors import CAPA, PELT, MovingWindow
+from skchange.new_api.detectors import (
+    CAPA,
+    PELT,
+    MovingWindow,
+    SeededBinarySegmentation,
+)
 from skchange.new_api.interval_scorers import (
     is_change_score,
     is_cost,
@@ -49,8 +54,20 @@ _PELT_INSTANCES = [
     ],
 ]
 
+_SEEDED_BINSEG_INSTANCES = [
+    SeededBinarySegmentation(),
+    SeededBinarySegmentation(max_interval_length=100),
+    SeededBinarySegmentation(selection_method="narrowest"),
+    *[
+        SeededBinarySegmentation(change_score=scorer)
+        for scorer in INTERVAL_SCORER_TEST_INSTANCES
+        if is_penalised_score(scorer) and is_change_score(scorer)
+    ],
+]
+
 DETECTOR_TEST_INSTANCES = [
     *_MOVING_WINDOW_INSTANCES,
     *_CAPA_INSTANCES,
     *_PELT_INSTANCES,
+    *_SEEDED_BINSEG_INSTANCES,
 ]
