@@ -118,4 +118,5 @@ class CUSUM(BaseChangeScore):
         check_is_fitted(self)
         penalty = bic_penalty(self.n_samples_in_, self.n_features_in_)
         # BIC works on a squared error scale, while CUSUM is on an absolute error scale.
-        return np.sqrt(penalty)
+        # Scaled by 1.5 to avoid false detections in seeded binary segmentation.
+        return 1.5 * np.sqrt(penalty)

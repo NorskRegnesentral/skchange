@@ -202,4 +202,6 @@ class PoissonCost(BaseCost):
             Default penalty value.
         """
         check_is_fitted(self)
-        return bic_penalty(self.n_samples_in_, self.n_features_in_)
+        # Scaling BIC penalty by 1.5 to avoid false detections in seeded binary
+        # segmentation.
+        return 1.5 * bic_penalty(self.n_samples_in_, self.n_features_in_)

@@ -135,8 +135,8 @@ class ESACScore(BaseChangeScore):
 
     def __init__(
         self,
-        threshold_dense: float = 1.5,
-        threshold_sparse: float = 1.0,
+        threshold_dense: float = 2.0,
+        threshold_sparse: float = 1.5,
     ):
         self.threshold_dense = threshold_dense
         self.threshold_sparse = threshold_sparse

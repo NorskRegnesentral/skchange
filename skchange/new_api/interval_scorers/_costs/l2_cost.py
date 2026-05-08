@@ -111,3 +111,20 @@ class L2Cost(BaseCost):
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         sums, sums2 = cache["sums"], cache["sums2"]
         return l2_cost(starts, ends, sums, sums2)
+
+    def get_default_penalty(self) -> float:
+        """Get the default BIC penalty for the fitted L2 cost.
+
+        The L2 cost estimates 1 parameter per feature (mean).
+
+        Returns
+        -------
+        float
+            Default penalty value.
+        """
+        from skchange.new_api.penalties import bic_penalty
+
+        check_is_fitted(self)
+        # Scaling BIC penalty by 2.0 to avoid false detections in seeded binary
+        # segmentation.
+        return 2.0 * bic_penalty(self.n_samples_in_, self.n_features_in_)
