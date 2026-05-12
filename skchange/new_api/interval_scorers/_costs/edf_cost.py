@@ -261,18 +261,9 @@ class EDFCost(BaseCost):
     def get_default_penalty(self) -> float:
         r"""Get the default penalty for the fitted EDF cost.
 
-        The two-sample EDF change score converges asymptotically to a
-        functional of a squared Brownian bridge
-        (:math:`\\int_0^1 B^2(u) \\, du`), analogous to an Anderson-Darling
-        statistic. This distribution is heavier-tailed than any
-        fixed-degree-of-freedom chi-square, so a plain BIC or chi-square
-        penalty consistently underpenalises in finite samples.
-
-        The penalty is set to ``1.5 * bic_penalty(n, n_quantiles * p)``: each
-        of the ``n_quantiles`` quantile points contributes an effective free
-        parameter per feature, and the factor ``1.5`` compensates for the
-        heavier tail of the Brownian-bridge functional relative to a
-        fixed-degree-of-freedom chi-square.
+        The penalty is set to ``bic_penalty(n, n_quantiles * p)``: each of the
+        ``n_quantiles`` quantile points contributes an effective free
+        parameter per feature.
 
         Returns
         -------
