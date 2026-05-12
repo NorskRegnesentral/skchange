@@ -169,13 +169,11 @@ class ESACScore(BaseChangeScore):
         )
         n, p = X.shape
 
-        self._sums_ = col_cumsum(X, init_zero=True)
-
         if p == 1:
-            self._a_s_ = np.array([0.0])
-            self._nu_s_ = np.array([1.0])
-            self._t_s_ = np.array([1])
-            self._threshold_ = np.array(
+            self.a_s_ = np.array([0.0])
+            self.nu_s_ = np.array([1.0])
+            self.t_s_ = np.array([1])
+            self.threshold_ = np.array(
                 [self.threshold_dense * (np.sqrt(p * np.log(n)) + np.log(n))]
             )
         else:
@@ -183,23 +181,23 @@ class ESACScore(BaseChangeScore):
             log2ss = np.arange(0, np.floor(np.log2(max_s)) + 1)
             ss = 2**log2ss
             ss = np.concatenate(([p], ss[::-1]))
-            self._t_s_ = np.array(ss, dtype=float)
+            self.t_s_ = np.array(ss, dtype=float)
             ss = np.array(ss, dtype=float)
 
-            self._a_s_ = np.zeros_like(ss, dtype=float)
-            self._a_s_[1:] = np.sqrt(
+            self.a_s_ = np.zeros_like(ss, dtype=float)
+            self.a_s_[1:] = np.sqrt(
                 2 * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
             )
 
-            log_dnorm = norm.logpdf(self._a_s_)
-            log_pnorm_upper = norm.logsf(self._a_s_)
-            self._nu_s_ = 1 + self._a_s_ * np.exp(log_dnorm - log_pnorm_upper)
+            log_dnorm = norm.logpdf(self.a_s_)
+            log_pnorm_upper = norm.logsf(self.a_s_)
+            self.nu_s_ = 1 + self.a_s_ * np.exp(log_dnorm - log_pnorm_upper)
 
-            self._threshold_ = np.zeros_like(ss, dtype=float)
-            self._threshold_[0] = self.threshold_dense * (
+            self.threshold_ = np.zeros_like(ss, dtype=float)
+            self.threshold_[0] = self.threshold_dense * (
                 np.sqrt(4 * p * np.log(n)) + 4 * np.log(n)
             )
-            self._threshold_[1:] = self.threshold_sparse * (
+            self.threshold_[1:] = self.threshold_sparse * (
                 ss[1:] * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
                 + 4 * np.log(n)
             )
@@ -247,9 +245,9 @@ class ESACScore(BaseChangeScore):
         raw_cusum = cusum_score(starts, splits, ends, cache["sums"])
         scores, _ = _transform_esac(
             raw_cusum,
-            self._a_s_,
-            self._nu_s_,
-            self._t_s_,
-            self._threshold_,
+            self.a_s_,
+            self.nu_s_,
+            self.t_s_,
+            self.threshold_,
         )
         return scores
