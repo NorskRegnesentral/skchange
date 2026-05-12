@@ -151,15 +151,31 @@ def _run_seeded_binseg(
     max_scores = np.zeros(starts.size)
     argmax_scores = np.zeros(starts.size, dtype=np.int64)
 
-    for i, (start, end) in enumerate(zip(starts, ends)):
-        splits = np.arange(start + min_split_size, end - min_split_size + 1)
-        interval_specs = np.column_stack(
-            (np.repeat(start, splits.size), splits, np.repeat(end, splits.size))
+    if starts.size > 0:
+        # Build the (start, split, end) specs for all intervals at once and
+        # evaluate the change score in a single call. This is much faster than
+        # calling ``change_score.evaluate`` once per interval.
+        splits_per_interval = [
+            np.arange(start + min_split_size, end - min_split_size + 1)
+            for start, end in zip(starts, ends)
+        ]
+        n_splits = np.fromiter(
+            (sp.size for sp in splits_per_interval), dtype=np.intp, count=starts.size
         )
-        scores = change_score.evaluate(cache, interval_specs).reshape(-1)
-        argmax = int(np.argmax(scores))
-        max_scores[i] = scores[argmax]
-        argmax_scores[i] = splits[argmax]
+        all_splits = np.concatenate(splits_per_interval)
+        all_starts = np.repeat(starts, n_splits)
+        all_ends = np.repeat(ends, n_splits)
+        interval_specs = np.column_stack((all_starts, all_splits, all_ends))
+        all_scores = change_score.evaluate(cache, interval_specs).reshape(-1)
+
+        # Split the flat score array back per interval to find the per-interval
+        # max and argmax. The loop is over the (small) number of intervals only.
+        offsets = np.concatenate(([0], np.cumsum(n_splits)))
+        for i in range(starts.size):
+            interval_scores = all_scores[offsets[i] : offsets[i + 1]]
+            argmax = int(np.argmax(interval_scores))
+            max_scores[i] = interval_scores[argmax]
+            argmax_scores[i] = splits_per_interval[i][argmax]
 
     if selection_method == "greedy":
         cpts = greedy_selection(max_scores, argmax_scores, starts, ends)
