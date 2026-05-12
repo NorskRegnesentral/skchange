@@ -9,6 +9,7 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.interval_scorers._base import (
     BaseChangeScore,
     BaseIntervalScorer,
+    BaseTransientScore,
 )
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
@@ -122,5 +123,165 @@ class CostChangeScore(BaseChangeScore):
         return tags
 
 
-# class CostTransientScore(BaseTransientScore):
-#     pass
+class CostTransientScore(BaseTransientScore):
+    """Transient score constructed from a cost scorer.
+
+    Compares the cost of an inner interval and its surrounding (left + right)
+    interval against the cost of the outer interval. Each interval spec is a
+    4-column row ``[outer_start, inner_start, inner_end, outer_end)``. The
+    transient score is
+
+    ``score = cost(outer) - cost(inner) - cost(surrounding)``,
+
+    where ``surrounding`` is the union of ``[outer_start, inner_start)`` and
+    ``[inner_end, outer_end)``. The wrapped cost is fit once on the full
+    training data; the surrounding evaluation only re-runs ``precompute`` on
+    the concatenated surrounding subset, so any fit-time state (e.g. EDF
+    quantile points) is shared across inner, outer, and surrounding terms.
+
+    Transient scores correspond to the *epidemic changepoint* model in the
+    statistical literature [1]_: a regime change inside ``[inner_start,
+    inner_end)`` that returns to the surrounding baseline. They are the
+    natural building block for epidemic changepoint detectors such as
+    :class:`CircularBinarySegmentation`, in contrast to
+    standard (single-shift) change scores used by detectors like :class:`PELT`.
+
+    Parameters
+    ----------
+    cost : BaseIntervalScorer
+        The cost scorer to wrap. Must have ``score_type='cost'``.
+
+    References
+    ----------
+    .. [1] Kirch, C., Muhsal, B., & Ombao, H. (2015). Detection of changes in
+        multivariate time series with application to EEG data. Journal of the
+        American Statistical Association, 110(511), 1197-1216.
+    """
+
+    def __init__(self, cost: BaseIntervalScorer):
+        self.cost = cost
+
+    def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
+        """Fit wrapped cost scorer."""
+        X = validate_data(self, X, ensure_2d=True, reset=True)
+        check_interval_scorer(
+            self.cost,
+            ensure_score_type=["cost"],
+            caller_name=self.__class__.__name__,
+            arg_name="cost",
+        )
+        self.cost_: BaseIntervalScorer = clone(self.cost).fit(X, y)
+        return self
+
+    def precompute(self, X: ArrayLike) -> dict:
+        """Precompute wrapped cost data and store ``X`` for surrounding refits."""
+        check_is_fitted(self, ["cost_"])
+        X = np.asarray(X)
+        cache = self.cost_.precompute(X)
+        # Wrap in a new dict so we don't mutate the wrapped cost's cache.
+        return {"cost_cache": cache, "X": X}
+
+    def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
+        """Evaluate transient score on interval specifications.
+
+        Parameters
+        ----------
+        cache : dict
+            Cache from ``precompute()``.
+        interval_specs : array-like of shape (n_interval_specs, 4)
+            Interval boundaries
+            ``[outer_start, inner_start, inner_end, outer_end)``.
+
+        Returns
+        -------
+        scores : ndarray of shape (n_interval_specs,) or (n_interval_specs, n_features)
+            Transient scores for each interval specification.
+        """
+        check_is_fitted(self, ["cost_"])
+        # Use ``check_sorted=False``: a transient interval ``[outer_s, inner_s,
+        # inner_e, outer_e)`` only requires ``outer_s <= inner_s < inner_e <=
+        # outer_e``. The inner anomaly interval must be non-empty, but the
+        # surrounding "before" or "after" segment is allowed to be empty (the
+        # surrounding-cost loop below concatenates them, so ``np.concatenate``
+        # naturally handles the empty case).
+        interval_specs = check_interval_specs(
+            interval_specs,
+            self.interval_specs_ncols,
+            check_sorted=False,
+            caller_name=self.__class__.__name__,
+        )
+        if interval_specs.size > 0:
+            outer_s = interval_specs[:, 0]
+            inner_s = interval_specs[:, 1]
+            inner_e = interval_specs[:, 2]
+            outer_e = interval_specs[:, 3]
+            valid = (outer_s <= inner_s) & (inner_s < inner_e) & (inner_e <= outer_e)
+            if not np.all(valid):
+                raise ValueError(
+                    f"Each row of `interval_specs` must satisfy "
+                    f"outer_start <= inner_start < inner_end <= outer_end "
+                    f"in {self.__class__.__name__}."
+                )
+
+        cost_cache = cache["cost_cache"]
+        X = cache["X"]
+
+        inner_intervals = interval_specs[:, [1, 2]]
+        outer_intervals = interval_specs[:, [0, 3]]
+        inner_costs = self.cost_.evaluate(cost_cache, inner_intervals)
+        outer_costs = self.cost_.evaluate(cost_cache, outer_intervals)
+
+        surrounding_costs = np.zeros_like(outer_costs)
+        for i, (outer_s, inner_s, inner_e, outer_e) in enumerate(interval_specs):
+            before_data = X[outer_s:inner_s]
+            after_data = X[inner_e:outer_e]
+            surrounding_data = np.concatenate((before_data, after_data))
+            # Reuse the wrapped cost fitted on the full training data; only
+            # ``precompute`` is re-run on the (contiguous) surrounding subset.
+            surrounding_cache = self.cost_.precompute(surrounding_data)
+            surrounding_costs[i] = self.cost_.evaluate(
+                surrounding_cache,
+                np.array([[0, surrounding_data.shape[0]]]),
+            )[0]
+
+        transient_scores = outer_costs - (inner_costs + surrounding_costs)
+        if transient_scores.size == 0:
+            return transient_scores
+        min_score = np.min(transient_scores)
+        if min_score < -1e-6:
+            warnings.warn(
+                f"{self.cost.__class__.__name__} produced negative transient scores "
+                f"(min={min_score:.3g}). The cost may not be subadditive.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        return np.maximum(transient_scores, 0.0)
+
+    @property
+    def min_size(self) -> int:
+        """Minimum valid inner-interval size inherited from wrapped cost scorer.
+
+        Note that the surrounding (left + right) interval must also have at least
+        ``min_size`` total samples, so the outer interval must be at least
+        ``2 * min_size`` long.
+        """
+        check_is_fitted(self)
+        return self.cost_.min_size
+
+    def get_default_penalty(self) -> float | np.ndarray:
+        """Get the default penalty delegated to the wrapped cost scorer."""
+        check_is_fitted(self)
+        return self.cost_.get_default_penalty()
+
+    def __sklearn_tags__(self) -> SkchangeTags:
+        """Get sklearn-compatible tags for transient score wrapper."""
+        tags = super().__sklearn_tags__()
+        cost_tags = self.cost.__sklearn_tags__()
+        tags.input_tags = cost_tags.input_tags
+        tags.interval_scorer_tags.score_type = "transient_score"
+        tags.interval_scorer_tags.aggregated = cost_tags.interval_scorer_tags.aggregated
+        tags.interval_scorer_tags.penalised = cost_tags.interval_scorer_tags.penalised
+        tags.interval_scorer_tags.linear_trend_segment = (
+            cost_tags.interval_scorer_tags.linear_trend_segment
+        )
+        return tags

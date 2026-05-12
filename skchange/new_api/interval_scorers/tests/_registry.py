@@ -4,6 +4,7 @@ from skchange.new_api.interval_scorers import (
     CUSUM,
     ContinuousLinearTrendScore,
     CostChangeScore,
+    CostTransientScore,
     EDFCost,
     ESACScore,
     GaussianCost,
@@ -72,7 +73,9 @@ _SAVINGS = [
 # ---------------------------------------------------------------------------
 # Composite instances
 # ---------------------------------------------------------------------------
-_COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS]
+_COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS] + [
+    CostTransientScore(cost) for cost in _COSTS
+]
 _PENALISED_SCORES = [
     PenalisedScore(scorer)
     for scorer in _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES

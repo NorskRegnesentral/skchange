@@ -4,6 +4,7 @@ from skchange.new_api.detectors import (
     CAPA,
     CROPS,
     PELT,
+    CircularBinarySegmentation,
     MovingWindow,
     SeededBinarySegmentation,
 )
@@ -12,6 +13,7 @@ from skchange.new_api.interval_scorers import (
     is_cost,
     is_penalised_score,
     is_saving,
+    is_transient_score,
 )
 from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
@@ -78,10 +80,21 @@ _CROPS_INSTANCES = [
     ],
 ]
 
+_CIRCULAR_BINSEG_INSTANCES = [
+    CircularBinarySegmentation(),
+    CircularBinarySegmentation(min_subinterval_length=10, max_interval_length=50),
+    *[
+        CircularBinarySegmentation(transient_score=scorer)
+        for scorer in INTERVAL_SCORER_TEST_INSTANCES
+        if is_penalised_score(scorer) and is_transient_score(scorer)
+    ],
+]
+
 DETECTOR_TEST_INSTANCES = [
     *_MOVING_WINDOW_INSTANCES,
     *_CAPA_INSTANCES,
     *_PELT_INSTANCES,
     *_SEEDED_BINSEG_INSTANCES,
     *_CROPS_INSTANCES,
+    *_CIRCULAR_BINSEG_INSTANCES,
 ]
