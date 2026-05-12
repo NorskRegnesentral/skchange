@@ -101,7 +101,7 @@ def narrowest_selection(
 def _run_seeded_binseg(
     change_score: BaseIntervalScorer,
     X: np.ndarray,
-    min_split_size: int,
+    min_subinterval_length: int,
     max_interval_length: int,
     growth_factor: float,
     selection_method: str,
@@ -114,9 +114,9 @@ def _run_seeded_binseg(
         A fitted, penalised change score.
     X : np.ndarray of shape (n_samples, n_features)
         Input data.
-    min_split_size : int
-        Minimum number of samples on each side of a candidate split. Must be at
-        least ``change_score.min_size``.
+    min_subinterval_length : int
+        Minimum length of a subinterval on each side of a candidate split. Must
+        be at least ``change_score.min_size``.
     max_interval_length : int
         Maximum length of an interval to evaluate.
     growth_factor : float
@@ -143,7 +143,7 @@ def _run_seeded_binseg(
 
     starts, ends = make_seeded_intervals(
         n_samples,
-        2 * min_split_size,
+        2 * min_subinterval_length,
         max_interval_length,
         growth_factor,
     )
@@ -156,7 +156,7 @@ def _run_seeded_binseg(
         # evaluate the change score in a single call. This is much faster than
         # calling ``change_score.evaluate`` once per interval.
         splits_per_interval = [
-            np.arange(start + min_split_size, end - min_split_size + 1)
+            np.arange(start + min_subinterval_length, end - min_subinterval_length + 1)
             for start, end in zip(starts, ends)
         ]
         n_splits = np.fromiter(
@@ -218,25 +218,26 @@ class SeededBinarySegmentation(BaseChangeDetector):
         * ``PenalisedScore(CUSUM())`` -- CUSUM with default BIC penalty
         * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change score
          based on L2 cost with fixed penalty
-    min_split_size : int, default=5
-        Minimum number of samples on each side of a candidate split point within
-        each evaluated interval. The effective minimum used is
-        ``max(min_split_size, change_score.min_size)``, so the actual minimum may be
-        larger than the value provided here when the change score requires more
-        samples per segment. Note that this does not impose a lower bound on the
-        spacing between detected changepoints.
+    min_subinterval_length : int, default=5
+        Minimum length of a subinterval on each side of a candidate split point
+        within each evaluated interval. The effective minimum used is
+        ``max(min_subinterval_length, change_score.min_size)``, so the actual
+        minimum may be larger than the value provided here when the change
+        score requires more samples per segment. Note that this does not impose
+        a lower bound on the spacing between detected changepoints.
     max_interval_length : int or None, default=None
         The maximum length of an interval to evaluate a changepoint in. Must be at
-        least ``2 * min_split_size``. If ``None``, defaults to
+        least ``2 * min_subinterval_length``. If ``None``, defaults to
         ``min(200, n_samples)`` after fitting.
     growth_factor : float, default=1.5
         Growth factor for the seeded intervals. Intervals grow in size according to
         ``interval_len = max(interval_len + 1, floor(growth_factor * interval_len))``,
-        starting at ``interval_len = 2 * min_split_size``. It also governs the amount
-        of overlap between intervals of the same length, as the start of each interval
-        is shifted by a factor of ``1 - 1 / growth_factor``. Larger values produce
-        fewer, less-overlapping intervals (faster but coarser); smaller values produce
-        more, more-overlapping intervals (slower but finer). Must be in ``(1, 2]``.
+        starting at ``interval_len = 2 * min_subinterval_length``. It also governs the
+        amount of overlap between intervals of the same length, as the start of each
+        interval is shifted by a factor of ``1 - 1 / growth_factor``. Larger values
+        produce fewer, less-overlapping intervals (faster but coarser); smaller values
+        produce more, more-overlapping intervals (slower but finer).
+        Must be in ``(1, 2]``.
     selection_method : str, default="greedy"
         Method for selecting the final set of changepoints from candidate intervals
         with positive penalised score. Options:
@@ -253,7 +254,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
     ----------
     change_score_ : BaseIntervalScorer
         Fitted penalised change score.
-    min_split_size_ : int
+    min_subinterval_length_ : int
         Effective minimum split size used.
     max_interval_length_ : int
         Effective maximum interval length used.
@@ -282,7 +283,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
     _parameter_constraints = {
         "change_score": [HasMethods(["fit", "evaluate"]), None],
-        "min_split_size": [Interval(Integral, 1, None, closed="left")],
+        "min_subinterval_length": [Interval(Integral, 1, None, closed="left")],
         "max_interval_length": [Interval(Integral, 2, None, closed="left"), None],
         "growth_factor": [Interval(Real, 1.0, 2.0, closed="right")],
         "selection_method": [StrOptions({"greedy", "narrowest"})],
@@ -291,13 +292,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         change_score: BaseIntervalScorer | None = None,
-        min_split_size: int = 5,
+        min_subinterval_length: int = 5,
         max_interval_length: int | None = None,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
     ):
         self.change_score = change_score
-        self.min_split_size = min_split_size
+        self.min_subinterval_length = min_subinterval_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
         self.selection_method = selection_method
@@ -339,12 +340,15 @@ class SeededBinarySegmentation(BaseChangeDetector):
         )
         self.change_score_ = clone(scorer).fit(X, y)
 
-        self.min_split_size_ = max(self.min_split_size, self.change_score_.min_size)
+        self.min_subinterval_length_ = max(
+            self.min_subinterval_length, self.change_score_.min_size
+        )
 
-        if self.n_samples_in_ < 2 * self.min_split_size_:
+        if self.n_samples_in_ < 2 * self.min_subinterval_length_:
             raise ValueError(
-                f"`SeededBinarySegmentation` requires at least 2 * min_split_size "
-                f"(={2 * self.min_split_size_}) samples to fit, got "
+                f"`SeededBinarySegmentation` requires at least "
+                f"2 * min_subinterval_length (={2 * self.min_subinterval_length_}) "
+                f"samples to fit, got "
                 f"n_samples={self.n_samples_in_}."
             )
 
@@ -353,10 +357,11 @@ class SeededBinarySegmentation(BaseChangeDetector):
         else:
             self.max_interval_length_ = self.max_interval_length
 
-        if self.max_interval_length_ < 2 * self.min_split_size_:
+        if self.max_interval_length_ < 2 * self.min_subinterval_length_:
             raise ValueError(
                 f"`max_interval_length` (={self.max_interval_length_}) must be at "
-                f"least 2 * min_split_size (={2 * self.min_split_size_})."
+                f"least 2 * min_subinterval_length "
+                f"(={2 * self.min_subinterval_length_})."
             )
 
         return self
@@ -390,7 +395,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
         cpts, max_scores, argmax_scores, starts, ends = _run_seeded_binseg(
             self.change_score_,
             X,
-            self.min_split_size_,
+            self.min_subinterval_length_,
             self.max_interval_length_,
             self.growth_factor,
             self.selection_method,
