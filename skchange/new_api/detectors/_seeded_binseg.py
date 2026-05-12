@@ -325,8 +325,15 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
         self.min_split_size_ = max(self.min_split_size, self.change_score_.min_size)
 
+        if self.n_samples_in_ < 2 * self.min_split_size_:
+            raise ValueError(
+                f"`SeededBinarySegmentation` requires at least 2 * min_split_size "
+                f"(={2 * self.min_split_size_}) samples to fit, got "
+                f"n_samples={self.n_samples_in_}."
+            )
+
         if self.max_interval_length is None:
-            self.max_interval_length_ = min(200, X.shape[0])
+            self.max_interval_length_ = min(200, self.n_samples_in_)
         else:
             self.max_interval_length_ = self.max_interval_length
 
