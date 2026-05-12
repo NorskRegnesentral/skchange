@@ -2,6 +2,7 @@
 
 from skchange.new_api.detectors import (
     CAPA,
+    CROPS,
     PELT,
     MovingWindow,
     SeededBinarySegmentation,
@@ -65,9 +66,22 @@ _SEEDED_BINSEG_INSTANCES = [
     ],
 ]
 
+_CROPS_INSTANCES = [
+    CROPS(),
+    CROPS(min_penalty=0.5, max_penalty=20.0, min_segment_length=5),
+    CROPS(selection_method="elbow"),
+    CROPS(step_size=5),
+    *[
+        CROPS(cost=scorer)
+        for scorer in INTERVAL_SCORER_TEST_INSTANCES
+        if not is_penalised_score(scorer) and is_cost(scorer)
+    ],
+]
+
 DETECTOR_TEST_INSTANCES = [
     *_MOVING_WINDOW_INSTANCES,
     *_CAPA_INSTANCES,
     *_PELT_INSTANCES,
     *_SEEDED_BINSEG_INSTANCES,
+    *_CROPS_INSTANCES,
 ]
