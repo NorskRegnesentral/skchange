@@ -196,6 +196,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
         A penalised change score to use in the algorithm. Must be an instance of
         ``BaseIntervalScorer`` with ``interval_scorer_tags.penalised=True``. If
         ``None``, defaults to ``PenalisedScore(CUSUM())``.
+
+        Use :class:`PenalisedScore` to wrap any unpenalised change score or cost:
+
+        * ``PenalisedScore(CUSUM())`` -- CUSUM with default BIC penalty
+        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change score
+         based on L2 cost with fixed penalty
     min_split_size : int, default=5
         Minimum number of samples on each side of a candidate split point within
         each evaluated interval. The effective minimum used is
@@ -208,16 +214,24 @@ class SeededBinarySegmentation(BaseChangeDetector):
         least ``2 * min_split_size``. If ``None``, defaults to
         ``min(200, n_samples)`` after fitting.
     growth_factor : float, default=1.5
-        Growth factor for the seeded intervals. Controls both the rate at which
-        interval lengths grow and the overlap between intervals of the same length.
-        Must be in ``(1, 2]``.
+        Growth factor for the seeded intervals. Intervals grow in size according to
+        ``interval_len = max(interval_len + 1, floor(growth_factor * interval_len))``,
+        starting at ``interval_len = 2 * min_split_size``. It also governs the amount
+        of overlap between intervals of the same length, as the start of each interval
+        is shifted by a factor of ``1 - 1 / growth_factor``. Larger values produce
+        fewer, less-overlapping intervals (faster but coarser); smaller values produce
+        more, more-overlapping intervals (slower but finer). Must be in ``(1, 2]``.
     selection_method : str, default="greedy"
-        Method for selecting changepoints from candidate intervals. Options:
+        Method for selecting the final set of changepoints from candidate intervals
+        with positive penalised score. Options:
 
         * ``"greedy"``: Select the interval with the highest score, remove all
-          overlapping intervals containing the detected changepoint, and repeat.
-        * ``"narrowest"``: Among intervals with scores above threshold, select the
-          narrowest one; remove overlapping intervals and repeat.
+          overlapping intervals containing the detected changepoint, and repeat
+          until no intervals remain with a positive score.
+        * ``"narrowest"``: Among intervals with positive scores, select the
+          narrowest one, remove all overlapping intervals containing the detected
+          changepoint, and repeat. Corresponds to the narrowest-over-threshold
+          approach of [2]_.
 
     Attributes
     ----------
