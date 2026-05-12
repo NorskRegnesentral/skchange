@@ -66,7 +66,13 @@ class PenalisedScore(BaseIntervalScorer):
     penalty : array-like of shape (n_features,), float, or None, default=None
         Penalty values. `penalty[k]` is the penalty for including k features in the
         aggregated penalised score. If float, the value is broadcast across all k.
+        If ``None``, ``scorer.get_default_penalty()`` is used at fit time.
 
+    Attributes
+    ----------
+    penalty_ : float or np.ndarray
+        Effective penalty used during evaluation, equal to the resolved
+        penalty (default or explicit).
     """
 
     def __init__(
