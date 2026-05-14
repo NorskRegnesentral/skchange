@@ -161,12 +161,37 @@ class CostTransientScore(BaseTransientScore):
     is fully vectorised and ~100-400x faster on typical CBS workloads. For
     other costs, consider implementing a dedicated transient score subclass.
 
+    The wrapper requires the cost to depend only on the multiset of rows in
+    the segment it is evaluated on (i.e. it must be invariant to row order
+    and independent of any wider reference set). Costs that violate this
+    assumption are not subadditive under the concatenated-surrounding
+    baseline used here and are explicitly rejected at ``fit`` time:
+
+    - :class:`RankCost` — ranks are recomputed within each segment, so the
+      surrounding rank scale differs from the inner/outer rank scale.
+    - :class:`LinearTrendCost` — when used with index-based time steps the
+      concatenated surrounding collapses the inner gap, so the fitted line
+      sees a denser time grid than it should.
+    - :class:`MultivariateTCost` — the per-segment log-likelihood is
+      obtained from an iterative non-convex MLE, so inner/outer/surrounding
+      fits can land in different local optima.
+
+    For these costs, implement a dedicated native transient score (see
+    :class:`L2TransientScore` for the pattern) instead.
+
     References
     ----------
     .. [1] Kirch, C., Muhsal, B., & Ombao, H. (2015). Detection of changes in
         multivariate time series with application to EEG data. Journal of the
         American Statistical Association, 110(511), 1197-1216.
     """
+
+    # Costs whose value depends on row order or on within-segment
+    # quantities that change when the surrounding is rebuilt by
+    # concatenation. Listed by class name to avoid import cycles.
+    _INCOMPATIBLE_COST_NAMES = frozenset(
+        {"RankCost", "LinearTrendCost", "MultivariateTCost"}
+    )
 
     def __init__(self, cost: BaseIntervalScorer):
         self.cost = cost
@@ -180,6 +205,16 @@ class CostTransientScore(BaseTransientScore):
             caller_name=self.__class__.__name__,
             arg_name="cost",
         )
+        cost_name = type(self.cost).__name__
+        if cost_name in self._INCOMPATIBLE_COST_NAMES:
+            raise ValueError(
+                f"{cost_name} is not compatible with CostTransientScore: its "
+                "value depends on row order or on a within-segment reference "
+                "that changes when the surrounding interval is rebuilt by "
+                "concatenation, so the resulting transient score is not "
+                "subadditive. Implement a dedicated native transient score "
+                "(see L2TransientScore for the pattern) instead."
+            )
         self.cost_: BaseIntervalScorer = clone(self.cost).fit(X, y)
         return self
 
