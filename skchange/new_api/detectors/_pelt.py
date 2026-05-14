@@ -97,6 +97,7 @@ def _run_pelt(
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
+    cache: dict | None = None,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -137,7 +138,8 @@ def _run_pelt(
         Container for the results of the PELT algorithm run.
     """
     check_is_fitted(cost)
-    cache = cost.precompute(X)
+    if cache is None:
+        cache = cost.precompute(X)
     n_samples = cost.n_samples_in_
 
     if min_segment_length > n_samples:
@@ -260,6 +262,7 @@ def _run_pelt_min_segment_length_one(
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
+    cache: dict | None = None,
 ) -> PELTResult:
     """Run the PELT algorithm, with a minimum segment length of one.
 
@@ -304,7 +307,8 @@ def _run_pelt_min_segment_length_one(
         - `changepoints`: The final set of changepoints.
     """
     check_is_fitted(cost)
-    cache = cost.precompute(X)
+    if cache is None:
+        cache = cost.precompute(X)
     n_samples = cost.n_samples_in_
     if n_samples < 1:
         raise ValueError(
@@ -394,6 +398,7 @@ def _run_pelt_with_step_size(
     split_cost: float = 0.0,
     prune: bool = True,
     pruning_margin: float = 0.0,
+    cache: dict | None = None,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -435,7 +440,8 @@ def _run_pelt_with_step_size(
         Container for the results of the PELT algorithm run.
     """
     check_is_fitted(cost)
-    cache = cost.precompute(X)
+    if cache is None:
+        cache = cost.precompute(X)
     n_samples = cost.n_samples_in_
     if n_samples < step_size:
         raise ValueError("The `step_size` cannot be larger than the number of samples.")

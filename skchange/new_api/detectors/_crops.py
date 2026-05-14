@@ -196,6 +196,7 @@ def _solve_for_changepoints(
     split_cost: float,
     prune: bool,
     pruning_margin: float,
+    cache: dict | None = None,
 ) -> np.ndarray:
     """Run the appropriate PELT variant for a single penalty."""
     if step_size > 1:
@@ -207,6 +208,7 @@ def _solve_for_changepoints(
             split_cost=split_cost,
             prune=prune,
             pruning_margin=pruning_margin,
+            cache=cache,
         )
     elif min_segment_length == 1:
         result = _run_pelt_min_segment_length_one(
@@ -216,6 +218,7 @@ def _solve_for_changepoints(
             split_cost=split_cost,
             prune=prune,
             pruning_margin=pruning_margin,
+            cache=cache,
         )
     else:
         result = _run_pelt(
@@ -226,6 +229,7 @@ def _solve_for_changepoints(
             split_cost=split_cost,
             prune=prune,
             pruning_margin=pruning_margin,
+            cache=cache,
         )
     return result.changepoints
 
@@ -260,6 +264,7 @@ def _run_crops(
             split_cost=split_cost,
             prune=prune,
             pruning_margin=pruning_margin,
+            cache=cache,
         )
         seg_cost = _evaluate_segmentation(cost, cache, cps, n_samples)
         return cps, seg_cost
@@ -362,8 +367,10 @@ class CROPS(BaseChangeDetector):
           changepoints, evaluated at each intermediate number of changepoints.
     min_segment_length : int or None, default=None
         Minimum number of samples in a segment. Must be at least
-        ``cost.min_size``. If ``None``, defaults to ``cost.min_size`` after
-        fitting.
+        ``cost.min_size``. If ``None``, defaults to ``2 * cost.min_size``
+        after fitting. The 2x factor provides a finite-sample safety floor
+        that prevents spurious short segments from scale-estimating costs
+        (e.g. Gaussian, Laplace).
     step_size : int, default=1
         Only indices that are multiples of ``step_size`` from the start are
         considered as potential changepoints. Implicitly ensures that
@@ -505,7 +512,7 @@ class CROPS(BaseChangeDetector):
             )
 
         min_segment_length = (
-            self.cost_.min_size
+            2 * self.cost_.min_size
             if self.min_segment_length is None
             else self.min_segment_length
         )
