@@ -1,16 +1,50 @@
 """Functions to validate inputs and parameters in skchange."""
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import TYPE_CHECKING
 
 import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_array
+from sklearn.utils.validation import check_is_fitted as _sklearn_check_is_fitted
 from sklearn.utils.validation import validate_data as _sklearn_validate_data
 
 from skchange.new_api.typing import ArrayLike
 
 if TYPE_CHECKING:
     from skchange.new_api.interval_scorers._base import BaseIntervalScorer
+
+
+# Internal flag toggled by ``skip_validation()``. When active, ``validate_data``
+# and ``check_interval_specs`` skip all sklearn input checks and only do the
+# minimal work needed to keep downstream code correct (dtype/shape coercion and
+# setting ``n_samples_in_`` / ``n_features_in_`` on reset). It is the caller's
+# responsibility to guarantee that inputs are already valid; misuse will produce
+# silent errors rather than informative validation messages.
+_skip_validation: ContextVar[bool] = ContextVar(
+    "skchange_skip_validation", default=False
+)
+
+
+@contextmanager
+def skip_validation():
+    """Context manager that disables sklearn-level input validation.
+
+    Within the context, ``validate_data`` and ``check_interval_specs`` skip
+    ``check_array`` and related sklearn checks (dtype/finite/2d/...). They still
+    coerce inputs to numpy arrays and set fitted attributes (``n_samples_in_``,
+    ``n_features_in_``) on reset, so estimator state remains consistent.
+
+    Only use this when the caller can guarantee inputs are already validated
+    -- typically inside an inner loop where the same already-checked data is
+    re-evaluated many times.
+    """
+    token = _skip_validation.set(True)
+    try:
+        yield
+    finally:
+        _skip_validation.reset(token)
 
 
 def validate_data(
@@ -24,6 +58,10 @@ def validate_data(
     Thin wrapper around sklearn's ``validate_data`` that additionally stores
     the number of samples as ``_estimator.n_samples_in_`` when ``reset=True``
     (i.e. during fit), which is required for default penalty computation.
+
+    Within a :func:`skip_validation` context, sklearn's checks are bypassed
+    and ``X`` is only coerced to a numpy array; the fitted attributes are
+    still set when ``reset=True``.
 
     Parameters
     ----------
@@ -39,10 +77,31 @@ def validate_data(
     X : ndarray of shape (n_samples, n_features)
         Validated array.
     """
+    if _skip_validation.get():
+        X = np.asarray(X)
+        if kwargs.get("ensure_2d", True) and X.ndim == 1:
+            X = X.reshape(-1, 1)
+        if kwargs.get("reset", True):
+            _estimator.n_features_in_ = X.shape[1] if X.ndim >= 2 else 1
+            _estimator.n_samples_in_ = X.shape[0]
+        return X
+
     X = _sklearn_validate_data(_estimator, X, **kwargs)
     if kwargs.get("reset", True):
         _estimator.n_samples_in_ = X.shape[0]
     return X
+
+
+def check_is_fitted(estimator, attributes=None, *, msg=None, all_or_any=all) -> None:
+    """Drop-in wrapper around sklearn's ``check_is_fitted``.
+
+    Returns immediately inside a :func:`skip_validation` context (the caller
+    guarantees the estimator is fitted). Otherwise delegates to sklearn's
+    implementation with identical signature.
+    """
+    if _skip_validation.get():
+        return
+    _sklearn_check_is_fitted(estimator, attributes, msg=msg, all_or_any=all_or_any)
 
 
 def check_time_col(
@@ -148,6 +207,11 @@ def check_interval_specs(
     # Empty inputs may occur. E.g. in MovingWindow for large window sizes and
     # short series.
     if interval_specs.size == 0:
+        return interval_specs
+
+    if _skip_validation.get():
+        # Caller guarantees the array is well-formed (2D, correct shape, dtype,
+        # ordered, in-range). Skip all sklearn-level checks.
         return interval_specs
 
     interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.intp)

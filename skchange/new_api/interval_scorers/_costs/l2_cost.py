@@ -3,11 +3,14 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_is_fitted,
+    validate_data,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 

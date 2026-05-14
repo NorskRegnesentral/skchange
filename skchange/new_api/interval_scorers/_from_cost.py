@@ -16,6 +16,7 @@ from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
     check_interval_specs,
+    skip_validation,
     validate_data,
 )
 
@@ -151,6 +152,15 @@ class CostTransientScore(BaseTransientScore):
     cost : BaseIntervalScorer
         The cost scorer to wrap. Must have ``score_type='cost'``.
 
+    Notes
+    -----
+    This wrapper is **slow** compared to a native transient score: the
+    surrounding-baseline cost is re-precomputed once per candidate inner
+    interval, so evaluation time grows linearly in the number of interval
+    specs. For the common L2 case prefer :class:`L2TransientScore`, which
+    is fully vectorised and ~100-400x faster on typical CBS workloads. For
+    other costs, consider implementing a dedicated transient score subclass.
+
     References
     ----------
     .. [1] Kirch, C., Muhsal, B., & Ombao, H. (2015). Detection of changes in
@@ -232,17 +242,30 @@ class CostTransientScore(BaseTransientScore):
         outer_costs = self.cost_.evaluate(cost_cache, outer_intervals)
 
         surrounding_costs = np.zeros_like(outer_costs)
-        for i, (outer_s, inner_s, inner_e, outer_e) in enumerate(interval_specs):
-            before_data = X[outer_s:inner_s]
-            after_data = X[inner_e:outer_e]
-            surrounding_data = np.concatenate((before_data, after_data))
-            # Reuse the wrapped cost fitted on the full training data; only
-            # ``precompute`` is re-run on the (contiguous) surrounding subset.
-            surrounding_cache = self.cost_.precompute(surrounding_data)
-            surrounding_costs[i] = self.cost_.evaluate(
-                surrounding_cache,
-                np.array([[0, surrounding_data.shape[0]]]),
-            )[0]
+        cost_ = self.cost_
+        # The surrounding cost is recomputed once per inner candidate, so the
+        # per-call sklearn validation overhead dominates. ``X`` and the
+        # ``[[0, n]]`` spec are trivially well-formed, so we bypass all input
+        # checks inside the wrapped cost's ``precompute``/``evaluate`` via
+        # ``skip_validation()``.
+        surrounding_spec = np.zeros((1, 2), dtype=np.intp)
+        with skip_validation():
+            for i in range(interval_specs.shape[0]):
+                outer_s = interval_specs[i, 0]
+                inner_s = interval_specs[i, 1]
+                inner_e = interval_specs[i, 2]
+                outer_e = interval_specs[i, 3]
+                before_data = X[outer_s:inner_s]
+                after_data = X[inner_e:outer_e]
+                surrounding_data = np.concatenate((before_data, after_data))
+                # Reuse the wrapped cost fitted on the full training data;
+                # only ``precompute`` is re-run on the (contiguous)
+                # surrounding subset.
+                surrounding_cache = cost_.precompute(surrounding_data)
+                surrounding_spec[0, 1] = surrounding_data.shape[0]
+                surrounding_costs[i] = cost_.evaluate(
+                    surrounding_cache, surrounding_spec
+                )[0]
 
         transient_scores = outer_costs - (inner_costs + surrounding_costs)
         if transient_scores.size == 0:
