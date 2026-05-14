@@ -60,6 +60,9 @@ from skchange.new_api.interval_scorers._savings.multivariate_t_saving import (
     MultivariateTSaving,
 )
 from skchange.new_api.interval_scorers._savings.poisson_saving import PoissonSaving
+from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
+    L2TransientScore,
+)
 
 __all__ = [
     "BaseCost",
@@ -79,6 +82,7 @@ __all__ = [
     "L1Saving",
     "L2Cost",
     "L2Saving",
+    "L2TransientScore",
     "LaplaceCost",
     "LaplaceSaving",
     "LinearRegressionCost",
