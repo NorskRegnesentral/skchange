@@ -253,4 +253,7 @@ class MultivariateGaussianSaving(BaseSaving):
         check_is_fitted(self)
         p = self.n_features_in_
         n_params = p + p * (p + 1) // 2
-        return chi2_penalty(self.n_samples_in_, n_params)
+        # 2.0x factor: a slightly off baseline mean/covariance inflates the saving on
+        # background segments, leading to spurious anomaly detections without
+        # additional penalisation.
+        return 2.0 * chi2_penalty(self.n_samples_in_, n_params)

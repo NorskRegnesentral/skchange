@@ -150,4 +150,6 @@ class LaplaceCost(BaseCost):
             Default penalty value.
         """
         check_is_fitted(self)
+        # 1.5x factor: BIC underpenalises in small samples where the scale MLE is
+        # biased downward, leading to spurious changepoints on short segments.
         return 1.5 * bic_penalty(self.n_samples_in_, 2 * self.n_features_in_)

@@ -232,4 +232,7 @@ class LaplaceSaving(BaseSaving):
             Default penalty value for each number of affected features.
         """
         check_is_fitted(self)
+        # 2.0x factor: a slightly off baseline location/scale inflates the saving on
+        # background segments, leading to spurious anomaly detections without
+        # additional penalisation.
         return 2.0 * mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 2)
