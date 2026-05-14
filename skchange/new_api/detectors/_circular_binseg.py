@@ -12,9 +12,10 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.detectors._seeded_binseg import make_seeded_intervals
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.interval_scorers._from_cost import CostTransientScore
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
+from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
+    L2TransientScore,
+)
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import (
@@ -203,9 +204,7 @@ def _resolve_transient_score(
     Needed since default resolution must be done in both fit and
     ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    transient_score = (
-        CostTransientScore(L2Cost()) if transient_score is None else transient_score
-    )
+    transient_score = L2TransientScore() if transient_score is None else transient_score
     tags = transient_score.__sklearn_tags__().interval_scorer_tags
     if tags.penalised:
         return transient_score
@@ -238,21 +237,23 @@ class CircularBinarySegmentation(BaseChangeDetector):
         ``BaseIntervalScorer`` with ``score_type="transient_score"``. If the
         scorer is unpenalised it is automatically wrapped in
         :class:`PenalisedScore`. If ``None``, defaults to
-        ``PenalisedScore(CostTransientScore(L2Cost()))``.
+        ``PenalisedScore(L2TransientScore())``.
 
         Wrap with :class:`PenalisedScore` explicitly to set a custom
         ``penalty``, e.g.:
 
-        * ``CostTransientScore(L2Cost())`` -- auto-wrapped with default BIC
-          penalty
+        * ``L2TransientScore()`` -- auto-wrapped with default BIC penalty
         * ``PenalisedScore(CostTransientScore(GaussianCost()), penalty=10.0)``
           -- Gaussian cost-based transient score with fixed penalty
-    penalty_scale : float, default=1.0
+    penalty_scale : float, default=2.0
         Multiplicative factor on the default penalty of the auto-constructed
         :class:`PenalisedScore` wrapper. Applies only when ``transient_score``
         is ``None`` or an unpenalised scorer. Silently ignored when
         ``transient_score`` is already a penalised scorer; in that case the
-        user-provided scorer owns its penalty.
+        user-provided scorer owns its penalty. The default is larger than 1
+        because CBS evaluates the score over a very large number of candidate
+        ``(outer, inner)`` interval pairs, so a stricter penalty is needed to
+        keep the family-wise false-positive rate low.
     min_subinterval_length : int, default=5
         Minimum length of an inner (anomalous) segment. The total length of the
         surrounding (left + right) baseline must also be at least this value.
@@ -262,7 +263,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
         Maximum length of an outer interval to evaluate. Must be at least
         ``2 * min_subinterval_length``. If ``None``, defaults to
         ``min(200, n_samples)`` after fitting.
-    growth_factor : float, default=1.5
+    growth_factor : float, default=1.8
         Growth factor for the seeded outer intervals. Larger values produce
         fewer, less-overlapping intervals (faster but coarser); smaller values
         produce more, more-overlapping intervals (slower but finer). Must be in
@@ -320,10 +321,10 @@ class CircularBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         transient_score: BaseIntervalScorer | None = None,
-        penalty_scale: float = 1.0,
+        penalty_scale: float = 2.0,
         min_subinterval_length: int = 5,
         max_interval_length: int | None = None,
-        growth_factor: float = 1.5,
+        growth_factor: float = 1.8,
     ):
         self.transient_score = transient_score
         self.penalty_scale = penalty_scale

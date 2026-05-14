@@ -9,12 +9,14 @@ from skchange.new_api.detectors import (
     SeededBinarySegmentation,
 )
 from skchange.new_api.interval_scorers import (
+    CostTransientScore,
+    GaussianCost,
+    L2Cost,
     PenalisedScore,
     is_change_score,
     is_cost,
     is_penalised_score,
     is_saving,
-    is_transient_score,
 )
 from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
@@ -85,13 +87,13 @@ _CROPS_INSTANCES = [
 ]
 
 _CIRCULAR_BINSEG_INSTANCES = [
+    # CBS evaluates the transient score on a huge number of candidate
+    # ``(outer, inner)`` interval pairs, so we test only a small representative
+    # subset of transient scores to keep CI time reasonable.
     CircularBinarySegmentation(),
-    CircularBinarySegmentation(min_subinterval_length=10, max_interval_length=50),
-    *[
-        CircularBinarySegmentation(transient_score=scorer)
-        for scorer in INTERVAL_SCORER_TEST_INSTANCES
-        if is_transient_score(scorer) and not isinstance(scorer, PenalisedScore)
-    ],
+    CircularBinarySegmentation(min_subinterval_length=10, max_interval_length=100),
+    CircularBinarySegmentation(transient_score=CostTransientScore(L2Cost())),
+    CircularBinarySegmentation(transient_score=CostTransientScore(GaussianCost())),
 ]
 
 DETECTOR_TEST_INSTANCES = [
@@ -100,5 +102,5 @@ DETECTOR_TEST_INSTANCES = [
     *_PELT_INSTANCES,
     *_SEEDED_BINSEG_INSTANCES,
     *_CROPS_INSTANCES,
-    # *_CIRCULAR_BINSEG_INSTANCES,
+    *_CIRCULAR_BINSEG_INSTANCES,
 ]

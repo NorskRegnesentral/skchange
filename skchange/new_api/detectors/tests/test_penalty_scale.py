@@ -67,7 +67,7 @@ def test_penalty_scale_multiplies_default(
     """``penalty_scale=k`` scales the fitted scorer penalty by ``k``."""
     X = make_single_change_X(DetectorCls())
 
-    base_pen = getattr(DetectorCls().fit(X), scorer_attr).penalty_
+    base_pen = getattr(DetectorCls(penalty_scale=1.0).fit(X), scorer_attr).penalty_
     scaled_pen = getattr(DetectorCls(penalty_scale=3.0).fit(X), scorer_attr).penalty_
 
     assert np.allclose(scaled_pen, 3.0 * base_pen)
