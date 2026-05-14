@@ -252,4 +252,4 @@ class MultivariateGaussianScore(BaseChangeScore):
 
         p = self.n_features_in_
         n_params = p + p * (p + 1) // 2
-        return 2.0 * bic_penalty(self.n_samples_in_, n_params)
+        return bic_penalty(self.n_samples_in_, n_params)

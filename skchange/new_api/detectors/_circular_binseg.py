@@ -22,7 +22,10 @@ from skchange.new_api.utils._param_validation import (
     Interval,
     _fit_context,
 )
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    validate_data,
+)
 from skchange.utils.numba import njit
 
 
@@ -193,18 +196,20 @@ def _run_circular_binseg(
 
 def _resolve_transient_score(
     transient_score: BaseIntervalScorer | None,
+    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return ``transient_score`` or the default penalised L2 transient score.
+    """Return a penalised transient score, auto-wrapping if needed.
 
-    The default is ``PenalisedScore(CostTransientScore(L2Cost()))``. Needed
-    since default resolution is performed in both fit and ``__sklearn_tags__``
-    to ensure correct input tags are propagated.
+    Needed since default resolution must be done in both fit and
+    ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    return (
-        transient_score
-        if transient_score is not None
-        else PenalisedScore(CostTransientScore(L2Cost()))
+    transient_score = (
+        CostTransientScore(L2Cost()) if transient_score is None else transient_score
     )
+    tags = transient_score.__sklearn_tags__().interval_scorer_tags
+    if tags.penalised:
+        return transient_score
+    return PenalisedScore(transient_score, penalty_scale=penalty_scale)
 
 
 class CircularBinarySegmentation(BaseChangeDetector):
@@ -229,17 +234,25 @@ class CircularBinarySegmentation(BaseChangeDetector):
     Parameters
     ----------
     transient_score : BaseIntervalScorer or None, default=None
-        A penalised transient score to use in the algorithm. Must be an instance
-        of ``BaseIntervalScorer`` with ``interval_scorer_tags.penalised=True``
-        and ``interval_scorer_tags.score_type='transient_score'``. If ``None``,
-        defaults to ``PenalisedScore(CostTransientScore(L2Cost()))``.
+        Transient score to use in the algorithm. Must be an instance of
+        ``BaseIntervalScorer`` with ``score_type="transient_score"``. If the
+        scorer is unpenalised it is automatically wrapped in
+        :class:`PenalisedScore`. If ``None``, defaults to
+        ``PenalisedScore(CostTransientScore(L2Cost()))``.
 
-        Use :class:`PenalisedScore` to wrap any unpenalised transient score:
+        Wrap with :class:`PenalisedScore` explicitly to set a custom
+        ``penalty``, e.g.:
 
-        * ``PenalisedScore(CostTransientScore(L2Cost()))`` -- L2 cost-based
-          transient score with default BIC penalty.
-        * ``PenalisedScore(CostTransientScore(GaussianCost()), penalty=10.0)`` --
-          Gaussian cost-based transient score with fixed penalty.
+        * ``CostTransientScore(L2Cost())`` -- auto-wrapped with default BIC
+          penalty
+        * ``PenalisedScore(CostTransientScore(GaussianCost()), penalty=10.0)``
+          -- Gaussian cost-based transient score with fixed penalty
+    penalty_scale : float, default=1.0
+        Multiplicative factor on the default penalty of the auto-constructed
+        :class:`PenalisedScore` wrapper. Applies only when ``transient_score``
+        is ``None`` or an unpenalised scorer. Silently ignored when
+        ``transient_score`` is already a penalised scorer; in that case the
+        user-provided scorer owns its penalty.
     min_subinterval_length : int, default=5
         Minimum length of an inner (anomalous) segment. The total length of the
         surrounding (left + right) baseline must also be at least this value.
@@ -298,6 +311,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
 
     _parameter_constraints = {
         "transient_score": [HasMethods(["fit", "evaluate"]), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_subinterval_length": [Interval(Integral, 1, None, closed="left")],
         "max_interval_length": [Interval(Integral, 2, None, closed="left"), None],
         "growth_factor": [Interval(Real, 1.0, 2.0, closed="right")],
@@ -306,11 +320,13 @@ class CircularBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         transient_score: BaseIntervalScorer | None = None,
+        penalty_scale: float = 1.0,
         min_subinterval_length: int = 5,
         max_interval_length: int | None = None,
         growth_factor: float = 1.5,
     ):
         self.transient_score = transient_score
+        self.penalty_scale = penalty_scale
         self.min_subinterval_length = min_subinterval_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
@@ -343,10 +359,10 @@ class CircularBinarySegmentation(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        scorer = _resolve_transient_score(self.transient_score)
+        scorer = _resolve_transient_score(self.transient_score, self.penalty_scale)
         check_interval_scorer(
             scorer,
-            ensure_penalised=True,
+            ensure_score_type=["transient_score"],
             caller_name=self.__class__.__name__,
             arg_name="transient_score",
         )

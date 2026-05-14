@@ -81,23 +81,6 @@ def test_default_min_size_is_one():
 
 
 # ---------------------------------------------------------------------------
-# Default get_default_penalty()
-# ---------------------------------------------------------------------------
-
-
-def test_get_default_penalty_requires_fitted():
-    with pytest.raises(Exception):
-        _StubScorer().get_default_penalty()
-
-
-def test_get_default_penalty_positive_after_fit():
-    scorer = _StubScorer().fit(_X)
-    penalty = scorer.get_default_penalty()
-    assert isinstance(penalty, (int, float, np.ndarray))
-    assert np.all(penalty > 0)
-
-
-# ---------------------------------------------------------------------------
 # Default __sklearn_tags__()
 # ---------------------------------------------------------------------------
 

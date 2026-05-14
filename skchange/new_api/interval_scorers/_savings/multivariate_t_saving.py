@@ -375,4 +375,4 @@ class MultivariateTSaving(BaseSaving):
         check_is_fitted(self)
         p = self.n_features_in_
         n_params = p + p * (p + 1) // 2
-        return 1.5 * chi2_penalty(self.n_samples_in_, n_params)
+        return chi2_penalty(self.n_samples_in_, n_params)

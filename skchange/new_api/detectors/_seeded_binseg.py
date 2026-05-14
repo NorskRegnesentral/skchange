@@ -21,7 +21,10 @@ from skchange.new_api.utils._param_validation import (
     StrOptions,
     _fit_context,
 )
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    validate_data,
+)
 from skchange.utils.numba import njit
 
 
@@ -187,13 +190,18 @@ def _run_seeded_binseg(
 
 def _resolve_change_score(
     change_score: BaseIntervalScorer | None,
+    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return change_score or the default PenalisedScore(CUSUM()).
+    """Return a penalised change score, auto-wrapping if needed.
 
-    Needed since default resolution needs to be done in both fit and __sklearn_tags__
-    to ensure correct input tags are propagated.
+    Needed since default resolution must be done in both fit and
+    ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    return change_score if change_score is not None else PenalisedScore(CUSUM())
+    change_score = CUSUM() if change_score is None else change_score
+    tags = change_score.__sklearn_tags__().interval_scorer_tags
+    if tags.penalised:
+        return change_score
+    return PenalisedScore(change_score, penalty_scale=penalty_scale)
 
 
 class SeededBinarySegmentation(BaseChangeDetector):
@@ -209,15 +217,24 @@ class SeededBinarySegmentation(BaseChangeDetector):
     Parameters
     ----------
     change_score : BaseIntervalScorer or None, default=None
-        A penalised change score to use in the algorithm. Must be an instance of
-        ``BaseIntervalScorer`` with ``interval_scorer_tags.penalised=True``. If
-        ``None``, defaults to ``PenalisedScore(CUSUM())``.
+        Change score to use in the algorithm. Must be an instance of
+        ``BaseIntervalScorer`` with ``score_type="change_score"``. If the
+        scorer is unpenalised (most commonly) it is automatically wrapped in
+        :class:`PenalisedScore`. If ``None``, defaults to
+        ``PenalisedScore(CUSUM())``.
 
-        Use :class:`PenalisedScore` to wrap any unpenalised change score or cost:
+        Wrap with :class:`PenalisedScore` explicitly to set a custom
+        ``penalty``, e.g.:
 
-        * ``PenalisedScore(CUSUM())`` -- CUSUM with default BIC penalty
-        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change score
-         based on L2 cost with fixed penalty
+        * ``CUSUM()`` -- auto-wrapped with default BIC penalty
+        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change
+          score based on L2 cost with fixed penalty
+    penalty_scale : float, default=1.0
+        Multiplicative factor on the default penalty of the auto-constructed
+        :class:`PenalisedScore` wrapper. Applies only when ``change_score`` is
+        ``None`` or an unpenalised scorer. Silently
+        ignored when ``change_score`` is already a penalised scorer; in that
+        case the user-provided scorer owns its penalty.
     min_subinterval_length : int, default=5
         Minimum length of a subinterval on each side of a candidate split point
         within each evaluated interval. The effective minimum used is
@@ -253,7 +270,12 @@ class SeededBinarySegmentation(BaseChangeDetector):
     Attributes
     ----------
     change_score_ : BaseIntervalScorer
-        Fitted penalised change score.
+        Fitted penalised change score actually used during detection. When
+        ``change_score`` was unpenalised (or ``None``), this is a fitted
+        :class:`PenalisedScore` wrapping the user-provided scorer, with
+        ``penalty_scale`` set from the detector.
+        When ``change_score`` was already penalised, this is the fitted
+        user-provided scorer unchanged.
     min_subinterval_length_ : int
         Effective minimum split size used.
     max_interval_length_ : int
@@ -282,7 +304,8 @@ class SeededBinarySegmentation(BaseChangeDetector):
     """
 
     _parameter_constraints = {
-        "change_score": [HasMethods(["fit", "evaluate"]), None],
+        "change_score": [HasMethods(["fit", "precompute", "evaluate"]), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_subinterval_length": [Interval(Integral, 1, None, closed="left")],
         "max_interval_length": [Interval(Integral, 2, None, closed="left"), None],
         "growth_factor": [Interval(Real, 1.0, 2.0, closed="right")],
@@ -292,12 +315,14 @@ class SeededBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         change_score: BaseIntervalScorer | None = None,
+        penalty_scale: float = 1.0,
         min_subinterval_length: int = 5,
         max_interval_length: int | None = None,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
     ):
         self.change_score = change_score
+        self.penalty_scale = penalty_scale
         self.min_subinterval_length = min_subinterval_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
@@ -331,10 +356,10 @@ class SeededBinarySegmentation(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        scorer = _resolve_change_score(self.change_score)
+        scorer = _resolve_change_score(self.change_score, self.penalty_scale)
         check_interval_scorer(
             scorer,
-            ensure_penalised=True,
+            ensure_score_type=["change_score"],
             caller_name=self.__class__.__name__,
             arg_name="change_score",
         )
@@ -343,7 +368,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
         self.min_subinterval_length_ = max(
             self.min_subinterval_length, self.change_score_.min_size
         )
-
         if self.n_samples_in_ < 2 * self.min_subinterval_length_:
             raise ValueError(
                 f"`SeededBinarySegmentation` requires at least "

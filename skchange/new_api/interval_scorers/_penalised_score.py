@@ -244,5 +244,4 @@ class PenalisedScore(BaseIntervalScorer):
         tags.interval_scorer_tags.linear_trend_segment = (
             scorer_tags.interval_scorer_tags.linear_trend_segment
         )
-        tags.interval_scorer_tags.penalty_scalable = True
         return tags

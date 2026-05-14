@@ -560,9 +560,16 @@ class PELT(BaseChangeDetector):
         Penalty incurred for each added changepoint. Must be non-negative.
         If ``None``, defaults to ``cost_.get_default_penalty()`` after fitting
         (BIC-based penalty).
+    penalty_scale : float, default=1.0
+        Multiplicative factor applied to the default penalty when ``penalty``
+        is ``None``. Useful for tuning sensitivity by sweeping a multiplier
+        on top of a reasonable default (e.g. CROPS). Must be positive.
+        Silently ignored when ``penalty`` is explicitly provided.
     min_segment_length : int or None, default=None
         Minimum number of samples in a segment. Must be at least ``cost.min_size``.
-        If ``None``, defaults to ``cost.min_size`` after fitting.
+        If ``None``, defaults to ``2 * cost.min_size`` after fitting. The 2x
+        factor provides a finite-sample safety floor that prevents spurious
+        short segments from scale-estimating costs (e.g. Gaussian, Laplace).
     step_size : int, default=1
         Only indices that are multiples of ``step_size`` from the start are
         considered as potential changepoints. Implicitly ensures that
@@ -616,6 +623,7 @@ class PELT(BaseChangeDetector):
     _parameter_constraints = {
         "cost": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": [Interval(Real, 0, None, closed="left"), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_segment_length": [Interval(Integral, 1, None, closed="left"), None],
         "step_size": [Interval(Integral, 1, None, closed="left")],
         "split_cost": [Interval(Real, 0, None, closed="left")],
@@ -627,6 +635,7 @@ class PELT(BaseChangeDetector):
         self,
         cost: BaseCost | None = None,
         penalty: float | None = None,
+        penalty_scale: float = 1.0,
         min_segment_length: int | None = None,
         step_size: int = 1,
         split_cost: float = 0.0,
@@ -635,6 +644,7 @@ class PELT(BaseChangeDetector):
     ):
         self.cost = cost
         self.penalty = penalty
+        self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
         self.step_size = step_size
         self.split_cost = split_cost
@@ -680,7 +690,7 @@ class PELT(BaseChangeDetector):
         self.cost_ = clone(cost).fit(X, y)
 
         min_segment_length = (
-            self.cost_.min_size
+            2 * self.cost_.min_size
             if self.min_segment_length is None
             else self.min_segment_length
         )
@@ -697,7 +707,9 @@ class PELT(BaseChangeDetector):
         self.min_segment_length_ = min_segment_length
 
         self.penalty_ = (
-            self.cost_.get_default_penalty() if self.penalty is None else self.penalty
+            self.cost_.get_default_penalty() * self.penalty_scale
+            if self.penalty is None
+            else self.penalty
         )
 
         return self

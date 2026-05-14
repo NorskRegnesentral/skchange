@@ -125,6 +125,4 @@ class L2Cost(BaseCost):
         from skchange.new_api.penalties import bic_penalty
 
         check_is_fitted(self)
-        # Scaling BIC penalty by 2.0 to avoid false detections in seeded binary
-        # segmentation.
-        return 2.0 * bic_penalty(self.n_samples_in_, self.n_features_in_)
+        return bic_penalty(self.n_samples_in_, self.n_features_in_)

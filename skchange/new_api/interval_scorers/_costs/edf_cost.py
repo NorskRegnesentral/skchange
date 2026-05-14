@@ -271,6 +271,4 @@ class EDFCost(BaseCost):
             Default penalty value.
         """
         check_is_fitted(self)
-        return 1.5 * bic_penalty(
-            self.n_samples_in_, self.n_quantiles_ * self.n_features_in_
-        )
+        return bic_penalty(self.n_samples_in_, self.n_quantiles_ * self.n_features_in_)

@@ -68,11 +68,6 @@ class IntervalScorerTags:
         Whether the scorer is designed for data where each segment follows a
         linear trend. When ``True``, test fixtures will generate piecewise linear
         data with a kink at the changepoint rather than a mean shift.
-    penalty_scalable : bool, default=False
-        Whether the scorer accepts a ``penalty_scale`` constructor parameter
-        that multiplicatively scales its effective penalty. Used by detectors
-        to compose their own multiplicity-correction scale on top of the
-        scorer's via ``set_params``.
     """
 
     score_type: str | None = None
@@ -80,7 +75,6 @@ class IntervalScorerTags:
     penalised: bool = False
     non_negative_scores: bool = True
     linear_trend_segment: bool = False
-    penalty_scalable: bool = False
 
 
 @dataclass
