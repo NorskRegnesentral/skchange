@@ -498,6 +498,14 @@ class CROPS(BaseChangeDetector):
         )
         self.cost_ = clone(cost).fit(X, y)
 
+        min_required = 2 * self.cost_.min_size
+        if self.n_samples_in_ < min_required:
+            raise ValueError(
+                f"`CROPS` requires at least 2 * cost.min_size "
+                f"(={min_required}) samples to fit, got "
+                f"n_samples={self.n_samples_in_}."
+            )
+
         default_penalty = float(np.sum(self.cost_.get_default_penalty()))
         self.min_penalty_ = (
             0.5 * default_penalty if self.min_penalty is None else self.min_penalty
