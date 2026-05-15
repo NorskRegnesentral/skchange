@@ -191,7 +191,11 @@ def test_elbow_selection_with_short_path_warns():
 def test_prune_false_matches_prune_true():
     """Disabling pruning yields the same optimal changepoints."""
     X = _make_data()
-    cps_pruned = CROPS(min_penalty=0.5, max_penalty=200.0, prune=True).fit_predict(X)
+    cps_pruned = (
+        CROPS(min_penalty=0.5, max_penalty=200.0, prune=True)
+        .fit(X)
+        .predict_changepoints(X)
+    )
     cps_unpruned = (
         CROPS(min_penalty=0.5, max_penalty=200.0, prune=False)
         .fit(X)
