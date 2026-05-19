@@ -22,7 +22,7 @@ from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving imp
     _multivariate_gaussian_cost_fixed,
 )
 from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import log_gamma, njit, prange
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags

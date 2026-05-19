@@ -12,7 +12,7 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
     _multivariate_gaussian_cost_mle,
 )
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import (
     col_median,
     digamma,

@@ -10,7 +10,7 @@ from sklearn.utils.validation import check_array
 from sklearn.utils.validation import check_is_fitted as _sklearn_check_is_fitted
 from sklearn.utils.validation import validate_data as _sklearn_validate_data
 
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 
 if TYPE_CHECKING:
     from skchange.new_api.interval_scorers._base import BaseIntervalScorer

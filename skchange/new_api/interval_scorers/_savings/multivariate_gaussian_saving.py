@@ -15,7 +15,7 @@ from skchange.new_api.interval_scorers._savings._utils import (
     resolve_baseline_location_and_scatter,
 )
 from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils._tags import SkchangeTags

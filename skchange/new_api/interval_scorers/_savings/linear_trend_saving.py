@@ -17,7 +17,7 @@ from skchange.new_api.interval_scorers._costs.linear_trend_cost import (
     fit_indexed_linear_trend,
 )
 from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data

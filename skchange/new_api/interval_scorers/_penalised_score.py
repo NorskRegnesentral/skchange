@@ -5,7 +5,7 @@ from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (

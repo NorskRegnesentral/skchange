@@ -10,7 +10,7 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
     _multivariate_gaussian_cost_mle,
 )
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs

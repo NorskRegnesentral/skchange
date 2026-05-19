@@ -16,7 +16,7 @@ from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
     L2TransientScore,
 )
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (

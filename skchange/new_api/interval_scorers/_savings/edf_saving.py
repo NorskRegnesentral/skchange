@@ -11,7 +11,7 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.interval_scorers._costs.edf_cost import _cumulative_edf
 from skchange.new_api.penalties import mvcapa_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import compute_finite_difference_derivatives, njit
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data

@@ -12,7 +12,7 @@ from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._numba import njit, where
 from skchange.new_api.utils._param_validation import (
