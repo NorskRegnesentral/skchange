@@ -13,14 +13,12 @@ from skchange.new_api.interval_scorers._savings._utils import (
 )
 from skchange.new_api.penalties import mvcapa_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._numba import col_cumsum, njit, truncate_below
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import (
     check_interval_specs,
     validate_data,
 )
-from skchange.utils.numba import njit
-from skchange.utils.numba.general import truncate_below
-from skchange.utils.numba.stats import col_cumsum
 
 
 @njit

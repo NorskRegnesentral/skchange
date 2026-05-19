@@ -13,17 +13,18 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
 )
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._param_validation import Interval, _fit_context
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
-from skchange.utils.numba import njit, prange
-from skchange.utils.numba.stats import (
+from skchange.new_api.utils._numba import (
     col_median,
     digamma,
     kurtosis,
     log_gamma,
+    njit,
+    prange,
     trigamma,
 )
+from skchange.new_api.utils._param_validation import Interval, _fit_context
+from skchange.new_api.utils._tags import SkchangeTags
+from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
 @njit
@@ -724,7 +725,7 @@ class MultivariateTCost(BaseCost):
         if self.fixed_dof is None:
             refine_threshold = self.refine_dof_threshold
             if refine_threshold is None:
-                from skchange.utils.numba import numba_available
+                from skchange.new_api.utils._numba import numba_available
 
                 refine_threshold = 1000 if numba_available else 100
 

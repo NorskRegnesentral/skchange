@@ -23,11 +23,10 @@ from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving imp
 )
 from skchange.new_api.penalties import chi2_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._numba import log_gamma, njit, prange
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
-from skchange.utils.numba import njit, prange
-from skchange.utils.numba.stats import log_gamma
 
 
 @njit
@@ -252,7 +251,7 @@ class MultivariateTSaving(BaseSaving):
         if self.fixed_dof is None:
             refine_threshold = self.refine_dof_threshold
             if refine_threshold is None:
-                from skchange.utils.numba import numba_available
+                from skchange.new_api.utils._numba import numba_available
 
                 refine_threshold = 1000 if numba_available else 100
             self.dof_ = float(

@@ -18,6 +18,7 @@ from skchange.new_api.interval_scorers._transient_scores.l2_transient_score impo
 )
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -27,7 +28,6 @@ from skchange.new_api.utils.validation import (
     check_interval_scorer,
     validate_data,
 )
-from skchange.utils.numba import njit
 
 
 @njit

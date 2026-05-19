@@ -8,10 +8,9 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
+from skchange.new_api.utils._numba import log_det_covariance, njit
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import log_det_covariance
 
 
 @njit
