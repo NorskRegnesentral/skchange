@@ -23,7 +23,7 @@ from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def linear_trend_saving_index(
     starts: np.ndarray,
     ends: np.ndarray,

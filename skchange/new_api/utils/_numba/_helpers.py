@@ -11,7 +11,7 @@ import numpy as np
 from skchange.new_api.utils._numba import njit, prange
 
 
-@njit
+@njit(cache=True)
 def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     """Repeat each column of a 2D array n times.
 
@@ -30,7 +30,7 @@ def col_repeat(x: np.ndarray, n: int) -> np.ndarray:
     return expanded_x
 
 
-@njit
+@njit(cache=True)
 def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     """Repeat each row of a 2D array n times.
 
@@ -49,7 +49,7 @@ def row_repeat(x: np.ndarray, n: int) -> np.ndarray:
     return expanded_x
 
 
-@njit
+@njit(cache=True)
 def where(indicator: np.ndarray) -> list:
     """Identify consecutive intervals of True values in the input array.
 
@@ -78,7 +78,7 @@ def where(indicator: np.ndarray) -> list:
     return intervals
 
 
-@njit
+@njit(cache=True)
 def truncate_below(x: np.ndarray, lower_bound: float) -> np.ndarray:
     """Truncate values below a lower bound.
 
@@ -104,7 +104,7 @@ def truncate_below(x: np.ndarray, lower_bound: float) -> np.ndarray:
     return x
 
 
-@njit
+@njit(cache=True)
 def compute_finite_difference_derivatives(ts: np.ndarray, ys: np.ndarray) -> np.ndarray:
     """Compute second-order finite difference derivatives.
 
@@ -159,7 +159,7 @@ def compute_finite_difference_derivatives(ts: np.ndarray, ys: np.ndarray) -> np.
     return derivatives
 
 
-@njit
+@njit(cache=True)
 def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
     """Calculate the cumulative sum of each column in a 2D array.
 
@@ -191,7 +191,7 @@ def col_cumsum(x: np.ndarray, init_zero: bool = False) -> np.ndarray:
     return sums
 
 
-@njit
+@njit(cache=True)
 def col_median(x: np.ndarray, output_array: np.ndarray | None = None) -> np.ndarray:
     """Calculate the median of each column in a 2D array.
 
@@ -218,7 +218,7 @@ def col_median(x: np.ndarray, output_array: np.ndarray | None = None) -> np.ndar
     return output_array
 
 
-@njit
+@njit(cache=True)
 def log_det_covariance(X: np.ndarray) -> float:
     """Compute log determinant of the covariance matrix of a data matrix.
 
@@ -244,7 +244,7 @@ def log_det_covariance(X: np.ndarray) -> float:
         return log_abs_det
 
 
-@njit
+@njit(cache=True)
 def log_gamma(x: float) -> float:
     """Compute the log of the gamma function.
 
@@ -280,7 +280,7 @@ def log_gamma(x: float) -> float:
     return log_gamma
 
 
-@njit
+@njit(cache=True)
 def digamma(x: float) -> float:
     """Approximate the digamma function.
 
@@ -317,7 +317,7 @@ def digamma(x: float) -> float:
     return result
 
 
-@njit
+@njit(cache=True)
 def trigamma(x: float) -> float:
     """Approximate the trigamma function on the real positive domain.
 
@@ -359,7 +359,7 @@ def trigamma(x: float) -> float:
     return result
 
 
-@njit
+@njit(cache=True)
 def kurtosis(centered_samples: np.ndarray, fisher=True) -> float:
     """Compute the kurtosis of a set of samples.
 

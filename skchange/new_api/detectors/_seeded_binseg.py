@@ -28,7 +28,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def make_seeded_intervals(
     n: int, min_length: int, max_length: int, growth_factor: float = 1.5
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -54,7 +54,7 @@ def make_seeded_intervals(
     return np.array(starts[1:]), np.array(ends[1:])
 
 
-@njit
+@njit(cache=True)
 def greedy_selection(
     max_scores: np.ndarray,
     argmax_scores: np.ndarray,
@@ -73,7 +73,7 @@ def greedy_selection(
     return cpts
 
 
-@njit
+@njit(cache=True)
 def narrowest_selection(
     max_scores: np.ndarray,
     argmax_scores: np.ndarray,

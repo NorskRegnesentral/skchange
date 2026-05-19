@@ -12,7 +12,7 @@ from skchange.new_api.utils._numba import col_median, njit
 from skchange.new_api.utils.validation import check_interval_specs
 
 
-@njit
+@njit(cache=True)
 def l1_cost(
     starts: np.ndarray,
     ends: np.ndarray,

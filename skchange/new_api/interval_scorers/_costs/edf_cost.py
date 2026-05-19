@@ -45,7 +45,7 @@ def _edf_quantile_points(
     return quantile_points, quantile_values
 
 
-@njit
+@njit(cache=True)
 def _cumulative_edf(xs: np.ndarray, quantile_points: np.ndarray) -> np.ndarray:
     """Build a cumulative EDF evaluated at fixed quantile points.
 
@@ -66,7 +66,7 @@ def _cumulative_edf(xs: np.ndarray, quantile_points: np.ndarray) -> np.ndarray:
     return col_cumsum(lte_mask, init_zero=True)
 
 
-@njit(fastmath=True)
+@njit(cache=True, fastmath=True)
 def _edf_mle_cost(
     cumulative_edf: np.ndarray,
     starts: np.ndarray,

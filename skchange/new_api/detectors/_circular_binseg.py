@@ -30,7 +30,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def make_inner_intervals(
     interval_start: int, interval_end: int, min_subinterval_length: int = 1
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -61,7 +61,7 @@ def make_inner_intervals(
     return np.array(starts, dtype=np.int64), np.array(ends, dtype=np.int64)
 
 
-@njit
+@njit(cache=True)
 def greedy_anomaly_selection(
     penalised_scores: np.ndarray,
     anomaly_starts: np.ndarray,

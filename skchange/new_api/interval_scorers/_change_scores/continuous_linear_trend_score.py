@@ -20,7 +20,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def _lin_reg_cont_piecewise_linear_trend_score(
     starts: np.ndarray,
     splits: np.ndarray,
@@ -97,7 +97,7 @@ def _lin_reg_cont_piecewise_linear_trend_score(
     return scores
 
 
-@njit
+@njit(cache=True)
 def _continuous_piecewise_linear_trend_squared_contrast(
     signal: np.ndarray,
     first_interval_inclusive_start: int,
@@ -171,7 +171,7 @@ def _continuous_piecewise_linear_trend_squared_contrast(
     return np.square(contrast)
 
 
-@njit
+@njit(cache=True)
 def _analytical_cont_piecewise_linear_trend_score(
     starts: np.ndarray,
     splits: np.ndarray,

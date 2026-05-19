@@ -17,7 +17,7 @@ from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def _edf_fixed_cdf_weights(
     fixed_quantiles: np.ndarray,
     quantile_points: np.ndarray,
@@ -45,7 +45,7 @@ def _edf_fixed_cdf_weights(
     return reciprocal_weights * derivatives
 
 
-@njit
+@njit(cache=True)
 def _edf_kl_saving(
     cumulative_edf: np.ndarray,
     starts: np.ndarray,

@@ -21,7 +21,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def gaussian_saving(
     starts: np.ndarray,
     ends: np.ndarray,

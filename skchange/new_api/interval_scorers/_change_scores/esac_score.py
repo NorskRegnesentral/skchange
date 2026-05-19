@@ -17,7 +17,7 @@ from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def _transform_esac(
     cusum_scores: np.ndarray,
     coordinate_thresholds: np.ndarray,

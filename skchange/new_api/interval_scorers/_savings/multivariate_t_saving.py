@@ -29,7 +29,7 @@ from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def _fixed_param_multivariate_t_log_likelihood(
     centered_samples: np.ndarray,
     dof: float,
@@ -54,7 +54,7 @@ def _fixed_param_multivariate_t_log_likelihood(
     return normalization_contribution + sample_contributions.sum()
 
 
-@njit(parallel=True)
+@njit(cache=True, parallel=True)
 def _multivariate_t_cost_fixed_params(
     starts: np.ndarray,
     ends: np.ndarray,

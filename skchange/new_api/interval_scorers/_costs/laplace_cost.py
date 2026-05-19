@@ -12,7 +12,7 @@ from skchange.new_api.utils._numba import col_median, njit, truncate_below
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def laplace_cost(
     starts: np.ndarray,
     ends: np.ndarray,

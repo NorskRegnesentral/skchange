@@ -78,7 +78,7 @@ class PELTResult:
         )
 
 
-@njit
+@njit(cache=True)
 def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
     changepoints = []
     i = len(prev_cpts) - 1

@@ -25,7 +25,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def fit_linear_trend(time_steps: np.ndarray, values: np.ndarray) -> tuple[float, float]:
     """Calculate the optimal linear trend for a given array.
 
@@ -57,7 +57,7 @@ def fit_linear_trend(time_steps: np.ndarray, values: np.ndarray) -> tuple[float,
     return slope, intercept
 
 
-@njit
+@njit(cache=True)
 def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
     """Calculate the optimal linear trend for a given array.
 
@@ -96,7 +96,7 @@ def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
     return slope, intercept
 
 
-@njit
+@njit(cache=True)
 def linear_trend_cost_mle(
     starts: np.ndarray, ends: np.ndarray, X: np.ndarray, times: np.ndarray
 ) -> np.ndarray:
@@ -138,7 +138,7 @@ def linear_trend_cost_mle(
     return costs
 
 
-@njit
+@njit(cache=True)
 def linear_trend_cost_index_times_mle(
     starts: np.ndarray, ends: np.ndarray, X: np.ndarray
 ) -> np.ndarray:

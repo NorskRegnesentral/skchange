@@ -18,7 +18,7 @@ from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def laplace_saving(
     starts: np.ndarray,
     ends: np.ndarray,

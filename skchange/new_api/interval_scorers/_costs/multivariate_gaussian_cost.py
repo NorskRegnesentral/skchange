@@ -13,7 +13,7 @@ from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def _multivariate_gaussian_cost_mle(
     starts: np.ndarray,
     ends: np.ndarray,

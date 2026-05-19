@@ -16,7 +16,7 @@ from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs
 
 
-@njit
+@njit(cache=True)
 def _half_integer_digamma(twice_n: int) -> float:
     """Calculate the digamma function for half-integer values ``twice_n / 2``.
 
@@ -48,7 +48,7 @@ def _half_integer_digamma(twice_n: int) -> float:
     return res
 
 
-@njit
+@njit(cache=True)
 def _likelihood_ratio_expected_value(
     sequence_length: int, cut_point: int, dimension: int
 ) -> float:
@@ -95,7 +95,7 @@ def _likelihood_ratio_expected_value(
     return g_k_n
 
 
-@njit
+@njit(cache=True)
 def _compute_bartlett_corrections(
     sequence_lengths: np.ndarray, cut_points: np.ndarray, dimension: int
 ) -> np.ndarray:

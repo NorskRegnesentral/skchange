@@ -20,13 +20,13 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def _penalise_scores_constant(scores: np.ndarray, penalty: float) -> np.ndarray:
     """Penalise scores with a constant penalty."""
     return scores.sum(axis=1) - penalty
 
 
-@njit
+@njit(cache=True)
 def _penalise_scores_linear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
@@ -39,7 +39,7 @@ def _penalise_scores_linear(
     return penalised_scores_matrix.sum(axis=1)
 
 
-@njit
+@njit(cache=True)
 def _penalise_scores_nonlinear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:

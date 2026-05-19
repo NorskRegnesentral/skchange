@@ -27,7 +27,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def make_extended_moving_window_cuts(
     n_samples: int,
     bandwidth: int,
@@ -87,7 +87,7 @@ def transform_multiple_moving_window(
     return scores
 
 
-@njit
+@njit(cache=True)
 def get_candidate_changepoints(
     scores: np.ndarray,
 ) -> tuple[list[int], list[tuple[int, int]]]:
@@ -99,7 +99,7 @@ def get_candidate_changepoints(
     return changepoints, detection_intervals
 
 
-@njit
+@njit(cache=True)
 def select_changepoints_by_detection_length(
     scores: np.ndarray, min_detection_interval: int
 ) -> np.ndarray:
@@ -113,7 +113,7 @@ def select_changepoints_by_detection_length(
     return np.array(cpts)
 
 
-@njit
+@njit(cache=True)
 def select_changepoints_by_local_optimum(
     scores: np.ndarray, selection_bandwidth: int
 ) -> np.ndarray:
@@ -134,7 +134,7 @@ def select_changepoints_by_local_optimum(
     return np.array(cpts)
 
 
-@njit
+@njit(cache=True)
 def select_changepoints_by_bottom_up(
     scores: np.ndarray, bandwidths: np.ndarray, local_optimum_fraction: float
 ) -> np.ndarray:

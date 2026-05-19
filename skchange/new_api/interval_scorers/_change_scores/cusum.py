@@ -12,7 +12,7 @@ from skchange.new_api.utils._numba import col_cumsum, njit
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def cusum_score(
     starts: np.ndarray,
     splits: np.ndarray,

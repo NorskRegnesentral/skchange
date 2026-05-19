@@ -14,7 +14,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def l2_cost(
     starts: np.ndarray,
     ends: np.ndarray,

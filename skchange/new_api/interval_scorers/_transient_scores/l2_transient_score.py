@@ -16,7 +16,7 @@ from skchange.new_api.utils.validation import (
 )
 
 
-@njit
+@njit(cache=True)
 def l2_transient_score(
     outer_starts: np.ndarray,
     inner_starts: np.ndarray,
