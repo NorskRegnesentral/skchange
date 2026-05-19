@@ -2,7 +2,7 @@
 
 __author__ = ["Tveten"]
 
-from numbers import Integral
+from numbers import Integral, Real
 
 import numpy as np
 from sklearn.base import clone
@@ -17,7 +17,10 @@ from skchange.new_api.penalties import linear_chi2_penalty
 from skchange.new_api.typing import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    validate_data,
+)
 
 
 def _run_capa(
@@ -208,33 +211,49 @@ def _get_changed_features(
     return changed
 
 
-def _resolve_segment_saving(saving: BaseIntervalScorer | None) -> BaseIntervalScorer:
-    """Return saving or the default PenalisedScore(L2Saving()).
+def _resolve_segment_saving(
+    saving: BaseIntervalScorer | None,
+    penalty_scale: float = 1.0,
+) -> BaseIntervalScorer:
+    """Return a penalised segment saving, auto-wrapping if needed.
 
     Used in both fit() and __sklearn_tags__() so that input tags are propagated
     consistently whether or not a saving is explicitly provided.
     """
-    return saving if saving is not None else PenalisedScore(L2Saving())
+    saving = L2Saving() if saving is None else saving
+    tags = saving.__sklearn_tags__().interval_scorer_tags
+    if tags.penalised:
+        return saving
+    return PenalisedScore(saving, penalty_scale=penalty_scale)
 
 
 def _resolve_point_saving(
     point_saving: BaseIntervalScorer | None,
     segment_saving_: BaseIntervalScorer,
+    penalty_scale: float,
 ) -> BaseIntervalScorer:
-    """Return a point saving or a default based on the fitted segment saving."""
-    if point_saving is not None:
+    """Return a penalised point saving, auto-wrapping if needed.
+
+    When ``point_saving`` is ``None``, the default uses ``linear_chi2_penalty``
+    scaled by ``penalty_scale``. When ``point_saving`` is unpenalised, it is
+    auto-wrapped in :class:`PenalisedScore` with the given ``penalty_scale``.
+    When ``point_saving`` is already penalised, ``penalty_scale`` is ignored.
+    """
+    if point_saving is None:
+        n_samples = segment_saving_.n_samples_in_
+        n_features = segment_saving_.n_features_in_
+        point_penalty = linear_chi2_penalty(n_samples, n_features) * penalty_scale
+        if segment_saving_.min_size == 1:
+            point_saving = clone(segment_saving_)
+            point_saving.set_params(penalty=point_penalty)
+        else:
+            point_saving = PenalisedScore(L1Saving(), penalty=point_penalty)
         return point_saving
 
-    n_samples = segment_saving_.n_samples_in_
-    n_features = segment_saving_.n_features_in_
-    point_penalty = 2 * linear_chi2_penalty(n_samples, n_features)
-    if segment_saving_.min_size == 1:
-        point_saving = clone(segment_saving_)
-        point_saving.set_params(penalty=point_penalty)
-    else:
-        point_saving = PenalisedScore(L1Saving(), penalty=point_penalty)
-
-    return point_saving
+    tags = point_saving.__sklearn_tags__().interval_scorer_tags
+    if tags.penalised:
+        return point_saving
+    return PenalisedScore(point_saving, penalty_scale=penalty_scale)
 
 
 class CAPA(BaseChangeDetector):
@@ -252,19 +271,39 @@ class CAPA(BaseChangeDetector):
     Parameters
     ----------
     segment_saving : BaseIntervalScorer or None, default=None
-        Penalised saving for segment anomaly detection.
-        Must have ``interval_scorer_tags.penalised = True``.
+        Saving for segment anomaly detection. Must be an instance of
+        ``BaseIntervalScorer`` with ``score_type="saving"``. If the scorer is
+        unpenalised it is automatically wrapped in :class:`PenalisedScore`.
         If ``None``, defaults to ``PenalisedScore(L2Saving())``.
     point_saving : BaseIntervalScorer or None, default=None
-        Penalised saving for point anomaly detection.
-        Must have ``interval_scorer_tags.penalised = True`` and ``min_size == 1``.
-        If ``None``, defaults to a clone of `segment_saving` with penalty array
-        given by ``linear_chi2_penalty``.
+        Saving for point anomaly detection. Must be an instance of
+        ``BaseIntervalScorer`` with ``score_type="saving"`` and
+        ``min_size == 1``. If the scorer is unpenalised it is automatically
+        wrapped in :class:`PenalisedScore`. If ``None``, defaults to a clone
+        of ``segment_saving`` with penalty array given by
+        ``linear_chi2_penalty`` (or ``PenalisedScore(L1Saving(), ...)`` if
+        ``segment_saving.min_size > 1``).
+    segment_penalty_scale : float, default=1.0
+        Multiplicative factor on the default penalty of the auto-constructed
+        :class:`PenalisedScore` wrapping ``segment_saving``. Applies only when
+        ``segment_saving`` is ``None`` or an unpenalised scorer. Silently
+        ignored when ``segment_saving`` is already penalised; in that case
+        the user-provided scorer owns its penalty.
+    point_penalty_scale : float, default=2.0
+        Multiplicative factor on the default penalty of the auto-constructed
+        :class:`PenalisedScore` wrapping ``point_saving``. Applies only when
+        ``point_saving`` is ``None`` or an unpenalised scorer. Silently
+        ignored when ``point_saving`` is already penalised; in that case the
+        user-provided scorer owns its penalty. The default of ``2.0``
+        reflects the standard CAPA convention of doubling the linear chi-2
+        point penalty relative to its baseline scale.
     min_segment_length : int or None, default=None
         Minimum number of samples in a segment anomaly. Defaults to
-        ``segment_saving.min_size`` when ``None``. If an integer is given and
-        is less than ``segment_saving.min_size``, a ``ValueError`` is raised
-        during ``fit``.
+        ``2 * segment_saving.min_size`` when ``None``. The 2x factor provides
+        a finite-sample safety floor that prevents spurious short segments
+        from scale-estimating savings (e.g. Gaussian, Laplace). If an integer
+        is given and is less than ``segment_saving.min_size``, a ``ValueError``
+        is raised during ``fit``.
     max_segment_length : int or None, default=None
         Maximum number of samples in a segment anomaly. Defaults to
         ``n_samples // 2`` when ``None``, with a minimum of ``min_segment_length``.
@@ -309,6 +348,8 @@ class CAPA(BaseChangeDetector):
     _parameter_constraints = {
         "segment_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "point_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
+        "segment_penalty_scale": [Interval(Real, 0, None, closed="neither")],
+        "point_penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_segment_length": [Interval(Integral, 2, None, closed="left"), None],
         "max_segment_length": [Interval(Integral, 2, None, closed="left"), None],
         "include_point_anomalies": ["boolean"],
@@ -318,12 +359,16 @@ class CAPA(BaseChangeDetector):
         self,
         segment_saving: BaseIntervalScorer | None = None,
         point_saving: BaseIntervalScorer | None = None,
+        segment_penalty_scale: float = 1.0,
+        point_penalty_scale: float = 2.0,
         min_segment_length: int | None = None,
         max_segment_length: int | None = None,
         include_point_anomalies: bool = False,
     ):
         self.segment_saving = segment_saving
         self.point_saving = point_saving
+        self.segment_penalty_scale = segment_penalty_scale
+        self.point_penalty_scale = point_penalty_scale
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.include_point_anomalies = include_point_anomalies
@@ -356,19 +401,23 @@ class CAPA(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        segment_saving = _resolve_segment_saving(self.segment_saving)
+        segment_saving = _resolve_segment_saving(
+            self.segment_saving, self.segment_penalty_scale
+        )
         check_interval_scorer(
             segment_saving,
-            ensure_penalised=True,
+            ensure_score_type=["saving"],
             caller_name=self.__class__.__name__,
             arg_name="segment_saving",
         )
         self.segment_saving_ = clone(segment_saving).fit(X, y)
 
-        point_saving = _resolve_point_saving(self.point_saving, self.segment_saving_)
+        point_saving = _resolve_point_saving(
+            self.point_saving, self.segment_saving_, self.point_penalty_scale
+        )
         check_interval_scorer(
             point_saving,
-            ensure_penalised=True,
+            ensure_score_type=["saving"],
             caller_name=self.__class__.__name__,
             arg_name="point_saving",
         )
@@ -381,7 +430,7 @@ class CAPA(BaseChangeDetector):
 
         min_size = self.segment_saving_.min_size
         if self.min_segment_length is None:
-            self._min_segment_length = min_size
+            self._min_segment_length = 2 * min_size
         elif self.min_segment_length < min_size:
             raise ValueError(
                 f"`min_segment_length={self.min_segment_length}` is less than "

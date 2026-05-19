@@ -3,11 +3,14 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_is_fitted,
+    validate_data,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.stats import col_cumsum
 
@@ -111,3 +114,18 @@ class L2Cost(BaseCost):
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         sums, sums2 = cache["sums"], cache["sums2"]
         return l2_cost(starts, ends, sums, sums2)
+
+    def get_default_penalty(self) -> float:
+        """Get the default BIC penalty for the fitted L2 cost.
+
+        The L2 cost estimates 1 parameter per feature (mean).
+
+        Returns
+        -------
+        float
+            Default penalty value.
+        """
+        from skchange.new_api.penalties import bic_penalty
+
+        check_is_fitted(self)
+        return bic_penalty(self.n_samples_in_, self.n_features_in_)

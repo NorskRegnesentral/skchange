@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
+from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils.validation import check_interval_specs
 from skchange.utils.numba import njit
@@ -94,3 +95,16 @@ class L1Cost(BaseCost):
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         return l1_cost(starts, ends, cache["X"])
+
+    def get_default_penalty(self) -> float:
+        """Get the default BIC penalty for the fitted L1 cost.
+
+        The L1 cost estimates 1 parameter per feature (the median).
+
+        Returns
+        -------
+        float
+            Default penalty value.
+        """
+        check_is_fitted(self)
+        return bic_penalty(self.n_samples_in_, self.n_features_in_)

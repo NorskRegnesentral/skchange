@@ -20,7 +20,10 @@ from skchange.new_api.utils._param_validation import (
     StrOptions,
     _fit_context,
 )
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    validate_data,
+)
 from skchange.utils.numba import njit
 from skchange.utils.numba.general import where
 
@@ -161,13 +164,18 @@ def select_changepoints_by_bottom_up(
 
 def _resolve_change_score(
     change_score: BaseIntervalScorer | None,
+    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return change_score or the default PenalisedScore(CUSUM()).
+    """Return a penalised change score, auto-wrapping if needed.
 
-    Needed since default resolution need to be done in both fit and __sklearn_tags__ to
-    ensure correct input tags are propagated.
+    Needed since default resolution must be done in both fit and
+    ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    return change_score if change_score is not None else PenalisedScore(CUSUM())
+    change_score = CUSUM() if change_score is None else change_score
+    tags = change_score.__sklearn_tags__().interval_scorer_tags
+    if tags.penalised:
+        return change_score
+    return PenalisedScore(change_score, penalty_scale=penalty_scale)
 
 
 class MovingWindow(BaseChangeDetector):
@@ -192,29 +200,44 @@ class MovingWindow(BaseChangeDetector):
 
     Parameters
     ----------
-    change_score : BaseIntervalScorer, optional, default=PenalisedScore(CUSUM())
-        A penalised change score to use in the algorithm. Must be an instance of
-        ``BaseIntervalScorer`` with ``interval_scorer_tags.penalised=True``. The
-        score is evaluated over moving windows and thresholded at zero to identify
-        candidate change-points.
+    change_score : BaseIntervalScorer or None, default=None
+        Change score to use in the algorithm. Must be an instance of
+        ``BaseIntervalScorer`` with ``score_type="change_score"``. If the
+        scorer is unpenalised it is automatically wrapped in
+        :class:`PenalisedScore`. If ``None``, defaults to
+        ``PenalisedScore(CUSUM())``.
 
-        Use :class:`PenalisedScore` to wrap any unpenalised change score or cost:
+        Wrap with :class:`PenalisedScore` explicitly to set a custom
+        ``penalty``, e.g.:
 
-        * ``PenalisedScore(CUSUM())`` — CUSUM with default BIC penalty
-        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` — L2 cost with
-          fixed penalty
+        * ``CUSUM()`` -- auto-wrapped with default BIC penalty
+        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change
+          score based on L2 cost with fixed penalty
+    penalty_scale : float, default=1.0
+        Multiplicative factor on the default penalty of the auto-constructed
+        :class:`PenalisedScore` wrapper. Applies only when ``change_score`` is
+        ``None`` or an unpenalised scorer. Silently ignored when
+        ``change_score`` is already a penalised scorer; in that case the
+        user-provided scorer owns its penalty.
     bandwidth : int, list of int, or None, default=None
         The number of samples on either side of a candidate change-point. Must be
         1 or greater. If ``None``, bandwidths are set automatically at ``fit`` time:
 
         * ``"local_optimum"`` (default): up to 5 exponentially spaced bandwidths
-          between ``max(scorer.min_size, 5)`` and
-          ``max(scorer.min_size, n_samples // 5)``.
+          between ``max(scorer.min_size, min_bandwidth)`` and
+          ``max(scorer.min_size, min_bandwidth, n_samples // 5)``.
         * ``"detection_length"``: a single bandwidth of
-          ``max(scorer.min_size, min(50, n_samples // 5))``.
+          ``max(scorer.min_size, min_bandwidth, min(50, n_samples // 5))``.
 
         User-supplied values must all be ``>= scorer.min_size`` (checked at fit).
         Multiple bandwidths use the bottom-up merging approach of [2]_.
+    min_bandwidth : int, default=5
+        Lower bound on the automatically chosen bandwidth(s) when
+        ``bandwidth=None``. Ignored when ``bandwidth`` is provided. The effective
+        minimum bandwidth used is ``max(min_bandwidth, scorer.min_size)``, so the
+        actual minimum may be larger than the value provided here when the change
+        score requires more samples per segment. The default of 5 mitigates spurious
+        detections from very small bandwidths.
     selection_method : str, default="local_optimum"
         The method used to select the final set of change-points from a set of candidate
         change-points. The options are:
@@ -262,7 +285,9 @@ class MovingWindow(BaseChangeDetector):
 
     _parameter_constraints = {
         "change_score": [HasMethods(["fit", "evaluate"]), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "bandwidth": ["array-like", Interval(Integral, 1, None, closed="left"), None],
+        "min_bandwidth": [Interval(Integral, 1, None, closed="left")],
         "selection_method": [StrOptions({"local_optimum", "detection_length"})],
         "min_detection_fraction": [Interval(Real, 0, 0.5, closed="neither")],
         "local_optimum_fraction": [Interval(Real, 0, None, closed="right")],
@@ -271,13 +296,17 @@ class MovingWindow(BaseChangeDetector):
     def __init__(
         self,
         change_score: BaseIntervalScorer | None = None,
+        penalty_scale: float = 1.0,
         bandwidth: ArrayLike | int | None = None,
+        min_bandwidth: int = 5,
         selection_method: str = "local_optimum",
         min_detection_fraction: float = 0.2,
         local_optimum_fraction: float = 0.8,
     ):
         self.change_score = change_score
+        self.penalty_scale = penalty_scale
         self.bandwidth = bandwidth
+        self.min_bandwidth = min_bandwidth
         self.selection_method = selection_method
         self.min_detection_fraction = min_detection_fraction
         self.local_optimum_fraction = local_optimum_fraction
@@ -312,10 +341,10 @@ class MovingWindow(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        scorer = _resolve_change_score(self.change_score)
+        scorer = _resolve_change_score(self.change_score, self.penalty_scale)
         check_interval_scorer(
             scorer,
-            ensure_penalised=True,
+            ensure_score_type=["change_score"],
             caller_name=self.__class__.__name__,
             arg_name="change_score",
         )
@@ -329,7 +358,7 @@ class MovingWindow(BaseChangeDetector):
             )
 
         if self.bandwidth is None:
-            min_bw = max(min_size, 5)
+            min_bw = max(min_size, self.min_bandwidth)
             max_bw = max(min_bw, X.shape[0] // 5)
             if self.selection_method == "detection_length" or max_bw == min_bw:
                 bw = np.array([min(50, max_bw)], dtype=int)

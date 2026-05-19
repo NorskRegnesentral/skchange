@@ -40,6 +40,7 @@ from skchange.new_api.interval_scorers._costs.poisson_cost import PoissonCost
 from skchange.new_api.interval_scorers._costs.rank_cost import RankCost
 from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
+    CostTransientScore,
 )
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._savings.gaussian_saving import GaussianSaving
@@ -59,6 +60,9 @@ from skchange.new_api.interval_scorers._savings.multivariate_t_saving import (
     MultivariateTSaving,
 )
 from skchange.new_api.interval_scorers._savings.poisson_saving import PoissonSaving
+from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
+    L2TransientScore,
+)
 
 __all__ = [
     "BaseCost",
@@ -68,6 +72,7 @@ __all__ = [
     "BaseSaving",
     "ContinuousLinearTrendScore",
     "CostChangeScore",
+    "CostTransientScore",
     "CUSUM",
     "ESACScore",
     "EDFCost",
@@ -77,6 +82,7 @@ __all__ = [
     "L1Saving",
     "L2Cost",
     "L2Saving",
+    "L2TransientScore",
     "LaplaceCost",
     "LaplaceSaving",
     "LinearRegressionCost",

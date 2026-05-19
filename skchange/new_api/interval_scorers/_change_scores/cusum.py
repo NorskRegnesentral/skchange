@@ -116,6 +116,6 @@ class CUSUM(BaseChangeScore):
             Penalty value
         """
         check_is_fitted(self)
-        penalty = bic_penalty(self.n_samples_in_, self.n_features_in_)
-        # BIC works on a squared error scale, while CUSUM is on an absolute error scale.
-        return np.sqrt(penalty)
+        # BIC works on a squared error scale, while CUSUM is on an absolute error
+        # scale, so we take the square root.
+        return float(np.sqrt(bic_penalty(self.n_samples_in_, self.n_features_in_)))

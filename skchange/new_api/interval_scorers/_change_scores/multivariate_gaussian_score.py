@@ -246,10 +246,10 @@ class MultivariateGaussianScore(BaseChangeScore):
         check_is_fitted(self)
         if self.apply_bartlett_correction:
             # The Bartlett correction normalises the score to approximately chi-squared
-            # with p*(p+3)/2 degrees of freedom, already accounting for model
-            # complexity.
+            # with 1 degree of freedom, already accounting for model complexity.
             # Only the changepoint location contributes to the penalty: log(n).
             return float(np.log(self.n_samples_in_))
+
         p = self.n_features_in_
         n_params = p + p * (p + 1) // 2
         return bic_penalty(self.n_samples_in_, n_params)

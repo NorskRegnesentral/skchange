@@ -257,6 +257,4 @@ class LinearRegressionSaving(BaseSaving):
             Default penalty value.
         """
         check_is_fitted(self)
-        # Scaling chi2 penalty by 1.5 is done to pass the sanity checks in the
-        # test suite for CAPA.
-        return 1.5 * chi2_penalty(self.n_samples_in_, len(self.covariate_cols_))
+        return chi2_penalty(self.n_samples_in_, len(self.covariate_cols_))

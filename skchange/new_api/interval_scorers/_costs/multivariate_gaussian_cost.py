@@ -174,6 +174,4 @@ class MultivariateGaussianCost(BaseCost):
         check_is_fitted(self)
         p = self.n_features_in_
         n_params = p + p * (p + 1) // 2
-        # Scaling BIC penalty by 1.5 is done to pass the sanity checks in the
-        # test suite for PELT.
-        return 1.5 * bic_penalty(self.n_samples_in_, n_params)
+        return bic_penalty(self.n_samples_in_, n_params)

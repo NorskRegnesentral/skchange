@@ -253,6 +253,7 @@ class MultivariateGaussianSaving(BaseSaving):
         check_is_fitted(self)
         p = self.n_features_in_
         n_params = p + p * (p + 1) // 2
-        # Scaling chi2 penalty by 1.5 is done to pass the sanity checks in the
-        # test suite for CAPA.
-        return 1.5 * chi2_penalty(self.n_samples_in_, n_params)
+        # 2.0x factor: a slightly off baseline mean/covariance inflates the saving on
+        # background segments, leading to spurious anomaly detections without
+        # additional penalisation.
+        return 2.0 * chi2_penalty(self.n_samples_in_, n_params)

@@ -11,6 +11,7 @@ from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.interval_scorers._savings._utils import (
     resolve_baseline_location,
 )
+from skchange.new_api.penalties import mvcapa_penalty
 from skchange.new_api.typing import ArrayLike
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import (
@@ -151,3 +152,14 @@ class L1Saving(BaseSaving):
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
         return l1_saving(starts, ends, cache["X"], self.baseline_location_)
+
+    def get_default_penalty(self) -> np.ndarray:
+        """Get the default per-feature mvcapa penalty.
+
+        Returns
+        -------
+        np.ndarray of shape (n_features,)
+            Default penalty value for each number of affected features.
+        """
+        check_is_fitted(self)
+        return mvcapa_penalty(self.n_samples_in_, self.n_features_in_)
