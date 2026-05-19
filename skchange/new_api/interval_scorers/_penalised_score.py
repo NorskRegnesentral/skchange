@@ -5,8 +5,9 @@ from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -17,16 +18,15 @@ from skchange.new_api.utils.validation import (
     check_penalty,
     validate_data,
 )
-from skchange.utils.numba import njit
 
 
-@njit
+@njit(cache=True)
 def _penalise_scores_constant(scores: np.ndarray, penalty: float) -> np.ndarray:
     """Penalise scores with a constant penalty."""
     return scores.sum(axis=1) - penalty
 
 
-@njit
+@njit(cache=True)
 def _penalise_scores_linear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
@@ -39,7 +39,7 @@ def _penalise_scores_linear(
     return penalised_scores_matrix.sum(axis=1)
 
 
-@njit
+@njit(cache=True)
 def _penalise_scores_nonlinear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:

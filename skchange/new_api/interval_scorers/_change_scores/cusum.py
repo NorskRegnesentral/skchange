@@ -7,13 +7,13 @@ from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit
+from skchange.new_api.utils._numeric import col_cumsum
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
+@njit(cache=True)
 def cusum_score(
     starts: np.ndarray,
     splits: np.ndarray,

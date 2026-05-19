@@ -10,13 +10,13 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
     _multivariate_gaussian_cost_mle,
 )
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs
-from skchange.utils.numba import njit
 
 
-@njit
+@njit(cache=True)
 def _half_integer_digamma(twice_n: int) -> float:
     """Calculate the digamma function for half-integer values ``twice_n / 2``.
 
@@ -48,7 +48,7 @@ def _half_integer_digamma(twice_n: int) -> float:
     return res
 
 
-@njit
+@njit(cache=True)
 def _likelihood_ratio_expected_value(
     sequence_length: int, cut_point: int, dimension: int
 ) -> float:
@@ -95,7 +95,7 @@ def _likelihood_ratio_expected_value(
     return g_k_n
 
 
-@njit
+@njit(cache=True)
 def _compute_bartlett_corrections(
     sequence_lengths: np.ndarray, cut_points: np.ndarray, dimension: int
 ) -> np.ndarray:

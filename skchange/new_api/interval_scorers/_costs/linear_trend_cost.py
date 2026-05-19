@@ -14,7 +14,8 @@ from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import (
@@ -22,10 +23,9 @@ from skchange.new_api.utils.validation import (
     check_time_col,
     validate_data,
 )
-from skchange.utils.numba import njit
 
 
-@njit
+@njit(cache=True)
 def fit_linear_trend(time_steps: np.ndarray, values: np.ndarray) -> tuple[float, float]:
     """Calculate the optimal linear trend for a given array.
 
@@ -57,7 +57,7 @@ def fit_linear_trend(time_steps: np.ndarray, values: np.ndarray) -> tuple[float,
     return slope, intercept
 
 
-@njit
+@njit(cache=True)
 def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
     """Calculate the optimal linear trend for a given array.
 
@@ -96,7 +96,7 @@ def fit_indexed_linear_trend(xs: np.ndarray) -> tuple[float, float]:
     return slope, intercept
 
 
-@njit
+@njit(cache=True)
 def linear_trend_cost_mle(
     starts: np.ndarray, ends: np.ndarray, X: np.ndarray, times: np.ndarray
 ) -> np.ndarray:
@@ -138,7 +138,7 @@ def linear_trend_cost_mle(
     return costs
 
 
-@njit
+@njit(cache=True)
 def linear_trend_cost_index_times_mle(
     starts: np.ndarray, ends: np.ndarray, X: np.ndarray
 ) -> np.ndarray:

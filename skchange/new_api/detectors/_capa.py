@@ -14,7 +14,7 @@ from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.penalties import linear_chi2_penalty
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
 from skchange.new_api.utils.validation import (

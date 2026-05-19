@@ -9,11 +9,11 @@ from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit
+from skchange.new_api.utils._numeric import col_cumsum
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
-from skchange.utils.numba import njit
-from skchange.utils.numba.stats import col_cumsum
 
 
 def _edf_quantile_points(
@@ -46,7 +46,7 @@ def _edf_quantile_points(
     return quantile_points, quantile_values
 
 
-@njit
+@njit(cache=True)
 def _cumulative_edf(xs: np.ndarray, quantile_points: np.ndarray) -> np.ndarray:
     """Build a cumulative EDF evaluated at fixed quantile points.
 
@@ -67,7 +67,7 @@ def _cumulative_edf(xs: np.ndarray, quantile_points: np.ndarray) -> np.ndarray:
     return col_cumsum(lte_mask, init_zero=True)
 
 
-@njit(fastmath=True)
+@njit(cache=True, fastmath=True)
 def _edf_mle_cost(
     cumulative_edf: np.ndarray,
     starts: np.ndarray,

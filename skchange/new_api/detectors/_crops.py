@@ -21,7 +21,7 @@ from skchange.new_api.interval_scorers._change_scores.continuous_linear_trend_sc
     _lin_reg_cont_piecewise_linear_trend_score,
 )
 from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._param_validation import (
     HasMethods,

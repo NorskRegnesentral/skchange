@@ -12,8 +12,10 @@ from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._numba import njit
+from skchange.new_api.utils._numeric import true_intervals
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -24,11 +26,9 @@ from skchange.new_api.utils.validation import (
     check_interval_scorer,
     validate_data,
 )
-from skchange.utils.numba import njit
-from skchange.utils.numba.general import where
 
 
-@njit
+@njit(cache=True)
 def make_extended_moving_window_cuts(
     n_samples: int,
     bandwidth: int,
@@ -88,11 +88,11 @@ def transform_multiple_moving_window(
     return scores
 
 
-@njit
+@njit(cache=True)
 def get_candidate_changepoints(
     scores: np.ndarray,
 ) -> tuple[list[int], list[tuple[int, int]]]:
-    detection_intervals = where(scores > 0)
+    detection_intervals = true_intervals(scores > 0)
     changepoints = []
     for start, end in detection_intervals:
         cpt = start + np.argmax(scores[start:end])
@@ -100,7 +100,7 @@ def get_candidate_changepoints(
     return changepoints, detection_intervals
 
 
-@njit
+@njit(cache=True)
 def select_changepoints_by_detection_length(
     scores: np.ndarray, min_detection_interval: int
 ) -> np.ndarray:
@@ -114,7 +114,7 @@ def select_changepoints_by_detection_length(
     return np.array(cpts)
 
 
-@njit
+@njit(cache=True)
 def select_changepoints_by_local_optimum(
     scores: np.ndarray, selection_bandwidth: int
 ) -> np.ndarray:
@@ -135,7 +135,7 @@ def select_changepoints_by_local_optimum(
     return np.array(cpts)
 
 
-@njit
+@njit(cache=True)
 def select_changepoints_by_bottom_up(
     scores: np.ndarray, bandwidths: np.ndarray, local_optimum_fraction: float
 ) -> np.ndarray:

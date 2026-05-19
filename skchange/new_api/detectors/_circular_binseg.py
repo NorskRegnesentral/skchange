@@ -16,8 +16,9 @@ from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
     L2TransientScore,
 )
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -27,10 +28,9 @@ from skchange.new_api.utils.validation import (
     check_interval_scorer,
     validate_data,
 )
-from skchange.utils.numba import njit
 
 
-@njit
+@njit(cache=True)
 def make_inner_intervals(
     interval_start: int, interval_end: int, min_subinterval_length: int = 1
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -61,7 +61,7 @@ def make_inner_intervals(
     return np.array(starts, dtype=np.int64), np.array(ends, dtype=np.int64)
 
 
-@njit
+@njit(cache=True)
 def greedy_anomaly_selection(
     penalised_scores: np.ndarray,
     anomaly_starts: np.ndarray,

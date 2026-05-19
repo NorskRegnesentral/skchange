@@ -12,18 +12,17 @@ from skchange.new_api.interval_scorers._savings._utils import (
     resolve_baseline_location,
 )
 from skchange.new_api.penalties import mvcapa_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit
+from skchange.new_api.utils._numeric import col_cumsum, truncate_below
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import (
     check_interval_specs,
     validate_data,
 )
-from skchange.utils.numba import njit
-from skchange.utils.numba.general import truncate_below
-from skchange.utils.numba.stats import col_cumsum
 
 
-@njit
+@njit(cache=True)
 def gaussian_saving(
     starts: np.ndarray,
     ends: np.ndarray,
