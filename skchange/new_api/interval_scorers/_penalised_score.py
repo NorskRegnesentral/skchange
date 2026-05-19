@@ -184,8 +184,7 @@ class PenalisedScore(BaseIntervalScorer):
     @property
     def min_size(self) -> int:
         """Minimum valid interval size inherited from wrapped scorer."""
-        check_is_fitted(self)
-        return self.scorer_.min_size
+        return self.scorer.min_size
 
     def get_default_penalty(self) -> float | np.ndarray:
         """Get the default penalty for the fitted scorer.

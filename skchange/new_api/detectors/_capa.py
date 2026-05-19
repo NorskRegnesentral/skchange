@@ -538,6 +538,40 @@ class CAPA(BaseChangeDetector):
         boundaries = np.unique(anomalies)
         return boundaries[(boundaries > 0) & (boundaries < n_samples)].astype(np.intp)
 
+    def get_interval_specs(self, n_samples: int) -> np.ndarray:
+        """Return the exact interval specifications evaluated by this detector.
+
+        CAPA evaluates all ``[start, end)`` intervals with length in
+        ``[min_segment_length_, max_segment_length_]``. Can be called before fitting.
+
+        Parameters
+        ----------
+        n_samples : int
+            Length of the time series.
+
+        Returns
+        -------
+        interval_specs : np.ndarray of shape (n_specs, 2)
+            Rows are ``[start, end)`` as used by the saving scorer.
+        """
+        min_size = _resolve_segment_saving(self.segment_saving).min_size
+        min_len = (
+            self.min_segment_length if self.min_segment_length is not None else min_size
+        )
+        max_len = (
+            self.max_segment_length
+            if self.max_segment_length is not None
+            else max(n_samples // 2, min_len)
+        )
+        max_len = min(max_len, n_samples)
+        rows = []
+        for length in range(min_len, max_len + 1):
+            for start in range(0, n_samples - length + 1):
+                rows.append([start, start + length])
+        if not rows:
+            return np.empty((0, 2), dtype=np.int64)
+        return np.array(rows, dtype=np.int64)
+
     def predict(self, X: ArrayLike) -> np.ndarray:
         """Detect anomalies, returning per-sample segment labels.
 

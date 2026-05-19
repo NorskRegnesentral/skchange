@@ -435,3 +435,45 @@ class MovingWindow(BaseChangeDetector):
             Empty array if no changepoints are detected.
         """
         return self.predict_all(X)["changepoints"]
+
+    def get_interval_specs(self, n_samples: int) -> np.ndarray:
+        """Return the exact interval specifications evaluated by this detector.
+
+        The returned array contains every ``[start, split, end)`` triple that
+        :meth:`predict_all` would evaluate for a series of length *n_samples*,
+        across all bandwidths. Can be called before fitting.
+
+        Parameters
+        ----------
+        n_samples : int
+            Length of the time series.
+
+        Returns
+        -------
+        interval_specs : np.ndarray of shape (n_specs, 3)
+            Rows are ``[start, split, end)`` as used by the change score.
+        """
+        change_score = _resolve_change_score(self.change_score)
+        min_size = change_score.min_size
+
+        if self.bandwidth is None:
+            min_bw = max(min_size, 5)
+            max_bw = max(min_bw, n_samples // 5)
+            if self.selection_method == "detection_length" or max_bw == min_bw:
+                bw = np.array([min(50, max_bw)], dtype=int)
+            else:
+                bw = np.unique(np.round(np.geomspace(min_bw, max_bw, 5)).astype(int))
+        else:
+            bw = np.asarray(self.bandwidth)
+            if bw.ndim == 0:
+                bw = bw.reshape(1)
+        bandwidth_ = np.sort(bw.astype(int))
+
+        parts = [
+            make_extended_moving_window_cuts(n_samples, int(b), min_size)
+            for b in bandwidth_
+            if 2 * b <= n_samples
+        ]
+        if not parts:
+            return np.empty((0, 3), dtype=np.int64)
+        return np.unique(np.vstack(parts), axis=0)
