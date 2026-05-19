@@ -1,9 +1,12 @@
-"""Numba utility wrappers for skchange new API (private).
+"""Numba dispatch shim (private).
 
-Soft-import dispatch for ``jit``, ``njit`` and ``prange``. When ``numba`` is
-not installed, identity decorators and the built-in ``range`` are used as
-drop-in replacements. No numba defaults are overridden — callers should pass
-keyword arguments (e.g. ``@njit(cache=True)``) explicitly when needed.
+Provides ``jit``, ``njit``, ``prange`` and a ``numba_available`` flag. When
+``numba`` is not installed, identity decorators and the built-in ``range`` are
+used as drop-in replacements so that all numba-decorated code remains callable
+as plain Python.
+
+No numba defaults are overridden — callers should pass keyword arguments
+(e.g. ``@njit(cache=True)``) explicitly when needed.
 """
 
 
@@ -44,36 +47,9 @@ else:
     prange = range
 
 
-from skchange.new_api.utils._numba._helpers import (
-    col_cumsum,
-    col_median,
-    col_repeat,
-    compute_finite_difference_derivatives,
-    digamma,
-    kurtosis,
-    log_det_covariance,
-    log_gamma,
-    row_repeat,
-    trigamma,
-    truncate_below,
-    where,
-)
-
 __all__ = [
     "jit",
     "njit",
     "numba_available",
     "prange",
-    "col_cumsum",
-    "col_median",
-    "col_repeat",
-    "compute_finite_difference_derivatives",
-    "digamma",
-    "kurtosis",
-    "log_det_covariance",
-    "log_gamma",
-    "row_repeat",
-    "trigamma",
-    "truncate_below",
-    "where",
 ]

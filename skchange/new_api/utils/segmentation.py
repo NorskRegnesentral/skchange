@@ -1,3 +1,5 @@
+"""Utility functions for converting between different change detector output formats."""
+
 import numpy as np
 
 

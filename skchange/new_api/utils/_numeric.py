@@ -1,9 +1,8 @@
-"""Numba-optimized helper functions (private).
+"""Numeric helpers for skchange (private).
 
-JIT-compiled utilities used internally by detectors and interval scorers in
-``skchange.new_api``. When numba is not installed, the ``@njit`` decorator
-imported here is an identity decorator, so all functions remain callable as
-plain Python.
+Numba-decorated array and math utilities used by detectors and interval
+scorers. When numba is not installed, the ``@njit`` decorator is an identity
+decorator, so all functions remain callable as plain Python.
 """
 
 import numpy as np
@@ -12,7 +11,7 @@ from skchange.new_api.utils._numba import njit
 
 
 @njit(cache=True)
-def where(indicator: np.ndarray) -> list:
+def true_intervals(indicator: np.ndarray) -> list:
     """Identify consecutive intervals of True values in the input array.
 
     Parameters
@@ -132,8 +131,8 @@ def log_det_covariance(X: np.ndarray) -> float:
     Parameters
     ----------
     X : np.ndarray
-        2D array of shape (n, p) where n is the number of samples and p is the number of
-        variables.
+        2D array of shape (n, p) where n is the number of samples and p is the
+        number of variables.
 
     Returns
     -------

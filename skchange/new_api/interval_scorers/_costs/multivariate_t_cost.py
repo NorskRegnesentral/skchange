@@ -13,13 +13,12 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
 )
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import (
+from skchange.new_api.utils._numba import njit, prange
+from skchange.new_api.utils._numeric import (
     col_median,
     digamma,
     kurtosis,
     log_gamma,
-    njit,
-    prange,
     trigamma,
 )
 from skchange.new_api.utils._param_validation import Interval, _fit_context

@@ -14,7 +14,8 @@ from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils._numba import njit, where
+from skchange.new_api.utils._numba import njit
+from skchange.new_api.utils._numeric import true_intervals
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -91,7 +92,7 @@ def transform_multiple_moving_window(
 def get_candidate_changepoints(
     scores: np.ndarray,
 ) -> tuple[list[int], list[tuple[int, int]]]:
-    detection_intervals = where(scores > 0)
+    detection_intervals = true_intervals(scores > 0)
     changepoints = []
     for start, end in detection_intervals:
         cpt = start + np.argmax(scores[start:end])

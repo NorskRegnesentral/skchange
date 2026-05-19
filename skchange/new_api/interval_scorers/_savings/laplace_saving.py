@@ -13,7 +13,8 @@ from skchange.new_api.interval_scorers._savings._utils import (
 )
 from skchange.new_api.penalties import mvcapa_penalty
 from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import col_median, njit, truncate_below
+from skchange.new_api.utils._numba import njit
+from skchange.new_api.utils._numeric import col_median, truncate_below
 from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
