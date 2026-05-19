@@ -18,12 +18,12 @@ from skchange.utils.numba.stats import col_cumsum
 @njit
 def _transform_esac_ratio(
     cusum_scores: np.ndarray,
-    a_s: np.ndarray,
-    nu_s: np.ndarray,
-    t_s: np.ndarray,
-    gamma_s: np.ndarray,
-) -> np.ndarray:
-    r"""Compute unpenalised ESAC ratio scores from CUSUM scores.
+    coordinate_thresholds: np.ndarray,
+    mean_corrections: np.ndarray,
+    sparsity_levels: np.ndarray,
+    sparsity_penalties: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    r"""Compute ESAC scores from CUSUM scores.
 
     For each candidate change location i and each sparsity level j, computes
 
@@ -39,19 +39,22 @@ def _transform_esac_ratio(
 
     Parameters
     ----------
-    cusum_scores : np.ndarray of shape (n_cuts, n_features)
-        CUSUM scores for each candidate split.
-    a_s : np.ndarray of shape (n_levels,)
-        Hard thresholds a(t) from Equation (4) in [1]_.
-    nu_s : np.ndarray of shape (n_levels,)
-        Mean-centering terms ν(t) from the paper.
-    t_s : np.ndarray of shape (n_levels,)
-        Candidate sparsity values (unused here, kept for API symmetry with the
-        original ``_transform_esac``).
-    gamma_s : np.ndarray of shape (n_levels,)
-        Penalty values γ(t) with the leading constant C factored out (i.e.
-        computed with C=1).  The calling code multiplies the result by C via
-        the outer ``PenalisedScore`` penalty.
+    cusum_scores : np.ndarray
+        A 2D array where each row represents the CUSUM scores for a specific
+        candidate change location.
+    coordinate_thresholds : np.ndarray
+        A 1D array of hard threshold values. Correspond to ``a(t)`` as defined
+        in Equation (4) in [1]_ for each sparsity ``t`` in ``sparsity_levels``.
+    mean_corrections : np.ndarray
+        A 1D array of mean-centering terms. Correspond to ``nu(t)`` as defined
+        after Equation (4) in [1]_ for each sparsity ``t`` in
+        ``sparsity_levels``.
+    sparsity_levels : np.ndarray
+        A 1D array of candidate sparsity values corresponding to the elements
+        in ``coordinate_thresholds`` and ``mean_corrections``.
+    sparsity_penalties : np.ndarray
+        A 1D array of penalty values, corresponding to ``gamma(t)`` in
+        Equation (4) in [1]_, where ``t`` is as defined in ``sparsity_levels``.
 
     Returns
     -------
@@ -64,20 +67,22 @@ def _transform_esac_ratio(
        Efficient sparsity adaptive changepoint estimation. Electron. J. Statist.
        18 (2) 3975 - 4038, 2024. https://doi.org/10.1214/24-EJS2294.
     """
-    num_levels = len(gamma_s)
-    num_cuts = len(cusum_scores)
-    output_scores = np.full(num_cuts, -np.inf, dtype=np.float64)
+    num_levels = len(sparsity_penalties)
+    num_cusum_scores = len(cusum_scores)
+    output_scores = np.zeros(num_cusum_scores, dtype=np.float64)
+    sargmax = np.zeros(num_cusum_scores, dtype=np.int64)
 
     for i in range(num_cuts):
         z = cusum_scores[i]
         for j in range(num_levels):
-            mask = np.abs(z) > a_s[j]
-            if not np.any(mask):
-                continue
-            raw = np.sum(z[mask] ** 2 - nu_s[j])
-            ratio = raw / gamma_s[j]
-            if ratio > output_scores[i]:
-                output_scores[i] = ratio
+            temp_vec = (cusum_scores[i])[
+                np.abs(cusum_scores[i]) > coordinate_thresholds[j]
+            ]
+            if len(temp_vec) > 0:
+                temp = np.sum(temp_vec**2 - mean_corrections[j]) - sparsity_penalties[j]
+                if temp > temp_max:
+                    temp_max = temp
+                    sargmax[i] = sparsity_levels[j]
 
     return output_scores.reshape(-1, 1)
 
@@ -89,22 +94,30 @@ class ESACScore(BaseChangeScore):
     reformulated as a ratio statistic so that it can be composed with
     :class:`~skchange.new_api.interval_scorers.PenalisedScore`.
 
-    For each candidate split the score is
+    Parameters
+    ----------
+    penalty_scale_dense : float, default=2.0
+        The leading constant in the penalty function taken as in (8) in [1]_ in
+        the dense case where the candidate sparsity level ``t`` is greater than
+        or equal to ``sqrt(p * log(n))``.
+    penalty_scale_sparse : float, default=1.5
+        The leading constant in the penalty function taken as in (8) in [1]_ in
+        the sparse case where the candidate sparsity level ``t`` is less than
+        ``sqrt(p * log(n))``.
 
-    .. math::
-
-        \\max_s \\frac{\\sum_{|z_j| > a_s} (z_j^2 - \\nu_s)}{\\gamma_s}
-
-    where :math:`z` is the CUSUM statistic, and :math:`a_s`, :math:`\\nu_s`,
-    :math:`\\gamma_s` are sparsity-dependent thresholds computed from the data
-    dimensions as in [1]_.  A positive score indicates evidence for a change.
-
-    The natural detection threshold is C = 1, which corresponds to the penalty
-    value returned by :meth:`get_default_penalty`.  To use ESAC in a detector,
-    wrap it in :class:`~skchange.new_api.interval_scorers.PenalisedScore`::
-
-        PenalisedScore(ESACScore())               # uses default threshold C=1
-        PenalisedScore(ESACScore(), penalty=C)    # custom threshold
+    Attributes
+    ----------
+    sparsity_levels_ : np.ndarray
+        Candidate sparsity values ``t`` (denoted ``t_s`` in [1]_).
+    coordinate_thresholds_ : np.ndarray
+        Per-coordinate hard thresholds ``a(t)`` applied to each CUSUM entry,
+        as defined in Equation (4) in [1]_.
+    mean_corrections_ : np.ndarray
+        Mean-centering terms ``nu(t)`` subtracted from the squared thresholded
+        CUSUMs, as defined after Equation (4) in [1]_.
+    sparsity_penalties_ : np.ndarray
+        Per-sparsity penalty values ``gamma(t)`` subtracted in the final
+        score, as defined in Equation (4) in [1]_.
 
     Notes
     -----
@@ -129,7 +142,18 @@ class ESACScore(BaseChangeScore):
     >>> scorer.evaluate(cache, np.array([[0, 25, 50], [50, 75, 100]]))
     """
 
-    _parameter_constraints: dict = {}
+    _parameter_constraints: dict = {
+        "penalty_scale_dense": [Interval(Real, 0, None, closed="neither")],
+        "penalty_scale_sparse": [Interval(Real, 0, None, closed="neither")],
+    }
+
+    def __init__(
+        self,
+        penalty_scale_dense: float = 2.0,
+        penalty_scale_sparse: float = 1.5,
+    ):
+        self.penalty_scale_dense = penalty_scale_dense
+        self.penalty_scale_sparse = penalty_scale_sparse
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Return tags: aggregated, unpenalised, non_negative_scores=False."""
@@ -158,38 +182,40 @@ class ESACScore(BaseChangeScore):
         )
         n, p = X.shape
 
-        self._sums_ = col_cumsum(X, init_zero=True)
-
         if p == 1:
-            self._a_s_ = np.array([0.0])
-            self._nu_s_ = np.array([1.0])
-            self._t_s_ = np.array([1], dtype=float)
-            # gamma with C=1: (sqrt(p*log(n)) + log(n))
-            self._gamma_s_ = np.array([np.sqrt(p * np.log(n)) + np.log(n)])
+            self.coordinate_thresholds_ = np.array([0.0])
+            self.mean_corrections_ = np.array([1.0])
+            self.sparsity_levels_ = np.array([1])
+            self.sparsity_penalties_ = np.array(
+                [self.penalty_scale_dense * (np.sqrt(p * np.log(n)) + np.log(n))]
+            )
         else:
             max_s = min(np.sqrt(p * np.log(n)), p)
             log2ss = np.arange(0, np.floor(np.log2(max_s)) + 1)
             ss = 2**log2ss
             ss = np.concatenate(([p], ss[::-1]))
-            self._t_s_ = np.array(ss, dtype=float)
+            self.sparsity_levels_ = np.array(ss, dtype=float)
             ss = np.array(ss, dtype=float)
 
-            self._a_s_ = np.zeros_like(ss, dtype=float)
-            self._a_s_[1:] = np.sqrt(
+            self.coordinate_thresholds_ = np.zeros_like(ss, dtype=float)
+            self.coordinate_thresholds_[1:] = np.sqrt(
                 2 * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
             )
 
-            log_dnorm = norm.logpdf(self._a_s_)
-            log_pnorm_upper = norm.logsf(self._a_s_)
-            self._nu_s_ = 1 + self._a_s_ * np.exp(log_dnorm - log_pnorm_upper)
+            log_dnorm = norm.logpdf(self.coordinate_thresholds_)
+            log_pnorm_upper = norm.logsf(self.coordinate_thresholds_)
+            self.mean_corrections_ = 1 + self.coordinate_thresholds_ * np.exp(
+                log_dnorm - log_pnorm_upper
+            )
 
-            # gamma_s with leading constant C factored out (C=1 baked into
-            # get_default_penalty; outer PenalisedScore multiplies by C).
-            self._gamma_s_ = np.zeros_like(ss, dtype=float)
-            self._gamma_s_[0] = np.sqrt(4 * p * np.log(n)) + 4 * np.log(n)
-            self._gamma_s_[1:] = ss[1:] * np.log(
-                np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2
-            ) + 4 * np.log(n)
+            self.sparsity_penalties_ = np.zeros_like(ss, dtype=float)
+            self.sparsity_penalties_[0] = self.penalty_scale_dense * (
+                np.sqrt(4 * p * np.log(n)) + 4 * np.log(n)
+            )
+            self.sparsity_penalties_[1:] = self.penalty_scale_sparse * (
+                ss[1:] * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
+                + 4 * np.log(n)
+            )
 
         return self
 
@@ -248,9 +274,9 @@ class ESACScore(BaseChangeScore):
         raw_cusum = cusum_score(starts, splits, ends, cache["sums"])
         scores = _transform_esac_ratio(
             raw_cusum,
-            self._a_s_,
-            self._nu_s_,
-            self._t_s_,
-            self._gamma_s_,
+            self.coordinate_thresholds_,
+            self.mean_corrections_,
+            self.sparsity_levels_,
+            self.sparsity_penalties_,
         )
         return scores

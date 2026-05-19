@@ -240,7 +240,7 @@ def make_no_change_X(
     scale: float = 1.0,
     poisson_rate: float = 5.0,
     regression_coef: float = 1.0,
-    seed: int = 42,
+    seed: int = 2,
 ) -> np.ndarray:
     """Generate stationary test data (no structural break) for the given estimator.
 
@@ -261,7 +261,7 @@ def make_no_change_X(
         Poisson rate for integer-only data.
     regression_coef : float, default=1.0
         Scalar coefficient broadcast to all covariates.
-    seed : int, default=42
+    seed : int, default=2
         Random seed for reproducibility.
 
     Returns

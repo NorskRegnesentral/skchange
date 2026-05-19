@@ -241,6 +241,4 @@ class PoissonSaving(BaseSaving):
             Default penalty value for each number of affected features.
         """
         check_is_fitted(self)
-        # Scaling mvcapa penalty by 1.5 is done to pass the sanity checks
-        # in the test suite for CAPA.
-        return 1.5 * mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 1)
+        return mvcapa_penalty(self.n_samples_in_, self.n_features_in_, 1)

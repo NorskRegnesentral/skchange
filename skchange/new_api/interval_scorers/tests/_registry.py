@@ -4,6 +4,7 @@ from skchange.new_api.interval_scorers import (
     CUSUM,
     ContinuousLinearTrendScore,
     CostChangeScore,
+    CostTransientScore,
     EDFCost,
     ESACScore,
     GaussianCost,
@@ -12,6 +13,7 @@ from skchange.new_api.interval_scorers import (
     L1Saving,
     L2Cost,
     L2Saving,
+    L2TransientScore,
     LaplaceCost,
     LaplaceSaving,
     LinearRegressionCost,
@@ -68,14 +70,23 @@ _SAVINGS = [
     MultivariateTSaving(),
     PoissonSaving(),
 ]
+_TRANSIENT_SCORES = [
+    L2TransientScore(),
+]
 
 # ---------------------------------------------------------------------------
 # Composite instances
 # ---------------------------------------------------------------------------
-_COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS]
+# Costs rejected by CostTransientScore (see its docstring): not subadditive
+# under the concatenated-surrounding baseline.
+_COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS] + [
+    CostTransientScore(cost)
+    for cost in _COSTS
+    if type(cost).__name__ not in CostTransientScore._INCOMPATIBLE_COST_NAMES
+]
 _PENALISED_SCORES = [
     PenalisedScore(scorer)
-    for scorer in _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES
+    for scorer in _CHANGE_SCORES + _SAVINGS + _TRANSIENT_SCORES + _COST_COMPOSITES
     if not is_penalised_score(scorer)
 ]
 
@@ -83,5 +94,10 @@ _PENALISED_SCORES = [
 # All test instances
 # ---------------------------------------------------------------------------
 INTERVAL_SCORER_TEST_INSTANCES = (
-    _COSTS + _CHANGE_SCORES + _SAVINGS + _COST_COMPOSITES + _PENALISED_SCORES
+    _COSTS
+    + _CHANGE_SCORES
+    + _SAVINGS
+    + _TRANSIENT_SCORES
+    + _COST_COMPOSITES
+    + _PENALISED_SCORES
 )

@@ -1,10 +1,17 @@
+from numbers import Real
+
 import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.typing import ArrayLike, Self
-from skchange.new_api.utils._tags import SkchangeTags
+from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._param_validation import (
+    HasMethods,
+    Interval,
+    _fit_context,
+)
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
     check_penalty,
@@ -66,17 +73,39 @@ class PenalisedScore(BaseIntervalScorer):
     penalty : array-like of shape (n_features,), float, or None, default=None
         Penalty values. `penalty[k]` is the penalty for including k features in the
         aggregated penalised score. If float, the value is broadcast across all k.
+        If ``None``, ``scorer.get_default_penalty()`` is used at fit time.
+    penalty_scale : float, default=1.0
+        Multiplicative factor applied to the default penalty when ``penalty``
+        is ``None``. Useful for tuning the sensitivity of the detector by
+        sweeping a multiplier on top of a reasonable default.
+        Must be positive. Silently ignored when ``penalty`` is explicitly
+        provided.
 
+    Attributes
+    ----------
+    penalty_ : float or np.ndarray
+        Effective penalty used during evaluation. Equal to
+        ``scorer_.get_default_penalty() * penalty_scale`` when ``penalty`` is
+        ``None``, else equal to the provided ``penalty``.
     """
+
+    _parameter_constraints: dict = {
+        "scorer": [HasMethods(["fit", "precompute", "evaluate"])],
+        "penalty": ["array-like", Interval(Real, 0, None, closed="left"), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
+    }
 
     def __init__(
         self,
         scorer: BaseIntervalScorer,
         penalty: ArrayLike | float | None = None,
+        penalty_scale: float = 1.0,
     ):
         self.scorer = scorer
         self.penalty = penalty
+        self.penalty_scale = penalty_scale
 
+    @_fit_context(prefer_skip_nested_validation=False)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
         """Fit wrapped scorer and select penalty mode."""
         X = validate_data(
@@ -106,7 +135,9 @@ class PenalisedScore(BaseIntervalScorer):
                 )
 
         penalty = (
-            self.scorer_.get_default_penalty() if self.penalty is None else self.penalty
+            self.scorer_.get_default_penalty() * self.penalty_scale
+            if self.penalty is None
+            else self.penalty
         )
         self.penalty_ = check_penalty(
             penalty,
