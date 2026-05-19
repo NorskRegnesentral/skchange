@@ -60,18 +60,18 @@ from skchange.new_api.utils._numba._helpers import (
 )
 
 __all__ = [
+    "jit",
+    "njit",
+    "numba_available",
+    "prange",
     "col_cumsum",
     "col_median",
     "col_repeat",
     "compute_finite_difference_derivatives",
     "digamma",
-    "jit",
     "kurtosis",
     "log_det_covariance",
     "log_gamma",
-    "njit",
-    "numba_available",
-    "prange",
     "row_repeat",
     "trigamma",
     "truncate_below",
