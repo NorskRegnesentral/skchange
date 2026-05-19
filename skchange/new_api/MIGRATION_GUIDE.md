@@ -12,15 +12,22 @@ skchange is transitioning from a pandas/sktime-based API to a numpy/sklearn-base
 
 | Version | Status | Old API | New API |
 |---------|--------|---------|------|
-| **0.14.3** | Current | Default ✓ | — |
-| **0.15.0** | Next release | Works, no longer maintained | Preview in `skchange.new_api` (feedback welcome) |
-| **0.16.0** | Following release | Removed | **Default** ✓ (stable, permanent location) |
+| **0.15.x** | Released | Default ✓ (silent) | Preview in `skchange.new_api` (feedback welcome) |
+| **0.16.0** | Next release | Default, emits `FutureWarning` on import | Preview in `skchange.new_api` |
+| **0.17.0** | Following release | **Removed** | **Default** ✓ at permanent locations; `skchange.new_api` raises `ImportError` pointing to the new locations |
+| **0.18.0** | Cleanup | — | `skchange.new_api` stub removed |
 
-**`skchange.new_api` is a temporary preview path** available in 0.15.0 for early feedback. It will be removed in 0.16.0 when the new API is promoted to its permanent location. Do not use `skchange.new_api` in production code.
+**`skchange.new_api` is a temporary preview path** for early feedback. It will be replaced in 0.17.0 when the new API is promoted to its permanent location (e.g. `skchange.detectors`, `skchange.interval_scorers`, ...). Do not rely on the `skchange.new_api` import path in production code.
 
-**Pinning recommendation**: If you need stability right now, pin to the current version:
+**Pinning recommendation**: If you need stability right now, pin to a 0.15.x release:
 ```bash
-pip install "skchange==0.14.3"  # Stable old API, no breaking changes
+pip install "skchange<0.16"  # Old API, no deprecation warnings
+pip install "skchange<0.17"  # Old API still works (warnings in 0.16.x)
+```
+
+To surface old-API usage in your test suite during the 0.16.x cycle:
+```bash
+pytest -W error::FutureWarning
 ```
 
 ## Quick Comparison

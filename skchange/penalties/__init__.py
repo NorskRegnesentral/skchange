@@ -1,5 +1,9 @@
 """Penalties and penalty functions for change and anomaly detection."""
 
+from skchange._deprecation import warn_old_api
+
+warn_old_api()
+
 from ._constant_penalties import (
     make_bic_penalty,
     make_chi2_penalty,

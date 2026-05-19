@@ -1,5 +1,9 @@
 """Cost functions for cost-based change and anomaly detection."""
 
+from skchange._deprecation import warn_old_api
+
+warn_old_api()
+
 from ._empirical_distribution_cost import EmpiricalDistributionCost
 from ._gaussian_cost import GaussianCost
 from ._l1_cost import L1Cost
