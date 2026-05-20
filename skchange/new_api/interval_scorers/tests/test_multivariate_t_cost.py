@@ -19,7 +19,7 @@ from skchange.new_api.interval_scorers._costs.multivariate_t_cost import (
     _solve_for_mle_scale_matrix,
     maximum_likelihood_mv_t_scale_matrix,
 )
-from skchange.utils.numba import numba_available
+from skchange.new_api.utils._numba import numba_available
 
 
 def estimate_scale_matrix_trace_nojit(centered_samples: np.ndarray, dof: float):

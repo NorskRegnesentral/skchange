@@ -7,7 +7,7 @@ index pair, as returned by ``predict_segment_anomalies()``.
 
 import numpy as np
 
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._param_validation import validate_params
 
 

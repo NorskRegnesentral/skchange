@@ -26,7 +26,7 @@ from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
 from skchange.new_api.utils.validation import validate_data
 

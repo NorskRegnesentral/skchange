@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 
 if TYPE_CHECKING:
     pass

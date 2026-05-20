@@ -7,7 +7,7 @@ input — the integer arrays returned by ``predict()``.
 from sklearn.metrics import adjusted_rand_score as _adjusted_rand_score
 from sklearn.metrics import rand_score as _rand_score
 
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._param_validation import validate_params
 
 
