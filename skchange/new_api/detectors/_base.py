@@ -6,9 +6,9 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 
-from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._conversion import changepoints_to_labels
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._tags import ChangeDetectorTags, SkchangeTags
+from skchange.new_api.utils.segmentation import changepoints_to_labels
 
 
 class BaseChangeDetector(BaseEstimator):

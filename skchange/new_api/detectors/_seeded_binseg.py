@@ -13,8 +13,9 @@ from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
 from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
@@ -25,10 +26,9 @@ from skchange.new_api.utils.validation import (
     check_interval_scorer,
     validate_data,
 )
-from skchange.utils.numba import njit
 
 
-@njit
+@njit(cache=True)
 def make_seeded_intervals(
     n: int, min_length: int, max_length: int, growth_factor: float = 1.5
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -54,7 +54,7 @@ def make_seeded_intervals(
     return np.array(starts[1:]), np.array(ends[1:])
 
 
-@njit
+@njit(cache=True)
 def greedy_selection(
     max_scores: np.ndarray,
     argmax_scores: np.ndarray,
@@ -73,7 +73,7 @@ def greedy_selection(
     return cpts
 
 
-@njit
+@njit(cache=True)
 def narrowest_selection(
     max_scores: np.ndarray,
     argmax_scores: np.ndarray,

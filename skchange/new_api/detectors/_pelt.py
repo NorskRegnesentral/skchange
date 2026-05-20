@@ -13,11 +13,11 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.typing import ArrayLike, Self
+from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
 from skchange.new_api.utils.validation import check_interval_scorer, validate_data
-from skchange.utils.numba import njit
 
 
 @dataclass(frozen=True, kw_only=True, eq=False)
@@ -78,7 +78,7 @@ class PELTResult:
         )
 
 
-@njit
+@njit(cache=True)
 def get_changepoints(prev_cpts: np.ndarray) -> np.ndarray:
     changepoints = []
     i = len(prev_cpts) - 1

@@ -10,7 +10,7 @@ from skchange.new_api.interval_scorers._costs.rank_cost import (
     _compute_ranks_and_pinv_cdf_cov,
 )
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 

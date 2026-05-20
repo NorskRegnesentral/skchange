@@ -12,21 +12,21 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
     _multivariate_gaussian_cost_mle,
 )
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
-from skchange.new_api.utils._param_validation import Interval, _fit_context
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
-from skchange.utils.numba import njit, prange
-from skchange.utils.numba.stats import (
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit, prange
+from skchange.new_api.utils._numeric import (
     col_median,
     digamma,
     kurtosis,
     log_gamma,
     trigamma,
 )
+from skchange.new_api.utils._param_validation import Interval, _fit_context
+from skchange.new_api.utils._tags import SkchangeTags
+from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
 
-@njit
+@njit(cache=True)
 def _estimate_scale_matrix_trace(
     centered_sample_squared_norms: np.ndarray,
     non_zero_norm_mask: np.ndarray,
@@ -56,7 +56,7 @@ def _estimate_scale_matrix_trace(
     return sample_dimension * np.exp(log_alpha)
 
 
-@njit
+@njit(cache=True)
 def _initial_scale_matrix_estimate(
     centered_samples: np.ndarray,
     dof: float,
@@ -105,7 +105,7 @@ def _initial_scale_matrix_estimate(
     return mle_scale_estimate
 
 
-@njit
+@njit(cache=True)
 def _scale_matrix_fixed_point_iteration(
     scale_matrix: np.ndarray,
     dof: float,
@@ -136,7 +136,7 @@ def _scale_matrix_fixed_point_iteration(
     return reconstructed_scale_matrix
 
 
-@njit
+@njit(cache=True)
 def _solve_for_mle_scale_matrix(
     initial_scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
@@ -175,7 +175,7 @@ def _solve_for_mle_scale_matrix(
     return scale_matrix
 
 
-@njit
+@njit(cache=True)
 def maximum_likelihood_mv_t_scale_matrix(
     centered_samples: np.ndarray,
     dof: float,
@@ -220,7 +220,7 @@ def maximum_likelihood_mv_t_scale_matrix(
     )
 
 
-@njit
+@njit(cache=True)
 def _multivariate_t_log_likelihood(
     scale_matrix: np.ndarray,
     centered_samples: np.ndarray,
@@ -249,7 +249,7 @@ def _multivariate_t_log_likelihood(
     return normalization_contribution + sample_contributions.sum()
 
 
-@njit
+@njit(cache=True)
 def _mv_t_ll_at_mle_params(
     X: np.ndarray,
     start: int,
@@ -276,7 +276,7 @@ def _mv_t_ll_at_mle_params(
     )
 
 
-@njit(parallel=True)
+@njit(cache=True, parallel=True)
 def multivariate_t_cost_mle_params(
     starts: np.ndarray,
     ends: np.ndarray,
@@ -321,7 +321,7 @@ def multivariate_t_cost_mle_params(
     return costs
 
 
-@njit
+@njit(cache=True)
 def _isotropic_mv_t_dof_estimate(
     centered_samples: np.ndarray, infinite_dof_threshold, zero_norm_tol=1.0e-6
 ) -> float:
@@ -339,7 +339,7 @@ def _isotropic_mv_t_dof_estimate(
     return (1 + np.sqrt(1 + 4 * b)) / b
 
 
-@njit
+@njit(cache=True)
 def _kurtosis_mv_t_dof_estimate(
     centered_samples: np.ndarray, infinite_dof_threshold: float
 ) -> float:
@@ -353,7 +353,7 @@ def _kurtosis_mv_t_dof_estimate(
     return (2.0 / sample_ellipitical_kurtosis) + 4.0
 
 
-@njit
+@njit(cache=True)
 def _iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
@@ -413,7 +413,7 @@ def _iterative_mv_t_dof_estimate(
     return dof
 
 
-@njit(parallel=True)
+@njit(cache=True, parallel=True)
 def _loo_iterative_mv_t_dof_estimate(
     centered_samples: np.ndarray,
     initial_dof: float,
@@ -498,7 +498,7 @@ def _loo_iterative_mv_t_dof_estimate(
     return current_dof
 
 
-@njit
+@njit(cache=True)
 def _estimate_mv_t_dof(
     X: np.ndarray,
     infinite_dof_threshold: float,
@@ -724,7 +724,7 @@ class MultivariateTCost(BaseCost):
         if self.fixed_dof is None:
             refine_threshold = self.refine_dof_threshold
             if refine_threshold is None:
-                from skchange.utils.numba import numba_available
+                from skchange.new_api.utils._numba import numba_available
 
                 refine_threshold = 1000 if numba_available else 100
 

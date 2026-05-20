@@ -9,7 +9,8 @@ from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.typing import ArrayLike
+from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import (
@@ -17,10 +18,9 @@ from skchange.new_api.utils.validation import (
     check_time_col,
     validate_data,
 )
-from skchange.utils.numba import njit
 
 
-@njit
+@njit(cache=True)
 def _lin_reg_cont_piecewise_linear_trend_score(
     starts: np.ndarray,
     splits: np.ndarray,
@@ -97,7 +97,7 @@ def _lin_reg_cont_piecewise_linear_trend_score(
     return scores
 
 
-@njit
+@njit(cache=True)
 def _continuous_piecewise_linear_trend_squared_contrast(
     signal: np.ndarray,
     first_interval_inclusive_start: int,
@@ -171,7 +171,7 @@ def _continuous_piecewise_linear_trend_squared_contrast(
     return np.square(contrast)
 
 
-@njit
+@njit(cache=True)
 def _analytical_cont_piecewise_linear_trend_score(
     starts: np.ndarray,
     splits: np.ndarray,
