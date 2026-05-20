@@ -7,12 +7,17 @@ Welcome to skchange
 A python library for fast change point and segment anomaly detection.
 
 **Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
-See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) for more details.
-If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a specific version:
+See `Issue #120 <https://github.com/NorskRegnesentral/skchange/issues/120>`_ and the
+`migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/skchange/new_api/MIGRATION_GUIDE.md>`_ for details.
+
+- **New API (recommended)** is previewed in ``skchange.new_api.*`` and becomes the default in 0.17.0, when the same names move to top-level (``skchange.detectors``, ``skchange.interval_scorers``, ``skchange.penalties``, ...). Drop ``new_api.`` from imports when upgrading.
+- **Current API** (``skchange.change_detectors``, ``skchange.costs``, ...) emits a ``FutureWarning`` in 0.16.x and is removed in 0.17.0.
+
+If you need stability and the old `sktime <https://www.sktime.net/>`_ compatibility, pin to a 0.15.x release:
 
 .. code-block:: bash
 
-    pip install "skchange==0.14.3"
+    pip install "skchange<0.16"
 
 Installation
 ------------
@@ -45,35 +50,23 @@ The goal of ``skchange`` is to provide a library for fast and easy-to-use change
 The primary focus is on modern methods in the statistical literature.
 
 
-Example
--------
+Quick example
+-------------
+
 .. code-block:: python
 
-    from skchange.anomaly_detectors import CAPA
-    from skchange.anomaly_scores import L2Saving
-    from skchange.compose.penalised_score import PenalisedScore
-    from skchange.datasets import generate_piecewise_normal_data
-    from skchange.penalties import make_linear_chi2_penalty
+    from skchange.new_api.datasets import generate_piecewise_normal_data
+    from skchange.new_api.detectors import MovingWindow
 
     df = generate_piecewise_normal_data(
-        means=[0, 8, 0, 5],
-        lengths=[100, 20, 130, 50],
-        proportion_affected=[1.0, 0.1, 1.0, 0.5],
-        n_variables=10,
-        seed=1,
+        means=[0, 5, 10, 5, 0], lengths=[50] * 5, seed=1,
     )
+    cps = MovingWindow(bandwidth=20).fit(df).predict_changepoints(df)
+    # array([ 50, 100, 150, 200])
 
-    score = L2Saving()  # Looks for segments with non-zero means.
-    penalty = make_linear_chi2_penalty(score.get_model_size(1), df.shape[0], df.shape[1])
-    penalised_score = PenalisedScore(score, penalty)
-    detector = CAPA(penalised_score, find_affected_components=True)
-    detector.fit_predict(df)
-
-.. code-block:: python
-
-            ilocs  labels         icolumns
-    0  [100, 120)       1              [0]
-    1  [250, 300)       2  [2, 0, 3, 1, 4]
+See the :doc:`user_guide/index` for more, including multivariate anomaly
+detection with variable identification, or jump to the
+:doc:`api_reference/index`.
 
 Licence
 -------
