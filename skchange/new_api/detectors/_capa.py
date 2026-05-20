@@ -283,20 +283,22 @@ class CAPA(BaseChangeDetector):
         of ``segment_saving`` with penalty array given by
         ``linear_chi2_penalty`` (or ``PenalisedScore(L1Saving(), ...)`` if
         ``segment_saving.min_size > 1``).
-    segment_penalty_scale : float, default=1.0
+    segment_penalty_scale : float, default=1.5
         Multiplicative factor on the default penalty of the auto-constructed
         :class:`PenalisedScore` wrapping ``segment_saving``. Applies only when
         ``segment_saving`` is ``None`` or an unpenalised scorer. Silently
         ignored when ``segment_saving`` is already penalised; in that case
-        the user-provided scorer owns its penalty.
-    point_penalty_scale : float, default=2.0
+        the user-provided scorer owns its penalty. The default of ``1.5``
+        provides a safety margin to account for baseline parameter estimation
+        uncertainty.
+    point_penalty_scale : float, default=3.0
         Multiplicative factor on the default penalty of the auto-constructed
         :class:`PenalisedScore` wrapping ``point_saving``. Applies only when
         ``point_saving`` is ``None`` or an unpenalised scorer. Silently
         ignored when ``point_saving`` is already penalised; in that case the
-        user-provided scorer owns its penalty. The default of ``2.0``
-        reflects the standard CAPA convention of doubling the linear chi-2
-        point penalty relative to its baseline scale.
+        user-provided scorer owns its penalty. The default of ``3.0`` is
+        larger than ``segment_penalty_scale`` to prioritise segment anomalies
+        over single-sample point anomalies.
     min_segment_length : int or None, default=None
         Minimum number of samples in a segment anomaly. Defaults to
         ``2 * segment_saving.min_size`` when ``None``. The 2x factor provides
@@ -359,8 +361,8 @@ class CAPA(BaseChangeDetector):
         self,
         segment_saving: BaseIntervalScorer | None = None,
         point_saving: BaseIntervalScorer | None = None,
-        segment_penalty_scale: float = 1.0,
-        point_penalty_scale: float = 2.0,
+        segment_penalty_scale: float = 1.5,
+        point_penalty_scale: float = 3.0,
         min_segment_length: int | None = None,
         max_segment_length: int | None = None,
         include_point_anomalies: bool = False,

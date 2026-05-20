@@ -108,21 +108,27 @@ def test_capa_penalty_scales_act_independently():
     """``segment_penalty_scale`` and ``point_penalty_scale`` only affect their own."""
     X = make_single_change_X(CAPA())
 
+    default_seg_scale = CAPA().segment_penalty_scale
+    default_point_scale = CAPA().point_penalty_scale
+    seg_scale = 2.0 * default_seg_scale
+    point_scale = 2.0 * default_point_scale
+
     base = CAPA().fit(X)
-    seg_scaled = CAPA(segment_penalty_scale=3.0).fit(X)
-    point_scaled = CAPA(point_penalty_scale=4.0).fit(X)
+    seg_scaled = CAPA(segment_penalty_scale=seg_scale).fit(X)
+    point_scaled = CAPA(point_penalty_scale=point_scale).fit(X)
 
     assert np.allclose(
-        seg_scaled.segment_saving_.penalty_, 3.0 * base.segment_saving_.penalty_
+        seg_scaled.segment_saving_.penalty_,
+        (seg_scale / default_seg_scale) * base.segment_saving_.penalty_,
     )
     assert np.allclose(seg_scaled.point_saving_.penalty_, base.point_saving_.penalty_)
 
     assert np.allclose(
         point_scaled.segment_saving_.penalty_, base.segment_saving_.penalty_
     )
-    # point_penalty_scale=4.0 vs default 2.0 -> 2x relative to base.
     assert np.allclose(
-        point_scaled.point_saving_.penalty_, 2.0 * base.point_saving_.penalty_
+        point_scaled.point_saving_.penalty_,
+        (point_scale / default_point_scale) * base.point_saving_.penalty_,
     )
 
 
