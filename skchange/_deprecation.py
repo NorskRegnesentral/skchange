@@ -16,8 +16,8 @@ _MIGRATION_GUIDE_URL = (
 
 _OLD_API_MSG = (
     "The current skchange API will be removed in 0.17.0 and replaced by the "
-    "API currently previewed in `skchange.new_api`. To keep using the current "
-    "API, pin `skchange<0.17`. See the migration guide for details: "
+    "API currently previewed in `skchange.new_api`. Pin `skchange<0.16` to "
+    "keep the current API. See the migration guide for details: "
     f"{_MIGRATION_GUIDE_URL}"
 )
 
