@@ -1,5 +1,9 @@
 """Change scores as interval evaluators."""
 
+from skchange._deprecation import warn_old_api
+
+warn_old_api()
+
 from skchange.change_scores._continuous_linear_trend_score import (
     ContinuousLinearTrendScore,
 )

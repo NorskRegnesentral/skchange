@@ -1,5 +1,9 @@
 """Change detection algorithms."""
 
+from skchange._deprecation import warn_old_api
+
+warn_old_api()
+
 from ._crops import CROPS
 from ._moving_window import MovingWindow
 from ._pelt import PELT

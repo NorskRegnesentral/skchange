@@ -1,5 +1,9 @@
 """Anomaly scores for interval evaluation."""
 
+from skchange._deprecation import warn_old_api
+
+warn_old_api()
+
 from ._from_cost import (
     LocalAnomalyScore,
     Saving,
