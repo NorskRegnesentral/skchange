@@ -15,7 +15,7 @@
 See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) and the
 [migration guide](https://github.com/NorskRegnesentral/skchange/blob/main/skchange/new_api/MIGRATION_GUIDE.md) for details.
 
-- **New API (recommended)** is previewed in `skchange.new_api.*` and becomes the default in 0.17.0, when the same names move to top-level (`skchange.detectors`, `skchange.interval_scorers`, `skchange.penalties`, ...). Drop `new_api.` from imports when upgrading.
+- **New API (recommended)** is previewed in `skchange.new_api.*` and becomes the default in 0.17.0, when the same names move to top-level (`skchange.detectors`, `skchange.interval_scorers`, `skchange.penalties`, ...). Drop `new_api.` from imports when upgrading. Still experimental.
 - **Current API** (`skchange.change_detectors`, `skchange.costs`, ...) emits a `FutureWarning` in 0.16.x and is removed in 0.17.0.
 
 If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a 0.15.x release:
