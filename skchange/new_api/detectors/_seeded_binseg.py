@@ -200,6 +200,13 @@ def _resolve_change_score(
     change_score = CUSUM() if change_score is None else change_score
     tags = change_score.__sklearn_tags__().interval_scorer_tags
     if tags.penalised:
+        if penalty_scale != 1.0:
+            raise ValueError(
+                "'change_score' is already a PenalisedScore, so 'penalty_scale' is "
+                "ignored. Either pass an unpenalised scorer and set 'penalty_scale' "
+                "on the detector, or pass PenalisedScore(...) directly and leave "
+                "'penalty_scale' at its default of 1.0."
+            )
         return change_score
     return PenalisedScore(change_score, penalty_scale=penalty_scale)
 
@@ -449,3 +456,40 @@ class SeededBinarySegmentation(BaseChangeDetector):
             Empty array if no changepoints are detected.
         """
         return self.predict_all(X)["changepoints"]
+
+    def get_interval_specs(self, n_samples: int) -> np.ndarray:
+        """Return the exact interval specifications evaluated by this detector.
+
+        Generates the same ``(start, split, end)`` 3-tuples that
+        ``_run_seeded_binseg`` builds internally, so calibration uses
+        identical intervals to detection.
+
+        Parameters
+        ----------
+        n_samples : int
+            Length of the time series.
+
+        Returns
+        -------
+        interval_specs : np.ndarray of shape (n_specs, 3)
+            Rows are ``[start, split, end)`` as used by the change scorer.
+        """
+        check_is_fitted(self)
+        starts, ends = make_seeded_intervals(
+            n_samples,
+            2 * self.min_subinterval_length_,
+            self.max_interval_length_,
+            self.growth_factor,
+        )
+        if starts.size == 0:
+            return np.empty((0, 3), dtype=np.int64)
+        rows = []
+        for start, end in zip(starts, ends):
+            for split in range(
+                start + self.min_subinterval_length_,
+                end - self.min_subinterval_length_ + 1,
+            ):
+                rows.append([start, split, end])
+        if not rows:
+            return np.empty((0, 3), dtype=np.int64)
+        return np.array(rows, dtype=np.int64)

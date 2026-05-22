@@ -5,8 +5,8 @@ import pytest
 
 from skchange.new_api.calibration._calibrate import calibrate_penalty
 from skchange.new_api.calibration._null_models import (
-    GaussianNullModel,
-    PermutationNullModel,
+    GaussianMCSampler,
+    PermutationSampler,
 )
 from skchange.new_api.detectors import MovingWindow
 from skchange.new_api.interval_scorers import CUSUM, ESACScore, L2Saving, PenalisedScore
@@ -24,7 +24,7 @@ _X = _RNG.normal(size=(_N, _P))
 def test_calibrate_penalty_returns_positive_scalar_for_cusum():
     """calibrate_penalty with CUSUM must return a positive scalar."""
     result = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=19, random_state=0
+        CUSUM(), _X, PermutationSampler(), n_simulations=19, random_state=0
     )
     assert np.isscalar(result) or (isinstance(result, np.ndarray) and result.ndim == 0)
     assert float(result) > 0
@@ -37,7 +37,7 @@ def test_calibrate_penalty_return_shape_matches_get_default_penalty():
     default_penalty = scorer.get_default_penalty()
 
     result = calibrate_penalty(
-        L2Saving(), _X, PermutationNullModel(), n_simulations=19, random_state=0
+        L2Saving(), _X, PermutationSampler(), n_simulations=19, random_state=0
     )
     assert np.shape(result) == np.shape(default_penalty)
 
@@ -45,15 +45,15 @@ def test_calibrate_penalty_return_shape_matches_get_default_penalty():
 def test_calibrate_penalty_smoke_one_simulation():
     """n_simulations=1 must return a finite value (smoke test)."""
     result = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=1, random_state=42
+        CUSUM(), _X, PermutationSampler(), n_simulations=1, random_state=42
     )
     assert np.all(np.isfinite(result))
 
 
 def test_calibrate_penalty_with_gaussian_null_model():
-    """calibrate_penalty works with GaussianNullModel."""
+    """calibrate_penalty works with GaussianMCSampler."""
     result = calibrate_penalty(
-        CUSUM(), _X, GaussianNullModel(), n_simulations=19, random_state=0
+        CUSUM(), _X, GaussianMCSampler(), n_simulations=19, random_state=0
     )
     assert float(result) > 0
 
@@ -61,7 +61,7 @@ def test_calibrate_penalty_with_gaussian_null_model():
 def test_calibrate_penalty_with_esac_score():
     """calibrate_penalty works with ESACScore (after Phase 0 refactor)."""
     result = calibrate_penalty(
-        ESACScore(), _X, PermutationNullModel(), n_simulations=19, random_state=0
+        ESACScore(), _X, PermutationSampler(), n_simulations=19, random_state=0
     )
     assert float(result) > 0
 
@@ -74,10 +74,10 @@ def test_calibrate_penalty_with_esac_score():
 def test_calibrate_penalty_random_state_reproducible():
     """Same random_state must produce identical results."""
     r1 = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=49, random_state=7
+        CUSUM(), _X, PermutationSampler(), n_simulations=49, random_state=7
     )
     r2 = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=49, random_state=7
+        CUSUM(), _X, PermutationSampler(), n_simulations=49, random_state=7
     )
     np.testing.assert_array_equal(r1, r2)
 
@@ -85,10 +85,10 @@ def test_calibrate_penalty_random_state_reproducible():
 def test_calibrate_penalty_different_seeds_differ():
     """Different random states should (almost certainly) give different values."""
     r1 = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=49, random_state=1
+        CUSUM(), _X, PermutationSampler(), n_simulations=49, random_state=1
     )
     r2 = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=49, random_state=2
+        CUSUM(), _X, PermutationSampler(), n_simulations=49, random_state=2
     )
     # Very unlikely to be identical with 49 sims.
     assert not np.array_equal(r1, r2)
@@ -105,7 +105,7 @@ def test_calibrate_penalty_explicit_interval_specs():
     result = calibrate_penalty(
         CUSUM(),
         _X,
-        PermutationNullModel(),
+        PermutationSampler(),
         interval_specs=specs,
         n_simulations=19,
         random_state=0,
@@ -120,7 +120,7 @@ def test_calibrate_penalty_with_detector_uses_get_interval_specs():
     result = calibrate_penalty(
         CUSUM(),
         _X,
-        PermutationNullModel(),
+        PermutationSampler(),
         detector=detector,
         n_simulations=19,
         random_state=0,
@@ -140,13 +140,13 @@ def test_calibrate_penalty_detector_result_le_conservative():
     result_detector = calibrate_penalty(
         CUSUM(),
         _X,
-        PermutationNullModel(),
+        PermutationSampler(),
         detector=detector,
         n_simulations=99,
         random_state=42,
     )
     result_conservative = calibrate_penalty(
-        CUSUM(), _X, PermutationNullModel(), n_simulations=99, random_state=42
+        CUSUM(), _X, PermutationSampler(), n_simulations=99, random_state=42
     )
     # Conservative default should be >= detector-specific (or at least close).
     assert float(result_conservative) >= float(result_detector) * 0.9
@@ -168,7 +168,7 @@ def test_calibrate_penalty_X_calib_returns_positive():
     result = calibrate_penalty(
         CUSUM(),
         _X,
-        PermutationNullModel(),
+        PermutationSampler(),
         n_simulations=19,
         random_state=0,
         X_calib=X_calib,
@@ -182,7 +182,7 @@ def test_calibrate_penalty_X_calib_1d_raises():
         calibrate_penalty(
             CUSUM(),
             _X,
-            PermutationNullModel(),
+            PermutationSampler(),
             n_simulations=9,
             random_state=0,
             X_calib=np.ones(_N),
@@ -196,7 +196,7 @@ def test_calibrate_penalty_X_calib_wrong_features_raises():
         calibrate_penalty(
             CUSUM(),
             _X,
-            PermutationNullModel(),
+            PermutationSampler(),
             n_simulations=9,
             random_state=0,
             X_calib=X_calib_bad,
@@ -206,14 +206,14 @@ def test_calibrate_penalty_X_calib_wrong_features_raises():
 def test_calibrate_penalty_X_calib_different_length_allowed():
     """X_calib with a different length than X must be accepted without error.
 
-    Uses GaussianNullModel because PermutationNullModel cannot upsample
+    Uses GaussianMCSampler because PermutationSampler cannot upsample
     (draws without replacement), so it requires len(X_calib) >= len(X).
     """
     X_calib_short = np.random.default_rng(3).normal(size=(30, _P))
     result = calibrate_penalty(
         CUSUM(),
         _X,
-        GaussianNullModel(),
+        GaussianMCSampler(),
         n_simulations=9,
         random_state=0,
         X_calib=X_calib_short,
@@ -222,17 +222,21 @@ def test_calibrate_penalty_X_calib_different_length_allowed():
 
 
 def test_calibrate_penalty_X_calib_gaussian_null_differs_from_X_only():
-    """Using a very different X_calib should shift the calibrated penalty."""
+    """Using a very different X_calib should shift the calibrated penalty.
+
+    Uses PermutationSampler (data-based) so that X_calib actually influences the
+    null distribution — parametric samplers like GaussianMCSampler ignore X_calib.
+    """
     rng = np.random.default_rng(42)
     # X_calib drawn from a distribution with much larger variance.
     X_calib_wide = rng.normal(scale=5.0, size=(200, _P))
     result_x_only = calibrate_penalty(
-        CUSUM(), _X, GaussianNullModel(), n_simulations=99, random_state=0
+        CUSUM(), _X, PermutationSampler(), n_simulations=99, random_state=0
     )
     result_x_calib = calibrate_penalty(
         CUSUM(),
         _X,
-        GaussianNullModel(),
+        PermutationSampler(),
         n_simulations=99,
         random_state=0,
         X_calib=X_calib_wide,
@@ -251,7 +255,7 @@ def test_calibrate_penalty_fwer_control():
     calibrated = calibrate_penalty(
         CUSUM(),
         _X,
-        PermutationNullModel(),
+        PermutationSampler(),
         n_simulations=999,
         level=level,
         random_state=0,

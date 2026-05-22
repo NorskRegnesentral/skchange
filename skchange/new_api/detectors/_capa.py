@@ -223,6 +223,14 @@ def _resolve_segment_saving(
     saving = L2Saving() if saving is None else saving
     tags = saving.__sklearn_tags__().interval_scorer_tags
     if tags.penalised:
+        if penalty_scale != 1.0:
+            raise ValueError(
+                "'segment_saving' is already a PenalisedScore, so "
+                "'segment_penalty_scale' is ignored. Either pass an unpenalised "
+                "saving and set 'segment_penalty_scale' on the detector, or pass "
+                "PenalisedScore(...) directly and leave 'segment_penalty_scale' at "
+                "its default of 1.0."
+            )
         return saving
     return PenalisedScore(saving, penalty_scale=penalty_scale)
 
@@ -252,6 +260,14 @@ def _resolve_point_saving(
 
     tags = point_saving.__sklearn_tags__().interval_scorer_tags
     if tags.penalised:
+        if penalty_scale != 1.0:
+            raise ValueError(
+                "'point_saving' is already a PenalisedScore, so "
+                "'point_penalty_scale' is ignored. Either pass an unpenalised "
+                "saving and set 'point_penalty_scale' on the detector, or pass "
+                "PenalisedScore(...) directly and leave 'point_penalty_scale' at "
+                "its default of 1.0."
+            )
         return point_saving
     return PenalisedScore(point_saving, penalty_scale=penalty_scale)
 
@@ -372,6 +388,18 @@ class CAPA(BaseChangeDetector):
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.include_point_anomalies = include_point_anomalies
+
+    def _active_penalty_scale_params(self) -> list:
+        """Return penalty scale params that are active given current settings.
+
+        Excludes ``point_penalty_scale`` when ``include_point_anomalies=False``
+        so that ``CalibratedDetector`` does not apply a Bonferroni correction
+        for a test that is never performed.
+        """
+        params = ["segment_penalty_scale"]
+        if self.include_point_anomalies:
+            params.append("point_penalty_scale")
+        return params
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Get tags, propagating input constraints from the segment saving."""
@@ -603,9 +631,16 @@ class CAPA(BaseChangeDetector):
         interval_specs : np.ndarray of shape (n_specs, 2)
             Rows are ``[start, end)`` as used by the saving scorer.
         """
-        min_size = _resolve_segment_saving(self.segment_saving).min_size
+        # Use the fitted scorer when available so that min_size works for scorers
+        # that require fitting (e.g. MultivariateGaussianScore).
+        if hasattr(self, "segment_saving_"):
+            min_size = self.segment_saving_.min_size
+        else:
+            min_size = _resolve_segment_saving(self.segment_saving).min_size
         min_len = (
-            self.min_segment_length if self.min_segment_length is not None else min_size
+            self.min_segment_length
+            if self.min_segment_length is not None
+            else 2 * min_size
         )
         max_len = (
             self.max_segment_length

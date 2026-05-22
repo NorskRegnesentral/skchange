@@ -207,6 +207,13 @@ def _resolve_transient_score(
     transient_score = L2TransientScore() if transient_score is None else transient_score
     tags = transient_score.__sklearn_tags__().interval_scorer_tags
     if tags.penalised:
+        if penalty_scale != 1.0:
+            raise ValueError(
+                "'transient_score' is already a PenalisedScore, so 'penalty_scale' is "
+                "ignored. Either pass an unpenalised scorer and set 'penalty_scale' "
+                "on the detector, or pass PenalisedScore(...) directly and leave "
+                "'penalty_scale' at its default of 1.0."
+            )
         return transient_score
     return PenalisedScore(transient_score, penalty_scale=penalty_scale)
 
@@ -496,3 +503,41 @@ class CircularBinarySegmentation(BaseChangeDetector):
             Empty array if no anomalies are detected.
         """
         return self.predict_all(X)["changepoints"]
+
+    def get_interval_specs(self, n_samples: int) -> np.ndarray:
+        """Return the exact interval specifications evaluated by this detector.
+
+        Generates the same ``(outer_start, inner_start, inner_end, outer_end)``
+        4-tuples that ``_run_circular_binseg`` builds internally, so calibration
+        uses identical intervals to detection.
+
+        Parameters
+        ----------
+        n_samples : int
+            Length of the time series.
+
+        Returns
+        -------
+        interval_specs : np.ndarray of shape (n_specs, 4)
+            Rows are ``[outer_start, inner_start, inner_end, outer_end)`` as
+            used by the transient scorer.
+        """
+        check_is_fitted(self)
+        outer_starts, outer_ends = make_seeded_intervals(
+            n_samples,
+            2 * self.min_subinterval_length_,
+            self.max_interval_length_,
+            self.growth_factor,
+        )
+        if outer_starts.size == 0:
+            return np.empty((0, 4), dtype=np.int64)
+        rows = []
+        for outer_start, outer_end in zip(outer_starts, outer_ends):
+            inner_starts, inner_ends = make_inner_intervals(
+                outer_start, outer_end, self.min_subinterval_length_
+            )
+            for inner_start, inner_end in zip(inner_starts, inner_ends):
+                rows.append([outer_start, inner_start, inner_end, outer_end])
+        if not rows:
+            return np.empty((0, 4), dtype=np.int64)
+        return np.array(rows, dtype=np.int64)

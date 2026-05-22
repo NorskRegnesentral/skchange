@@ -6,11 +6,12 @@ from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 
 from skchange.new_api.calibration._null_models import (
-    BaseNullModel,
-    BlockBootstrapNullModel,
-    GaussianNullModel,
-    MCNullModel,
-    PermutationNullModel,
+    BaseDataSampler,
+    BaseParametricSampler,
+    BlockBootstrapSampler,
+    GaussianMCSampler,
+    MCSimulator,
+    PermutationSampler,
 )
 
 # ---------------------------------------------------------------------------
@@ -21,112 +22,157 @@ _N, _P = 80, 5
 _RNG = np.random.default_rng(0)
 _X = _RNG.normal(size=(_N, _P))
 
-_ALL_NULL_MODELS = [
-    PermutationNullModel(),
-    PermutationNullModel(replace=False),
-    PermutationNullModel(replace=True),
-    BlockBootstrapNullModel(),
-    BlockBootstrapNullModel(block_length=10),
-    GaussianNullModel(),
-    MCNullModel(lambda n, p, rng: rng.normal(size=(n, p))),
+_ALL_DATA_SAMPLERS = [
+    PermutationSampler(),
+    PermutationSampler(replace=False),
+    PermutationSampler(replace=True),
+    BlockBootstrapSampler(),
+    BlockBootstrapSampler(block_length=10),
+]
+
+_ALL_PARAMETRIC_SAMPLERS = [
+    GaussianMCSampler(),
+    GaussianMCSampler(mean=0.0, std=1.0),
+    MCSimulator(lambda n, p, rng: rng.normal(size=(n, p))),
 ]
 
 
-@pytest.fixture(params=_ALL_NULL_MODELS, ids=repr)
-def null_model(request):
+@pytest.fixture(params=_ALL_DATA_SAMPLERS, ids=repr)
+def data_sampler(request):
+    return clone(request.param)
+
+
+@pytest.fixture(params=_ALL_PARAMETRIC_SAMPLERS, ids=repr)
+def parametric_sampler(request):
     return clone(request.param)
 
 
 # ---------------------------------------------------------------------------
-# BaseNullModel contract
+# Type hierarchy
 # ---------------------------------------------------------------------------
 
 
-def test_all_null_models_are_base_null_model(null_model):
-    """Every null model must be a BaseNullModel subclass."""
-    assert isinstance(null_model, BaseNullModel)
+def test_data_samplers_are_base_data_sampler(data_sampler):
+    assert isinstance(data_sampler, BaseDataSampler)
 
 
-def test_null_model_get_params_set_params_roundtrip(null_model):
-    """get_params / set_params must be consistent (sklearn contract)."""
-    params = null_model.get_params(deep=True)
-    null_model.set_params(**params)
-    assert null_model.get_params(deep=True) == params
+def test_parametric_samplers_are_base_parametric_sampler(parametric_sampler):
+    assert isinstance(parametric_sampler, BaseParametricSampler)
 
 
-def test_null_model_clone(null_model):
-    """clone() must produce an unfitted copy."""
-    cloned = clone(null_model)
-    assert type(cloned) is type(null_model)
+def test_data_samplers_not_parametric(data_sampler):
+    assert not isinstance(data_sampler, BaseParametricSampler)
 
 
-def test_sample_before_fit_raises(null_model):
+def test_parametric_samplers_not_data(parametric_sampler):
+    assert not isinstance(parametric_sampler, BaseDataSampler)
+
+
+# ---------------------------------------------------------------------------
+# get_params / set_params / clone — both hierarchies
+# ---------------------------------------------------------------------------
+
+
+def test_data_sampler_get_set_params_roundtrip(data_sampler):
+    params = data_sampler.get_params(deep=True)
+    data_sampler.set_params(**params)
+    assert data_sampler.get_params(deep=True) == params
+
+
+def test_parametric_sampler_get_set_params_roundtrip(parametric_sampler):
+    params = parametric_sampler.get_params(deep=True)
+    parametric_sampler.set_params(**params)
+    assert parametric_sampler.get_params(deep=True) == params
+
+
+def test_data_sampler_clone(data_sampler):
+    cloned = clone(data_sampler)
+    assert type(cloned) is type(data_sampler)
+
+
+def test_parametric_sampler_clone(parametric_sampler):
+    cloned = clone(parametric_sampler)
+    assert type(cloned) is type(parametric_sampler)
+
+
+# ---------------------------------------------------------------------------
+# BaseDataSampler: fit required before sample
+# ---------------------------------------------------------------------------
+
+
+def test_data_sampler_sample_before_fit_raises(data_sampler):
     """sample() before fit() must raise NotFittedError."""
     rng = np.random.default_rng(1)
     with pytest.raises(NotFittedError):
-        null_model.sample(10, rng)
+        data_sampler.sample(_N, rng)
 
 
-def test_fit_returns_self(null_model):
-    """fit() must return self."""
-    assert null_model.fit(_X) is null_model
+def test_data_sampler_fit_returns_self(data_sampler):
+    assert data_sampler.fit(_X) is data_sampler
 
 
-def test_sample_shape(null_model):
-    """sample(n, rng) must return an array of shape (n, n_features_in_)."""
+def test_data_sampler_sample_shape(data_sampler):
     rng = np.random.default_rng(2)
-    null_model.fit(_X)
-    out = null_model.sample(_N, rng)
+    data_sampler.fit(_X)
+    out = data_sampler.sample(_N, rng)
     assert out.shape == (_N, _P)
 
 
-def test_sample_different_n(null_model):
-    """sample() must work for n different from the training set size."""
+def test_data_sampler_sample_different_n(data_sampler):
     rng = np.random.default_rng(3)
-    null_model.fit(_X)
-    out = null_model.sample(30, rng)
+    data_sampler.fit(_X)
+    out = data_sampler.sample(30, rng)
     assert out.shape == (30, _P)
 
 
-def test_sample_returns_float64(null_model):
-    """sample() output must be float64."""
+def test_data_sampler_sample_returns_float64(data_sampler):
     rng = np.random.default_rng(4)
-    null_model.fit(_X)
-    out = null_model.sample(_N, rng)
+    data_sampler.fit(_X)
+    out = data_sampler.sample(_N, rng)
     assert out.dtype == np.float64
 
 
 # ---------------------------------------------------------------------------
-# PermutationNullModel specifics
+# BaseParametricSampler: no fit needed
 # ---------------------------------------------------------------------------
 
 
-def test_permutation_strict_rows_come_from_X():
-    """With replace=False every row of the sample must be a row of X."""
-    model = PermutationNullModel(replace=False).fit(_X)
-    rng = np.random.default_rng(5)
-    out = model.sample(_N, rng)
-    # Each output row should appear in X when sorted.
-    X_sorted_rows = set(map(tuple, np.sort(_X, axis=0)))
-    for row in out:
-        assert tuple(np.sort(row)) in X_sorted_rows or any(
-            np.allclose(row, x_row) for x_row in _X
-        )
+def test_parametric_sampler_sample_without_fit(parametric_sampler):
+    """sample(n, n_features, rng) must work without calling fit() first."""
+    rng = np.random.default_rng(1)
+    out = parametric_sampler.sample(_N, _P, rng)
+    assert out.shape == (_N, _P)
+
+
+def test_parametric_sampler_sample_returns_float64(parametric_sampler):
+    rng = np.random.default_rng(2)
+    out = parametric_sampler.sample(_N, _P, rng)
+    assert out.dtype == np.float64
+
+
+def test_parametric_sampler_sample_different_n_and_p(parametric_sampler):
+    rng = np.random.default_rng(3)
+    out = parametric_sampler.sample(30, 7, rng)
+    assert out.shape == (30, 7)
+
+
+# ---------------------------------------------------------------------------
+# PermutationSampler specifics
+# ---------------------------------------------------------------------------
 
 
 def test_permutation_strict_exact_marginals():
     """replace=False: sorted output columns must equal sorted input columns."""
-    model = PermutationNullModel(replace=False).fit(_X)
+    model = PermutationSampler(replace=False).fit(_X)
     rng = np.random.default_rng(6)
     out = model.sample(_N, rng)
-    # Each column is a permutation of the corresponding input column.
     for j in range(_P):
         np.testing.assert_array_almost_equal(np.sort(out[:, j]), np.sort(_X[:, j]))
 
 
 def test_permutation_bootstrap_rows_come_from_X():
-    """replace=True: every row of the sample must be a row of X (resampling)."""
-    model = PermutationNullModel(replace=True).fit(_X)
+    """replace=True: every row of the sample must be a row of X."""
+    model = PermutationSampler(replace=True).fit(_X)
     rng = np.random.default_rng(7)
     out = model.sample(_N, rng)
     for row in out:
@@ -136,89 +182,89 @@ def test_permutation_bootstrap_rows_come_from_X():
 
 
 def test_permutation_bootstrap_allows_repeats():
-    """replace=True may produce repeated rows (non-deterministically, but very likely)."""
-    model = PermutationNullModel(replace=True).fit(_X)
+    """replace=True may produce repeated rows."""
+    model = PermutationSampler(replace=True).fit(_X)
     rng = np.random.default_rng(8)
-    # With n=500 draws from 80 rows, repeats are virtually certain.
     out = model.sample(500, rng)
-    # Check at least one duplicate row exists.
     _, counts = np.unique(out, axis=0, return_counts=True)
-    assert np.any(counts > 1), (
-        "Expected repeated rows with replace=True and n >> N_train."
-    )
+    assert np.any(counts > 1)
 
 
 # ---------------------------------------------------------------------------
-# BlockBootstrapNullModel specifics
+# BlockBootstrapSampler specifics
 # ---------------------------------------------------------------------------
 
 
 def test_block_bootstrap_blocks_are_contiguous():
     """Consecutive samples within a block must come from consecutive rows of X."""
-    model = BlockBootstrapNullModel(block_length=10).fit(_X)
+    model = BlockBootstrapSampler(block_length=10).fit(_X)
     rng = np.random.default_rng(9)
     out = model.sample(_N, rng)
     assert out.shape == (_N, _P)
-    # Walk through blocks: within each block of 10, row[i+1] must equal X[row_i + 1]
-    # (modulo wrap-around at end of X — circular bootstrap).
     block_length = 10
     for block_start in range(0, _N, block_length):
         block_end = min(block_start + block_length, _N)
         for i in range(block_start, block_end - 1):
-            # Find which row of X matches out[i]
             matches = np.where(np.all(np.isclose(_X, out[i]), axis=1))[0]
             if len(matches) == 0:
-                continue  # allow unique float sequences
+                continue
             idx = matches[0]
             next_idx = (idx + 1) % _N
             np.testing.assert_array_almost_equal(out[i + 1], _X[next_idx])
 
 
 # ---------------------------------------------------------------------------
-# GaussianNullModel specifics
+# GaussianMCSampler specifics
 # ---------------------------------------------------------------------------
 
 
-def test_gaussian_null_model_sample_mean_close_to_X_mean():
-    """With many samples, the output mean per feature should be close to X mean."""
-    model = GaussianNullModel().fit(_X)
+def test_gaussian_mc_sampler_default_params():
+    """Default GaussianMCSampler uses mean=0, std=1."""
+    model = GaussianMCSampler()
+    assert model.mean == 0.0
+    assert model.std == 1.0
+
+
+def test_gaussian_mc_sampler_mean_close_to_param():
+    """With many samples, output mean should be close to GaussianMCSampler.mean."""
+    model = GaussianMCSampler(mean=2.5, std=1.0)
     rng = np.random.default_rng(10)
-    out = model.sample(10_000, rng)
-    np.testing.assert_allclose(out.mean(axis=0), _X.mean(axis=0), atol=0.1)
+    out = model.sample(10_000, _P, rng)
+    np.testing.assert_allclose(out.mean(axis=0), 2.5, atol=0.1)
 
 
-def test_gaussian_null_model_sample_std_close_to_X_std():
-    """With many samples, the output std per feature should be close to X std."""
-    model = GaussianNullModel().fit(_X)
+def test_gaussian_mc_sampler_std_close_to_param():
+    """With many samples, output std should be close to GaussianMCSampler.std."""
+    model = GaussianMCSampler(mean=0.0, std=3.0)
     rng = np.random.default_rng(11)
-    out = model.sample(10_000, rng)
-    np.testing.assert_allclose(out.std(axis=0), _X.std(axis=0), atol=0.1)
+    out = model.sample(10_000, _P, rng)
+    np.testing.assert_allclose(out.std(axis=0), 3.0, atol=0.1)
 
 
 # ---------------------------------------------------------------------------
-# MCNullModel specifics
+# MCSimulator specifics
 # ---------------------------------------------------------------------------
 
 
-def test_mc_null_model_calls_dgp_with_correct_signature():
-    """The DGP callable must be called with (n, p, rng)."""
+def test_mc_simulator_calls_dgp_with_correct_signature():
+    """The DGP callable must be called with (n, n_features, rng)."""
     calls = []
 
     def dgp(n, p, rng):
         calls.append((n, p))
         return rng.normal(size=(n, p))
 
-    model = MCNullModel(dgp).fit(_X)
+    model = MCSimulator(dgp)
     rng = np.random.default_rng(12)
-    out = model.sample(30, rng)
+    out = model.sample(30, _P, rng)
     assert len(calls) == 1
     assert calls[0] == (30, _P)
     assert out.shape == (30, _P)
 
 
-def test_mc_null_model_dgp_return_shape():
-    """MCNullModel must forward whatever shape the DGP returns."""
-    model = MCNullModel(lambda n, p, rng: rng.normal(size=(n, p))).fit(_X)
+def test_mc_simulator_dgp_return_shape():
+    """MCSimulator must forward whatever shape the DGP returns."""
+    model = MCSimulator(lambda n, p, rng: rng.normal(size=(n, p)))
     rng = np.random.default_rng(13)
-    out = model.sample(20, rng)
+    out = model.sample(20, _P, rng)
     assert out.shape == (20, _P)

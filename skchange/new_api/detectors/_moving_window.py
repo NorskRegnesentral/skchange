@@ -424,10 +424,15 @@ class MovingWindow(BaseChangeDetector):
         )
         scores[:, active_mask] = scores_active
 
+        # Replace NaN (boundary positions where no window fits) with -inf so that
+        # changepoint selection functions using np.max do not propagate NaN and
+        # incorrectly reject valid detections near the series boundaries.
+        scores_for_selection = np.where(np.isnan(scores_active), -np.inf, scores_active)
+
         if self.selection_method == "detection_length":
             min_detection_length = int(self.min_detection_fraction * active_bws[0])
             changepoints = select_changepoints_by_detection_length(
-                scores_active.reshape(-1), min_detection_length
+                scores_for_selection.reshape(-1), min_detection_length
             )
         else:
             if len(active_bws) == 1:
@@ -435,11 +440,11 @@ class MovingWindow(BaseChangeDetector):
                     self.local_optimum_fraction * active_bws[0]
                 )
                 changepoints = select_changepoints_by_local_optimum(
-                    scores_active.reshape(-1), local_optimum_bandwidth
+                    scores_for_selection.reshape(-1), local_optimum_bandwidth
                 )
             else:
                 changepoints = select_changepoints_by_bottom_up(
-                    scores_active, active_bws, self.local_optimum_fraction
+                    scores_for_selection, active_bws, self.local_optimum_fraction
                 )
 
         return {
@@ -482,7 +487,12 @@ class MovingWindow(BaseChangeDetector):
         interval_specs : np.ndarray of shape (n_specs, 3)
             Rows are ``[start, split, end)`` as used by the change score.
         """
-        change_score = _resolve_change_score(self.change_score)
+        # Use the fitted scorer when available (e.g. called from calibration on a
+        # fitted detector) so that min_size works for scorers that require fitting.
+        if hasattr(self, "change_score_"):
+            change_score = self.change_score_
+        else:
+            change_score = _resolve_change_score(self.change_score)
         min_size = change_score.min_size
 
         if self.bandwidth is None:

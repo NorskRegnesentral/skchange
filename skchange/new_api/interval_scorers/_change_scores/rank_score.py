@@ -216,17 +216,18 @@ class RankScore(BaseChangeScore):
         Parameters
         ----------
         X : array-like of shape (n_samples, n_features)
-            Data (not re-ranked; ranks are fixed from training).
+            Data to compute ranks from.
 
         Returns
         -------
         cache : dict
         """
         check_is_fitted(self)
-        validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
+        X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
+        centered_data_ranks, pinv_rank_cov = _compute_ranks_and_pinv_cdf_cov(X)
         return {
-            "centered_data_ranks": self._centered_data_ranks_,
-            "pinv_rank_cov": self._pinv_rank_cov_,
+            "centered_data_ranks": centered_data_ranks,
+            "pinv_rank_cov": pinv_rank_cov,
         }
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:

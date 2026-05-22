@@ -30,13 +30,20 @@ def _penalise_scores_constant(scores: np.ndarray, penalty: float) -> np.ndarray:
 def _penalise_scores_linear(
     scores: np.ndarray, penalty_values: np.ndarray
 ) -> np.ndarray:
-    """Penalise scores with linear penalty values."""
+    """Penalise scores with linear penalty values.
+
+    For a linear penalty pen[k] = (pen_1 - slope) + slope * k, the optimal
+    penalised score is obtained by including all features with score > slope:
+
+        sum_j max(score[j] - slope, 0) - (pen_1 - slope)
+
+    The intercept term (pen_1 - slope) is subtracted once from the aggregate,
+    not once per feature.
+    """
     penalty_slope = penalty_values[1] - penalty_values[0]
     penalty_intercept = penalty_values[0] - penalty_slope
-    penalised_scores_matrix = (
-        np.maximum(scores - penalty_slope, 0.0) - penalty_intercept
-    )
-    return penalised_scores_matrix.sum(axis=1)
+    excess = np.maximum(scores - penalty_slope, 0.0)
+    return excess.sum(axis=1) - penalty_intercept
 
 
 @njit
@@ -215,7 +222,7 @@ class PenalisedScore(BaseIntervalScorer):
     @property
     def min_size(self) -> int:
         """Minimum valid interval size inherited from wrapped scorer."""
-        return self.scorer.min_size
+        return self.scorer_.min_size
 
     def get_default_penalty(self) -> float | np.ndarray:
         """Get the default penalty for the fitted scorer.

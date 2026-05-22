@@ -72,17 +72,17 @@ def _transform_esac_ratio(
     output_scores = np.zeros(num_cusum_scores, dtype=np.float64)
     sargmax = np.zeros(num_cusum_scores, dtype=np.int64)
 
-    for i in range(num_cuts):
+    for i in range(num_cusum_scores):
         z = cusum_scores[i]
+        temp_max = -np.inf
         for j in range(num_levels):
-            temp_vec = (cusum_scores[i])[
-                np.abs(cusum_scores[i]) > coordinate_thresholds[j]
-            ]
+            temp_vec = z[np.abs(z) > coordinate_thresholds[j]]
             if len(temp_vec) > 0:
-                temp = np.sum(temp_vec**2 - mean_corrections[j]) - sparsity_penalties[j]
+                temp = np.sum(temp_vec**2 - mean_corrections[j]) / sparsity_penalties[j]
                 if temp > temp_max:
                     temp_max = temp
                     sargmax[i] = sparsity_levels[j]
+        output_scores[i] = temp_max
 
     return output_scores.reshape(-1, 1)
 
@@ -94,16 +94,19 @@ class ESACScore(BaseChangeScore):
     reformulated as a ratio statistic so that it can be composed with
     :class:`~skchange.new_api.interval_scorers.PenalisedScore`.
 
-    Parameters
-    ----------
-    penalty_scale_dense : float, default=2.0
-        The leading constant in the penalty function taken as in (8) in [1]_ in
-        the dense case where the candidate sparsity level ``t`` is greater than
-        or equal to ``sqrt(p * log(n))``.
-    penalty_scale_sparse : float, default=1.5
-        The leading constant in the penalty function taken as in (8) in [1]_ in
-        the sparse case where the candidate sparsity level ``t`` is less than
-        ``sqrt(p * log(n))``.
+    The score for each candidate split is ``max_t raw(t) / gamma(t)``, where
+    ``raw(t)`` is the sum of squared thresholded and mean-corrected CUSUM
+    scores across coordinates exceeding the hard threshold ``a(t)`` (Equation (4) in [1]_), and
+    ``gamma(t)`` is the theoretical sparsity-specific penalty (Equation (8) in [1]_).
+    A change is declared when the score exceeds the threshold ``C``; the
+    default :meth:`get_default_penalty` value is ``C = 1.0``.
+
+    The internal penalty constants (2.0 for the dense regime and 1.5 for the
+    sparse regime, chosen based on practical performance in simulations) are fixed values and are not user-configurable.  To adjust the overall detection
+    sensitivity, wrap this scorer in
+    :class:`~skchange.new_api.interval_scorers.PenalisedScore` and tune
+    ``penalty_scale``, e.g. via
+    :class:`~skchange.new_api.calibration.CalibratedDetector`.
 
     Attributes
     ----------
@@ -116,8 +119,8 @@ class ESACScore(BaseChangeScore):
         Mean-centering terms ``nu(t)`` subtracted from the squared thresholded
         CUSUMs, as defined after Equation (4) in [1]_.
     sparsity_penalties_ : np.ndarray
-        Per-sparsity penalty values ``gamma(t)`` subtracted in the final
-        score, as defined in Equation (4) in [1]_.
+        Per-sparsity penalty values ``gamma(t)`` used as the denominator in
+        the ratio score, as defined in Equation (8) in [1]_.
 
     Notes
     -----
@@ -142,18 +145,10 @@ class ESACScore(BaseChangeScore):
     >>> scorer.evaluate(cache, np.array([[0, 25, 50], [50, 75, 100]]))
     """
 
-    _parameter_constraints: dict = {
-        "penalty_scale_dense": [Interval(Real, 0, None, closed="neither")],
-        "penalty_scale_sparse": [Interval(Real, 0, None, closed="neither")],
-    }
+    _parameter_constraints: dict = {}
 
-    def __init__(
-        self,
-        penalty_scale_dense: float = 2.0,
-        penalty_scale_sparse: float = 1.5,
-    ):
-        self.penalty_scale_dense = penalty_scale_dense
-        self.penalty_scale_sparse = penalty_scale_sparse
+    def __init__(self):
+        pass
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Return tags: aggregated, unpenalised, non_negative_scores=False."""
@@ -187,7 +182,7 @@ class ESACScore(BaseChangeScore):
             self.mean_corrections_ = np.array([1.0])
             self.sparsity_levels_ = np.array([1])
             self.sparsity_penalties_ = np.array(
-                [self.penalty_scale_dense * (np.sqrt(p * np.log(n)) + np.log(n))]
+                [2.0 * (np.sqrt(p * np.log(n)) + np.log(n))]
             )
         else:
             max_s = min(np.sqrt(p * np.log(n)), p)
@@ -209,10 +204,10 @@ class ESACScore(BaseChangeScore):
             )
 
             self.sparsity_penalties_ = np.zeros_like(ss, dtype=float)
-            self.sparsity_penalties_[0] = self.penalty_scale_dense * (
+            self.sparsity_penalties_[0] = 2.0 * (
                 np.sqrt(4 * p * np.log(n)) + 4 * np.log(n)
             )
-            self.sparsity_penalties_[1:] = self.penalty_scale_sparse * (
+            self.sparsity_penalties_[1:] = 1.5 * (
                 ss[1:] * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
                 + 4 * np.log(n)
             )
