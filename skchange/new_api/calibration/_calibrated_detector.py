@@ -128,7 +128,11 @@ class CalibratedDetector(BaseEstimator):
         self.random_state = random_state
 
     def fit(
-        self, X: np.ndarray, y=None, X_calib: np.ndarray | None = None, X_train: np.ndarray | None = None
+        self,
+        X: np.ndarray,
+        y=None,
+        X_calib: np.ndarray | None = None,
+        X_train: np.ndarray | None = None,
     ) -> "CalibratedDetector":
         """Fit the detector with calibrated penalty scales.
 

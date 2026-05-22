@@ -358,7 +358,8 @@ def test_permutation_no_replace_too_few_training_raises():
     from skchange.new_api.calibration._null_models import PermutationSampler
 
     rng = np.random.default_rng(0)
-    sampler = PermutationSampler(replace=False).fit(np.random.default_rng(1).normal(size=(10, 2)))
+    sampler = PermutationSampler(replace=False).fit(
+        np.random.default_rng(1).normal(size=(10, 2))
+    )
     with pytest.raises(ValueError, match="replace=False"):
         sampler.sample(50, rng)
-

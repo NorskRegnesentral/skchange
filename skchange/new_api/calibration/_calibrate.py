@@ -222,7 +222,9 @@ def calibrate_penalty_scale(
     # Fit data-based sampler on null data; parametric samplers need no fitting.
     # Priority: X_calib > X_train > X.
     if isinstance(sampler, BaseDataSampler):
-        null_fit_data = X_calib if X_calib is not None else (X_train if X_train is not None else X)
+        null_fit_data = (
+            X_calib if X_calib is not None else (X_train if X_train is not None else X)
+        )
         sampler_ready = clone(sampler).fit(null_fit_data)
 
         def _draw_null(rng: np.random.Generator) -> np.ndarray:
