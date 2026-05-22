@@ -45,26 +45,26 @@ pip install skchange
 
 ### Changepoint detection / time series segmentation
 
-**New API** (recommended; default in 0.17.0):
+**New API**
 ```python
 from skchange.new_api.datasets import generate_piecewise_normal_data
 from skchange.new_api.detectors import MovingWindow
 
-df = generate_piecewise_normal_data(
+X = generate_piecewise_normal_data(
     means=[0, 5, 10, 5, 0],
     lengths=[50, 50, 50, 50, 50],
     seed=1,
 )
 
 detector = MovingWindow(bandwidth=20)
-cps = detector.fit(df).predict_changepoints(df)
-# array([ 50, 100, 150, 200])
-
-labels = detector.predict(df)
-# array([0, 0, ..., 1, 1, ..., 2, 2, ..., 3, 3, ..., 4, 4])
+detector.fit(X)
+detector.predict_changepoints(X)
+```
+```text
+array([ 50, 100, 150, 200])
 ```
 
-**Current API** (deprecated in 0.16.x, removed in 0.17.0):
+**Current API**
 ```python
 from skchange.change_detectors import MovingWindow
 from skchange.datasets import generate_piecewise_normal_data
@@ -77,22 +77,24 @@ df = generate_piecewise_normal_data(
 
 detector = MovingWindow(bandwidth=20)
 detector.fit_predict(df)
-#    ilocs
-# 0     50
-# 1    100
-# 2    150
-# 3    200
+```
+```text
+   ilocs
+0     50
+1    100
+2    150
+3    200
 ```
 
-### Multivariate anomaly detection with variable identification
+### Multivariate segment anomaly detection
 
-**New API** (recommended; default in 0.17.0):
+**New API**
 ```python
 from skchange.new_api.datasets import generate_piecewise_normal_data
 from skchange.new_api.detectors import CAPA
 from skchange.new_api.interval_scorers import L2Saving
 
-df = generate_piecewise_normal_data(
+X = generate_piecewise_normal_data(
     means=[0, 8, 0, 5],
     lengths=[100, 20, 130, 50],
     proportion_affected=[1.0, 0.1, 1.0, 0.5],
@@ -100,24 +102,16 @@ df = generate_piecewise_normal_data(
     seed=1,
 )
 
-detector = CAPA(segment_saving=L2Saving())    # Looks for segments with non-zero means.
-detector.fit(df)
-
-anomalies = detector.predict_segment_anomalies(df)
-# np.ndarray of shape (n_anomalies, 2); each row is [start, end)
-# array([[100, 120],
-#        [250, 300]])
-
-# Full custom output per detector
-# For CAPA: Intervals + affected feature indices + point anomalies):
-result = detector.predict_all(df)
-result["segment_anomalies"]         # same as predict_segment_anomalies above
-result["segment_anomaly_features"]  # list of np.ndarray of affected feature indices, e.g.
-# [array([0]),
-#  array([2, 0, 4, 3, 1, 6, 8, 9, 7, 5])]
+detector = CAPA(segment_saving=L2Saving())
+detector.fit(X)
+detector.predict_segment_anomalies(X)
+```
+```text
+array([[100, 120],
+       [250, 300]])
 ```
 
-**Current API** (deprecated in 0.16.x, removed in 0.17.0):
+**Current API**
 ```python
 from skchange.anomaly_detectors import CAPA
 from skchange.anomaly_scores import L2Saving
@@ -133,14 +127,16 @@ df = generate_piecewise_normal_data(
     seed=1,
 )
 
-score = L2Saving()  # Looks for segments with non-zero means.
+score = L2Saving()
 penalty = make_linear_chi2_penalty(score.get_model_size(1), df.shape[0], df.shape[1])
 penalised_score = PenalisedScore(score, penalty)
 detector = CAPA(penalised_score, find_affected_components=True)
 detector.fit_predict(df)
-#         ilocs  labels         icolumns
-# 0  [100, 120)       1              [0]
-# 1  [250, 300)       2  [2, 0, 3, 1, 4]
+```
+```text
+        ilocs  labels         icolumns
+0  [100, 120)       1              [0]
+1  [250, 300)       2  [2, 0, 3, 1, 4]
 ```
 
 ## License
