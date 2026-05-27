@@ -197,6 +197,14 @@ def resolve_aggregation(
 
     if scorer_tags.aggregated and is_array:
         raise ValueError("`penalty` must be scalar for aggregated input scores.")
+    if scorer_tags.aggregated and agg != "sum" and caller_name is not None:
+        warnings.warn(
+            f"`{caller_name}.agg={agg!r}` is ignored when `{scorer_param_name}` "
+            "produces already-aggregated scores; the scorer's single output "
+            "column is used directly.",
+            UserWarning,
+            stacklevel=3,
+        )
     if is_array and penalty.size != n_features:
         raise ValueError(
             "`penalty` must be scalar or have length equal to n_features. "
