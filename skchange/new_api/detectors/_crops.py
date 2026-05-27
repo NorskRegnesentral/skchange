@@ -13,7 +13,6 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.detectors._pelt import (
     _run_pelt,
-    _run_pelt_min_segment_length_one,
     _run_pelt_with_step_size,
 )
 from skchange.new_api.interval_scorers._base import BaseCost
@@ -205,16 +204,6 @@ def _solve_for_changepoints(
             X=X,
             penalty=penalty,
             step_size=step_size,
-            split_cost=split_cost,
-            prune=prune,
-            pruning_margin=pruning_margin,
-            cache=cache,
-        )
-    elif min_segment_length == 1:
-        result = _run_pelt_min_segment_length_one(
-            cost=cost,
-            X=X,
-            penalty=penalty,
             split_cost=split_cost,
             prune=prune,
             pruning_margin=pruning_margin,
