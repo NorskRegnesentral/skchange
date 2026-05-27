@@ -146,8 +146,8 @@ class ESACScore(BaseChangeScore):
     """
 
     _parameter_constraints: dict = {
-        "penalty_scale_dense": [Interval(Real, 0, None, closed="neither")],
-        "penalty_scale_sparse": [Interval(Real, 0, None, closed="neither")],
+        "penalty_scale_dense": [Interval(Real, 0, None, closed="left")],
+        "penalty_scale_sparse": [Interval(Real, 0, None, closed="left")],
     }
 
     def __init__(
