@@ -63,9 +63,13 @@ from the labels.
 Some detectors compute richer outputs alongside changepoints — test statistic scores, affected features, uncertainty estimates, etc. These are exposed through typed `predict_*` methods defined only on the concrete detector that computes them:
 
 ```python
-def predict_scores(self, X) -> np.ndarray: # per-sample test statistic
+def predict_scores(self, X) -> np.ndarray: # detector-internal scores
 def predict_proba(self, X) -> np.ndarray:  # posterior probability per sample
 ```
+
+**Convention: `predict_scores(X, return_index=False) -> np.ndarray`**
+
+When a detector exposes `predict_scores`, it returns a 1D array of the detector's internal scoring objective. The array length is detector-specific (one entry per evaluated interval, candidate split, window, etc.) — there is no contract that it equals `n_samples`. With `return_index=True` it returns an `(scores, index_dict)` tuple, where `index_dict` carries algorithm-specific metadata that locates each score on the input timeline (e.g. interval start/end arrays for PELT, split points for binary segmentation). Paired with `skchange.new_api.tuning.unpenalised_scores`, this gives a uniform primitive for penalty calibration across detectors.
 
 **Convention: `predict_segment_anoamlies -> np.ndarray`**
 

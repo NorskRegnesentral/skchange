@@ -58,8 +58,10 @@ detector.fit(df)  # ArrayLike input (pd.DataFrame, np.ndarray, ...)
 
 labels = detector.predict(df)              # np.ndarray of per-sample segment labels
 cps = detector.predict_changepoints(df)    # np.ndarray of changepoint indices
-# Optional: detectors may expose `predict_all(X)` returning algorithm-specific
-# extras as a dict (e.g. PELT's cumulative costs).
+# Optional: detectors may expose `predict_scores(X)` returning the internal
+# scoring objective as a 1D array (length is detector-specific; use
+# `return_index=True` to also get timeline metadata), and
+# `predict_all(X)` returning algorithm-specific extras as a dict.
 ```
 
 **Key differences at a glance:**
@@ -71,6 +73,7 @@ cps = detector.predict_changepoints(df)    # np.ndarray of changepoint indices
 | Changepoints | `predict()["iloc"]` → `pd.Series` | `predict_changepoints()` → `np.ndarray` |
 | Dense labels | `transform()` → `pd.Series` | `predict()` → `np.ndarray` |
 | Anomaly intervals | `predict()` → `pd.DataFrame` with `"ilocs"` column of `[start, end)` intervals | `predict_segment_anomalies()` → `np.ndarray` of shape `(n_anomalies, 2)` |
+| Detector scores | Attribute (e.g. `scores_`) | `predict_scores()` → 1D `np.ndarray` (where supported) |
 | Extras (cumulative costs, etc.) | Attributes | `predict_all()` → `dict` (where supported) |
 | sklearn compatible | Limited | ✓ (pipelines, `clone`, `get_params`, `set_params`) |
 | sktime compatible | ✓ | ✗ |
