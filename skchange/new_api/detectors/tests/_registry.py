@@ -71,6 +71,11 @@ _SEEDED_BINSEG_INSTANCES = [
     SeededBinarySegmentation(),
     SeededBinarySegmentation(max_interval_length=100),
     SeededBinarySegmentation(selection_method="narrowest"),
+    SeededBinarySegmentation(penalty=10.0),
+    SeededBinarySegmentation(penalty_scale=2.0),
+    SeededBinarySegmentation(agg="max"),
+    SeededBinarySegmentation(min_subinterval_length=10),
+    SeededBinarySegmentation(growth_factor=2.0),
     *[
         SeededBinarySegmentation(change_score=scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
