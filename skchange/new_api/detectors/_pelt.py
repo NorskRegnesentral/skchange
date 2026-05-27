@@ -162,7 +162,7 @@ def _run_pelt(
     check_is_fitted(cost)
     if cache is None:
         cache = cost.precompute(X)
-    n_samples = cost.n_samples_in_
+    n_samples = X.shape[0]
 
     if min_segment_length > n_samples:
         raise ValueError(
@@ -363,7 +363,7 @@ def _run_pelt_with_step_size(
     check_is_fitted(cost)
     if cache is None:
         cache = cost.precompute(X)
-    n_samples = cost.n_samples_in_
+    n_samples = X.shape[0]
     if n_samples < step_size:
         raise ValueError("The `step_size` cannot be larger than the number of samples.")
 
