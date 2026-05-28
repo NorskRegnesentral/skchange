@@ -245,3 +245,49 @@ def test_detector_finds_no_changepoint(estimator):
     estimator.fit(X)
     cpts = estimator.predict_changepoints(X)
     assert len(cpts) == 0, f"Expected 0 changepoints, got {len(cpts)}: {cpts}"
+
+
+# ---------------------------------------------------------------------------
+# predict_all, predict_segment_anomalies, predict_scores contract tests
+# ---------------------------------------------------------------------------
+
+
+@_all_detectors
+def test_detector_predict_all_contract(estimator):
+    """If present, predict_all() must return a dict."""
+    if not hasattr(estimator, "predict_all"):
+        pytest.skip("predict_all not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    result = estimator.predict_all(X)
+    assert isinstance(result, dict)
+
+
+@_all_detectors
+def test_detector_predict_segment_anomalies_contract(estimator):
+    """If present, predict_segment_anomalies() must return a 2D ndarray (n, 2)."""
+    if not hasattr(estimator, "predict_segment_anomalies"):
+        pytest.skip("predict_segment_anomalies not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    anomalies = estimator.predict_segment_anomalies(X)
+    assert isinstance(anomalies, np.ndarray)
+    assert anomalies.ndim == 2 and anomalies.shape[1] == 2
+
+
+@_all_detectors
+def test_detector_predict_scores_contract(estimator):
+    """If present, predict_scores() must return a 1D ndarray or (ndarray, dict)"""
+    if not hasattr(estimator, "predict_scores"):
+        pytest.skip("predict_scores not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    scores = estimator.predict_scores(X)
+    if isinstance(scores, tuple):
+        arr, idx = scores
+        assert isinstance(arr, np.ndarray)
+        assert arr.ndim == 1
+        assert isinstance(idx, dict)
+    else:
+        assert isinstance(scores, np.ndarray)
+        assert scores.ndim == 1
