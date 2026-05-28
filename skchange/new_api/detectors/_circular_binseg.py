@@ -62,25 +62,30 @@ def make_inner_intervals(
 
 
 @njit(cache=True)
-def greedy_anomaly_selection(
+def greedy_segment_selection(
     penalised_scores: np.ndarray,
-    anomaly_starts: np.ndarray,
-    anomaly_ends: np.ndarray,
-    starts: np.ndarray,
-    ends: np.ndarray,
-) -> list[tuple[int, int]]:
-    """Greedily select non-overlapping segment anomalies with positive score."""
+    inner_starts: np.ndarray,
+    inner_ends: np.ndarray,
+    outer_starts: np.ndarray,
+    outer_ends: np.ndarray,
+) -> np.ndarray:
+    """Greedily select non-overlapping segments with positive score."""
     penalised_scores = penalised_scores.copy()
-    anomalies = []
+    segments = []
     while np.any(penalised_scores > 0):
         argmax = penalised_scores.argmax()
-        anomaly_start = anomaly_starts[argmax]
-        anomaly_end = anomaly_ends[argmax]
-        anomalies.append((anomaly_start, anomaly_end))
-        # Remove outer intervals that overlap with the detected segment anomaly.
-        penalised_scores[(anomaly_end > starts) & (anomaly_start < ends)] = 0.0
-    anomalies.sort()
-    return anomalies
+        segment_start = inner_starts[argmax]
+        segment_end = inner_ends[argmax]
+        segments.append((segment_start, segment_end))
+        # Remove outer intervals that overlap with the detected segment.
+        penalised_scores[
+            (segment_end > outer_starts) & (segment_start < outer_ends)
+        ] = 0.0
+
+    if len(segments) == 0:
+        return np.empty((0, 2), dtype=np.intp)
+    segments.sort()
+    return np.array(segments, dtype=np.intp)
 
 
 def _run_circular_binseg(
@@ -90,7 +95,7 @@ def _run_circular_binseg(
     max_interval_length: int,
     growth_factor: float,
 ) -> tuple[
-    list[tuple[int, int]],
+    np.ndarray,
     np.ndarray,
     np.ndarray,
     np.ndarray,
@@ -182,17 +187,10 @@ def _run_circular_binseg(
         argmax_inner_starts[i] = inner_starts_i[argmax]
         argmax_inner_ends[i] = inner_ends_i[argmax]
 
-    inner_intervals = greedy_anomaly_selection(
+    segments = greedy_segment_selection(
         max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends
     )
-    return (
-        inner_intervals,
-        max_scores,
-        argmax_inner_starts,
-        argmax_inner_ends,
-        starts,
-        ends,
-    )
+    return (segments, max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends)
 
 
 def _resolve_transient_score(
@@ -426,34 +424,27 @@ class CircularBinarySegmentation(BaseChangeDetector):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        (
-            inner_intervals,
-            max_scores,
-            argmax_inner_starts,
-            argmax_inner_ends,
-            starts,
-            ends,
-        ) = _run_circular_binseg(
-            self.transient_score_,
-            X,
-            self.min_subinterval_length_,
-            self.max_interval_length_,
-            self.growth_factor,
+        (segments, max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends) = (
+            _run_circular_binseg(
+                self.transient_score_,
+                X,
+                self.min_subinterval_length_,
+                self.max_interval_length_,
+                self.growth_factor,
+            )
         )
 
-        if len(inner_intervals) == 0:
-            segment_anomalies = np.empty((0, 2), dtype=np.intp)
+        if len(segments) == 0:
             changepoints = np.empty(0, dtype=np.intp)
         else:
-            segment_anomalies = np.asarray(inner_intervals, dtype=np.intp)
             n_samples = X.shape[0]
-            boundaries = np.unique(segment_anomalies)
+            boundaries = np.unique(segments)
             changepoints = boundaries[
                 (boundaries > 0) & (boundaries < n_samples)
             ].astype(np.intp)
 
         return {
-            "segment_anomalies": segment_anomalies,
+            "segments": segments,
             "changepoints": changepoints,
             "interval_starts": starts,
             "interval_ends": ends,
@@ -475,7 +466,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
         anomalies : np.ndarray of shape (n_anomalies, 2)
             Each row is ``[start, end)`` of a detected anomaly, sorted by start.
         """
-        return self.predict_all(X)["segment_anomalies"]
+        return self.predict_all(X)["segments"]
 
     def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
         """Return sorted anomaly boundary indices.
