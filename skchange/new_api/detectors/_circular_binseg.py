@@ -444,7 +444,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
             ].astype(np.intp)
 
         return {
-            "segments": segments,
+            "segment_anomalies": segments,
             "changepoints": changepoints,
             "interval_starts": starts,
             "interval_ends": ends,
@@ -466,7 +466,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
         anomalies : np.ndarray of shape (n_anomalies, 2)
             Each row is ``[start, end)`` of a detected anomaly, sorted by start.
         """
-        return self.predict_all(X)["segments"]
+        return self.predict_all(X)["segment_anomalies"]
 
     def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
         """Return sorted anomaly boundary indices.
