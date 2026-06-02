@@ -114,7 +114,7 @@ def _run_pelt(
     prune: bool = True,
     pruning_margin: float = 0.0,
     cache: dict | None = None,
-    log_intervals: bool = False,
+    log_costs: bool = False,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -148,7 +148,7 @@ def _run_pelt(
         This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with a large tolerance.
-    log_intervals : bool, optional
+    log_costs : bool, optional
         If True, populate ``PELTResult.interval_starts``/``interval_ends``/
         ``interval_costs`` with every ``(start, end, cost)`` triple the DP
         evaluated. Off by default to avoid the O(n_evals) memory overhead
@@ -202,11 +202,11 @@ def _run_pelt(
     num_opt_part_cost_evals += len(non_changepoint_starts)
 
     # Log of every (start, end) interval the DP evaluated, with its cost.
-    # Only populated when ``log_intervals`` is True.
+    # Only populated when ``log_costs`` is True.
     eval_starts_log: list[np.ndarray] = []
     eval_ends_log: list[np.ndarray] = []
     eval_costs_log: list[np.ndarray] = []
-    if log_intervals:
+    if log_costs:
         eval_starts_log.append(non_changepoint_starts)
         eval_ends_log.append(non_changepoint_ends)
         eval_costs_log.append(non_changepoint_costs)
@@ -242,7 +242,7 @@ def _run_pelt(
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
         interval_costs = np.sum(cost.evaluate(cache, cost_eval_intervals), axis=1)
 
-        if log_intervals:
+        if log_costs:
             eval_starts_log.append(cost_eval_starts.copy())
             eval_ends_log.append(cost_eval_ends)
             eval_costs_log.append(interval_costs)
@@ -314,7 +314,7 @@ def _run_pelt_with_step_size(
     prune: bool = True,
     pruning_margin: float = 0.0,
     cache: dict | None = None,
-    log_intervals: bool = False,
+    log_costs: bool = False,
 ) -> PELTResult:
     """Run the PELT algorithm.
 
@@ -349,7 +349,7 @@ def _run_pelt_with_step_size(
         This is used to reduce pruning of the admissible starts set.
         Can be useful if the cost function is imprecise, i.e.
         based on solving an optimization problem with large tolerance.
-    log_intervals : bool, optional
+    log_costs : bool, optional
         If True, populate ``PELTResult.interval_starts``/``interval_ends``/
         ``interval_costs`` with every ``(start, end, cost)`` triple the DP
         evaluated. Off by default to avoid the O(n_evals) memory overhead
@@ -409,7 +409,7 @@ def _run_pelt_with_step_size(
         eval_intervals = np.column_stack((eval_starts, eval_ends))
         interval_costs = np.sum(cost.evaluate(cache, eval_intervals), axis=1)
 
-        if log_intervals:
+        if log_costs:
             eval_starts_log.append(eval_starts.copy())
             eval_ends_log.append(eval_ends)
             eval_costs_log.append(interval_costs)
@@ -659,7 +659,7 @@ class PELT(BaseChangeDetector):
 
         return self
 
-    def _run(self, X: np.ndarray, log_intervals: bool = False) -> PELTResult:
+    def _run(self, X: np.ndarray, log_costs: bool = False) -> PELTResult:
         """Run the appropriate PELT variant on ``X`` with the fitted state."""
         if self.step_size > 1:
             return _run_pelt_with_step_size(
@@ -670,7 +670,7 @@ class PELT(BaseChangeDetector):
                 split_cost=self.split_cost,
                 prune=self.prune,
                 pruning_margin=self.pruning_margin,
-                log_intervals=log_intervals,
+                log_costs=log_costs,
             )
         return _run_pelt(
             cost=self.cost_,
@@ -680,7 +680,7 @@ class PELT(BaseChangeDetector):
             split_cost=self.split_cost,
             prune=self.prune,
             pruning_margin=self.pruning_margin,
-            log_intervals=log_intervals,
+            log_costs=log_costs,
         )
 
     def predict_all(self, X: ArrayLike) -> dict:
@@ -714,7 +714,7 @@ class PELT(BaseChangeDetector):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        pelt_result = self._run(X, log_intervals=True)
+        pelt_result = self._run(X, log_costs=True)
         return {
             "changepoints": pelt_result.changepoints.astype(np.intp),
             "cumulative_optimal_costs": pelt_result.optimal_costs,
@@ -740,7 +740,7 @@ class PELT(BaseChangeDetector):
         """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
-        pelt_result = self._run(X, log_intervals=False)
+        pelt_result = self._run(X, log_costs=False)
         return pelt_result.changepoints.astype(np.intp)
 
     def predict_scores(
