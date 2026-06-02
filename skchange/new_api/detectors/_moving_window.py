@@ -11,7 +11,6 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._numba import njit
@@ -22,6 +21,12 @@ from skchange.new_api.utils._param_validation import (
     StrOptions,
     _fit_context,
 )
+from skchange.new_api.utils._score_aggregation import (
+    USER_AGG_CHOICES,
+    aggregate_and_penalise,
+    resolve_aggregation,
+    resolve_penalty,
+)
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
     validate_data,
@@ -29,7 +34,7 @@ from skchange.new_api.utils.validation import (
 
 
 @njit(cache=True)
-def make_extended_moving_window_cuts(
+def make_extended_moving_window_specs(
     n_samples: int,
     bandwidth: int,
     min_size: int,
@@ -52,40 +57,75 @@ def make_extended_moving_window_cuts(
 
 def transform_multiple_moving_window(
     fitted_score: BaseIntervalScorer,
+    agg_mode: str,
+    penalty: float | np.ndarray | None,
     X: np.ndarray,
     bandwidths: np.ndarray,
-) -> np.ndarray:
-    """Compute moving-window score series for one or multiple bandwidths.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Compute moving-window scores for one or multiple bandwidths.
 
     Parameters
     ----------
     fitted_score : BaseIntervalScorer
-        Fitted (typically penalised) score object.
+        Fitted (unpenalised or inherently penalised) change score object.
+    agg_mode : str
+        Aggregation mode as returned by ``resolve_aggregation``.
+    penalty : float, np.ndarray or None
+        Effective penalty as returned by ``resolve_penalty``. ``None`` when
+        ``agg_mode == "passthrough"``.
     X : np.ndarray
         Input data used for evaluation.
     bandwidths : np.ndarray
-        Array of bandwidth values.
+        Array of bandwidth values. Bandwidths that are > n_samples / 2 are skipped,
+        as they cannot produce any valid windows for the given data.
 
     Returns
     -------
-    np.ndarray
-        Score matrix of shape (n_samples, n_bandwidths).
+    scores : np.ndarray of shape (n_windows,)
+        All per-window scores concatenated across bandwidths.
+    starts : np.ndarray of shape (n_windows,)
+        Start index of each evaluated window.
+    splits : np.ndarray of shape (n_windows,)
+        Candidate changepoint (split) index of each window.
+    ends : np.ndarray of shape (n_windows,)
+        End index of each evaluated window.
+    bws : np.ndarray of shape (n_windows,)
+        Bandwidth used for each evaluated window.
     """
     check_is_fitted(fitted_score)
     n_samples = X.shape[0]
     cache = fitted_score.precompute(X)
 
-    scores = np.full((n_samples, len(bandwidths)), np.nan)
-    for i, bw in enumerate(bandwidths):
-        interval_specs = make_extended_moving_window_cuts(
+    all_scores = []
+    all_starts = []
+    all_splits = []
+    all_ends = []
+    all_bws = []
+
+    for bw in bandwidths:
+        if n_samples < 2 * int(bw):
+            continue
+        interval_specs = make_extended_moving_window_specs(
             n_samples,
             int(bw),
             fitted_score.min_size,
         )
-        interval_scores = fitted_score.evaluate(cache, interval_specs).reshape(-1)
-        scores[interval_specs[:, 1], i] = interval_scores
+        raw_scores = fitted_score.evaluate(cache, interval_specs)
+        interval_scores = aggregate_and_penalise(raw_scores, agg_mode, penalty)
+        n_windows = len(interval_scores)
+        all_scores.append(interval_scores)
+        all_starts.append(interval_specs[:, 0])
+        all_splits.append(interval_specs[:, 1])
+        all_ends.append(interval_specs[:, 2])
+        all_bws.append(np.full(n_windows, int(bw), dtype=np.intp))
 
-    return scores
+    return (
+        np.concatenate(all_scores),
+        np.concatenate(all_starts),
+        np.concatenate(all_splits),
+        np.concatenate(all_ends),
+        np.concatenate(all_bws),
+    )
 
 
 @njit(cache=True)
@@ -164,18 +204,13 @@ def select_changepoints_by_bottom_up(
 
 def _resolve_change_score(
     change_score: BaseIntervalScorer | None,
-    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return a penalised change score, auto-wrapping if needed.
+    """Resolve default change score.
 
     Needed since default resolution must be done in both fit and
     ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    change_score = CUSUM() if change_score is None else change_score
-    tags = change_score.__sklearn_tags__().interval_scorer_tags
-    if tags.penalised:
-        return change_score
-    return PenalisedScore(change_score, penalty_scale=penalty_scale)
+    return CUSUM() if change_score is None else change_score
 
 
 class MovingWindow(BaseChangeDetector):
@@ -202,23 +237,46 @@ class MovingWindow(BaseChangeDetector):
     ----------
     change_score : BaseIntervalScorer or None, default=None
         Change score to use in the algorithm. Must be an instance of
-        ``BaseIntervalScorer`` with ``score_type="change_score"``. If the
-        scorer is unpenalised it is automatically wrapped in
-        :class:`PenalisedScore`. If ``None``, defaults to
-        ``PenalisedScore(CUSUM())``.
+        ``BaseIntervalScorer`` with ``score_type="change_score"``. If ``None``,
+        defaults to ``CUSUM()``.
 
-        Wrap with :class:`PenalisedScore` explicitly to set a custom
-        ``penalty``, e.g.:
+        Standard usage is to pass an unpenalised score and set ``penalty``
+        separately. If the score already has tag ``penalised=True``, it owns
+        its own aggregation and penalty, and ``penalty`` / ``penalty_scale``
+        / ``agg`` are ignored.
+    penalty : float, array-like of shape (n_features,) or None, default=None
+        Penalty subtracted from the aggregated feature-wise score. A candidate
+        changepoint is accepted only when the penalised score is positive.
 
-        * ``CUSUM()`` -- auto-wrapped with default BIC penalty
-        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change
-          score based on L2 cost with fixed penalty
+        - ``float``: scalar penalty subtracted from the aggregated score
+          (see ``agg``).
+        - ``array-like`` of length ``n_features``, non-decreasing: element
+          ``i`` is the penalty for ``i+1`` features jointly affected; the
+          detector picks the ``k`` largest feature scores maximising
+          ``sum(top_k) - penalty[k-1]`` (handles sparse changes). A strictly
+          linear array uses a faster code path. Only consistent with the
+          default ``agg="sum"``.
+        - ``None``: defaults to ``change_score.get_default_penalty()``
+          (BIC-based) at fit time.
+
+        Ignored when ``change_score`` is already penalised.
     penalty_scale : float, default=1.0
-        Multiplicative factor on the default penalty of the auto-constructed
-        :class:`PenalisedScore` wrapper. Applies only when ``change_score`` is
-        ``None`` or an unpenalised scorer. Silently ignored when
-        ``change_score`` is already a penalised scorer; in that case the
-        user-provided scorer owns its penalty.
+        Multiplicative factor applied to the effective penalty (whether
+        ``penalty`` is user-provided or the default). Use as a single scalar
+        tuning knob that preserves the shape of array penalties. Must be
+        positive. Ignored when ``change_score`` is already penalised.
+    agg : {"sum", "max"}, default="sum"
+        How feature-wise raw scores are aggregated into a single score per
+        interval before subtracting a scalar penalty:
+
+        * ``"sum"``: ``sum(scores, axis=1) - penalty`` (dense change
+          assumption).
+        * ``"max"``: ``max(scores, axis=1) - penalty`` (a single, unknown
+          feature changes).
+
+        Ignored when ``change_score`` is already aggregated. Must be
+        ``"sum"`` when ``penalty`` is array-valued (array penalties imply
+        top-k aggregation).
     bandwidth : int, list of int, or None, default=None
         The number of samples on either side of a candidate change-point. Must be
         1 or greater. If ``None``, bandwidths are set automatically at ``fit`` time:
@@ -261,6 +319,19 @@ class MovingWindow(BaseChangeDetector):
         ``local_optimum_fraction * bandwidth`` samples of itself. Only used
         with ``selection_method="local_optimum"``. Must be ``>= 0``.
 
+    Attributes
+    ----------
+    change_score_ : BaseIntervalScorer
+        Fitted change score. Always the unpenalised scorer (whether user-provided
+        or resolved from ``None``). When ``change_score`` is already penalised,
+        it is that fitted penalised scorer.
+    penalty_ : float, np.ndarray or None
+        Effective penalty actually used at detection time: the resolved base
+        penalty multiplied by ``penalty_scale``. ``None`` when ``change_score``
+        is inherently penalised, in which case the scorer owns its own penalty.
+    bandwidth_ : np.ndarray
+        Sorted array of bandwidths actually used at detect time.
+
     References
     ----------
     .. [1] Eichinger, B., & Kirch, C. (2018). A MOSUM procedure for the estimation of
@@ -272,7 +343,6 @@ class MovingWindow(BaseChangeDetector):
     Examples
     --------
     >>> from skchange.new_api.detectors import MovingWindow
-    >>> from skchange.new_api.interval_scorers import PenalisedScore, CUSUM
     >>> from skchange.datasets import generate_alternating_data
     >>> df = generate_alternating_data(n_segments=4, mean=10, segment_length=100, p=5)
     >>> detector = MovingWindow()
@@ -284,8 +354,10 @@ class MovingWindow(BaseChangeDetector):
     """
 
     _parameter_constraints = {
-        "change_score": [HasMethods(["fit", "evaluate"]), None],
+        "change_score": [HasMethods(["fit", "precompute", "evaluate"]), None],
+        "penalty": ["array-like", Interval(Real, 0, None, closed="left"), None],
         "penalty_scale": [Interval(Real, 0, None, closed="neither")],
+        "agg": [StrOptions(set(USER_AGG_CHOICES))],
         "bandwidth": ["array-like", Interval(Integral, 1, None, closed="left"), None],
         "min_bandwidth": [Interval(Integral, 1, None, closed="left")],
         "selection_method": [StrOptions({"local_optimum", "detection_length"})],
@@ -296,7 +368,9 @@ class MovingWindow(BaseChangeDetector):
     def __init__(
         self,
         change_score: BaseIntervalScorer | None = None,
+        penalty: ArrayLike | float | None = None,
         penalty_scale: float = 1.0,
+        agg: str = "sum",
         bandwidth: ArrayLike | int | None = None,
         min_bandwidth: int = 5,
         selection_method: str = "local_optimum",
@@ -304,7 +378,9 @@ class MovingWindow(BaseChangeDetector):
         local_optimum_fraction: float = 0.8,
     ):
         self.change_score = change_score
+        self.penalty = penalty
         self.penalty_scale = penalty_scale
+        self.agg = agg
         self.bandwidth = bandwidth
         self.min_bandwidth = min_bandwidth
         self.selection_method = selection_method
@@ -341,14 +417,28 @@ class MovingWindow(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        scorer = _resolve_change_score(self.change_score, self.penalty_scale)
+        change_score = _resolve_change_score(self.change_score)
         check_interval_scorer(
-            scorer,
+            change_score,
             ensure_score_type=["change_score"],
             caller_name=self.__class__.__name__,
             arg_name="change_score",
         )
-        self.change_score_ = clone(scorer).fit(X, y)
+        self.change_score_ = clone(change_score).fit(X, y)
+
+        self.penalty_ = resolve_penalty(
+            self.change_score_,
+            self.penalty,
+            self.penalty_scale,
+            caller_name=self.__class__.__name__,
+        )
+        self._agg_mode = resolve_aggregation(
+            self.change_score_,
+            self.agg,
+            self.penalty_,
+            self.n_features_in_,
+            caller_name=self.__class__.__name__,
+        )
 
         min_size = self.change_score_.min_size
         if X.shape[0] < 2 * min_size:
@@ -375,8 +465,6 @@ class MovingWindow(BaseChangeDetector):
                     f"All elements of `bandwidth` must be >= the scorer's "
                     f"`min_size` ({min_size}). Got bandwidth={bw.tolist()}."
                 )
-        # Sort so that bandwidth_[i] always corresponds to scores[:, i] in predict,
-        # ensuring the bottom-up merging traverses bandwidths in ascending order.
         self.bandwidth_ = np.sort(bw.astype(int, copy=False))
 
         if self.selection_method == "detection_length" and len(self.bandwidth_) > 1:
@@ -401,33 +489,40 @@ class MovingWindow(BaseChangeDetector):
 
             ``"changepoints"`` : np.ndarray of shape (n_changepoints,)
                 Sorted integer indices of detected changepoints.
-            ``"scores"`` : np.ndarray of shape (n_samples, n_bandwidths)
-                Moving-window penalised scores. The i'th column corresponds to the
-                scores for self.bandwidth_[i]. NaN where the window does not fit.
+            ``"scores"`` : np.ndarray of shape (n_windows,)
+                Penalised score for each evaluated window across all bandwidths.
+            ``"starts"`` : np.ndarray of shape (n_windows,)
+                Start index of each evaluated window.
+            ``"splits"`` : np.ndarray of shape (n_windows,)
+                Candidate changepoint (split) index of each window.
+            ``"ends"`` : np.ndarray of shape (n_windows,)
+                End index of each evaluated window.
+            ``"bws"`` : np.ndarray of shape (n_windows,)
+                Bandwidth used for each evaluated window.
         """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        active_mask = 2 * self.bandwidth_ <= X.shape[0]
-        active_bws = self.bandwidth_[active_mask]
+        scores, index = self.predict_scores(X, return_index=True)
+        starts = index["starts"]
+        splits = index["splits"]
+        ends = index["ends"]
+        bws = index["bws"]
+        n_samples = X.shape[0]
+        # Unique bandwidths that produced at least one window, sorted ascending.
+        active_bws = np.unique(bws)
 
-        if len(active_bws) == 0:
-            raise ValueError(
-                f"`MovingWindow.predict_*` requires at least "
-                f"2 * min(bandwidth_) = {2 * int(np.min(self.bandwidth_))} "
-                f"samples, got n_samples={X.shape[0]}."
-            )
-        scores = np.full((X.shape[0], len(self.bandwidth_)), np.nan)
-
-        scores_active = transform_multiple_moving_window(
-            self.change_score_, X, active_bws
-        )
-        scores[:, active_mask] = scores_active
+        # Rebuild the (n_samples, n_bandwidths) score matrix that the selection
+        # methods expect. Each flat entry lands at row=splits[i], col=bw_index[i].
+        bw_to_col = {int(bw): j for j, bw in enumerate(active_bws)}
+        score_matrix = np.full((n_samples, len(active_bws)), np.nan)
+        for i in range(len(scores)):
+            score_matrix[splits[i], bw_to_col[int(bws[i])]] = scores[i]
 
         if self.selection_method == "detection_length":
             min_detection_length = int(self.min_detection_fraction * active_bws[0])
             changepoints = select_changepoints_by_detection_length(
-                scores_active.reshape(-1), min_detection_length
+                score_matrix[:, 0], min_detection_length
             )
         else:
             if len(active_bws) == 1:
@@ -435,16 +530,20 @@ class MovingWindow(BaseChangeDetector):
                     self.local_optimum_fraction * active_bws[0]
                 )
                 changepoints = select_changepoints_by_local_optimum(
-                    scores_active.reshape(-1), local_optimum_bandwidth
+                    score_matrix[:, 0], local_optimum_bandwidth
                 )
             else:
                 changepoints = select_changepoints_by_bottom_up(
-                    scores_active, active_bws, self.local_optimum_fraction
+                    score_matrix, active_bws, self.local_optimum_fraction
                 )
 
         return {
             "changepoints": changepoints.astype(np.intp),
             "scores": scores,
+            "starts": starts,
+            "splits": splits,
+            "ends": ends,
+            "bws": bws,
         }
 
     def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
@@ -464,3 +563,66 @@ class MovingWindow(BaseChangeDetector):
             Empty array if no changepoints are detected.
         """
         return self.predict_all(X)["changepoints"]
+
+    def predict_scores(
+        self,
+        X: ArrayLike,
+        return_index: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, dict[str, np.ndarray]]:
+        """Return the per-window moving-window scores evaluated on ``X``.
+
+        Returns the penalised score for every (start, split, end) window
+        evaluated across all active bandwidths, as a flat 1-D array. This is
+        the raw output that :meth:`predict` aggregates into a per-sample score
+        before changepoint selection.
+
+        For penalty calibration, use the free function
+        :func:`skchange.new_api.tuning.unpenalised_scores`, which fits a clone
+        of this detector with the penalty parameter set to zero and returns
+        the resulting unpenalised scores.
+
+        Parameters
+        ----------
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series to evaluate.
+        return_index : bool, default=False
+            If ``True``, also return a dict locating each score on the time
+            axis. See the Returns section for the keys.
+
+        Returns
+        -------
+        scores : np.ndarray of shape (n_windows,)
+            Penalised score for each evaluated window, one entry per
+            (start, split, end) triple across all active bandwidths.
+            Returned alone when ``return_index=False``.
+        index : dict, optional
+            Only returned when ``return_index=True``. Contains:
+
+            - ``"starts"`` : np.ndarray of shape (n_windows,)
+              Start indices of each evaluated window.
+            - ``"splits"`` : np.ndarray of shape (n_windows,)
+              Candidate changepoint (split) index of each window.
+            - ``"ends"`` : np.ndarray of shape (n_windows,)
+              End indices of each evaluated window.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False, ensure_2d=True)
+
+        min_bw = np.min(self.bandwidth_)
+        if 2 * min_bw > X.shape[0]:
+            raise ValueError(
+                f"`MovingWindow.predict_*` requires at least 2 * min(bandwidth_) = "
+                f"{2 * int(min_bw)} samples, got n_samples={X.shape[0]}."
+            )
+
+        scores, starts, splits, ends, bws = transform_multiple_moving_window(
+            self.change_score_, self._agg_mode, self.penalty_, X, self.bandwidth_
+        )
+        if return_index:
+            return scores, {
+                "starts": starts,
+                "splits": splits,
+                "ends": ends,
+                "bws": bws,
+            }
+        return scores
