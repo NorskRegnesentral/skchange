@@ -403,3 +403,23 @@ def is_penalised_score(estimator) -> bool:
     """
     scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
     return scorer_tags is not None and scorer_tags.penalised
+
+
+def is_aggregated_score(estimator) -> bool:
+    """Return True if the given estimator is an aggregated interval scorer.
+
+    An aggregated scorer returns a single value per interval (a univariate
+    score) rather than per-feature scores.
+
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator object to test.
+
+    Returns
+    -------
+    out : bool
+        True if estimator is aggregated and False otherwise.
+    """
+    scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
+    return scorer_tags is not None and scorer_tags.aggregated
