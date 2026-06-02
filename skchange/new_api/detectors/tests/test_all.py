@@ -207,47 +207,6 @@ def test_detector_predict_label_count(estimator):
 
 
 # ---------------------------------------------------------------------------
-# fit_predict() convenience test
-# ---------------------------------------------------------------------------
-
-
-@_all_detectors
-def test_detector_fit_predict_equals_fit_then_predict(estimator):
-    """fit_predict() must give the same result as fit() then predict()."""
-    X = make_single_change_X(estimator)
-    cloned = clone(estimator)
-    labels_combined = estimator.fit_predict(X)
-    labels_separate = cloned.fit(X).predict(X)
-    np.testing.assert_array_equal(labels_combined, labels_separate)
-
-
-# ---------------------------------------------------------------------------
-# Simple detection sanity test
-# ---------------------------------------------------------------------------
-
-
-@_all_detectors
-def test_detector_finds_single_changepoint(estimator):
-    """Detectors must find the single changepoint in a simple two-segment problem."""
-    X = make_single_change_X(estimator)
-    estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
-    assert len(cpts) == 1, f"Expected 1 changepoint, got {len(cpts)}: {cpts}"
-    assert (
-        abs(cpts[0] - CHANGEPOINT) <= 6
-    ), f"Changepoint {cpts[0]} is too far from the true changepoint {CHANGEPOINT}."
-
-
-@_all_detectors
-def test_detector_finds_no_changepoint(estimator):
-    """Detectors must not flag changepoints in stationary (no-change) data."""
-    X = make_no_change_X(estimator)
-    estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
-    assert len(cpts) == 0, f"Expected 0 changepoints, got {len(cpts)}: {cpts}"
-
-
-# ---------------------------------------------------------------------------
 # predict_all, predict_segment_anomalies, predict_scores contract tests
 # ---------------------------------------------------------------------------
 
@@ -291,3 +250,65 @@ def test_detector_predict_scores_contract(estimator):
     else:
         assert isinstance(scores, np.ndarray)
         assert scores.ndim == 1
+
+
+# ---------------------------------------------------------------------------
+# fit_predict() convenience test
+# ---------------------------------------------------------------------------
+
+
+@_all_detectors
+def test_detector_fit_predict_equals_fit_then_predict(estimator):
+    """fit_predict() must give the same result as fit() then predict()."""
+    X = make_single_change_X(estimator)
+    cloned = clone(estimator)
+    labels_combined = estimator.fit_predict(X)
+    labels_separate = cloned.fit(X).predict(X)
+    np.testing.assert_array_equal(labels_combined, labels_separate)
+
+
+# ---------------------------------------------------------------------------
+# Simple detection sanity test
+# ---------------------------------------------------------------------------
+
+
+@_all_detectors
+def test_detector_finds_single_changepoint(estimator):
+    """Detectors must find the single changepoint in a simple two-segment problem."""
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    cpts = estimator.predict_changepoints(X)
+    assert len(cpts) == 1, f"Expected 1 changepoint, got {len(cpts)}: {cpts}"
+    assert (
+        abs(cpts[0] - CHANGEPOINT) <= 6
+    ), f"Changepoint {cpts[0]} is too far from the true changepoint {CHANGEPOINT}."
+
+
+@_all_detectors
+def test_detector_finds_no_changepoint(estimator):
+    """Detectors must not flag changepoints in stationary (no-change) data."""
+    X = make_no_change_X(estimator)
+    estimator.fit(X)
+    cpts = estimator.predict_changepoints(X)
+    assert len(cpts) == 0, f"Expected 0 changepoints, got {len(cpts)}: {cpts}"
+
+
+# ---------------------------------------------------------------------------
+# Multivariate test
+# ---------------------------------------------------------------------------
+
+
+@_all_detectors
+def test_detector_runs_on_multivariate(estimator):
+    """Detectors that accept multivariate input must run end-to-end on n_features=3.
+
+    A minimal smoke test: fit, then predict_changepoints. No assertions on the
+    result other than the standard output contract.
+    """
+    if not estimator.__sklearn_tags__().input_tags.multivariate:
+        pytest.skip("estimator does not support multivariate input")
+    X = make_single_change_X(estimator, n_features=3)
+    estimator.fit(X)
+    cpts = estimator.predict_changepoints(X)
+    assert isinstance(cpts, np.ndarray)
+    assert cpts.ndim == 1
