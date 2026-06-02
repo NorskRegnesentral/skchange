@@ -11,9 +11,9 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import (
     BaseIntervalScorer,
+    is_aggregated_score,
     is_penalised_score,
 )
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.penalties import linear_chi2_penalty
@@ -201,42 +201,36 @@ def _extract_anomalies(
 
 
 def _get_changed_features(
-    scorer: BaseIntervalScorer,
+    saving: BaseIntervalScorer,
     cache: dict,
     penalty: float | np.ndarray | None,
     intervals: np.ndarray,
-) -> list[np.ndarray]:
+) -> list[np.ndarray] | None:
     """Identify which features are anomalous for each detected interval.
 
     For each interval, evaluates the per-feature unpenalised saving, sorts
     features by saving (descending), and returns the prefix that maximises
     ``cumsum(sorted_savings) - penalty``.
 
-    Only meaningful when there is an array-valued penalty (one entry per
-    feature) AND the scorer returns per-feature scores. When ``scorer`` is a
-    :class:`PenalisedScore` its inner scorer and own ``penalty_`` are used.
-    Otherwise returns one empty array per interval.
+    Only applicable when ``saving`` is an unpenalised, non-aggregated scorer
+    (returns per-feature scores) and ``penalty`` is an array-valued penalty
+    with one entry per feature. Returns ``None`` otherwise (penalised or
+    aggregated saving, or scalar ``penalty``).
     """
-    if isinstance(scorer, PenalisedScore):
-        inner_scorer = scorer.scorer_
-        penalty_values = np.asarray(scorer.penalty_).reshape(-1)
-    elif penalty is not None and np.asarray(penalty).ndim == 1:
-        inner_scorer = scorer
-        penalty_values = np.asarray(penalty).reshape(-1)
-    else:
-        return [np.empty(0, dtype=np.intp) for _ in range(len(intervals))]
+    is_constant_penalty = np.asarray(penalty).ndim == 0
+    if is_penalised_score(saving) or is_aggregated_score(saving) or is_constant_penalty:
+        return None
+    if len(intervals) == 0:
+        return []
 
-    if inner_scorer.__sklearn_tags__().interval_scorer_tags.aggregated:
-        return [np.empty(0, dtype=np.intp) for _ in range(len(intervals))]
+    penalty_values = np.asarray(penalty).reshape(-1)
+    all_savings = saving.evaluate(cache, np.asarray(intervals))
+    penalty_resized = np.resize(penalty_values, all_savings.shape[1])
 
     changed = []
-    for start, end in intervals:
-        interval_spec = np.array([[start, end]])
-        saving_values = inner_scorer.evaluate(cache, interval_spec)[0]
+    for saving_values in all_savings:
         saving_order = np.argsort(-saving_values)  # descending
-        penalised_savings = np.cumsum(saving_values[saving_order]) - np.resize(
-            penalty_values, len(saving_values)
-        )
+        penalised_savings = np.cumsum(saving_values[saving_order]) - penalty_resized
         best_k = int(np.argmax(penalised_savings)) + 1
         changed.append(saving_order[:best_k].astype(np.intp))
     return changed
@@ -600,13 +594,15 @@ class CAPA(BaseChangeDetector):
                 Sorted sample indices of point anomalies.
             ``"cumulative_optimal_savings"`` : np.ndarray of shape (n_samples,)
                 Cumulative optimal savings from the dynamic programme.
-            ``"segment_anomaly_features"`` : list of np.ndarray
+            ``"segment_anomaly_features"`` : list of np.ndarray or None
                 One array per detected segment anomaly with the 0-based
                 feature indices identified as changed, ordered from strongest
-                to weakest evidence. Empty arrays when the saving is not a
-                :class:`PenalisedScore` with per-feature scores.
-            ``"point_anomaly_features"`` : list of np.ndarray
-                Same as above, but for point anomalies.
+                to weakest evidence. ``None`` when ``segment_saving`` is
+                penalised or aggregated, or when ``segment_penalty_`` is
+                scalar (i.e. no per-feature attribution is possible).
+            ``"point_anomaly_features"`` : list of np.ndarray or None
+                Same as above, but for point anomalies (driven by
+                ``point_saving`` and ``point_penalty_``).
             ``"segment_savings"``, ``"segment_starts"``, ``"segment_ends"`` : np.ndarray
                 Penalised saving and ``[start, end)`` index for every
                 segment interval the DP evaluated. With pruning, the
