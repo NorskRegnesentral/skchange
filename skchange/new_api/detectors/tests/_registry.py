@@ -96,6 +96,9 @@ _CIRCULAR_BINSEG_INSTANCES = [
     # subset of transient scores to keep CI time reasonable.
     CircularBinarySegmentation(),
     CircularBinarySegmentation(min_subinterval_length=5, max_interval_length=100),
+    CircularBinarySegmentation(penalty=10.0),
+    CircularBinarySegmentation(penalty_scale=3.0),
+    CircularBinarySegmentation(agg="max"),
     CircularBinarySegmentation(transient_score=CostTransientScore(L2Cost())),
     CircularBinarySegmentation(transient_score=CostTransientScore(GaussianCost())),
 ]
