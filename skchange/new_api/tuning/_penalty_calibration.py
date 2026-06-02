@@ -19,16 +19,33 @@ Notes
 """
 
 from collections.abc import Iterable, Mapping
+from numbers import Real
 from typing import Any
 
 import numpy as np
 from sklearn.base import clone
 
 from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._param_validation import (
+    HasMethods,
+    Interval,
+    validate_params,
+)
 
-__all__ = ["unpenalised_scores"]
 
-
+@validate_params(
+    {
+        "detector": [HasMethods(["fit", "set_params", "predict_scores"])],
+        "X": ["array-like"],
+        "penalty_param": [str, Iterable, Mapping],
+        "no_penalty_value": [
+            Interval(Real, None, None, closed="neither"),
+            "array-like",
+        ],
+        "return_index": ["boolean"],
+    },
+    prefer_skip_nested_validation=True,
+)
 def unpenalised_scores(
     detector,
     X: ArrayLike,
