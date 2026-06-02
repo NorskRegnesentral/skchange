@@ -21,6 +21,26 @@ from skchange.new_api.utils.validation import (
 )
 
 
+def _warn_and_clamp_negative_scores(
+    scores: np.ndarray, wrapper: object, score_kind: str
+) -> np.ndarray:
+    """Warn if ``scores`` has values below ``-1e-6`` and clamp to ``>= 0``."""
+    if scores.size == 0:
+        return scores
+    min_score = np.min(scores)
+    if min_score < -1e-6:
+        warnings.warn(
+            f"{type(wrapper).__name__}({type(wrapper.cost).__name__}) produced "
+            f"negative {score_kind} scores (min={min_score:.3g}); clamping to 0. "
+            f"The wrapped cost is not subadditive on this data \u2014 likely "
+            f"causes: inexact MLE optimisation (try tighter tolerances), "
+            f"a non-likelihood cost, or numerical noise near the cost scale.",
+            RuntimeWarning,
+            stacklevel=3,
+        )
+    return np.maximum(scores, 0.0)
+
+
 class CostChangeScore(BaseChangeScore):
     """Change scorer constructed from a cost scorer.
 
@@ -81,17 +101,7 @@ class CostChangeScore(BaseChangeScore):
         no_change_costs = self.cost_.evaluate(cache, full_intervals)
 
         change_scores = no_change_costs - (left_costs + right_costs)
-        if change_scores.size == 0:
-            return change_scores
-        min_score = np.min(change_scores)
-        if min_score < -1e-6:
-            warnings.warn(
-                f"{self.cost.__class__.__name__} produced negative change scores "
-                f"(min={min_score:.3g}). The cost may not be subadditive.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-        return np.maximum(change_scores, 0.0)
+        return _warn_and_clamp_negative_scores(change_scores, self, "change")
 
     @property
     def min_size(self) -> int:
@@ -303,17 +313,7 @@ class CostTransientScore(BaseTransientScore):
                 )[0]
 
         transient_scores = outer_costs - (inner_costs + surrounding_costs)
-        if transient_scores.size == 0:
-            return transient_scores
-        min_score = np.min(transient_scores)
-        if min_score < -1e-6:
-            warnings.warn(
-                f"{self.cost.__class__.__name__} produced negative transient scores "
-                f"(min={min_score:.3g}). The cost may not be subadditive.",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-        return np.maximum(transient_scores, 0.0)
+        return _warn_and_clamp_negative_scores(transient_scores, self, "transient")
 
     @property
     def min_size(self) -> int:
