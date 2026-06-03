@@ -11,6 +11,7 @@ from skchange.new_api.detectors import (
 from skchange.new_api.interval_scorers import (
     CostTransientScore,
     GaussianCost,
+    L1Saving,
     L2Cost,
     PenalisedScore,
     is_change_score,
@@ -43,6 +44,7 @@ _MOVING_WINDOW_INSTANCES = [
 _CAPA_INSTANCES = [
     CAPA(),
     CAPA(min_segment_length=10, max_segment_length=100),
+    CAPA(segment_saving=L1Saving(), point_saving=L1Saving(), penalty_scale=2.0),
     *[
         CAPA(segment_saving=scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
