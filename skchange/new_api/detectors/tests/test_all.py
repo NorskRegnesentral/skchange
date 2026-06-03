@@ -252,6 +252,34 @@ def test_detector_predict_scores_contract(estimator):
         assert scores.ndim == 1
 
 
+@_all_detectors
+def test_detector_predict_scores_return_index_contract(estimator):
+    """predict_scores(return_index=True) must return (scores, dict) where every
+    dict entry is an ndarray of the same length as ``scores``.
+    """
+    if not hasattr(estimator, "predict_scores"):
+        pytest.skip("predict_scores not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    result = estimator.predict_scores(X, return_index=True)
+    assert (
+        isinstance(result, tuple) and len(result) == 2
+    ), "predict_scores(return_index=True) must return a (scores, index) tuple"
+    scores, index = result
+    assert isinstance(scores, np.ndarray)
+    assert scores.ndim == 1
+    assert isinstance(index, dict)
+    assert len(index) > 0, "index dict must contain at least one entry"
+    for key, value in index.items():
+        assert isinstance(
+            value, np.ndarray
+        ), f"index['{key}'] must be an np.ndarray, got {type(value).__name__}"
+        assert len(value) == len(scores), (
+            f"index['{key}'] has length {len(value)} but scores has length "
+            f"{len(scores)}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # fit_predict() convenience test
 # ---------------------------------------------------------------------------
