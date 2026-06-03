@@ -36,11 +36,11 @@ from skchange.new_api.utils.validation import (
 
 
 def _run_capa(
-    segment_scorer: BaseIntervalScorer,
+    segment_saving: BaseIntervalScorer,
     segment_cache: dict,
     segment_agg_mode: str,
     segment_penalty: float | np.ndarray | None,
-    point_scorer: BaseIntervalScorer,
+    point_saving: BaseIntervalScorer,
     point_cache: dict,
     point_agg_mode: str,
     point_penalty: float | np.ndarray | None,
@@ -90,10 +90,10 @@ def _run_capa(
     # Pruning requires an upper bound on the segment penalty value.
     if segment_penalty is not None:
         max_segment_penalty = float(np.max(np.atleast_1d(segment_penalty)))
-    elif hasattr(segment_scorer, "penalty_"):
-        max_segment_penalty = float(np.max(np.atleast_1d(segment_scorer.penalty_)))
+    elif hasattr(segment_saving, "penalty_"):
+        max_segment_penalty = float(np.max(np.atleast_1d(segment_saving.penalty_)))
     else:
-        max_segment_penalty = 0.0
+        max_segment_penalty = np.inf  # Don't prune when the penalty is unknown.
 
     for t in range(min_segment_length - 1, n_samples):
         # Extend the admissible segment starts by one at each step.
@@ -102,7 +102,7 @@ def _run_capa(
         # Evaluate all candidate segment anomaly intervals [start, t+1).
         ends = np.full(len(starts), t + 1, dtype=np.intp)
         intervals = np.column_stack((starts, ends))
-        raw_segment_scores = segment_scorer.evaluate(segment_cache, intervals)
+        raw_segment_scores = segment_saving.evaluate(segment_cache, intervals)
         segment_savings = aggregate_and_penalise(
             raw_segment_scores, segment_agg_mode, segment_penalty
         )
@@ -116,14 +116,14 @@ def _run_capa(
         opt_segment_start = starts[best_segment_idx]
 
         # Evaluate point anomaly [t, t+1).
-        raw_point_score = point_scorer.evaluate(point_cache, np.array([[t, t + 1]]))
-        point_saving = float(
+        raw_point_score = point_saving.evaluate(point_cache, np.array([[t, t + 1]]))
+        point_saving_value = float(
             aggregate_and_penalise(raw_point_score, point_agg_mode, point_penalty)[0]
         )
         if log_savings:
-            point_savings_list.append(point_saving)
+            point_savings_list.append(point_saving_value)
             point_indices_list.append(t)
-        opt_point_saving = float(opt_savings[t]) + point_saving
+        opt_point_saving = float(opt_savings[t]) + point_saving_value
 
         # Choose the best option: no anomaly, segment anomaly, or point anomaly.
         options = np.array(
