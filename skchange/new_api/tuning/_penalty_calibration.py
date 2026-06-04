@@ -49,7 +49,7 @@ from skchange.new_api.utils._param_validation import (
 def unpenalised_scores(
     detector,
     X: ArrayLike,
-    penalty_param: str | Iterable[str] | Mapping[str, Any] = "penalty",
+    penalty_param: str | Iterable[str] | Mapping[str, Any] = "penalty_scale",
     *,
     no_penalty_value: float | np.ndarray = 0.0,
     return_index: bool = False,
@@ -71,7 +71,7 @@ def unpenalised_scores(
         ``clone`` / ``set_params`` API. Need not be fitted.
     X : array-like of shape (n_samples, n_features)
         Data to fit and score on.
-    penalty_param : str, iterable of str, or mapping, default="penalty"
+    penalty_param : str, iterable of str, or mapping, default="penalty_scale"
         Name(s) of the penalty parameter(s) to disable. Nested parameters
         use sklearn's ``"<step>__<param>"`` syntax. Three forms are
         supported:
