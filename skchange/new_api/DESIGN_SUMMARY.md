@@ -427,7 +427,7 @@ Interval scorers (costs, change scores, savings) provide the scoring functions u
 # ✅ Concrete classes named after output
 class L2Cost(BaseCost): ...
 class CUSUM(BaseChangeScore): ...
-class PenalisedScore(BaseIntervalScorer): ...
+class ESACScore(BaseChangeScore): ...
 
 # ✅ Generic parameter uses "scorer"
 class SomeDetector(BaseChangeDetector):
@@ -446,13 +446,15 @@ class SomeDetector(BaseChangeDetector):
 Detectors and scorers require the correct type to be passed in directly:
 
 ```python
-# ✅ Explicit — type is clear at call site
-MovingWindow(change_score=PenalisedScore(CUSUM()))
-MovingWindow(change_score=PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0))
+# ✅ Explicit — type is clear at call site; detector owns penalty/agg
+MovingWindow(change_score=CUSUM(), penalty=5.0)
+MovingWindow(change_score=CostChangeScore(L2Cost()), penalty=5.0)
 
-# ❌ Not supported — no auto-wrapping of costs or unpenalised scores
-MovingWindow(change_score=CUSUM())       # raises: not penalised
-MovingWindow(change_score=L2Cost())      # raises: not penalised change score
+# ✅ Inherently penalised scorers are passed as-is (detector’s penalty is ignored)
+MovingWindow(change_score=ESACScore())
+
+# ❌ Not supported — wrong score_type
+MovingWindow(change_score=L2Cost())      # raises: not a change score
 ```
 
 **Rationale:**
