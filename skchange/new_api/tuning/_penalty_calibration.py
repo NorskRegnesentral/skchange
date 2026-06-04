@@ -176,7 +176,7 @@ def penalty_curve(
     >>> from skchange.new_api.tuning import penalty_curve
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(200, 1))
-    >>> param_range = np.array([1.0, 5.0, 50.0, 500.0])
+    >>> param_range = np.array([1.0, 2.0, 3.0, 5.0])
     >>> counts = penalty_curve(
     ...     SeededBinarySegmentation(), X,
     ...     param_name="penalty", param_range=param_range,
