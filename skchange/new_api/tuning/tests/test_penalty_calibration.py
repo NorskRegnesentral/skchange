@@ -72,3 +72,65 @@ def test_unpenalised_scores_sanity(estimator):
         "unpenalised scores from a scorer tagged `non_negative_scores=True` "
         f"must be non-negative (tol={tol}), got min={scores.min()}"
     )
+
+
+# ---------------------------------------------------------------------------
+# penalty_param input-type contract
+# ---------------------------------------------------------------------------
+
+
+def _seeded_binseg_scores_for_param(penalty_param, *, no_penalty_value=0.0):
+    """Run ``unpenalised_scores`` with a fresh SeededBinarySegmentation."""
+    from skchange.new_api.detectors import SeededBinarySegmentation
+
+    detector = SeededBinarySegmentation()
+    X = make_single_change_X(detector)
+    return unpenalised_scores(
+        detector, X, penalty_param, no_penalty_value=no_penalty_value
+    )
+
+
+def test_unpenalised_scores_str_iterable_mapping_agree():
+    """``penalty_param`` accepts ``str``, iterables of ``str`` and mappings,
+    and the three forms produce identical scores when they encode the same
+    parameter settings.
+    """
+    from_str = _seeded_binseg_scores_for_param("penalty")
+    from_list = _seeded_binseg_scores_for_param(["penalty"])
+    from_tuple = _seeded_binseg_scores_for_param(("penalty",))
+    from_mapping = _seeded_binseg_scores_for_param({"penalty": 0.0})
+
+    np.testing.assert_array_equal(from_str, from_list)
+    np.testing.assert_array_equal(from_str, from_tuple)
+    np.testing.assert_array_equal(from_str, from_mapping)
+
+
+def test_unpenalised_scores_mapping_ignores_no_penalty_value():
+    """When ``penalty_param`` is a mapping, ``no_penalty_value`` is ignored
+    and per-key values are used directly.
+    """
+    explicit = _seeded_binseg_scores_for_param({"penalty": 0.0})
+    # A nonsense ``no_penalty_value`` would change the result if it were used.
+    overridden = _seeded_binseg_scores_for_param({"penalty": 0.0}, no_penalty_value=1e9)
+    np.testing.assert_array_equal(explicit, overridden)
+
+
+def test_unpenalised_scores_iterable_uses_no_penalty_value():
+    """When ``penalty_param`` is an iterable, ``no_penalty_value`` is broadcast
+    to every named parameter.
+    """
+    via_iterable = _seeded_binseg_scores_for_param(["penalty"], no_penalty_value=0.0)
+    via_mapping = _seeded_binseg_scores_for_param({"penalty": 0.0})
+    np.testing.assert_array_equal(via_iterable, via_mapping)
+
+
+def test_unpenalised_scores_invalid_penalty_param_type_raises():
+    """Non-(str / iterable / mapping) values for ``penalty_param`` are
+    rejected by ``@validate_params``.
+    """
+    from skchange.new_api.detectors import SeededBinarySegmentation
+
+    detector = SeededBinarySegmentation()
+    X = make_single_change_X(detector)
+    with pytest.raises((TypeError, ValueError)):
+        unpenalised_scores(detector, X, penalty_param=123)
