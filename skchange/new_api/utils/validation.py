@@ -302,9 +302,7 @@ def check_interval_scorer(
         raise ValueError(
             f"{caller_name} requires `{arg_name}` to be a penalised scorer "
             f"({arg_name}.__sklearn_tags__().interval_scorer_tags.penalised == True). "
-            f"Got {scorer.__class__.__name__}, which is not penalised. "
-            f"Wrap it with PenalisedScore: "
-            f"PenalisedScore({scorer.__class__.__name__}())."
+            f"Got {scorer.__class__.__name__}, which is not penalised."
         )
     if not allow_penalised and scorer.__sklearn_tags__().interval_scorer_tags.penalised:
         raise ValueError(

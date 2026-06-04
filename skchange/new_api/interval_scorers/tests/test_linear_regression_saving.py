@@ -8,7 +8,7 @@ from skchange.new_api.conftest import (
     make_single_change_X,
 )
 from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import LinearRegressionSaving, PenalisedScore
+from skchange.new_api.interval_scorers import LinearRegressionSaving
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_COEF = 1.0
@@ -16,7 +16,7 @@ COEF_AFTER = 5.0  # Coefficient of the second segment; should differ from BASELI
 
 
 def _make_capa(saving):
-    return CAPA(segment_saving=PenalisedScore(saving))
+    return CAPA(segment_saving=saving)
 
 
 # ---------------------------------------------------------------------------

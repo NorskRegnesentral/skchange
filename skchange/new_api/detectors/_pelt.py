@@ -503,8 +503,7 @@ class PELT(BaseChangeDetector):
     ----------
     cost : BaseCost or None, default=None
         Cost to use for the changepoint detection. Must be a ``BaseCost``
-        instance with ``score_type='cost'``. Passing a ``PenalisedScore``
-        will raise a ``ValueError`` in ``fit``.
+        instance with ``score_type='cost'``.
         If ``None``, defaults to ``L2Cost()``.
     penalty : float or None, default=None
         Penalty incurred for each added changepoint. Must be non-negative.

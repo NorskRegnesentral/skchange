@@ -9,7 +9,7 @@ from skchange.new_api.conftest import (
     make_single_change_X,
 )
 from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import GaussianSaving, PenalisedScore
+from skchange.new_api.interval_scorers import GaussianSaving
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_MEAN = 0.0
@@ -20,7 +20,7 @@ LOC_AFTER = (
 
 
 def _make_capa(saving):
-    return CAPA(segment_saving=PenalisedScore(saving))
+    return CAPA(segment_saving=saving)
 
 
 # ---------------------------------------------------------------------------

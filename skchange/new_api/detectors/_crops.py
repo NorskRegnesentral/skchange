@@ -332,8 +332,7 @@ class CROPS(BaseChangeDetector):
     ----------
     cost : BaseCost or None, default=None
         The cost function to use. Must be a ``BaseCost`` instance with
-        ``score_type='cost'``. Passing a ``PenalisedScore`` will raise a
-        ``ValueError`` in ``fit``. If ``None``, defaults to ``L2Cost()``.
+        ``score_type='cost'``. If ``None``, defaults to ``L2Cost()``.
     min_penalty : float or None, default=None
         The start of the penalty solution interval. Must be non-negative and
         strictly less than ``max_penalty``. If ``None``, defaults to

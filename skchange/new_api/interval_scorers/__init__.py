@@ -43,7 +43,6 @@ from skchange.new_api.interval_scorers._from_cost import (
     CostChangeScore,
     CostTransientScore,
 )
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._savings.gaussian_saving import GaussianSaving
 from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
@@ -95,7 +94,6 @@ __all__ = [
     "MultivariateGaussianScore",
     "MultivariateTCost",
     "MultivariateTSaving",
-    "PenalisedScore",
     "PoissonCost",
     "PoissonSaving",
     "RankCost",

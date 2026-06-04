@@ -340,8 +340,8 @@ def test_interval_scorer_get_default_penalty_before_fit_raises(estimator):
     """get_default_penalty() must raise NotFittedError before fit is called.
 
     Skipped for inherently-penalised scorers, which are not required to
-    implement ``get_default_penalty`` since they are never wrapped by
-    :class:`PenalisedScore` (the only consumer of the method).
+    implement ``get_default_penalty`` (consumed by ``resolve_penalty`` for
+    unpenalised scorers).
     """
     if estimator.__sklearn_tags__().interval_scorer_tags.penalised:
         pytest.skip(
@@ -365,7 +365,7 @@ def test_interval_scorer_get_default_penalty_positive(estimator):
         )
     assert hasattr(estimator, "get_default_penalty"), (
         f"Unpenalised scorer {type(estimator).__name__} must implement "
-        "get_default_penalty (consumed by PenalisedScore)."
+        "get_default_penalty (consumed by resolve_penalty)."
     )
     X = make_single_change_X(estimator)
     estimator.fit(X)

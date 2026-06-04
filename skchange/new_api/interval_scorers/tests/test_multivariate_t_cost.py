@@ -747,18 +747,18 @@ def test_MultiVariateTCost_with_moving_window(
 
     X = np.vstack([mv_t_1_samples, mv_t_2_samples])
 
-    from skchange.new_api.interval_scorers import CostChangeScore, PenalisedScore
+    from skchange.new_api.interval_scorers import CostChangeScore
 
     t_cost = MultivariateTCost(fixed_dof=cost_dof)
-    penalised_cost = PenalisedScore(CostChangeScore(t_cost))
+    change_score = CostChangeScore(t_cost)
     change_detector = MovingWindow(
-        change_score=penalised_cost, bandwidth=int(0.8 * n_samples)
+        change_score=change_score, bandwidth=int(0.8 * n_samples)
     )
 
     change_detector.fit(X)
     change_points = change_detector.predict_changepoints(X)
 
-    fitted_dof = change_detector.change_score_.scorer_.cost_.dof_
+    fitted_dof = change_detector.change_score_.cost_.dof_
 
     print(f"Change points: {change_points}")
     print(f"Estimated dof: {fitted_dof}")
