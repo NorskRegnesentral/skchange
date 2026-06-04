@@ -15,7 +15,7 @@ from skchange.new_api.detectors._crops import (
     _evaluate_segmentation,
     _segmentation_bic_value,
 )
-from skchange.new_api.interval_scorers import GaussianCost, L2Cost, PenalisedScore
+from skchange.new_api.interval_scorers import ESACScore, GaussianCost, L2Cost
 
 
 def _make_data(n_per_seg: int = 60, n_segments: int = 3, seed: int = 0) -> np.ndarray:
@@ -133,11 +133,12 @@ def test_fit_rejects_min_segment_length_above_step_size():
         CROPS(step_size=3, min_segment_length=5).fit(X)
 
 
-def test_fit_rejects_penalised_score():
-    """Passing a ``PenalisedScore`` as ``cost`` is rejected."""
+def test_fit_rejects_non_cost_scorer():
+    """Passing a non-cost scorer (e.g. an inherently penalised change score)
+    as ``cost`` is rejected."""
     X = _make_data()
     with pytest.raises(ValueError):
-        CROPS(cost=PenalisedScore(L2Cost())).fit(X)
+        CROPS(cost=ESACScore()).fit(X)
 
 
 # ---------------------------------------------------------------------------

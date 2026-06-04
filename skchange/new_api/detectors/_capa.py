@@ -9,14 +9,26 @@ from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
+from skchange.new_api.interval_scorers._base import (
+    BaseIntervalScorer,
+    is_aggregated_score,
+    is_penalised_score,
+)
 from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
 from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
 from skchange.new_api.penalties import linear_chi2_penalty
 from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
+from skchange.new_api.utils._param_validation import (
+    HasMethods,
+    Interval,
+    _fit_context,
+)
+from skchange.new_api.utils._score_aggregation import (
+    aggregate_and_penalise,
+    resolve_aggregation,
+    resolve_penalty,
+)
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
     validate_data,
@@ -24,51 +36,64 @@ from skchange.new_api.utils.validation import (
 
 
 def _run_capa(
-    segment_scorer: BaseIntervalScorer,
+    segment_saving: BaseIntervalScorer,
     segment_cache: dict,
-    point_scorer: BaseIntervalScorer,
+    segment_agg_mode: str,
+    segment_penalty: float | np.ndarray | None,
+    point_saving: BaseIntervalScorer,
     point_cache: dict,
+    point_agg_mode: str,
+    point_penalty: float | np.ndarray | None,
     n_samples: int,
     min_segment_length: int,
     max_segment_length: int,
-) -> tuple[np.ndarray, np.ndarray]:
+    log_savings: bool = False,
+) -> tuple:
     """Run the CAPA dynamic programming algorithm.
 
-    Parameters
-    ----------
-    segment_scorer : BaseIntervalScorer
-        Fitted penalised saving for segment anomalies.
-    segment_cache : dict
-        Precomputed cache from segment_scorer.precompute(X).
-    point_scorer : BaseIntervalScorer
-        Fitted penalised saving for point anomalies.
-    point_cache : dict
-        Precomputed cache from point_scorer.precompute(X).
-    n_samples : int
-        Number of samples.
-    min_segment_length : int
-        Minimum segment anomaly length.
-    max_segment_length : int
-        Maximum segment anomaly length.
+    For each timestep the DP compares (i) no anomaly, (ii) the best segment
+    anomaly ``[start, t+1)`` for ``start ∈ admissible_starts`` and (iii) a
+    point anomaly ``[t, t+1)``. Aggregation modes and penalties for both
+    scorers come from :func:`resolve_aggregation` / :func:`resolve_penalty`;
+    the penalty is ``None`` when the scorer is inherently penalised
+    (``agg_mode == "passthrough"``). Admissible starts are pruned each step
+    using the maximum penalty across features.
+
+    When ``log_savings=True`` the per-evaluation savings and their
+    ``(start, end)`` / ``t`` indices are also returned; otherwise the
+    corresponding outputs are empty arrays.
 
     Returns
     -------
     opt_savings : np.ndarray of shape (n_samples,)
         Cumulative optimal savings at each timestep.
     opt_anomaly_starts : np.ndarray of shape (n_samples,)
-        For each timestep t, the start index of the optimal anomaly ending at t+1,
-        or NaN if no anomaly ends there.
+        For each ``t``, start index of the optimal anomaly ending at ``t+1``,
+        or ``NaN`` if no anomaly ends there.
+    segment_savings_all, segment_starts_all, segment_ends_all : np.ndarray
+        Penalised saving and ``[start, end)`` index for every evaluated
+        segment interval (only populated when ``log_savings=True``).
+    point_savings_all, point_indices_all : np.ndarray
+        Penalised saving and sample index ``t`` for every evaluated point
+        interval ``[t, t+1)`` (only populated when ``log_savings=True``).
     """
     opt_savings = np.zeros(n_samples + 1)
     opt_anomaly_starts = np.full(n_samples, np.nan)
     starts = np.empty(0, dtype=np.intp)
 
-    # Pruning requires knowing the maximum possible penalty value for a segment.
-    max_segment_penalty = (
-        float(np.max(segment_scorer.penalty_))
-        if hasattr(segment_scorer, "penalty_")
-        else 0.0
-    )
+    segment_savings_chunks: list[np.ndarray] = []
+    segment_starts_chunks: list[np.ndarray] = []
+    segment_ends_chunks: list[np.ndarray] = []
+    point_savings_list: list[float] = []
+    point_indices_list: list[int] = []
+
+    # Pruning requires an upper bound on the segment penalty value.
+    if segment_penalty is not None:
+        max_segment_penalty = float(np.max(np.atleast_1d(segment_penalty)))
+    elif hasattr(segment_saving, "penalty_"):
+        max_segment_penalty = float(np.max(np.atleast_1d(segment_saving.penalty_)))
+    else:
+        max_segment_penalty = np.inf  # Don't prune when the penalty is unknown.
 
     for t in range(min_segment_length - 1, n_samples):
         # Extend the admissible segment starts by one at each step.
@@ -77,17 +102,28 @@ def _run_capa(
         # Evaluate all candidate segment anomaly intervals [start, t+1).
         ends = np.full(len(starts), t + 1, dtype=np.intp)
         intervals = np.column_stack((starts, ends))
-        segment_savings = segment_scorer.evaluate(segment_cache, intervals).reshape(-1)
+        raw_segment_scores = segment_saving.evaluate(segment_cache, intervals)
+        segment_savings = aggregate_and_penalise(
+            raw_segment_scores, segment_agg_mode, segment_penalty
+        )
+        if log_savings:
+            segment_savings_chunks.append(segment_savings)
+            segment_starts_chunks.append(starts.copy())
+            segment_ends_chunks.append(ends)
         candidate_savings = opt_savings[starts] + segment_savings
         best_segment_idx = int(np.argmax(candidate_savings))
         opt_segment_saving = candidate_savings[best_segment_idx]
         opt_segment_start = starts[best_segment_idx]
 
         # Evaluate point anomaly [t, t+1).
-        point_saving = float(
-            point_scorer.evaluate(point_cache, np.array([[t, t + 1]])).reshape(-1)[0]
+        raw_point_score = point_saving.evaluate(point_cache, np.array([[t, t + 1]]))
+        point_saving_value = float(
+            aggregate_and_penalise(raw_point_score, point_agg_mode, point_penalty)[0]
         )
-        opt_point_saving = float(opt_savings[t]) + point_saving
+        if log_savings:
+            point_savings_list.append(point_saving_value)
+            point_indices_list.append(t)
+        opt_point_saving = float(opt_savings[t]) + point_saving_value
 
         # Choose the best option: no anomaly, segment anomaly, or point anomaly.
         options = np.array(
@@ -107,7 +143,26 @@ def _run_capa(
         )
         starts = starts[~prune]
 
-    return opt_savings[1:], opt_anomaly_starts
+    if log_savings:
+        segment_savings_all = np.concatenate(segment_savings_chunks)
+        segment_starts_all = np.concatenate(segment_starts_chunks).astype(np.intp)
+        segment_ends_all = np.concatenate(segment_ends_chunks).astype(np.intp)
+    else:
+        segment_savings_all = np.empty(0, dtype=float)
+        segment_starts_all = np.empty(0, dtype=np.intp)
+        segment_ends_all = np.empty(0, dtype=np.intp)
+    point_savings_all = np.asarray(point_savings_list, dtype=float)
+    point_indices_all = np.asarray(point_indices_list, dtype=np.intp)
+
+    return (
+        opt_savings[1:],
+        opt_anomaly_starts,
+        segment_savings_all,
+        segment_starts_all,
+        segment_ends_all,
+        point_savings_all,
+        point_indices_all,
+    )
 
 
 def _extract_anomalies(
@@ -115,25 +170,14 @@ def _extract_anomalies(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Extract segment and point anomaly intervals from the DP result.
 
-    Scans backwards through the DP result, jumping over identified segment anomalies
-    to avoid double-counting.
-
-    Parameters
-    ----------
-    opt_anomaly_starts : np.ndarray of shape (n_samples,)
-        DP result: for each t, start index of an anomaly ending at t+1, or NaN.
-
-    Returns
-    -------
-    segment_anomalies : np.ndarray of shape (n_segment_anomalies, 2)
-        Each row is [start, end) for a contiguous segment anomaly (length >= 2),
-        sorted by start index.
-    point_anomalies : np.ndarray of shape (n_point_anomalies,)
-        Sorted sample indices of point anomalies.
+    Scans ``opt_anomaly_starts`` backwards, jumping over identified segments
+    to avoid double-counting. Returns ``(segments, points)`` sorted by start
+    index; segments have shape ``(k, 2)`` with rows ``[start, end)`` and
+    length >= 2.
     """
     n = opt_anomaly_starts.size
-    segment_anomalies = []
-    point_anomalies = []
+    segment_anomalies: list[list[int]] = []
+    point_anomalies: list[int] = []
 
     i = n - 1
     while i >= 0:
@@ -146,66 +190,47 @@ def _extract_anomalies(
             point_anomalies.append(i)
         i -= 1
 
+    # Lists are built in descending index order; reversing gives ascending.
     segment_anomalies_arr = (
-        np.array(sorted(segment_anomalies), dtype=np.intp)
+        np.array(segment_anomalies[::-1], dtype=np.intp)
         if segment_anomalies
         else np.empty((0, 2), dtype=np.intp)
     )
-    point_anomalies_arr = (
-        np.array(sorted(point_anomalies), dtype=np.intp)
-        if point_anomalies
-        else np.empty(0, dtype=np.intp)
-    )
+    point_anomalies_arr = np.array(point_anomalies[::-1], dtype=np.intp)
     return segment_anomalies_arr, point_anomalies_arr
 
 
 def _get_changed_features(
-    penalised_saving: PenalisedScore,
+    saving: BaseIntervalScorer,
     cache: dict,
+    penalty: float | np.ndarray | None,
     intervals: np.ndarray,
-) -> list[np.ndarray]:
+) -> list[np.ndarray] | None:
     """Identify which features are anomalous for each detected interval.
 
-    For each anomaly interval the inner (unpenalised) saving is evaluated
-    per feature.  Features are sorted by saving in descending order and
-    the optimal subset is the prefix that maximises
+    For each interval, evaluates the per-feature unpenalised saving, sorts
+    features by saving (descending), and returns the prefix that maximises
     ``cumsum(sorted_savings) - penalty``.
 
-    Only meaningful when ``penalised_saving`` is a :class:`PenalisedScore` whose
-    inner scorer returns per-feature (non-aggregated) scores.  Returns an empty
-    array of features for every interval when that condition is not met.
-
-    Parameters
-    ----------
-    penalised_saving : PenalisedScore
-        Fitted penalised saving.
-    cache : dict
-        Precomputed cache from ``penalised_saving.precompute(X)``.
-    intervals : np.ndarray of shape (n_anomalies, 2)
-        Anomaly intervals ``[start, end)``.
-
-    Returns
-    -------
-    changed_features : list of np.ndarray
-        One array per anomaly.  Each array contains the 0-based indices of the
-        features identified as changed, sorted by evidence (strongest first).
+    Only applicable when ``saving`` is an unpenalised, non-aggregated scorer
+    (returns per-feature scores) and ``penalty`` is an array-valued penalty
+    with one entry per feature. Returns ``None`` otherwise (penalised or
+    aggregated saving, or scalar ``penalty``).
     """
-    if not isinstance(penalised_saving, PenalisedScore):
-        return [np.empty(0, dtype=np.intp) for _ in range(len(intervals))]
+    is_constant_penalty = np.asarray(penalty).ndim == 0
+    if is_penalised_score(saving) or is_aggregated_score(saving) or is_constant_penalty:
+        return None
+    if len(intervals) == 0:
+        return []
 
-    inner_scorer = penalised_saving.scorer_
-    if inner_scorer.__sklearn_tags__().interval_scorer_tags.aggregated:
-        return [np.empty(0, dtype=np.intp) for _ in range(len(intervals))]
+    penalty_values = np.asarray(penalty).reshape(-1)
+    all_savings = saving.evaluate(cache, np.asarray(intervals))
+    penalty_resized = np.resize(penalty_values, all_savings.shape[1])
 
-    penalty_values = np.asarray(penalised_saving.penalty_).reshape(-1)
     changed = []
-    for start, end in intervals:
-        interval_spec = np.array([[start, end]])
-        saving_values = inner_scorer.evaluate(cache, interval_spec)[0]
+    for saving_values in all_savings:
         saving_order = np.argsort(-saving_values)  # descending
-        penalised_savings = np.cumsum(saving_values[saving_order]) - np.resize(
-            penalty_values, len(saving_values)
-        )
+        penalised_savings = np.cumsum(saving_values[saving_order]) - penalty_resized
         best_k = int(np.argmax(penalised_savings)) + 1
         changed.append(saving_order[:best_k].astype(np.intp))
     return changed
@@ -213,47 +238,36 @@ def _get_changed_features(
 
 def _resolve_segment_saving(
     saving: BaseIntervalScorer | None,
-    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return a penalised segment saving, auto-wrapping if needed.
+    """Return the segment saving, defaulting to :class:`L2Saving` when ``None``.
 
     Used in both fit() and __sklearn_tags__() so that input tags are propagated
     consistently whether or not a saving is explicitly provided.
     """
-    saving = L2Saving() if saving is None else saving
-    tags = saving.__sklearn_tags__().interval_scorer_tags
-    if tags.penalised:
-        return saving
-    return PenalisedScore(saving, penalty_scale=penalty_scale)
+    return L2Saving() if saving is None else saving
 
 
 def _resolve_point_saving(
     point_saving: BaseIntervalScorer | None,
     segment_saving_: BaseIntervalScorer,
-    penalty_scale: float,
 ) -> BaseIntervalScorer:
-    """Return a penalised point saving, auto-wrapping if needed.
+    """Return the point saving, defaulting based on the segment saving.
 
-    When ``point_saving`` is ``None``, the default uses ``linear_chi2_penalty``
-    scaled by ``penalty_scale``. When ``point_saving`` is unpenalised, it is
-    auto-wrapped in :class:`PenalisedScore` with the given ``penalty_scale``.
-    When ``point_saving`` is already penalised, ``penalty_scale`` is ignored.
+    When ``point_saving`` is ``None``:
+
+    * If ``segment_saving_`` has ``min_size == 1`` and is not itself a
+      penalised scorer, the point saving is a fresh clone of
+      ``segment_saving_``.
+    * Otherwise the default is :class:`L1Saving`.
+
+    Penalty and aggregation are applied externally by :func:`resolve_penalty`
+    and :func:`resolve_aggregation` in ``fit``.
     """
-    if point_saving is None:
-        n_samples = segment_saving_.n_samples_in_
-        n_features = segment_saving_.n_features_in_
-        point_penalty = linear_chi2_penalty(n_samples, n_features) * penalty_scale
-        if segment_saving_.min_size == 1:
-            point_saving = clone(segment_saving_)
-            point_saving.set_params(penalty=point_penalty)
-        else:
-            point_saving = PenalisedScore(L1Saving(), penalty=point_penalty)
+    if point_saving is not None:
         return point_saving
-
-    tags = point_saving.__sklearn_tags__().interval_scorer_tags
-    if tags.penalised:
-        return point_saving
-    return PenalisedScore(point_saving, penalty_scale=penalty_scale)
+    if segment_saving_.min_size == 1 and not is_penalised_score(segment_saving_):
+        return clone(segment_saving_)
+    return L1Saving()
 
 
 class CAPA(BaseChangeDetector):
@@ -264,64 +278,75 @@ class CAPA(BaseChangeDetector):
     isolated anomalous samples (point anomalies) via a dynamic programming
     formulation based on a penalised saving.
 
-    Users must supply a **penalised** saving.
-    Use :class:`PenalisedScore` to compose any unpenalised saving or cost scorer with
-    the desired penalty (e.g. ``PenalisedScore(L2Saving())``).
+    Standard usage is to pass unpenalised savings (or ``None``) and configure
+    the penalty via ``segment_penalty`` / ``point_penalty`` / ``penalty_scale``
+    / ``agg``. Already-penalised scorers are also accepted; in that case the
+    scorer owns its own penalty/aggregation and the corresponding detector
+    parameters are ignored.
 
     Parameters
     ----------
     segment_saving : BaseIntervalScorer or None, default=None
         Saving for segment anomaly detection. Must be an instance of
-        ``BaseIntervalScorer`` with ``score_type="saving"``. If the scorer is
-        unpenalised it is automatically wrapped in :class:`PenalisedScore`.
-        If ``None``, defaults to ``PenalisedScore(L2Saving())``.
+        ``BaseIntervalScorer`` with ``score_type="saving"``. If ``None``,
+        defaults to :class:`L2Saving`.
     point_saving : BaseIntervalScorer or None, default=None
         Saving for point anomaly detection. Must be an instance of
         ``BaseIntervalScorer`` with ``score_type="saving"`` and
-        ``min_size == 1``. If the scorer is unpenalised it is automatically
-        wrapped in :class:`PenalisedScore`. If ``None``, defaults to a clone
-        of ``segment_saving`` with penalty array given by
-        ``linear_chi2_penalty`` (or ``PenalisedScore(L1Saving(), ...)`` if
-        ``segment_saving.min_size > 1``).
-    segment_penalty_scale : float, default=1.5
-        Multiplicative factor on the default penalty of the auto-constructed
-        :class:`PenalisedScore` wrapping ``segment_saving``. Applies only when
-        ``segment_saving`` is ``None`` or an unpenalised scorer. Silently
-        ignored when ``segment_saving`` is already penalised; in that case
-        the user-provided scorer owns its penalty. The default of ``1.5``
-        provides a safety margin to account for baseline parameter estimation
-        uncertainty.
-    point_penalty_scale : float, default=3.0
-        Multiplicative factor on the default penalty of the auto-constructed
-        :class:`PenalisedScore` wrapping ``point_saving``. Applies only when
-        ``point_saving`` is ``None`` or an unpenalised scorer. Silently
-        ignored when ``point_saving`` is already penalised; in that case the
-        user-provided scorer owns its penalty. The default of ``3.0`` is
-        larger than ``segment_penalty_scale`` to prioritise segment anomalies
-        over single-sample point anomalies.
+        ``min_size == 1``. If ``None``, defaults to a clone of
+        ``segment_saving`` when ``segment_saving.min_size == 1`` (and
+        ``segment_saving`` is not itself penalised), otherwise
+        :class:`L1Saving`.
+    segment_penalty : float, array-like of shape (n_features,) or None, default=None
+        Penalty subtracted from the aggregated segment saving; a candidate is
+        accepted only when the result is positive.
+
+        - ``float``: scalar penalty (summed saving across features).
+        - ``array-like`` of length ``n_features``, non-decreasing: element
+          ``i`` is the penalty for ``i+1`` jointly affected features; CAPA
+          picks the ``k`` largest feature savings maximising
+          ``sum(top_k) - penalty[k-1]`` (handles sparse anomalies).
+        - ``None``: uses ``segment_saving.get_default_penalty()``.
+
+        Ignored when ``segment_saving`` is already penalised.
+    point_penalty : float, array-like of shape (n_features,) or None, default=None
+        Same semantics as ``segment_penalty`` but for point anomalies.
+        Defaults to ``2 * linear_chi2_penalty(n_samples, n_features)`` —
+        twice the segment default — to prioritise segment anomalies over
+        isolated points. Ignored when ``point_saving`` is already penalised.
+    penalty_scale : float, default=1.0
+        Positive multiplier applied to both ``segment_penalty`` and
+        ``point_penalty``. A single tuning knob that preserves the shape
+        of array penalties.
     min_segment_length : int or None, default=None
-        Minimum number of samples in a segment anomaly. Defaults to
-        ``2 * segment_saving.min_size`` when ``None``. The 2x factor provides
-        a finite-sample safety floor that prevents spurious short segments
-        from scale-estimating savings (e.g. Gaussian, Laplace). If an integer
-        is given and is less than ``segment_saving.min_size``, a ``ValueError``
-        is raised during ``fit``.
+        Minimum segment anomaly length. Defaults to
+        ``2 * segment_saving.min_size`` — a finite-sample safety floor
+        against spurious short segments from scale-estimating savings (e.g.
+        Gaussian, Laplace). Must be at least ``segment_saving.min_size``.
     max_segment_length : int or None, default=None
         Maximum number of samples in a segment anomaly. Defaults to
         ``n_samples // 2`` when ``None``, with a minimum of ``min_segment_length``.
     include_point_anomalies : bool, default=False
         If ``True``, detected point anomalies are included alongside segment
         anomalies in the output of ``predict``, ``predict_segment_anomalies``,
-        and ``predict_changepoints``, treated as single-sample intervals.
-        Point anomalies are always available via ``predict_all`` regardless of
-        this setting.
+        ``predict_changepoints``, and ``predict_scores`` treated as single-sample
+        intervals. Point anomalies are always available via ``predict_all`` regardless
+        of this setting.
 
     Attributes
     ----------
     segment_saving_ : BaseIntervalScorer
-        Fitted segment saving scorer.
+        Fitted segment saving scorer (the unpenalised scorer, or the
+        user-supplied penalised scorer).
     point_saving_ : BaseIntervalScorer
         Fitted point saving scorer.
+    segment_penalty_ : float, np.ndarray or None
+        Effective segment penalty used at detection time (resolved base
+        penalty multiplied by ``penalty_scale``). ``None`` when
+        ``segment_saving`` is inherently penalised.
+    point_penalty_ : float, np.ndarray or None
+        Effective point penalty. ``None`` when ``point_saving`` is inherently
+        penalised.
 
     References
     ----------
@@ -337,7 +362,6 @@ class CAPA(BaseChangeDetector):
     --------
     >>> import numpy as np
     >>> from skchange.new_api.detectors import CAPA
-    >>> from skchange.new_api.interval_scorers import PenalisedScore, L2Saving
     >>> rng = np.random.default_rng(2)
     >>> X = np.concatenate([rng.normal(0, 1, (100, 1)),
     ...                     rng.normal(10, 1, (20, 1)),
@@ -350,8 +374,17 @@ class CAPA(BaseChangeDetector):
     _parameter_constraints = {
         "segment_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "point_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
-        "segment_penalty_scale": [Interval(Real, 0, None, closed="neither")],
-        "point_penalty_scale": [Interval(Real, 0, None, closed="neither")],
+        "segment_penalty": [
+            "array-like",
+            Interval(Real, 0, None, closed="left"),
+            None,
+        ],
+        "point_penalty": [
+            "array-like",
+            Interval(Real, 0, None, closed="left"),
+            None,
+        ],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_segment_length": [Interval(Integral, 2, None, closed="left"), None],
         "max_segment_length": [Interval(Integral, 2, None, closed="left"), None],
         "include_point_anomalies": ["boolean"],
@@ -361,16 +394,18 @@ class CAPA(BaseChangeDetector):
         self,
         segment_saving: BaseIntervalScorer | None = None,
         point_saving: BaseIntervalScorer | None = None,
-        segment_penalty_scale: float = 1.5,
-        point_penalty_scale: float = 3.0,
+        segment_penalty: ArrayLike | float | None = None,
+        point_penalty: ArrayLike | float | None = None,
+        penalty_scale: float = 1.0,
         min_segment_length: int | None = None,
         max_segment_length: int | None = None,
         include_point_anomalies: bool = False,
     ):
         self.segment_saving = segment_saving
         self.point_saving = point_saving
-        self.segment_penalty_scale = segment_penalty_scale
-        self.point_penalty_scale = point_penalty_scale
+        self.segment_penalty = segment_penalty
+        self.point_penalty = point_penalty
+        self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
         self.max_segment_length = max_segment_length
         self.include_point_anomalies = include_point_anomalies
@@ -384,6 +419,30 @@ class CAPA(BaseChangeDetector):
             scorer_tags.interval_scorer_tags.linear_trend_segment
         )
         return tags
+
+    def _resolve_aggregation(
+        self,
+        scorer: BaseIntervalScorer,
+        penalty: ArrayLike | float | None,
+        scorer_param_name: str,
+    ) -> tuple[float | np.ndarray | None, str]:
+        """Resolve ``(penalty, agg_mode)`` for one fitted scorer."""
+        resolved_penalty = resolve_penalty(
+            scorer,
+            penalty,
+            self.penalty_scale,
+            caller_name=type(self).__name__,
+            scorer_param_name=scorer_param_name,
+        )
+        agg_mode = resolve_aggregation(
+            scorer,
+            "sum",
+            resolved_penalty,
+            self.n_features_in_,
+            caller_name=type(self).__name__,
+            scorer_param_name=scorer_param_name,
+        )
+        return resolved_penalty, agg_mode
 
     @_fit_context(prefer_skip_nested_validation=False)
     def fit(self, X: ArrayLike, y: ArrayLike | None = None) -> Self:
@@ -403,9 +462,7 @@ class CAPA(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        segment_saving = _resolve_segment_saving(
-            self.segment_saving, self.segment_penalty_scale
-        )
+        segment_saving = _resolve_segment_saving(self.segment_saving)
         check_interval_scorer(
             segment_saving,
             ensure_score_type=["saving"],
@@ -414,9 +471,7 @@ class CAPA(BaseChangeDetector):
         )
         self.segment_saving_ = clone(segment_saving).fit(X, y)
 
-        point_saving = _resolve_point_saving(
-            self.point_saving, self.segment_saving_, self.point_penalty_scale
-        )
+        point_saving = _resolve_point_saving(self.point_saving, self.segment_saving_)
         check_interval_scorer(
             point_saving,
             ensure_score_type=["saving"],
@@ -429,6 +484,21 @@ class CAPA(BaseChangeDetector):
                 f"`point_saving` must have min_size == 1, "
                 f"got min_size={self.point_saving_.min_size}."
             )
+
+        self.segment_penalty_, self._segment_agg_mode = self._resolve_aggregation(
+            self.segment_saving_, self.segment_penalty, "segment_saving"
+        )
+        # The point penalty defaults to ``2 * linear_chi2_penalty`` — twice the segment
+        # default — to prioritise segment anomalies over point anomalies.
+        if self.point_penalty is None and not is_penalised_score(self.point_saving_):
+            point_penalty_base = 2 * linear_chi2_penalty(
+                self.n_samples_in_, self.n_features_in_
+            )
+        else:
+            point_penalty_base = self.point_penalty
+        self.point_penalty_, self._point_agg_mode = self._resolve_aggregation(
+            self.point_saving_, point_penalty_base, "point_saving"
+        )
 
         min_size = self.segment_saving_.min_size
         if self.min_segment_length is None:
@@ -455,6 +525,50 @@ class CAPA(BaseChangeDetector):
 
         return self
 
+    def _run(self, X: np.ndarray, log_savings: bool = False) -> tuple:
+        """Run CAPA on ``X`` with the fitted state.
+
+        Validates ``X``, precomputes scorer caches, and invokes
+        :func:`_run_capa`. Returns the raw DP outputs followed by the
+        scorer caches so callers that need per-anomaly feature extraction
+        can reuse them without recomputing.
+
+        Parameters
+        ----------
+        X : np.ndarray of shape (n_samples, n_features)
+            Validated time series.
+        log_savings : bool, optional
+            Forwarded to :func:`_run_capa` to control whether the
+            per-evaluation savings logs are populated.
+        """
+        if self._min_segment_length > X.shape[0]:
+            raise ValueError(
+                f"`min_segment_length` ({self._min_segment_length}) cannot be "
+                f"larger than the number of samples ({X.shape[0]})."
+            )
+
+        segment_cache = self.segment_saving_.precompute(X)
+        point_cache = self.point_saving_.precompute(X)
+
+        return (
+            *_run_capa(
+                self.segment_saving_,
+                segment_cache,
+                self._segment_agg_mode,
+                self.segment_penalty_,
+                self.point_saving_,
+                point_cache,
+                self._point_agg_mode,
+                self.point_penalty_,
+                X.shape[0],
+                self._min_segment_length,
+                self._max_segment_length,
+                log_savings=log_savings,
+            ),
+            segment_cache,
+            point_cache,
+        )
+
     def predict_all(self, X: ArrayLike) -> dict:
         """Detect anomalies, returning all outputs in a single pass.
 
@@ -476,35 +590,46 @@ class CAPA(BaseChangeDetector):
                 Sorted sample indices of point anomalies.
             ``"cumulative_optimal_savings"`` : np.ndarray of shape (n_samples,)
                 Cumulative optimal savings from the dynamic programme.
-            ``"segment_anomaly_features"`` : list of np.ndarray
-                One array per segment anomaly. Each array holds 0-based feature
-                indices identified as changed, ordered from strongest to weakest
-                evidence. Empty arrays when the segment saving is not a
-                :class:`PenalisedScore` with per-feature scores.
-            ``"point_anomaly_features"`` : list of np.ndarray
-                Same as ``"segment_anomaly_features"``, but for point anomalies.
+            ``"segment_anomaly_features"`` : list of np.ndarray or None
+                One array per detected segment anomaly with the 0-based
+                feature indices identified as changed, ordered from strongest
+                to weakest evidence. ``None`` when ``segment_saving`` is
+                penalised or aggregated, or when ``segment_penalty_`` is
+                scalar (i.e. no per-feature attribution is possible).
+            ``"point_anomaly_features"`` : list of np.ndarray or None
+                Same as above, but for point anomalies (driven by
+                ``point_saving`` and ``point_penalty_``).
+            ``"segment_savings"``, ``"segment_starts"``, ``"segment_ends"`` : np.ndarray
+                Penalised saving and ``[start, end)`` index for every
+                segment interval the DP evaluated. With pruning, the
+                evaluated set depends on ``segment_penalty``.
+            ``"point_savings"``, ``"point_indices"`` : np.ndarray
+                Penalised saving and sample index ``t`` for every evaluated
+                point interval ``[t, t+1)``.
         """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        segment_cache = self.segment_saving_.precompute(X)
-        point_cache = self.point_saving_.precompute(X)
-
-        opt_savings, opt_anomaly_starts = _run_capa(
-            self.segment_saving_,
+        (
+            opt_savings,
+            opt_anomaly_starts,
+            segment_savings,
+            segment_starts,
+            segment_ends,
+            point_savings,
+            point_indices,
             segment_cache,
-            self.point_saving_,
             point_cache,
-            X.shape[0],
-            self._min_segment_length,
-            self._max_segment_length,
-        )
+        ) = self._run(X, log_savings=True)
         segment_anomalies, point_anomalies = _extract_anomalies(opt_anomaly_starts)
 
         # Changed features computed separately for segments and points.
         # Points are expanded to [t, t+1) intervals for evaluation.
         segment_anomaly_features = _get_changed_features(
-            self.segment_saving_, segment_cache, segment_anomalies
+            self.segment_saving_,
+            segment_cache,
+            self.segment_penalty_,
+            segment_anomalies,
         )
         point_intervals = (
             np.column_stack([point_anomalies, point_anomalies + 1])
@@ -512,7 +637,10 @@ class CAPA(BaseChangeDetector):
             else np.empty((0, 2), dtype=np.intp)
         )
         point_anomaly_features = _get_changed_features(
-            self.point_saving_, point_cache, point_intervals
+            self.point_saving_,
+            point_cache,
+            self.point_penalty_,
+            point_intervals,
         )
 
         return {
@@ -521,6 +649,11 @@ class CAPA(BaseChangeDetector):
             "cumulative_optimal_savings": opt_savings,
             "segment_anomaly_features": segment_anomaly_features,
             "point_anomaly_features": point_anomaly_features,
+            "segment_savings": segment_savings,
+            "segment_starts": segment_starts,
+            "segment_ends": segment_ends,
+            "point_savings": point_savings,
+            "point_indices": point_indices,
         }
 
     def predict_segment_anomalies(self, X: ArrayLike) -> np.ndarray:
@@ -540,13 +673,13 @@ class CAPA(BaseChangeDetector):
         anomalies : np.ndarray of shape (n_anomalies, 2)
             Each row is ``[start, end)`` of a detected anomaly, sorted by start.
         """
-        result = self.predict_all(X)
-        segment_anomalies = result["segment_anomalies"]
-        if not self.include_point_anomalies or len(result["point_anomalies"]) == 0:
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False, ensure_2d=True)
+        _, opt_anomaly_starts, *_ = self._run(X, log_savings=False)
+        segment_anomalies, point_anomalies = _extract_anomalies(opt_anomaly_starts)
+        if not self.include_point_anomalies or len(point_anomalies) == 0:
             return segment_anomalies
-        point_intervals = np.column_stack(
-            [result["point_anomalies"], result["point_anomalies"] + 1]
-        )
+        point_intervals = np.column_stack([point_anomalies, point_anomalies + 1])
         all_intervals = (
             np.vstack([segment_anomalies, point_intervals])
             if len(segment_anomalies)
@@ -572,22 +705,72 @@ class CAPA(BaseChangeDetector):
             When ``include_point_anomalies=True``, point anomaly indices are
             also included. Use ``predict_all`` to access them separately.
         """
-        result = self.predict_all(X)
-        anomalies = result["segment_anomalies"]
-        if self.include_point_anomalies and len(result["point_anomalies"]):
-            point_intervals = np.column_stack(
-                [result["point_anomalies"], result["point_anomalies"] + 1]
-            )
-            anomalies = (
-                np.vstack([anomalies, point_intervals])
-                if len(anomalies)
-                else point_intervals
-            )
+        anomalies = self.predict_segment_anomalies(X)
         if len(anomalies) == 0:
             return np.empty(0, dtype=np.intp)
-        n_samples = len(result["cumulative_optimal_savings"])
+        n_samples = validate_data(self, X, reset=False, ensure_2d=True).shape[0]
         boundaries = np.unique(anomalies)
         return boundaries[(boundaries > 0) & (boundaries < n_samples)].astype(np.intp)
+
+    def predict_scores(
+        self,
+        X: ArrayLike,
+        return_index: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, dict[str, np.ndarray]]:
+        """Return the penalised savings at every interval the CAPA DP evaluated.
+
+        Concatenates the penalised savings for every ``[start, end)`` segment
+        interval and, when ``include_point_anomalies=True``, every
+        single-sample point interval that the dynamic programme actually
+        visited. With pruning enabled, the set of evaluated segment intervals
+        depends on the current ``segment_penalty_``; use
+        :func:`skchange.new_api.tuning.unpenalised_scores` (with the penalty
+        zeroed) for an unpruned grid.
+
+        Parameters
+        ----------
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series to evaluate.
+        return_index : bool, default=False
+            If ``True``, also return a dict locating each score on the time
+            axis. See the Returns section for the keys.
+
+        Returns
+        -------
+        scores : np.ndarray of shape (n_evals,)
+            Penalised savings, segment intervals first then (if
+            ``include_point_anomalies=True``) point intervals.
+            Returned alone when ``return_index=False``.
+        index : dict, optional
+            Only returned when ``return_index=True``. Contains:
+
+            - ``"starts"`` : np.ndarray of shape (n_evals,)
+              Start index of each evaluated interval. For point savings the
+              start equals the sample index ``t``.
+            - ``"ends"`` : np.ndarray of shape (n_evals,)
+              End index of each evaluated interval. For point savings the end
+              equals ``t + 1``.
+        """
+        result = self.predict_all(X)
+        if self.include_point_anomalies:
+            scores = np.concatenate(
+                [result["segment_savings"], result["point_savings"]]
+            )
+        else:
+            scores = result["segment_savings"]
+        if return_index:
+            if self.include_point_anomalies:
+                starts = np.concatenate(
+                    [result["segment_starts"], result["point_indices"]]
+                )
+                ends = np.concatenate(
+                    [result["segment_ends"], result["point_indices"] + 1]
+                )
+            else:
+                starts = result["segment_starts"]
+                ends = result["segment_ends"]
+            return scores, {"starts": starts, "ends": ends}
+        return scores
 
     def predict(self, X: ArrayLike) -> np.ndarray:
         """Detect anomalies, returning per-sample segment labels.
@@ -605,15 +788,9 @@ class CAPA(BaseChangeDetector):
             ``include_point_anomalies=True``, point anomalies are included as
             single-sample intervals and numbered together with segment anomalies.
         """
-        result = self.predict_all(X)
-        n_samples = len(result["cumulative_optimal_savings"])
+        intervals = self.predict_segment_anomalies(X)
+        n_samples = validate_data(self, X, reset=False, ensure_2d=True).shape[0]
         labels = np.zeros(n_samples, dtype=np.intp)
-
-        intervals = list(result["segment_anomalies"])
-        if self.include_point_anomalies:
-            intervals += [[t, t + 1] for t in result["point_anomalies"]]
-        intervals.sort(key=lambda x: x[0])
-
         for label, (start, end) in enumerate(intervals, start=1):
             labels[start:end] = label
         return labels

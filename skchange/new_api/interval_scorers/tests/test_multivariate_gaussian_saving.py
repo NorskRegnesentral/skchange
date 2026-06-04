@@ -8,7 +8,7 @@ from skchange.new_api.conftest import (
     make_single_change_X,
 )
 from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import MultivariateGaussianSaving, PenalisedScore
+from skchange.new_api.interval_scorers import MultivariateGaussianSaving
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_MEAN = 0.0  # scalar; broadcast to all features
@@ -19,7 +19,7 @@ LOC_AFTER = 10.0  # Mean of the second segment; should differ from BASELINE_MEAN
 def _make_capa(saving):
     # min_segment_length=5 prevents spurious 2-3-sample detections from
     # random fluctuations in multivariate data.
-    return CAPA(segment_saving=PenalisedScore(saving), min_segment_length=5)
+    return CAPA(segment_saving=saving, min_segment_length=5)
 
 
 # ---------------------------------------------------------------------------

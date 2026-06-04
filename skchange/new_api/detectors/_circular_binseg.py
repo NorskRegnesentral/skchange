@@ -12,7 +12,6 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.detectors._seeded_binseg import make_seeded_intervals
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
     L2TransientScore,
 )
@@ -22,7 +21,14 @@ from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import (
     HasMethods,
     Interval,
+    StrOptions,
     _fit_context,
+)
+from skchange.new_api.utils._score_aggregation import (
+    USER_AGG_CHOICES,
+    aggregate_and_penalise,
+    resolve_aggregation,
+    resolve_penalty,
 )
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
@@ -62,47 +68,53 @@ def make_inner_intervals(
 
 
 @njit(cache=True)
-def greedy_anomaly_selection(
+def greedy_segment_selection(
     penalised_scores: np.ndarray,
-    anomaly_starts: np.ndarray,
-    anomaly_ends: np.ndarray,
-    starts: np.ndarray,
-    ends: np.ndarray,
-) -> list[tuple[int, int]]:
-    """Greedily select non-overlapping segment anomalies with positive score."""
+    inner_starts: np.ndarray,
+    inner_ends: np.ndarray,
+    outer_starts: np.ndarray,
+    outer_ends: np.ndarray,
+) -> np.ndarray:
+    """Greedily select non-overlapping segments with positive score."""
     penalised_scores = penalised_scores.copy()
-    anomalies = []
+    segments = []
     while np.any(penalised_scores > 0):
         argmax = penalised_scores.argmax()
-        anomaly_start = anomaly_starts[argmax]
-        anomaly_end = anomaly_ends[argmax]
-        anomalies.append((anomaly_start, anomaly_end))
-        # Remove outer intervals that overlap with the detected segment anomaly.
-        penalised_scores[(anomaly_end > starts) & (anomaly_start < ends)] = 0.0
-    anomalies.sort()
-    return anomalies
+        segment_start = inner_starts[argmax]
+        segment_end = inner_ends[argmax]
+        segments.append((segment_start, segment_end))
+        # Remove outer intervals that overlap with the detected segment.
+        penalised_scores[
+            (segment_end > outer_starts) & (segment_start < outer_ends)
+        ] = 0.0
+
+    if len(segments) == 0:
+        return np.empty((0, 2), dtype=np.intp)
+    segments.sort()
+    return np.array(segments, dtype=np.intp)
 
 
-def _run_circular_binseg(
+def _score_circular_intervals(
     transient_score: BaseIntervalScorer,
+    agg_mode: str,
+    penalty: float | np.ndarray | None,
     X: np.ndarray,
     min_subinterval_length: int,
     max_interval_length: int,
     growth_factor: float,
-) -> tuple[
-    list[tuple[int, int]],
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-]:
-    """Run the circular binary segmentation algorithm.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Score the seeded outer-interval grid without segment selection.
 
     Parameters
     ----------
     transient_score : BaseIntervalScorer
-        A fitted, penalised transient score.
+        Fitted transient score. May be unpenalised (per-feature scores) or
+        inherently penalised (already-aggregated single-column scores).
+    agg_mode : str
+        Aggregation/penalty mode as returned by :func:`resolve_aggregation`.
+    penalty : float, np.ndarray or None
+        Effective penalty as returned by :func:`resolve_penalty`. ``None``
+        when ``agg_mode == "passthrough"``.
     X : np.ndarray of shape (n_samples, n_features)
         Input data.
     min_subinterval_length : int
@@ -116,17 +128,15 @@ def _run_circular_binseg(
 
     Returns
     -------
-    inner_intervals : list of (int, int)
-        Detected ``(start, end)`` inner intervals (transient changes).
-    max_scores : np.ndarray
-        Best (aggregated) penalised score for each outer interval.
-    argmax_inner_starts : np.ndarray
+    max_scores : np.ndarray of shape (n_outer,)
+        Best (aggregated, penalised) score per outer interval.
+    argmax_inner_starts : np.ndarray of shape (n_outer,)
         Inner-interval start of the best inner candidate per outer interval.
-    argmax_inner_ends : np.ndarray
+    argmax_inner_ends : np.ndarray of shape (n_outer,)
         Inner-interval end of the best inner candidate per outer interval.
-    starts : np.ndarray
+    starts : np.ndarray of shape (n_outer,)
         Outer-interval start indices.
-    ends : np.ndarray
+    ends : np.ndarray of shape (n_outer,)
         Outer-interval end indices.
     """
     check_is_fitted(transient_score)
@@ -144,9 +154,12 @@ def _run_circular_binseg(
     argmax_inner_starts = np.zeros(starts.size, dtype=np.int64)
     argmax_inner_ends = np.zeros(starts.size, dtype=np.int64)
 
+    if starts.size == 0:
+        return max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends
+
     # Build the (outer_start, inner_start, inner_end, outer_end) specs for all
     # inner candidates across every outer interval and evaluate the transient
-    # score in a single call. Same approach as in ``_run_seeded_binseg``.
+    # score in a single call. Same approach as in ``_score_seeded_intervals``.
     inner_per_interval = [
         make_inner_intervals(start, end, min_subinterval_length)
         for start, end in zip(starts, ends)
@@ -167,48 +180,30 @@ def _run_circular_binseg(
     interval_specs = np.column_stack(
         (all_outer_starts, all_inner_starts, all_inner_ends, all_outer_ends)
     )
-    all_scores = transient_score.evaluate(cache, interval_specs)
-    # Aggregate across feature columns when the score is multivariate.
-    if all_scores.ndim == 2:
-        all_scores = np.sum(all_scores, axis=1)
-    all_scores = all_scores.reshape(-1)
+    raw_scores = transient_score.evaluate(cache, interval_specs)
+    penalised_scores = aggregate_and_penalise(raw_scores, agg_mode, penalty)
 
     offsets = np.concatenate(([0], np.cumsum(n_inner)))
     for i in range(starts.size):
-        interval_scores = all_scores[offsets[i] : offsets[i + 1]]
+        interval_scores = penalised_scores[offsets[i] : offsets[i + 1]]
         argmax = int(np.argmax(interval_scores))
         max_scores[i] = interval_scores[argmax]
         inner_starts_i, inner_ends_i = inner_per_interval[i]
         argmax_inner_starts[i] = inner_starts_i[argmax]
         argmax_inner_ends[i] = inner_ends_i[argmax]
 
-    inner_intervals = greedy_anomaly_selection(
-        max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends
-    )
-    return (
-        inner_intervals,
-        max_scores,
-        argmax_inner_starts,
-        argmax_inner_ends,
-        starts,
-        ends,
-    )
+    return max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends
 
 
 def _resolve_transient_score(
     transient_score: BaseIntervalScorer | None,
-    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return a penalised transient score, auto-wrapping if needed.
+    """Resolve default transient score.
 
     Needed since default resolution must be done in both fit and
     ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    transient_score = L2TransientScore() if transient_score is None else transient_score
-    tags = transient_score.__sklearn_tags__().interval_scorer_tags
-    if tags.penalised:
-        return transient_score
-    return PenalisedScore(transient_score, penalty_scale=penalty_scale)
+    return L2TransientScore() if transient_score is None else transient_score
 
 
 class CircularBinarySegmentation(BaseChangeDetector):
@@ -230,30 +225,56 @@ class CircularBinarySegmentation(BaseChangeDetector):
     changepoint detector, in contrast to standard (single-shift) changepoint
     methods such as :class:`PELT` or :class:`SeededBinarySegmentation`.
 
+    The ``penalty``, ``penalty_scale``, and ``agg`` parameters are ignored
+    when ``transient_score`` is an inherently penalised scorer (tag
+    ``penalised=True``); in that case the scorer owns aggregation and
+    penalisation.
+
     Parameters
     ----------
     transient_score : BaseIntervalScorer or None, default=None
         Transient score to use in the algorithm. Must be an instance of
-        ``BaseIntervalScorer`` with ``score_type="transient_score"``. If the
-        scorer is unpenalised it is automatically wrapped in
-        :class:`PenalisedScore`. If ``None``, defaults to
-        ``PenalisedScore(L2TransientScore())``.
+        ``BaseIntervalScorer`` with ``score_type="transient_score"``. If
+        ``None``, defaults to ``L2TransientScore()``.
 
-        Wrap with :class:`PenalisedScore` explicitly to set a custom
-        ``penalty``, e.g.:
+        Standard usage is to pass an unpenalised score and set ``penalty``
+        separately. If the score already has tag ``penalised=True``, it owns
+        its own aggregation and penalty, and ``penalty`` / ``penalty_scale``
+        / ``agg`` are ignored.
+    penalty : float, array-like of shape (n_features,) or None, default=None
+        Penalty subtracted from the aggregated feature-wise score. A candidate
+        segment anomaly is accepted only when the penalised score is positive.
 
-        * ``L2TransientScore()`` -- auto-wrapped with default BIC penalty
-        * ``PenalisedScore(CostTransientScore(GaussianCost()), penalty=10.0)``
-          -- Gaussian cost-based transient score with fixed penalty
+        - ``float``: scalar penalty subtracted from the aggregated score
+          (see ``agg``).
+        - ``array-like`` of length ``n_features``, non-decreasing: element
+          ``i`` is the penalty for ``i+1`` features jointly affected; the
+          detector picks the ``k`` largest feature scores maximising
+          ``sum(top_k) - penalty[k-1]``. Only consistent with the default
+          ``agg="sum"``.
+        - ``None``: defaults to ``transient_score.get_default_penalty()`` at
+          fit time.
+
+        Ignored when ``transient_score`` is already penalised.
     penalty_scale : float, default=2.0
-        Multiplicative factor on the default penalty of the auto-constructed
-        :class:`PenalisedScore` wrapper. Applies only when ``transient_score``
-        is ``None`` or an unpenalised scorer. Silently ignored when
-        ``transient_score`` is already a penalised scorer; in that case the
-        user-provided scorer owns its penalty. The default is larger than 1
-        because CBS evaluates the score over a very large number of candidate
-        ``(outer, inner)`` interval pairs, so a stricter penalty is needed to
-        keep the family-wise false-positive rate low.
+        Multiplicative factor applied to the effective penalty (whether
+        ``penalty`` is user-provided or the default). Must be positive.
+        Ignored when ``transient_score`` is already penalised. The default
+        is larger than 1 because CBS evaluates the score over a very large
+        number of candidate ``(outer, inner)`` interval pairs, so a stricter
+        penalty is needed to keep the family-wise false-positive rate low.
+    agg : {"sum", "max"}, default="sum"
+        How feature-wise raw scores are aggregated into a single score per
+        interval before subtracting a scalar penalty:
+
+        * ``"sum"``: ``sum(scores, axis=1) - penalty`` (dense change
+          assumption).
+        * ``"max"``: ``max(scores, axis=1) - penalty`` (a single, unknown
+          feature changes).
+
+        Ignored when ``transient_score`` is already aggregated. Must be
+        ``"sum"`` when ``penalty`` is array-valued (array penalties imply
+        top-k aggregation).
     min_subinterval_length : int, default=5
         Minimum length of an inner (anomalous) segment. The total length of the
         surrounding (left + right) baseline must also be at least this value.
@@ -272,7 +293,10 @@ class CircularBinarySegmentation(BaseChangeDetector):
     Attributes
     ----------
     transient_score_ : BaseIntervalScorer
-        Fitted penalised transient score.
+        Fitted transient score.
+    penalty_ : float, np.ndarray or None
+        Effective penalty actually used at detection time. ``None`` when
+        ``transient_score`` is inherently penalised.
     min_subinterval_length_ : int
         Effective minimum inner-segment length used.
     max_interval_length_ : int
@@ -311,8 +335,10 @@ class CircularBinarySegmentation(BaseChangeDetector):
     """
 
     _parameter_constraints = {
-        "transient_score": [HasMethods(["fit", "evaluate"]), None],
+        "transient_score": [HasMethods(["fit", "precompute", "evaluate"]), None],
+        "penalty": ["array-like", Interval(Real, 0, None, closed="left"), None],
         "penalty_scale": [Interval(Real, 0, None, closed="neither")],
+        "agg": [StrOptions(set(USER_AGG_CHOICES))],
         "min_subinterval_length": [Interval(Integral, 1, None, closed="left")],
         "max_interval_length": [Interval(Integral, 2, None, closed="left"), None],
         "growth_factor": [Interval(Real, 1.0, 2.0, closed="right")],
@@ -321,13 +347,17 @@ class CircularBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         transient_score: BaseIntervalScorer | None = None,
+        penalty: ArrayLike | float | None = None,
         penalty_scale: float = 2.0,
+        agg: str = "sum",
         min_subinterval_length: int = 5,
         max_interval_length: int | None = None,
         growth_factor: float = 1.8,
     ):
         self.transient_score = transient_score
+        self.penalty = penalty
         self.penalty_scale = penalty_scale
+        self.agg = agg
         self.min_subinterval_length = min_subinterval_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
@@ -360,14 +390,30 @@ class CircularBinarySegmentation(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        scorer = _resolve_transient_score(self.transient_score, self.penalty_scale)
+        transient_score = _resolve_transient_score(self.transient_score)
         check_interval_scorer(
-            scorer,
+            transient_score,
             ensure_score_type=["transient_score"],
             caller_name=self.__class__.__name__,
             arg_name="transient_score",
         )
-        self.transient_score_ = clone(scorer).fit(X, y)
+        self.transient_score_ = clone(transient_score).fit(X, y)
+
+        self.penalty_ = resolve_penalty(
+            self.transient_score_,
+            self.penalty,
+            self.penalty_scale,
+            caller_name=self.__class__.__name__,
+            scorer_param_name="transient_score",
+        )
+        self._agg_mode = resolve_aggregation(
+            self.transient_score_,
+            self.agg,
+            self.penalty_,
+            self.n_features_in_,
+            caller_name=self.__class__.__name__,
+            scorer_param_name="transient_score",
+        )
 
         self.min_subinterval_length_ = max(
             self.min_subinterval_length, self.transient_score_.min_size
@@ -417,43 +463,35 @@ class CircularBinarySegmentation(BaseChangeDetector):
             ``"interval_ends"`` : np.ndarray
                 End indices of the seeded outer intervals evaluated.
             ``"interval_max_scores"`` : np.ndarray
-                Maximum (aggregated) penalised score within each outer interval.
+                Maximum (aggregated, penalised) score within each outer interval.
             ``"interval_argmax_inner_starts"`` : np.ndarray
                 Best inner-interval start per outer interval.
             ``"interval_argmax_inner_ends"`` : np.ndarray
                 Best inner-interval end per outer interval.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        (
-            inner_intervals,
-            max_scores,
-            argmax_inner_starts,
-            argmax_inner_ends,
-            starts,
-            ends,
-        ) = _run_circular_binseg(
-            self.transient_score_,
-            X,
-            self.min_subinterval_length_,
-            self.max_interval_length_,
-            self.growth_factor,
+        max_scores, index = self.predict_scores(X, return_index=True)
+        starts = index["starts"]
+        ends = index["ends"]
+        argmax_inner_starts = index["argmax_inner_starts"]
+        argmax_inner_ends = index["argmax_inner_ends"]
+
+        segments = greedy_segment_selection(
+            max_scores, argmax_inner_starts, argmax_inner_ends, starts, ends
         )
 
-        if len(inner_intervals) == 0:
-            segment_anomalies = np.empty((0, 2), dtype=np.intp)
+        if len(segments) == 0:
             changepoints = np.empty(0, dtype=np.intp)
         else:
-            segment_anomalies = np.asarray(inner_intervals, dtype=np.intp)
-            n_samples = X.shape[0]
-            boundaries = np.unique(segment_anomalies)
+            n_samples = self.n_samples_in_
+            boundaries = np.unique(segments)
             changepoints = boundaries[
                 (boundaries > 0) & (boundaries < n_samples)
             ].astype(np.intp)
 
         return {
-            "segment_anomalies": segment_anomalies,
+            "segment_anomalies": segments,
             "changepoints": changepoints,
             "interval_starts": starts,
             "interval_ends": ends,
@@ -496,3 +534,74 @@ class CircularBinarySegmentation(BaseChangeDetector):
             Empty array if no anomalies are detected.
         """
         return self.predict_all(X)["changepoints"]
+
+    def predict_scores(
+        self,
+        X: ArrayLike,
+        return_index: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, dict[str, np.ndarray]]:
+        """Return the per-outer-interval scoring objective evaluated on ``X``.
+
+        For each seeded outer interval, returns the maximum aggregated,
+        penalised transient score over candidate inner ``[start, end)``
+        sub-intervals. This is what :meth:`predict_segment_anomalies` reduces
+        over via the greedy selection step, without the selection itself.
+
+        For penalty calibration, use the free function
+        :func:`skchange.new_api.tuning.unpenalised_scores`, which fits a
+        clone of this detector with the penalty parameter set to zero and
+        returns the resulting unpenalised scores.
+
+        Parameters
+        ----------
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series to evaluate.
+        return_index : bool, default=False
+            If ``True``, also return a dict locating each score on the time
+            axis. See the Returns section for the keys.
+
+        Returns
+        -------
+        scores : np.ndarray of shape (n_outer,)
+            Aggregated, penalised transient-score values, one per seeded outer
+            interval, at the best inner sub-interval within that outer
+            interval. Returned alone when ``return_index=False``.
+        index : dict, optional
+            Only returned when ``return_index=True``. Contains:
+
+            - ``"starts"`` : np.ndarray of shape (n_outer,)
+              Start indices of the seeded outer intervals.
+            - ``"ends"`` : np.ndarray of shape (n_outer,)
+              End indices of the seeded outer intervals.
+            - ``"argmax_inner_starts"`` : np.ndarray of shape (n_outer,)
+              Inner-interval start of the maximising candidate per outer interval.
+            - ``"argmax_inner_ends"`` : np.ndarray of shape (n_outer,)
+              Inner-interval end of the maximising candidate per outer interval.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False, ensure_2d=True)
+
+        (
+            max_scores,
+            argmax_inner_starts,
+            argmax_inner_ends,
+            starts,
+            ends,
+        ) = _score_circular_intervals(
+            transient_score=self.transient_score_,
+            agg_mode=self._agg_mode,
+            penalty=self.penalty_,
+            X=X,
+            min_subinterval_length=self.min_subinterval_length_,
+            max_interval_length=self.max_interval_length_,
+            growth_factor=self.growth_factor,
+        )
+
+        if return_index:
+            return max_scores, {
+                "starts": starts,
+                "ends": ends,
+                "argmax_inner_starts": argmax_inner_starts,
+                "argmax_inner_ends": argmax_inner_ends,
+            }
+        return max_scores

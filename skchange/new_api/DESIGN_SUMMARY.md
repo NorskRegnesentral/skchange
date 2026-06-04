@@ -63,9 +63,13 @@ from the labels.
 Some detectors compute richer outputs alongside changepoints — test statistic scores, affected features, uncertainty estimates, etc. These are exposed through typed `predict_*` methods defined only on the concrete detector that computes them:
 
 ```python
-def predict_scores(self, X) -> np.ndarray: # per-sample test statistic
+def predict_scores(self, X) -> np.ndarray: # detector-internal scores
 def predict_proba(self, X) -> np.ndarray:  # posterior probability per sample
 ```
+
+**Convention: `predict_scores(X, return_index=False) -> np.ndarray`**
+
+When a detector exposes `predict_scores`, it returns a 1D array of the detector's internal scoring objective. The array length is detector-specific (one entry per evaluated interval, candidate split, window, etc.) — there is no contract that it equals `n_samples`. With `return_index=True` it returns an `(scores, index_dict)` tuple, where `index_dict` carries algorithm-specific metadata that locates each score on the input timeline (e.g. interval start/end arrays for PELT, split points for binary segmentation). Paired with `skchange.new_api.tuning.unpenalised_scores`, this gives a uniform primitive for penalty calibration across detectors.
 
 **Convention: `predict_segment_anoamlies -> np.ndarray`**
 
@@ -423,7 +427,7 @@ Interval scorers (costs, change scores, savings) provide the scoring functions u
 # ✅ Concrete classes named after output
 class L2Cost(BaseCost): ...
 class CUSUM(BaseChangeScore): ...
-class PenalisedScore(BaseIntervalScorer): ...
+class ESACScore(BaseChangeScore): ...
 
 # ✅ Generic parameter uses "scorer"
 class SomeDetector(BaseChangeDetector):
@@ -442,13 +446,15 @@ class SomeDetector(BaseChangeDetector):
 Detectors and scorers require the correct type to be passed in directly:
 
 ```python
-# ✅ Explicit — type is clear at call site
-MovingWindow(change_score=PenalisedScore(CUSUM()))
-MovingWindow(change_score=PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0))
+# ✅ Explicit — type is clear at call site; detector owns penalty/agg
+MovingWindow(change_score=CUSUM(), penalty=5.0)
+MovingWindow(change_score=CostChangeScore(L2Cost()), penalty=5.0)
 
-# ❌ Not supported — no auto-wrapping of costs or unpenalised scores
-MovingWindow(change_score=CUSUM())       # raises: not penalised
-MovingWindow(change_score=L2Cost())      # raises: not penalised change score
+# ✅ Inherently penalised scorers are passed as-is (detector’s penalty is ignored)
+MovingWindow(change_score=ESACScore())
+
+# ❌ Not supported — wrong score_type
+MovingWindow(change_score=L2Cost())      # raises: not a change score
 ```
 
 **Rationale:**

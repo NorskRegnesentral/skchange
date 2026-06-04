@@ -207,6 +207,80 @@ def test_detector_predict_label_count(estimator):
 
 
 # ---------------------------------------------------------------------------
+# predict_all, predict_segment_anomalies, predict_scores contract tests
+# ---------------------------------------------------------------------------
+
+
+@_all_detectors
+def test_detector_predict_all_contract(estimator):
+    """If present, predict_all() must return a dict."""
+    if not hasattr(estimator, "predict_all"):
+        pytest.skip("predict_all not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    result = estimator.predict_all(X)
+    assert isinstance(result, dict)
+
+
+@_all_detectors
+def test_detector_predict_segment_anomalies_contract(estimator):
+    """If present, predict_segment_anomalies() must return a 2D ndarray (n, 2)."""
+    if not hasattr(estimator, "predict_segment_anomalies"):
+        pytest.skip("predict_segment_anomalies not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    anomalies = estimator.predict_segment_anomalies(X)
+    assert isinstance(anomalies, np.ndarray)
+    assert anomalies.ndim == 2 and anomalies.shape[1] == 2
+
+
+@_all_detectors
+def test_detector_predict_scores_contract(estimator):
+    """If present, predict_scores() must return a 1D ndarray or (ndarray, dict)"""
+    if not hasattr(estimator, "predict_scores"):
+        pytest.skip("predict_scores not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    scores = estimator.predict_scores(X)
+    if isinstance(scores, tuple):
+        arr, idx = scores
+        assert isinstance(arr, np.ndarray)
+        assert arr.ndim == 1
+        assert isinstance(idx, dict)
+    else:
+        assert isinstance(scores, np.ndarray)
+        assert scores.ndim == 1
+
+
+@_all_detectors
+def test_detector_predict_scores_return_index_contract(estimator):
+    """predict_scores(return_index=True) must return (scores, dict) where every
+    dict entry is an ndarray of the same length as ``scores``.
+    """
+    if not hasattr(estimator, "predict_scores"):
+        pytest.skip("predict_scores not implemented")
+    X = make_single_change_X(estimator)
+    estimator.fit(X)
+    result = estimator.predict_scores(X, return_index=True)
+    assert (
+        isinstance(result, tuple) and len(result) == 2
+    ), "predict_scores(return_index=True) must return a (scores, index) tuple"
+    scores, index = result
+    assert isinstance(scores, np.ndarray)
+    assert scores.ndim == 1
+    assert isinstance(index, dict)
+    assert len(index) > 0, "index dict must contain at least one entry"
+    for key, value in index.items():
+        assert isinstance(
+            value, np.ndarray
+        ), f"index['{key}'] must be an np.ndarray, got {type(value).__name__}"
+        assert len(value) == len(scores), (
+            f"index['{key}'] has length {len(value)} but scores has length "
+            f"{len(scores)}"
+        )
+
+
+# ---------------------------------------------------------------------------
 # fit_predict() convenience test
 # ---------------------------------------------------------------------------
 
@@ -245,3 +319,24 @@ def test_detector_finds_no_changepoint(estimator):
     estimator.fit(X)
     cpts = estimator.predict_changepoints(X)
     assert len(cpts) == 0, f"Expected 0 changepoints, got {len(cpts)}: {cpts}"
+
+
+# ---------------------------------------------------------------------------
+# Multivariate test
+# ---------------------------------------------------------------------------
+
+
+@_all_detectors
+def test_detector_runs_on_multivariate(estimator):
+    """Detectors that accept multivariate input must run end-to-end on n_features=3.
+
+    A minimal smoke test: fit, then predict_changepoints. No assertions on the
+    result other than the standard output contract.
+    """
+    if not estimator.__sklearn_tags__().input_tags.multivariate:
+        pytest.skip("estimator does not support multivariate input")
+    X = make_single_change_X(estimator, n_features=3)
+    estimator.fit(X)
+    cpts = estimator.predict_changepoints(X)
+    assert isinstance(cpts, np.ndarray)
+    assert cpts.ndim == 1

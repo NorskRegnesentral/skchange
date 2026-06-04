@@ -25,12 +25,10 @@ from skchange.new_api.interval_scorers import (
     MultivariateGaussianScore,
     MultivariateTCost,
     MultivariateTSaving,
-    PenalisedScore,
     PoissonCost,
     PoissonSaving,
     RankCost,
     RankScore,
-    is_penalised_score,
 )
 
 # ---------------------------------------------------------------------------
@@ -84,20 +82,10 @@ _COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS] + [
     for cost in _COSTS
     if type(cost).__name__ not in CostTransientScore._INCOMPATIBLE_COST_NAMES
 ]
-_PENALISED_SCORES = [
-    PenalisedScore(scorer)
-    for scorer in _CHANGE_SCORES + _SAVINGS + _TRANSIENT_SCORES + _COST_COMPOSITES
-    if not is_penalised_score(scorer)
-]
 
 # ---------------------------------------------------------------------------
 # All test instances
 # ---------------------------------------------------------------------------
 INTERVAL_SCORER_TEST_INSTANCES = (
-    _COSTS
-    + _CHANGE_SCORES
-    + _SAVINGS
-    + _TRANSIENT_SCORES
-    + _COST_COMPOSITES
-    + _PENALISED_SCORES
+    _COSTS + _CHANGE_SCORES + _SAVINGS + _TRANSIENT_SCORES + _COST_COMPOSITES
 )

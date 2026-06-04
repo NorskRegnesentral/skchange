@@ -619,10 +619,10 @@ class MultivariateTCost(BaseCost):
         This parameter controls whether leave-one-out (LOO) updates are used
         in internal scale-matrix estimation. If ``n_samples <= refine_dof_threshold``,
         LOO refinement is run; otherwise the non-LOO iterative dof estimate is used.
-    mle_scale_abs_tol : float, default=1e-2
+    mle_scale_abs_tol : float, default=1e-4
         Absolute convergence tolerance for the MLE scale-matrix fixed-point
         iterations.
-    mle_scale_rel_tol : float, default=1e-2
+    mle_scale_rel_tol : float, default=1e-4
         Relative convergence tolerance for the MLE scale-matrix fixed-point
         iterations.
     mle_scale_max_iter : int, default=100
@@ -673,8 +673,8 @@ class MultivariateTCost(BaseCost):
         fixed_dof: float | None = None,
         infinite_dof_threshold: float = 50.0,
         refine_dof_threshold: int | None = None,
-        mle_scale_abs_tol: float = 1e-2,
-        mle_scale_rel_tol: float = 1e-2,
+        mle_scale_abs_tol: float = 1e-4,
+        mle_scale_rel_tol: float = 1e-4,
         mle_scale_max_iter: int = 100,
     ):
         self.fixed_dof = fixed_dof

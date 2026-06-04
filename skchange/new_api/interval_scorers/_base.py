@@ -53,7 +53,7 @@ class BaseIntervalScorer(BaseEstimator):
 
     interval_specs_ncols
         Expected number of columns in interval_specs. Must override for wrappers
-        that delegate to other scorers (e.g., CostChangeScore, PenalisedScore).
+        that delegate to other scorers (e.g., CostChangeScore).
         Minimum valid interval size. Default returns 1.
 
     get_default_penalty()
@@ -170,7 +170,7 @@ class BaseIntervalScorer(BaseEstimator):
         For example, cost scorers typically expect 2 columns (start, end), while
         change scores expect 3 (start, split, end).
 
-        In wrappers like CostChangeScore or PenalisedScore, this delegates to the
+        In wrappers like CostChangeScore, this delegates to the
         wrapped scorer and may require fitting first.
 
         Returns
@@ -395,11 +395,31 @@ def is_penalised_score(estimator) -> bool:
 
     Examples
     --------
-    >>> from skchange.new_api.interval_scorers import CUSUM, PenalisedScore
-    >>> is_penalised_score(PenalisedScore(CUSUM()))
+    >>> from skchange.new_api.interval_scorers import CUSUM, ESACScore
+    >>> is_penalised_score(ESACScore())
     True
     >>> is_penalised_score(CUSUM())
     False
     """
     scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
     return scorer_tags is not None and scorer_tags.penalised
+
+
+def is_aggregated_score(estimator) -> bool:
+    """Return True if the given estimator is an aggregated interval scorer.
+
+    An aggregated scorer returns a single value per interval (a univariate
+    score) rather than per-feature scores.
+
+    Parameters
+    ----------
+    estimator : estimator instance
+        Estimator object to test.
+
+    Returns
+    -------
+    out : bool
+        True if estimator is aggregated and False otherwise.
+    """
+    scorer_tags = get_tags(estimator).interval_scorer_tags  # type: ignore[union-attr]
+    return scorer_tags is not None and scorer_tags.aggregated

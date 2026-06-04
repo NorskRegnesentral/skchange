@@ -11,8 +11,8 @@ from skchange.new_api.detectors import (
 from skchange.new_api.interval_scorers import (
     CostTransientScore,
     GaussianCost,
+    L1Saving,
     L2Cost,
-    PenalisedScore,
     is_change_score,
     is_cost,
     is_penalised_score,
@@ -22,13 +22,6 @@ from skchange.new_api.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
 
-# ``PenalisedScore``-wrapped scorers are excluded from the registry-driven
-# detector instances below: detectors auto-wrap unpenalised scorers in
-# ``PenalisedScore`` internally, so passing a ``PenalisedScore(inner)`` would
-# duplicate coverage of the ``inner`` scorer with no extra branches exercised.
-# Inherently penalised scorers (e.g. ``ESACScore``) are still included to cover
-# the "user supplies an already-penalised, non-``PenalisedScore`` scorer" path.
-
 _MOVING_WINDOW_INSTANCES = [
     MovingWindow(),
     MovingWindow(selection_method="detection_length", bandwidth=5),
@@ -36,22 +29,23 @@ _MOVING_WINDOW_INSTANCES = [
     *[
         MovingWindow(scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
-        if is_change_score(scorer) and not isinstance(scorer, PenalisedScore)
+        if is_change_score(scorer)
     ],
 ]
 
 _CAPA_INSTANCES = [
     CAPA(),
     CAPA(min_segment_length=10, max_segment_length=100),
+    CAPA(segment_saving=L1Saving(), point_saving=L1Saving(), penalty_scale=2.0),
     *[
         CAPA(segment_saving=scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
-        if is_saving(scorer) and not isinstance(scorer, PenalisedScore)
+        if is_saving(scorer)
     ],
     *[
         CAPA(segment_saving=scorer, include_point_anomalies=True)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
-        if is_saving(scorer) and not isinstance(scorer, PenalisedScore)
+        if is_saving(scorer)
     ],
 ]
 
@@ -71,10 +65,14 @@ _SEEDED_BINSEG_INSTANCES = [
     SeededBinarySegmentation(),
     SeededBinarySegmentation(max_interval_length=100),
     SeededBinarySegmentation(selection_method="narrowest"),
+    SeededBinarySegmentation(penalty=10.0),
+    SeededBinarySegmentation(penalty_scale=2.0),
+    SeededBinarySegmentation(agg="max"),
+    SeededBinarySegmentation(growth_factor=2.0),
     *[
         SeededBinarySegmentation(change_score=scorer)
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
-        if is_change_score(scorer) and not isinstance(scorer, PenalisedScore)
+        if is_change_score(scorer)
     ],
 ]
 
@@ -92,6 +90,9 @@ _CIRCULAR_BINSEG_INSTANCES = [
     # subset of transient scores to keep CI time reasonable.
     CircularBinarySegmentation(),
     CircularBinarySegmentation(min_subinterval_length=5, max_interval_length=100),
+    CircularBinarySegmentation(penalty=10.0),
+    CircularBinarySegmentation(penalty_scale=3.0),
+    CircularBinarySegmentation(agg="max"),
     CircularBinarySegmentation(transient_score=CostTransientScore(L2Cost())),
     CircularBinarySegmentation(transient_score=CostTransientScore(GaussianCost())),
 ]

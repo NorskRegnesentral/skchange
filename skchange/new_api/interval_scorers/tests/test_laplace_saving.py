@@ -9,7 +9,7 @@ from skchange.new_api.conftest import (
     make_single_change_X,
 )
 from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import LaplaceSaving, PenalisedScore
+from skchange.new_api.interval_scorers import LaplaceSaving
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_LOCATION = 0.0
@@ -18,7 +18,7 @@ LOC_AFTER = 10.0  # Location of the second segment; should diff from BASELINE_LO
 
 
 def _make_capa(saving):
-    return CAPA(segment_saving=PenalisedScore(saving))
+    return CAPA(segment_saving=saving)
 
 
 # ---------------------------------------------------------------------------

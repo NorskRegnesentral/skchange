@@ -12,7 +12,6 @@ from sklearn.utils.validation import check_is_fitted
 from skchange.new_api.detectors._base import BaseChangeDetector
 from skchange.new_api.interval_scorers._base import BaseIntervalScorer
 from skchange.new_api.interval_scorers._change_scores.cusum import CUSUM
-from skchange.new_api.interval_scorers._penalised_score import PenalisedScore
 from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._numba import njit
@@ -21,6 +20,12 @@ from skchange.new_api.utils._param_validation import (
     Interval,
     StrOptions,
     _fit_context,
+)
+from skchange.new_api.utils._score_aggregation import (
+    USER_AGG_CHOICES,
+    aggregate_and_penalise,
+    resolve_aggregation,
+    resolve_penalty,
 )
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
@@ -101,20 +106,29 @@ def narrowest_selection(
     return cpts
 
 
-def _run_seeded_binseg(
+def _score_seeded_intervals(
     change_score: BaseIntervalScorer,
+    agg_mode: str,
+    penalty: float | np.ndarray | None,
     X: np.ndarray,
     min_subinterval_length: int,
     max_interval_length: int,
     growth_factor: float,
-    selection_method: str,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Run the seeded binary segmentation algorithm.
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Score the seeded interval grid without changepoint selection.
 
     Parameters
     ----------
     change_score : BaseIntervalScorer
-        A fitted, penalised change score.
+        Fitted scorer used to evaluate change scores on the seeded intervals.
+        ``change_score.precompute(X)`` and ``change_score.evaluate(cache, specs)``
+        are called. May be unpenalised (per-feature scores) or inherently
+        penalised (already-aggregated single-column scores).
+    agg_mode : str
+        Aggregation/penalty mode as returned by ``resolve_aggregation``.
+    penalty : float, np.ndarray or None
+        Effective penalty as returned by ``resolve_aggregation``. ``None``
+        when ``agg_mode == "passthrough"``.
     X : np.ndarray of shape (n_samples, n_features)
         Input data.
     min_subinterval_length : int
@@ -124,15 +138,11 @@ def _run_seeded_binseg(
         Maximum length of an interval to evaluate.
     growth_factor : float
         Growth factor for the seeded intervals.
-    selection_method : str
-        One of ``"greedy"`` or ``"narrowest"``.
 
     Returns
     -------
-    changepoints : np.ndarray
-        Detected changepoint indices.
     max_scores : np.ndarray
-        Maximum penalised score for each seeded interval.
+        Maximum (aggregated, penalised) score per seeded interval.
     argmax_scores : np.ndarray
         Index of the maximum-score split for each seeded interval.
     starts : np.ndarray
@@ -142,10 +152,8 @@ def _run_seeded_binseg(
     """
     check_is_fitted(change_score)
     cache = change_score.precompute(X)
-    n_samples = X.shape[0]
-
     starts, ends = make_seeded_intervals(
-        n_samples,
+        X.shape[0],
         2 * min_subinterval_length,
         max_interval_length,
         growth_factor,
@@ -155,53 +163,61 @@ def _run_seeded_binseg(
     argmax_scores = np.zeros(starts.size, dtype=np.int64)
 
     if starts.size > 0:
-        # Build the (start, split, end) specs for all intervals at once and
-        # evaluate the change score in a single call. This is much faster than
-        # calling ``change_score.evaluate`` once per interval.
         splits_per_interval = [
-            np.arange(start + min_subinterval_length, end - min_subinterval_length + 1)
-            for start, end in zip(starts, ends)
+            np.arange(s + min_subinterval_length, e - min_subinterval_length + 1)
+            for s, e in zip(starts, ends)
         ]
         n_splits = np.fromiter(
-            (sp.size for sp in splits_per_interval), dtype=np.intp, count=starts.size
+            (sp.size for sp in splits_per_interval),
+            dtype=np.intp,
+            count=starts.size,
         )
         all_splits = np.concatenate(splits_per_interval)
         all_starts = np.repeat(starts, n_splits)
         all_ends = np.repeat(ends, n_splits)
         interval_specs = np.column_stack((all_starts, all_splits, all_ends))
-        all_scores = change_score.evaluate(cache, interval_specs).reshape(-1)
+
+        # Evaluate the change score on all specs in a single call. This is
+        # much faster than calling ``change_score.evaluate`` once per interval.
+        raw_scores = change_score.evaluate(cache, interval_specs)
+        penalised_scores = aggregate_and_penalise(raw_scores, agg_mode, penalty)
 
         # Split the flat score array back per interval to find the per-interval
         # max and argmax. The loop is over the (small) number of intervals only.
         offsets = np.concatenate(([0], np.cumsum(n_splits)))
         for i in range(starts.size):
-            interval_scores = all_scores[offsets[i] : offsets[i + 1]]
+            interval_scores = penalised_scores[offsets[i] : offsets[i + 1]]
             argmax = int(np.argmax(interval_scores))
             max_scores[i] = interval_scores[argmax]
             argmax_scores[i] = splits_per_interval[i][argmax]
 
+    return max_scores, argmax_scores, starts, ends
+
+
+def _select_changepoints(
+    max_scores: np.ndarray,
+    argmax_scores: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    selection_method: str,
+) -> np.ndarray:
+    """Greedy or narrowest selection of changepoints from per-interval scores."""
     if selection_method == "greedy":
         cpts = greedy_selection(max_scores, argmax_scores, starts, ends)
     else:  # "narrowest"
         cpts = narrowest_selection(max_scores, argmax_scores, starts, ends)
-
-    return np.array(cpts, dtype=np.intp), max_scores, argmax_scores, starts, ends
+    return np.array(cpts, dtype=np.intp)
 
 
 def _resolve_change_score(
     change_score: BaseIntervalScorer | None,
-    penalty_scale: float = 1.0,
 ) -> BaseIntervalScorer:
-    """Return a penalised change score, auto-wrapping if needed.
+    """Resolve default change score.
 
     Needed since default resolution must be done in both fit and
     ``__sklearn_tags__`` to ensure correct input tags are propagated.
     """
-    change_score = CUSUM() if change_score is None else change_score
-    tags = change_score.__sklearn_tags__().interval_scorer_tags
-    if tags.penalised:
-        return change_score
-    return PenalisedScore(change_score, penalty_scale=penalty_scale)
+    return CUSUM() if change_score is None else change_score
 
 
 class SeededBinarySegmentation(BaseChangeDetector):
@@ -214,27 +230,55 @@ class SeededBinarySegmentation(BaseChangeDetector):
     theoretical guarantees as the original binary segmentation algorithm but runs in
     log-linear time regardless of the changepoint configuration.
 
+    The ``penalty``, ``penalty_scale``, and ``agg`` parameters are ignored
+    when ``change_score`` is an inherently penalised scorer (tag
+    ``penalised=True``); in that case the scorer owns aggregation and
+    penalisation.
+
     Parameters
     ----------
     change_score : BaseIntervalScorer or None, default=None
         Change score to use in the algorithm. Must be an instance of
-        ``BaseIntervalScorer`` with ``score_type="change_score"``. If the
-        scorer is unpenalised (most commonly) it is automatically wrapped in
-        :class:`PenalisedScore`. If ``None``, defaults to
-        ``PenalisedScore(CUSUM())``.
+        ``BaseIntervalScorer`` with ``score_type="change_score"``. If ``None``,
+        defaults to ``CUSUM()``.
 
-        Wrap with :class:`PenalisedScore` explicitly to set a custom
-        ``penalty``, e.g.:
+        Standard usage is to pass an unpenalised score and set ``penalty``
+        separately. If the score already has tag ``penalised=True``, it owns
+        its own aggregation and penalty, and ``penalty`` / ``penalty_scale``
+        are ignored.
+    penalty : float, array-like of shape (n_features,) or None, default=None
+        Penalty subtracted from the aggregated feature-wise score. A candidate
+        changepoint is accepted only when the penalised score is positive.
 
-        * ``CUSUM()`` -- auto-wrapped with default BIC penalty
-        * ``PenalisedScore(CostChangeScore(L2Cost()), penalty=5.0)`` -- change
-          score based on L2 cost with fixed penalty
+        - ``float``: scalar penalty subtracted from the aggregated score
+          (see ``agg``).
+        - ``array-like`` of length ``n_features``, non-decreasing: element
+          ``i`` is the penalty for ``i+1`` features jointly affected; the
+          detector picks the ``k`` largest feature scores maximising
+          ``sum(top_k) - penalty[k-1]`` (handles sparse changes). A strictly
+          linear array uses a faster code path. Only consistent with the
+          default ``agg="sum"``.
+        - ``None``: defaults to ``change_score.get_default_penalty()``
+          (BIC-based) at fit time.
+
+        Ignored when ``change_score`` is already penalised.
     penalty_scale : float, default=1.0
-        Multiplicative factor on the default penalty of the auto-constructed
-        :class:`PenalisedScore` wrapper. Applies only when ``change_score`` is
-        ``None`` or an unpenalised scorer. Silently
-        ignored when ``change_score`` is already a penalised scorer; in that
-        case the user-provided scorer owns its penalty.
+        Multiplicative factor applied to the effective penalty (whether
+        ``penalty`` is user-provided or the default). Use as a single scalar tuning knob
+        that preserves the shape of array penalties. Must be positive. Ignored when
+        ``change_score`` is already penalised.
+    agg : {"sum", "max"}, default="sum"
+        How feature-wise raw scores are aggregated into a single score per
+        interval before subtracting a scalar penalty:
+
+        * ``"sum"``: ``sum(scores, axis=1) - penalty`` (dense change
+          assumption).
+        * ``"max"``: ``max(scores, axis=1) - penalty`` (a single, unknown
+          feature changes).
+
+        Ignored when ``change_score`` is already aggregated. Must be
+        ``"sum"`` when ``penalty`` is array-valued (array penalties imply
+        top-k aggregation).
     min_subinterval_length : int, default=5
         Minimum length of a subinterval on each side of a candidate split point
         within each evaluated interval. The effective minimum used is
@@ -270,12 +314,15 @@ class SeededBinarySegmentation(BaseChangeDetector):
     Attributes
     ----------
     change_score_ : BaseIntervalScorer
-        Fitted penalised change score actually used during detection. When
-        ``change_score`` was unpenalised (or ``None``), this is a fitted
-        :class:`PenalisedScore` wrapping the user-provided scorer, with
-        ``penalty_scale`` set from the detector.
-        When ``change_score`` was already penalised, this is the fitted
-        user-provided scorer unchanged.
+        Fitted change score. When ``change_score`` is unpenalised this is the
+        fitted unpenalised scorer (same type as the input). When the input is
+        already penalised, it is that fitted penalised scorer.
+    penalty_ : float, np.ndarray or None
+        Effective penalty actually used at detection time: the resolved base
+        penalty (either ``penalty`` or, if ``None``,
+        ``change_score.get_default_penalty()``) multiplied by
+        ``penalty_scale``. ``None`` when ``change_score`` is inherently
+        penalised, in which case the scorer owns its own penalty.
     min_subinterval_length_ : int
         Effective minimum split size used.
     max_interval_length_ : int
@@ -291,6 +338,30 @@ class SeededBinarySegmentation(BaseChangeDetector):
         detection of multiple change points and change-point-like features. Journal of
         the Royal Statistical Society Series B: Statistical Methodology, 81(3), 649-672.
 
+    Notes
+    -----
+    Typical usage recipes:
+
+    * Default::
+
+        SeededBinarySegmentation()
+
+    * Tune sensitivity on a log grid::
+
+        SeededBinarySegmentation(penalty_scale=5.0)
+
+    * Detect changes in a single, unknown feature (sparse case)::
+
+        SeededBinarySegmentation(agg="max")
+
+    * Adaptive sparsity via an array penalty (top-k aggregation)::
+
+        SeededBinarySegmentation(penalty=linear_chi2_penalty(n, n_features))
+
+    * Power-user path with a joint scorer that owns aggregation and penalty::
+
+        SeededBinarySegmentation(change_score=ESACScore(...))
+
     Examples
     --------
     >>> import numpy as np
@@ -305,7 +376,9 @@ class SeededBinarySegmentation(BaseChangeDetector):
 
     _parameter_constraints = {
         "change_score": [HasMethods(["fit", "precompute", "evaluate"]), None],
+        "penalty": ["array-like", Interval(Real, 0, None, closed="left"), None],
         "penalty_scale": [Interval(Real, 0, None, closed="neither")],
+        "agg": [StrOptions(set(USER_AGG_CHOICES))],
         "min_subinterval_length": [Interval(Integral, 1, None, closed="left")],
         "max_interval_length": [Interval(Integral, 2, None, closed="left"), None],
         "growth_factor": [Interval(Real, 1.0, 2.0, closed="right")],
@@ -315,14 +388,18 @@ class SeededBinarySegmentation(BaseChangeDetector):
     def __init__(
         self,
         change_score: BaseIntervalScorer | None = None,
+        penalty: ArrayLike | float | None = None,
         penalty_scale: float = 1.0,
+        agg: str = "sum",
         min_subinterval_length: int = 5,
         max_interval_length: int | None = None,
         growth_factor: float = 1.5,
         selection_method: str = "greedy",
     ):
         self.change_score = change_score
+        self.penalty = penalty
         self.penalty_scale = penalty_scale
+        self.agg = agg
         self.min_subinterval_length = min_subinterval_length
         self.max_interval_length = max_interval_length
         self.growth_factor = growth_factor
@@ -356,14 +433,28 @@ class SeededBinarySegmentation(BaseChangeDetector):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        scorer = _resolve_change_score(self.change_score, self.penalty_scale)
+        change_score = _resolve_change_score(self.change_score)
         check_interval_scorer(
-            scorer,
+            change_score,
             ensure_score_type=["change_score"],
             caller_name=self.__class__.__name__,
             arg_name="change_score",
         )
-        self.change_score_ = clone(scorer).fit(X, y)
+        self.change_score_ = clone(change_score).fit(X, y)
+
+        self.penalty_ = resolve_penalty(
+            self.change_score_,
+            self.penalty,
+            self.penalty_scale,
+            caller_name=self.__class__.__name__,
+        )
+        self._agg_mode = resolve_aggregation(
+            self.change_score_,
+            self.agg,
+            self.penalty_,
+            self.n_features_in_,
+            caller_name=self.__class__.__name__,
+        )
 
         self.min_subinterval_length_ = max(
             self.min_subinterval_length, self.change_score_.min_size
@@ -414,15 +505,13 @@ class SeededBinarySegmentation(BaseChangeDetector):
                 Index of the best split (changepoint candidate) per interval.
         """
         check_is_fitted(self)
-        X = validate_data(self, X, reset=False, ensure_2d=True)
 
-        cpts, max_scores, argmax_scores, starts, ends = _run_seeded_binseg(
-            self.change_score_,
-            X,
-            self.min_subinterval_length_,
-            self.max_interval_length_,
-            self.growth_factor,
-            self.selection_method,
+        max_scores, index = self.predict_scores(X, return_index=True)
+        starts = index["starts"]
+        ends = index["ends"]
+        argmax_scores = index["argmax_splits"]
+        cpts = _select_changepoints(
+            max_scores, argmax_scores, starts, ends, self.selection_method
         )
         return {
             "changepoints": cpts,
@@ -449,3 +538,66 @@ class SeededBinarySegmentation(BaseChangeDetector):
             Empty array if no changepoints are detected.
         """
         return self.predict_all(X)["changepoints"]
+
+    def predict_scores(
+        self,
+        X: ArrayLike,
+        return_index: bool = False,
+    ) -> np.ndarray | tuple[np.ndarray, dict[str, np.ndarray]]:
+        """Return the per-interval scoring objective evaluated on ``X``.
+
+        Returns the per-interval maximum of the aggregated, penalised change
+        score across candidate splits, using the exact same seeded intervals
+        and candidate splits as :meth:`predict`. The output is what
+        :meth:`predict` reduces over via the selection step, without the
+        selection itself.
+
+        For penalty calibration, use the free function
+        :func:`skchange.new_api.tuning.unpenalised_scores`, which fits a clone
+        of this detector with the penalty parameter set to zero and returns
+        the resulting unpenalised scores.
+
+        Parameters
+        ----------
+        X : ArrayLike of shape (n_samples, n_features)
+            Time series to evaluate.
+        return_index : bool, default=False
+            If ``True``, also return a dict locating each score on the time
+            axis. See the Returns section for the keys.
+
+        Returns
+        -------
+        scores : np.ndarray of shape (n_intervals,)
+            Aggregated, penalised change-score values, one per seeded
+            interval, at the best split within that interval. Returned alone
+            when ``return_index=False``.
+        index : dict, optional
+            Only returned when ``return_index=True``. Contains:
+
+            - ``"starts"`` : np.ndarray of shape (n_intervals,)
+              Start indices of the seeded intervals.
+            - ``"ends"`` : np.ndarray of shape (n_intervals,)
+              End indices of the seeded intervals.
+            - ``"argmax_splits"`` : np.ndarray of shape (n_intervals,)
+              Index of the maximising split within each interval.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False, ensure_2d=True)
+
+        max_scores, argmax_splits, starts, ends = _score_seeded_intervals(
+            change_score=self.change_score_,
+            agg_mode=self._agg_mode,
+            penalty=self.penalty_,
+            X=X,
+            min_subinterval_length=self.min_subinterval_length_,
+            max_interval_length=self.max_interval_length_,
+            growth_factor=self.growth_factor,
+        )
+
+        if return_index:
+            return max_scores, {
+                "starts": starts,
+                "ends": ends,
+                "argmax_splits": argmax_splits,
+            }
+        return max_scores
