@@ -1,9 +1,9 @@
-"""Tests for ``skchange.new_api.metrics._scorer``."""
+"""Tests for ``skchange.new_api.metrics._scoring``."""
 
 import numpy as np
 import pytest
 
-from skchange.new_api.metrics._scorer import (
+from skchange.new_api.metrics._scoring import (
     BUILTIN_SCORERS,
     make_detector_scorer,
     n_segments,

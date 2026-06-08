@@ -10,7 +10,7 @@ from skchange.new_api.metrics._changepoint import (
     changepoint_recall,
     hausdorff_metric,
 )
-from skchange.new_api.metrics._scorer import (
+from skchange.new_api.metrics._scoring import (
     make_detector_scorer,
     n_changepoints,
     n_segment_anomalies,

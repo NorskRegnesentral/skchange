@@ -7,7 +7,7 @@ from typing import Any, Callable
 import numpy as np
 from sklearn.base import clone
 
-from skchange.new_api.metrics._scorer import resolve_scoring
+from skchange.new_api.metrics._scoring import resolve_scoring
 from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._param_validation import (
     HasMethods,
