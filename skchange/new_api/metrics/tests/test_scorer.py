@@ -11,33 +11,31 @@ from skchange.new_api.metrics._scoring import (
 )
 
 # ---------------------------------------------------------------------------
-# Built-in scorer: n_segments (counts contiguous label runs)
+# Built-in scorer: n_segments (= n_changepoints + 1)
 # ---------------------------------------------------------------------------
 
 
-class _LabelsDetector:
-    """Minimal stand-in that returns a fixed label array from ``predict``."""
+class _ChangepointsDetector:
+    """Minimal stand-in that returns a fixed changepoint array."""
 
-    def __init__(self, labels):
-        self._labels = np.asarray(labels)
+    def __init__(self, changepoints):
+        self._changepoints = list(changepoints)
 
-    def predict(self, X):
-        return self._labels
+    def predict_changepoints(self, X):
+        return self._changepoints
 
 
 @pytest.mark.parametrize(
-    "labels, expected",
+    "changepoints, expected",
     [
-        ([], 0.0),
-        ([0], 1.0),
-        ([0, 0, 0], 1.0),
-        ([0, 1, 1, 2], 3.0),
-        ([0, 1, 0, 1, 0], 5.0),
+        ([], 1.0),
+        ([50], 2.0),
+        ([30, 60, 90], 4.0),
     ],
 )
-def test_n_segments_counts_runs(labels, expected):
-    """``n_segments`` counts contiguous label runs (k changepoints → k+1)."""
-    detector = _LabelsDetector(labels)
+def test_n_segments_equals_n_changepoints_plus_one(changepoints, expected):
+    """``n_segments`` returns ``len(predict_changepoints(X)) + 1``."""
+    detector = _ChangepointsDetector(changepoints)
     assert n_segments(detector, X=None) == expected
 
 
