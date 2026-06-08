@@ -144,15 +144,17 @@ def _binseg_with_data():
     return detector, X
 
 
-def test_penalty_curve_returns_array_aligned_with_param_range():
-    """Output is a 1-D ndarray of the same length as ``param_range``."""
+def test_penalty_curve_returns_array_aligned_with_penalty_range():
+    """Output is a 1-D ndarray of the same length as ``penalty_range``."""
     detector, X = _binseg_with_data()
-    param_range = np.array([1.0, 10.0, 100.0])
+    penalty_range = np.array([1.0, 10.0, 100.0])
 
-    curve = penalty_curve(detector, X, param_name="penalty", param_range=param_range)
+    curve = penalty_curve(
+        detector, X, penalty_name="penalty", penalty_range=penalty_range
+    )
 
     assert isinstance(curve, np.ndarray)
-    assert curve.shape == param_range.shape
+    assert curve.shape == penalty_range.shape
 
 
 def test_penalty_curve_n_changepoints_decreases_with_penalty():
@@ -161,13 +163,13 @@ def test_penalty_curve_n_changepoints_decreases_with_penalty():
     than reusing one fitted state.
     """
     detector, X = _binseg_with_data()
-    param_range = np.array([1e-3, 1e9])
+    penalty_range = np.array([1e-3, 1e9])
 
     curve = penalty_curve(
         detector,
         X,
-        param_name="penalty",
-        param_range=param_range,
+        penalty_name="penalty",
+        penalty_range=penalty_range,
         scoring="n_changepoints",
     )
 
@@ -180,7 +182,7 @@ def test_penalty_curve_accepts_callable_scoring():
     return value populates the curve.
     """
     detector, X = _binseg_with_data()
-    param_range = np.array([1.0, 10.0, 100.0])
+    penalty_range = np.array([1.0, 10.0, 100.0])
     n_calls = 0
 
     def constant_scorer(detector, X, y=None):
@@ -191,19 +193,19 @@ def test_penalty_curve_accepts_callable_scoring():
     curve = penalty_curve(
         detector,
         X,
-        param_name="penalty",
-        param_range=param_range,
+        penalty_name="penalty",
+        penalty_range=penalty_range,
         scoring=constant_scorer,
     )
 
-    np.testing.assert_array_equal(curve, np.full(param_range.shape, 42.0))
-    assert n_calls == param_range.size
+    np.testing.assert_array_equal(curve, np.full(penalty_range.shape, 42.0))
+    assert n_calls == penalty_range.size
 
 
 def test_penalty_curve_forwards_y_to_scorer_only():
     """``y`` is passed through to the scorer but never to ``detector.fit``."""
     detector, X = _binseg_with_data()
-    param_range = np.array([1.0, 10.0])
+    penalty_range = np.array([1.0, 10.0])
     sentinel_y = np.array([0, 1, 2])
     seen_ys = []
 
@@ -215,12 +217,12 @@ def test_penalty_curve_forwards_y_to_scorer_only():
         detector,
         X,
         sentinel_y,
-        param_name="penalty",
-        param_range=param_range,
+        penalty_name="penalty",
+        penalty_range=penalty_range,
         scoring=y_capturing_scorer,
     )
 
-    assert len(seen_ys) == param_range.size
+    assert len(seen_ys) == penalty_range.size
     for y in seen_ys:
         assert y is sentinel_y
 
@@ -231,8 +233,28 @@ def test_penalty_curve_does_not_mutate_input_detector():
     """
     detector, X = _binseg_with_data()
     original_penalty = detector.get_params()["penalty"]
-    param_range = np.array([1.0, 10.0, 100.0])
+    penalty_range = np.array([1.0, 10.0, 100.0])
 
-    penalty_curve(detector, X, param_name="penalty", param_range=param_range)
+    penalty_curve(detector, X, penalty_name="penalty", penalty_range=penalty_range)
 
     assert detector.get_params()["penalty"] == original_penalty
+
+
+@pytest.mark.parametrize(
+    "bad_range",
+    [
+        [],  # empty
+        [[1.0, 2.0], [3.0, 4.0]],  # 2-D
+        ["a", "b"],  # non-numeric strings
+        [None, 1.0],  # None mixed in
+    ],
+)
+def test_penalty_curve_invalid_penalty_range_raises(bad_range):
+    detector, X = _binseg_with_data()
+    with pytest.raises((TypeError, ValueError)):
+        penalty_curve(
+            detector,
+            X,
+            penalty_name="penalty",
+            penalty_range=bad_range,
+        )

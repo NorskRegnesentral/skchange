@@ -1,7 +1,7 @@
 """Generic penalty calibration helpers for detectors."""
 
 from collections.abc import Iterable, Mapping
-from numbers import Real
+from numbers import Number, Real
 from typing import Any, Callable
 
 import numpy as np
@@ -110,8 +110,8 @@ def unpenalised_scores(
         "detector": [HasMethods(["fit", "set_params"])],
         "X": ["array-like"],
         "y": [None, "array-like"],
-        "param_name": [str],
-        "param_range": ["array-like"],
+        "penalty_name": [str],
+        "penalty_range": ["array-like"],
         "scoring": [str, callable],
     },
     prefer_skip_nested_validation=True,
@@ -121,17 +121,16 @@ def penalty_curve(
     X: ArrayLike,
     y: ArrayLike | None = None,
     *,
-    param_name: str,
-    param_range: ArrayLike,
+    penalty_name: str,
+    penalty_range: ArrayLike,
     scoring: str | Callable = "n_changepoints",
 ) -> np.ndarray:
-    """Sweep a penalty parameter and return a score curve.
+    """Penalty curve.
 
-    For each value in ``param_range``, clones ``detector``, sets
-    ``param_name`` to that value, refits on ``X``, and evaluates
-    ``scoring`` on the fitted detector. The original ``detector`` is not
-    modified. Modeled on :func:`sklearn.model_selection.validation_curve`;
-    selecting a final value from the curve is left to the caller.
+    Compute a score for a range of penalty values.
+
+    Intended as a utility for exploring and plotting results for different penalty
+    values. Selecting a final value from the curve is left to the caller.
 
     Parameters
     ----------
@@ -144,10 +143,10 @@ def penalty_curve(
         Reference passed as the third argument to ``scoring``. Not
         passed to ``detector.fit`` — skchange detectors are
         unsupervised, so ``y`` is purely a scoring reference.
-    param_name : str
+    penalty_name : str
         Detector parameter to vary. Any name accepted by ``set_params``
         is allowed, including nested ``"<step>__<param>"`` syntax.
-    param_range : array-like of shape (n_candidates,)
+    penalty_range : array-like of shape (n_candidates,)
         Candidate values. Order is preserved in the output.
     scoring : str or callable, default="n_changepoints"
         Either a built-in scorer name (``"n_changepoints"``,
@@ -158,13 +157,13 @@ def penalty_curve(
     Returns
     -------
     curve : np.ndarray of shape (n_candidates,)
-        Scorer output per ``param_range`` value, aligned 1:1 with the
+        Scorer output per ``penalty_range`` value, aligned 1:1 with the
         input.
 
     Raises
     ------
     ValueError
-        ``param_range`` is empty or non-real, or ``scoring`` is an
+        ``penalty_range`` is empty or non-numeric, or ``scoring`` is an
         unknown built-in name.
     TypeError
         ``scoring`` is neither a string nor a callable.
@@ -176,12 +175,12 @@ def penalty_curve(
     >>> from skchange.new_api.tuning import penalty_curve
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(200, 1))
-    >>> param_range = np.array([1.0, 2.0, 3.0, 5.0])
+    >>> penalty_range = np.array([1.0, 2.0, 3.0, 5.0])
     >>> counts = penalty_curve(
     ...     SeededBinarySegmentation(), X,
-    ...     param_name="penalty", param_range=param_range,
+    ...     penalty_name="penalty", penalty_range=penalty_range,
     ... )
-    >>> selected = param_range[counts <= 1].min()
+    >>> selected = penalty_range[counts <= 1].min()
 
     Supervised scoring against reference changepoints, using
     :func:`~skchange.new_api.metrics.make_detector_scorer` to wrap a metric::
@@ -193,28 +192,28 @@ def penalty_curve(
 
         f1 = penalty_curve(
             detector, X, y_true_cps,
-            param_name="penalty", param_range=param_range,
+            penalty_name="penalty", penalty_range=penalty_range,
             scoring=make_detector_scorer(changepoint_f1_score),
         )
     """
     scorer = resolve_scoring(scoring)
 
-    candidates = np.asarray(param_range)
+    candidates = np.asarray(penalty_range)
     if candidates.ndim != 1:
         raise ValueError(
-            "`param_range` must be 1-dimensional; "
+            "`penalty_range` must be 1-dimensional; "
             f"got array of shape {candidates.shape}."
         )
     if candidates.size == 0:
-        raise ValueError("`param_range` must contain at least one value.")
-    if not all(isinstance(v, Real) and not isinstance(v, bool) for v in candidates):
-        raise ValueError("`param_range` must contain real-valued numbers.")
+        raise ValueError("`penalty_range` must contain at least one value.")
+    if not all(isinstance(v, Number) for v in candidates):
+        raise ValueError("`penalty_range` must contain numbers.")
 
     curve = np.empty(candidates.shape[0], dtype=float)
     for i, value in enumerate(candidates):
-        cal = clone(detector)
-        cal.set_params(**{param_name: value})
-        cal.fit(X)
-        curve[i] = float(scorer(cal, X, y))
+        cloned_detector = clone(detector)
+        cloned_detector.set_params(**{penalty_name: value})
+        cloned_detector.fit(X)
+        curve[i] = float(scorer(cloned_detector, X, y))
 
     return curve
