@@ -1,20 +1,7 @@
-"""Metrics for changepoint detection evaluation.
+"""Metrics and scorers for changepoint detection evaluation.
 
-Metrics are organised into three submodules matching the native output types of
-``BaseChangeDetector``:
-
-- **_changepoint** — metrics that compare changepoint index arrays
-  (output of ``predict_changepoints()``): ``hausdorff_metric``,
-  ``changepoint_f1_score``.
-- **_segment_label** — metrics that compare dense per-sample label arrays
-  (output of ``predict()``): ``rand_index``, ``adjusted_rand_index``.
-- **_segment_anomaly** — metrics that compare anomalous-interval arrays of shape
-  ``(n_anomalies, 2)`` (output of ``predict_segment_anomalies()``):
-  ``segment_anomaly_f1_score``.
-
-All public functions are re-exported here for convenience::
-
-    from skchange.new_api.metrics import hausdorff_metric, rand_index
+- **Metrics** compare ground truth and prediction: ``(y_true, y_pred) -> float``.
+- **Scorers** evaluate a fitted detector on data: ``(detector, X, y=None) -> float``.
 """
 
 from skchange.new_api.metrics._changepoint import (
@@ -22,6 +9,13 @@ from skchange.new_api.metrics._changepoint import (
     changepoint_precision,
     changepoint_recall,
     hausdorff_metric,
+)
+from skchange.new_api.metrics._scoring import (
+    make_detector_scorer,
+    n_changepoints,
+    n_segment_anomalies,
+    n_segments,
+    resolve_scoring,
 )
 from skchange.new_api.metrics._segment_anomaly import (
     segment_anomaly_f1_score,
@@ -40,4 +34,9 @@ __all__ = [
     "segment_anomaly_precision",
     "segment_anomaly_recall",
     "segment_anomaly_f1_score",
+    "n_changepoints",
+    "n_segment_anomalies",
+    "n_segments",
+    "make_detector_scorer",
+    "resolve_scoring",
 ]
