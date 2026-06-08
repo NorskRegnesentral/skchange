@@ -2,11 +2,13 @@
 
 A *scorer* is a callable ``(detector, X, y=None) -> float`` that evaluates a
 fitted detector on data. This module provides:
+
+.. note::
+    Unlike sklearn scorers, scorers here are **not** required to follow the
+    higher-is-better convention.
 """
 
 from typing import Any, Callable
-
-import numpy as np
 
 from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._param_validation import validate_params
@@ -21,10 +23,7 @@ def n_segment_anomalies(detector, X: ArrayLike, y: ArrayLike | None = None) -> f
 
 
 def n_segments(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
-    labels = np.asarray(detector.predict(X))
-    if labels.size == 0:
-        return 0.0
-    return float(1 + np.count_nonzero(np.diff(labels) != 0))
+    return float(len(detector.predict_changepoints(X)) + 1)
 
 
 BUILTIN_SCORERS: dict[str, Callable[[Any, ArrayLike, ArrayLike | None], float]] = {
