@@ -42,6 +42,29 @@ def test_n_segments_counts_runs(labels, expected):
 
 
 # ---------------------------------------------------------------------------
+# Built-in scorers: integration against a real fitted detector
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name,scorer", list(BUILTIN_SCORERS.items()))
+def test_builtin_scorer_returns_nonneg_float(name, scorer):
+    """Every built-in scorer returns a non-negative float when run against a
+    fitted detector on real data.
+    """
+    from skchange.new_api.conftest import make_single_change_X
+    from skchange.new_api.detectors import CAPA
+
+    detector = CAPA()
+    X = make_single_change_X(detector)
+    detector.fit(X)
+
+    result = scorer(detector, X)
+
+    assert isinstance(result, float)
+    assert result >= 0.0
+
+
+# ---------------------------------------------------------------------------
 # resolve_scoring
 # ---------------------------------------------------------------------------
 

@@ -9,6 +9,7 @@ from typing import Any, Callable
 import numpy as np
 
 from skchange.new_api.types import ArrayLike
+from skchange.new_api.utils._param_validation import validate_params
 
 
 def n_changepoints(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
@@ -33,6 +34,10 @@ BUILTIN_SCORERS: dict[str, Callable[[Any, ArrayLike, ArrayLike | None], float]] 
 }
 
 
+@validate_params(
+    {"scoring": [str, callable]},
+    prefer_skip_nested_validation=True,
+)
 def resolve_scoring(
     scoring: str | Callable,
 ) -> Callable[[Any, ArrayLike, ArrayLike | None], float]:
@@ -44,11 +49,7 @@ def resolve_scoring(
                 f"valid names are {sorted(BUILTIN_SCORERS)}."
             )
         return BUILTIN_SCORERS[scoring]
-    if callable(scoring):
-        return scoring
-    raise TypeError(
-        f"`scoring` must be a string or a callable; got {type(scoring).__name__}."
-    )
+    return scoring
 
 
 def make_detector_scorer(
