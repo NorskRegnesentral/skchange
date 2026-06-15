@@ -101,9 +101,9 @@ class BaseChangeDetector(BaseEstimator):
         return changepoints_to_labels(changepoints, n_samples=len(X))
 
     def fit_predict(self, X, y: ArrayLike | None = None, **fit_params) -> np.ndarray:
-        """Fit to data, then predict changepoint indices.
+        """Fit to data, then predict per-sample segment labels.
 
-        Equivalent to calling fit(X, y).predict_changepoints(X).
+        Equivalent to calling fit(X, y).predict(X).
 
         Parameters
         ----------
@@ -119,8 +119,7 @@ class BaseChangeDetector(BaseEstimator):
         Returns
         -------
         labels : np.ndarray of shape (n_samples,)
-            Dense integer segment labels, one per sample. Segment 0 is the
-            first segment, segment 1 the next, and so on.
+            Dense integer segment labels, one per sample.
         """
         return self.fit(X, y, **fit_params).predict(X)
 
