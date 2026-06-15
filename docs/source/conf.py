@@ -22,7 +22,7 @@ intersphinx_mapping = {
     "python": (f"https://docs.python.org/{sys.version_info.major}", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
-    "sktime": ("https://scikit-learn.org/stable/", None),
+    "sklearn": ("https://scikit-learn.org/stable/", None),
     "numba": ("https://numba.readthedocs.io/en/stable/", None),
 }
 intersphinx_disabled_domains = ["std"]
