@@ -80,11 +80,11 @@ what the algorithm computes.
   per-sample integer segment labels. It is part of the universal interface and
   is always implemented.
 * ``predict_changepoints(X)`` returns an ndarray of shape
-  ``(n_changepoints,)`` containing sorted indices of segment boundaries. It
+  ``(n_changepoints,)`` containing sorted start indices of segments. It
   is part of the universal interface and is always implemented.
 * ``predict_segment_anomalies(X)`` returns an ndarray of shape
-  ``(n_anomalies, 2)`` containing start and end indices of anomalous
-  segments. It is only implemented on detectors that identify anomalous
+  ``(n_anomalies, 2)`` containing start (inclusive) and end (exclusive) indices of
+  anomalous segments. It is only implemented on detectors that identify anomalous
   segments.
 * ``predict_scores(X, return_index=False)`` returns the detector's internal
   scoring objective as a 1D ndarray whose length is detector-specific. When
