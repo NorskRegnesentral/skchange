@@ -61,9 +61,8 @@ class IntervalScorerTags:
         indicates change/anomaly. If False, external penalisation needed.
     non_negative_scores : bool, default=True
         Whether the scorer is guaranteed to return non-negative values on
-        homogeneous data. Most costs and savings satisfy this. Set to False
-        for costs that are test statistics which can be <= 0 by construction
-        (e.g. ``RankCost``).
+        homogeneous data. Most change scores, transient scores and savings satisfy this
+        unless they are penalised.
     linear_trend_segment : bool, default=False
         Whether the scorer is designed for data where each segment follows a
         linear trend. When ``True``, test fixtures will generate piecewise linear
