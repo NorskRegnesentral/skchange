@@ -146,15 +146,18 @@ class ESACScore(BaseChangeScore):
     """
 
     _parameter_constraints: dict = {
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "penalty_scale_dense": [Interval(Real, 0, None, closed="left")],
         "penalty_scale_sparse": [Interval(Real, 0, None, closed="left")],
     }
 
     def __init__(
         self,
+        penalty_scale: float = 1.0,
         penalty_scale_dense: float = 2.0,
         penalty_scale_sparse: float = 1.5,
     ):
+        self.penalty_scale = penalty_scale
         self.penalty_scale_dense = penalty_scale_dense
         self.penalty_scale_sparse = penalty_scale_sparse
 
@@ -220,6 +223,8 @@ class ESACScore(BaseChangeScore):
                 ss[1:] * np.log(np.exp(1) * p * 4 * np.log(n) / ss[1:] ** 2)
                 + 4 * np.log(n)
             )
+
+        self.sparsity_penalties_ *= self.penalty_scale
 
         return self
 

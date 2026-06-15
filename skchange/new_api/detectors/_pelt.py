@@ -572,6 +572,7 @@ class PELT(BaseChangeDetector):
     _parameter_constraints = {
         "cost": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": [Interval(Real, 0, None, closed="left"), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_segment_length": [Interval(Integral, 1, None, closed="left"), None],
         "prune": ["boolean"],
         "split_cost": [Interval(Real, 0, None, closed="left")],
@@ -583,6 +584,7 @@ class PELT(BaseChangeDetector):
         self,
         cost: BaseCost | None = None,
         penalty: float | None = None,
+        penalty_scale: float = 1.0,
         min_segment_length: int | None = None,
         prune: bool = True,
         split_cost: float = 0.0,
@@ -591,6 +593,7 @@ class PELT(BaseChangeDetector):
     ):
         self.cost = cost
         self.penalty = penalty
+        self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
         self.prune = prune
         self.split_cost = split_cost
@@ -652,9 +655,10 @@ class PELT(BaseChangeDetector):
             )
         self.min_segment_length_ = min_segment_length
 
-        self.penalty_ = (
+        base_penalty = (
             self.cost_.get_default_penalty() if self.penalty is None else self.penalty
         )
+        self.penalty_ = self.penalty_scale * base_penalty
 
         return self
 
@@ -785,3 +789,48 @@ class PELT(BaseChangeDetector):
                 "ends": result["interval_ends"],
             }
         return scores
+
+    def _unpenalised_change_scores(self, X: ArrayLike) -> np.ndarray:
+        """Return single-split cost reductions for FWER calibration.
+
+        Computes ``S(t) = cost(0,n) - cost(0,t) - cost(t,n)`` (summed over
+        features) for every valid split point ``τ``, where valid means both
+        the left segment ``[0, τ)`` and right segment ``[τ, n)`` are at least
+        ``cost_.min_size`` samples long.
+
+        This is used by the ``"max_score"`` FWER calibration path:
+        ``c_b = max_τ S(τ) / base``. The formula is **exact only for convex
+        costs** (diminishing returns — each extra changepoint helps no more than
+        the previous). skchange's standard costs (L2, etc.) are convex. For
+        non-convex costs, use ``"detection_count"`` calibration instead.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Data to evaluate. Must be fitted on this or compatible data first.
+
+        Returns
+        -------
+        S : np.ndarray of shape (n_valid_splits,)
+            Single-split cost reductions, one per valid split point.
+        """
+        check_is_fitted(self)
+        X = validate_data(self, X, reset=False, ensure_2d=True)
+        n = X.shape[0]
+        min_size = self.cost_.min_size
+
+        cache = self.cost_.precompute(X)
+
+        # Total cost of the whole series.
+        total_cost = float(np.sum(self.cost_.evaluate(cache, np.array([[0, n]]))))
+
+        # Vectorised evaluation of all valid split points.
+        taus = np.arange(min_size, n - min_size + 1, dtype=np.intp)
+        if len(taus) == 0:
+            return np.empty(0, dtype=np.float64)
+
+        left_intervals = np.column_stack([np.zeros(len(taus), dtype=np.intp), taus])
+        right_intervals = np.column_stack([taus, np.full(len(taus), n, dtype=np.intp)])
+        left_costs = np.sum(self.cost_.evaluate(cache, left_intervals), axis=1)
+        right_costs = np.sum(self.cost_.evaluate(cache, right_intervals), axis=1)
+        return total_cost - left_costs - right_costs

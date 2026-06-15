@@ -353,6 +353,8 @@ class MovingWindow(BaseChangeDetector):
     2    300
     """
 
+    _calibration_strategy = "max_score"
+
     _parameter_constraints = {
         "change_score": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": ["array-like", Interval(Real, 0, None, closed="left"), None],

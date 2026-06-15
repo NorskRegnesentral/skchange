@@ -6,7 +6,7 @@ import pytest
 from skchange.new_api.conftest import make_single_change_X
 from skchange.new_api.detectors import SeededBinarySegmentation
 from skchange.new_api.detectors.tests._registry import DETECTOR_TEST_INSTANCES
-from skchange.new_api.interval_scorers import is_penalised_score
+from skchange.new_api.interval_scorers import is_cost, is_penalised_score
 from skchange.new_api.interval_scorers._savings.multivariate_t_saving import (
     MultivariateTSaving,
 )
@@ -61,6 +61,9 @@ def test_unpenalised_scores_sanity(estimator):
     if scorer is None:
         return
     if is_penalised_score(scorer):
+        return
+    if is_cost(scorer):
+        # Costs are raw fit values, not savings/change scores — can be negative.
         return
     if isinstance(scorer, MultivariateTSaving):
         # The multivariate-T MLE is iterative and not exactly subadditive in

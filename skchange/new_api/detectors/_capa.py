@@ -371,6 +371,8 @@ class CAPA(BaseChangeDetector):
     array([[100, 120]])
     """
 
+    _calibration_strategy = "max_score"
+
     _parameter_constraints = {
         "segment_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "point_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
