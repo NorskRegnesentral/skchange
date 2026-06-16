@@ -1,11 +1,16 @@
 """Tests for the new-API plotting utilities."""
 
 import numpy as np
-import plotly.graph_objects as go
 import pytest
 
-from skchange.new_api.utils import plot_detections, plot_segmentation
-from skchange.new_api.utils.plotting import _BASELINE_COLOR, _BASELINE_LABEL
+plotly = pytest.importorskip("plotly")
+import plotly.graph_objects as go  # noqa: E402
+
+from skchange.new_api.utils import plot_detections, plot_segmentation  # noqa: E402
+from skchange.new_api.utils.plotting import (  # noqa: E402
+    _BASELINE_COLOR,
+    _BASELINE_LABEL,
+)
 
 
 @pytest.fixture

@@ -59,7 +59,8 @@ all_extras = [
 test = [
     "pytest",
     "pytest-cov",
-    "ruptures"
+    "ruptures",
+    "plotly",
 ]
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"
