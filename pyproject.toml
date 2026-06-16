@@ -59,8 +59,13 @@ all_extras = [
 test = [
     "pytest",
     "pytest-cov",
-    "ruptures",
     "plotly",
+    # Use pre-release ruptures for Python 3.14 support (stable 1.1.10 caps at <3.14).
+    # Switch back to a plain `ruptures` pin once 1.1.11 is released.
+    "ruptures>=1.1.11rc1",
+    # ruptures 1.1.11rc1 imports typing_extensions but does not declare it as a
+    # runtime dependency. Pin it explicitly until upstream fixes that.
+    "typing_extensions",
 ]
 
 # dev - the developer dependency set, install via "pip install skchange[dev]"

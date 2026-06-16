@@ -38,11 +38,10 @@ jobs:
         run: |
           pip install uv
           if [ "${{ matrix.with-numba }}" = "true" ]; then
-            uv pip install .[numba]
+            uv pip install .[test,numba]
           else
-            uv pip install .
+            uv pip install .[test]
           fi
-          uv pip install -r requirements-test.txt
       - name: Run tests
         run: |
           python -m pytest --cov --cov-report=xml --cov-report=term
