@@ -1,0 +1,167 @@
+"""Tests for PELT path-search critical-scale computation.
+
+All tests here import ``_critical_scale_path_search``, which is added as part
+of task 2.1. Tests are written before the implementation per CLAUDE.md conventions.
+"""
+
+import numpy as np
+import pytest
+from sklearn.base import clone
+
+from skchange.new_api.detectors import PELT
+from skchange.new_api.tuning._fwer_calibration import (
+    _BISECT_LO,
+    _critical_scale_count,
+    _critical_scale_max_score,
+    _critical_scale_path_search,
+    _discover_knob,
+)
+
+
+def _null_X(n=100, p=2, seed=0):
+    return np.random.default_rng(seed).normal(size=(n, p))
+
+
+def _blip_X(m=15, a=10.0):
+    """Flat-0 / 2-sample bump / flat-0 series.
+
+    The two-changepoint model perfectly isolates the bump (zero residual cost),
+    so G_2/2 > G_1: the path-search critical scale must exceed the max-score
+    single-split critical scale.
+    """
+    X = np.zeros((2 * m + 2, 1))
+    X[m : m + 2] = a
+    return X
+
+
+# --------------------------------------------------------------------------- #
+# Task 1.1 — path_search agrees with bisection (detection_count)
+# --------------------------------------------------------------------------- #
+
+
+def test_path_search_agrees_with_bisection():
+    """path_search and bisection must agree within 1 % on random null samples."""
+    rng = np.random.default_rng(42)
+    for i in range(10):
+        X = rng.normal(size=(80, 2))
+        det = PELT()
+        knob, base = _discover_knob(det, X)
+        assert base is not None
+
+        c_path = _critical_scale_path_search(det, X, knob, base)
+        c_bisect = _critical_scale_count(det, X, knob)
+
+        assert c_path == pytest.approx(c_bisect, rel=0.02), (
+            f"Sample {i}: path_search={c_path:.6f}, bisection={c_bisect:.6f}"
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Task 1.2 — blip series: path_search exceeds max_score
+# --------------------------------------------------------------------------- #
+
+
+def test_path_search_exceeds_max_score_on_blip():
+    """On a blip series (G_2/2 > G_1), path_search c_b > max_score c_b."""
+    X = _blip_X(m=15, a=10.0)
+    det = PELT()
+    knob, base = _discover_knob(det, X)
+    assert base is not None
+
+    c_path = _critical_scale_path_search(det, X, knob, base)
+    c_max = _critical_scale_max_score(det, X, knob, base)
+
+    assert c_path > c_max * 1.5, (
+        f"Blip series: path_search={c_path:.4f} should clearly exceed "
+        f"max_score={c_max:.4f} (expected >=1.5x ratio)"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Task 1.3 — zero changepoints at returned scale; fewer fits than bisection
+# --------------------------------------------------------------------------- #
+
+
+def test_path_search_terminates_zero_changepoints():
+    """At the returned scale, PELT must report zero changepoints."""
+    rng = np.random.default_rng(7)
+    X = rng.normal(size=(100, 2))
+    det = PELT()
+    knob, base = _discover_knob(det, X)
+    assert base is not None
+
+    c_b = _critical_scale_path_search(det, X, knob, base)
+    fitted = clone(det).set_params(**{knob: c_b}).fit(X)
+    cps = fitted.predict_changepoints(X)
+    assert len(cps) == 0, f"PELT at scale={c_b:.6f} still detects: {cps}"
+
+
+def test_path_search_zero_changepoints_on_blip():
+    """Blip: PELT at path-search scale must be silent."""
+    X = _blip_X(m=15, a=10.0)
+    det = PELT()
+    knob, base = _discover_knob(det, X)
+    assert base is not None
+
+    c_b = _critical_scale_path_search(det, X, knob, base)
+    fitted = clone(det).set_params(**{knob: c_b}).fit(X)
+    assert len(fitted.predict_changepoints(X)) == 0
+
+
+def test_path_search_fewer_fits_than_bisection():
+    """path_search must use substantially fewer PELT fits than bisection."""
+    fit_log: list[int] = []
+
+    class CountingPELT(PELT):
+        """PELT subclass that counts .fit() calls into a shared list."""
+
+        def fit(self, X, y=None):
+            fit_log.append(1)
+            return super().fit(X, y)
+
+    rng = np.random.default_rng(42)
+    X = rng.normal(size=(100, 2))
+    det = CountingPELT()
+    knob, base = _discover_knob(det, X)
+    assert base is not None
+
+    # Count path-search fits (clear first; _discover_knob used 1 fit already)
+    fit_log.clear()
+    _critical_scale_path_search(det, X, knob, base)
+    path_fits = len(fit_log)
+
+    # Count bisection fits
+    fit_log.clear()
+    _critical_scale_count(det, X, knob)
+    bisect_fits = len(fit_log)
+
+    assert path_fits < bisect_fits, (
+        f"path_search used {path_fits} fits vs bisection {bisect_fits}"
+    )
+    # Design target: ~3-6 path fits vs ~15-25 bisection fits
+    assert path_fits <= 15, f"path_search used too many fits: {path_fits}"
+
+
+def test_path_search_returns_positive_scale():
+    """path_search must return a positive scale for any null sample."""
+    rng = np.random.default_rng(99)
+    for _ in range(5):
+        X = rng.normal(size=(80, 1))
+        det = PELT()
+        knob, base = _discover_knob(det, X)
+        assert base is not None
+        c_b = _critical_scale_path_search(det, X, knob, base)
+        assert c_b > 0.0, f"path_search returned non-positive scale: {c_b}"
+
+
+def test_path_search_fallback_when_no_detections_at_tiny_scale():
+    """If PELT fires nothing at _BISECT_LO, path_search returns _BISECT_LO."""
+    # Near-constant signal: nothing to detect even at tiny penalty.
+    X = np.full((100, 1), 0.0)
+    X = X + np.finfo(float).eps  # exactly constant → zero variance → zero cost
+    det = PELT()
+    knob, base = _discover_knob(det, X)
+    assert base is not None
+    c_b = _critical_scale_path_search(det, X, knob, base)
+    # Should equal _BISECT_LO (nothing to detect)
+    assert c_b == pytest.approx(_BISECT_LO, rel=0.01)

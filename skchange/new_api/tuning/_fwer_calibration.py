@@ -12,7 +12,7 @@ For each null sample the module finds the *critical* penalty scale -- the
 smallest ``penalty_scale`` that suppresses every detection -- and returns the
 ``(1 - level)`` quantile of those critical scales.
 
-**Two mechanisms** are used, selected automatically by the detector's
+**Three mechanisms** are used, selected automatically by the detector's
 ``_calibration_strategy`` class attribute:
 
 - ``"max_score"`` (scan-and-threshold detectors: SBS, MW, CBS, CAPA):
@@ -20,14 +20,17 @@ smallest ``penalty_scale`` that suppresses every detection -- and returns the
   unpenalised interval scores. Exact because these detectors threshold each
   score independently. One fit per null sample.
 
-- ``"detection_count"`` (default, and the strategy used by PELT): bisect
-  ``penalty_scale`` until the number of detections hits zero. Exact for any
-  detector with a single ``penalty_scale`` knob; no structural assumption
-  required. About 15-25 fits per null sample.
+- ``"path_search"`` (PELT): exact secant search on the convex hull of
+  cost-vs-number-of-changepoints. Finds ``β* = max_k G_k/k`` (largest
+  average cost reduction per changepoint) in ~3-6 PELT fits instead of
+  ~15-25. A small upward nudge handles the transition tie. PELT uses this
+  strategy because ``"max_score"`` (single-split ``G_1``) underestimates the
+  true critical penalty: the map ``k ↦ G_k`` is generally not concave.
 
-  PELT uses this strategy because it optimises jointly over all changepoint
-  sets: the best single-split score underestimates the true critical penalty,
-  so ``"max_score"`` would leave the FWER uncontrolled.
+- ``"detection_count"`` (default fallback): bisect ``penalty_scale`` until
+  the number of detections hits zero. Exact for any detector with a single
+  ``penalty_scale`` knob; no structural assumption required. About 15-25 fits
+  per null sample.
 
 Detectors with no single ``penalty_scale`` knob (e.g. ``CROPS``, which
 searches a penalty *range*) raise a clear :class:`ValueError`.
@@ -38,6 +41,7 @@ from numbers import Integral, Real
 import numpy as np
 from sklearn.base import BaseEstimator, clone
 from sklearn.utils.metaestimators import available_if
+from sklearn.utils.parallel import Parallel, delayed
 
 from skchange.new_api.tuning._null_models import make_null_draw
 from skchange.new_api.tuning._penalty_calibration import unpenalised_scores
@@ -170,6 +174,69 @@ def _critical_scale_max_score(detector, X: np.ndarray, knob: str, base: float) -
 
 
 _BISECT_LO = 1e-10  # smallest penalty_scale tested; avoids the scale=0 constraint edge
+_BISECT_GRID = 32  # geometric grid points used to locate a firing scale when the
+#                    detector is silent at near-zero penalty (non-monotone count)
+_PATH_SEARCH_NUDGE = 1e-3  # relative upward nudge to break the β* transition tie
+
+
+def _critical_scale_path_search(
+    detector,
+    X: np.ndarray,
+    knob: str,
+    base: float,
+    max_iter: int = 50,
+) -> float:
+    """Critical scale for PELT via exact convex-hull secant search.
+
+    Finds ``β* = max_{k≥1} G_k/k`` where ``G_k`` is the best total cost
+    reduction with ``k`` changepoints. Each iteration jumps to the exact hull
+    vertex for the current penalty, converging in ~3-6 PELT fits.
+
+    A small upward nudge (``beta* x 1e-3``) breaks the transition tie so that
+    PELT at the returned scale reports zero changepoints.
+    """
+    n = X.shape[0]
+
+    # Fit at a near-zero scale: (1) gets cost_ for C_0; (2) starts iterations.
+    fitted = clone(detector).set_params(**{knob: _BISECT_LO}).fit(X)
+
+    # C_0: full-series unpenalized cost (independent of penalty scale).
+    cache = fitted.cost_.precompute(X)
+    C_0 = float(np.sum(fitted.cost_.evaluate(cache, np.array([[0, n]]))))
+
+    result = fitted.predict_all(X)
+    k = len(result["changepoints"])
+
+    if k == 0:
+        return float(_BISECT_LO)
+
+    beta = _BISECT_LO * base
+    beta_star = 0.0
+
+    for _ in range(max_iter):
+        penalized_opt = result["cumulative_optimal_costs"][-1]
+        c_k = penalized_opt - k * fitted.penalty_  # unpenalized segmentation cost
+        G_k = C_0 - c_k
+        if G_k <= 0 or k <= 0:
+            break
+
+        beta_new = G_k / k
+        if beta_new <= beta:
+            # Floating-point convergence at the hull vertex.
+            beta_star = beta_new
+            break
+
+        beta_star = beta_new
+        beta = beta_new
+        fitted = clone(detector).set_params(**{knob: beta / base}).fit(X)
+        result = fitted.predict_all(X)
+        k = len(result["changepoints"])
+
+        if k == 0:
+            break
+
+    nudge = _PATH_SEARCH_NUDGE * (1.0 + beta_star)
+    return (beta_star + nudge) / base
 
 
 def _critical_scale_count(
@@ -179,11 +246,22 @@ def _critical_scale_count(
     max_scale: float = 1e6,
     rtol: float = 1e-4,
 ) -> float:
-    """Critical scale via bisection on the detected count.
+    """Critical scale via a search on the detected count.
 
-    Finds the smallest ``penalty_scale`` at which the detector reports zero
-    detections, using a monotone bisection. Works for any detector with a
-    single penalty knob; makes no convexity assumption.
+    Returns the *upper edge* of the firing region: the smallest
+    ``penalty_scale`` such that the detector (and every larger scale) reports
+    zero detections. Works for any detector with a single penalty knob; makes
+    no convexity assumption.
+
+    The detected count is **not** assumed monotone in ``penalty_scale``. Most
+    detectors fire at near-zero penalty and stop firing once the penalty is
+    large enough, so a plain bisection from a tiny scale suffices. But some
+    detectors are *silent* at near-zero penalty -- CAPA, for example, absorbs
+    the whole series into a single anomalous segment when the penalty is ~0, so
+    it reports no changepoints there, fires for moderate penalties, then falls
+    silent again. For those, the firing region is an interior interval, so we
+    locate a firing scale on a geometric grid before bisecting for the upper
+    edge.
 
     Parameters
     ----------
@@ -204,17 +282,31 @@ def _critical_scale_count(
         fitted = clone(detector).set_params(**{knob: scale}).fit(X)
         return len(fitted.predict_changepoints(X)) > 0
 
-    # Start from a near-zero scale (not literally 0 to respect parameter constraints).
-    if not still_fires(_BISECT_LO):
-        return _BISECT_LO
-
+    # Upper bracket: smallest doubling scale (from 1) at which the detector is
+    # silent. Valid regardless of the low-penalty behaviour.
     hi = 1.0
     while still_fires(hi):
         hi *= 2.0
         if hi > max_scale:
             return float(max_scale)
 
-    lo = _BISECT_LO
+    # Lower bracket: a scale that fires.
+    if still_fires(_BISECT_LO):
+        # Monotone fast path: fires at ~0, so the firing region reaches the
+        # bottom and a single down-crossing lies in (_BISECT_LO, hi).
+        lo = _BISECT_LO
+    else:
+        # Silent at ~0 (non-monotone): scan a geometric grid downward from hi
+        # and take the largest firing scale as the lower bracket.
+        lo = None
+        for scale in np.geomspace(_BISECT_LO, hi, _BISECT_GRID)[::-1]:
+            if scale < hi and still_fires(float(scale)):
+                lo = float(scale)
+                break
+        if lo is None:
+            # Never fires anywhere -> no penalty needed to suppress it.
+            return _BISECT_LO
+
     while hi - lo > rtol * max(hi, 1.0):
         mid = 0.5 * (lo + hi)
         if still_fires(mid):
@@ -235,18 +327,20 @@ def _compute_critical_scale(
 ) -> float:
     """Dispatch to the right critical-scale mechanism.
 
-    Uses ``"max_score"`` (closed form, O(1) fit) when the detector is tagged
-    for it AND ``base`` is a known scalar. Falls back to ``"detection_count"``
-    bisection otherwise.
+    - ``"max_score"``: closed-form ``c_b = max(S)/base`` (one fit).
+    - ``"path_search"``: exact convex-hull secant search (PELT only, ~3-6 fits).
+    - ``"detection_count"``: bisection fallback (~15-25 fits, any detector).
     """
-    use_max_score = (
+    if (
         calibration_strategy == "max_score"
         and base is not None
         and knob == "penalty_scale"
-    )
-    if use_max_score:
-        assert base is not None  # guarded by use_max_score
+    ):
+        assert base is not None  # narrowed by condition
         return _critical_scale_max_score(detector, X, knob, base)
+    if calibration_strategy == "path_search" and base is not None:
+        assert base is not None  # narrowed by condition
+        return _critical_scale_path_search(detector, X, knob, base)
     return _critical_scale_count(detector, X, knob, max_scale, rtol)
 
 
@@ -255,7 +349,22 @@ def _compute_critical_scale(
 # --------------------------------------------------------------------------- #
 
 
-_VALID_STRATEGIES = {"max_score", "detection_count"}
+_VALID_STRATEGIES = {"max_score", "detection_count", "path_search"}
+
+
+def _run_single_sim(seed, draw_fn, detector, knob, base, strategy, max_scale, rtol):
+    """Execute one null-sample critical-scale simulation.
+
+    Called in parallel by ``calibrate_penalty_scale``. Each invocation draws
+    its own null sample from an independent generator seeded by ``seed``
+    (a ``numpy.random.SeedSequence`` child), so there is no shared mutable
+    RNG state between parallel tasks.
+    """
+    rng = np.random.default_rng(seed)
+    X_null = draw_fn(rng)
+    return _compute_critical_scale(
+        detector, X_null, knob, base, strategy, max_scale, rtol
+    )
 
 
 @validate_params(
@@ -284,6 +393,7 @@ def calibrate_penalty_scale(
     n_simulations: int = 999,
     calibration_strategy: str | None = None,
     random_state=None,
+    n_jobs=None,
     max_scale: float = 1e6,
     rtol: float = 1e-4,
 ) -> float:
@@ -294,7 +404,7 @@ def calibrate_penalty_scale(
     detections), and returns the ``(1 - level)`` quantile -- the scale at which
     the probability of at least one false detection is approximately ``level``.
 
-    Two calibration mechanisms are available, selected by the detector's
+    Three calibration mechanisms are available, selected by the detector's
     ``_calibration_strategy`` class attribute (or overridden by
     ``calibration_strategy``):
 
@@ -302,12 +412,24 @@ def calibrate_penalty_scale(
       closed-form ``c_b = max(S) / base``. Exact because these detectors
       threshold each interval score independently. One fit per null sample.
 
-    - ``"detection_count"`` (PELT and the default fallback): bisects
-      ``penalty_scale`` until the detected count hits zero. Exact for any
-      detector with a single ``penalty_scale`` knob. About 15-25 fits per
-      null sample. PELT uses this strategy because it optimises jointly over
-      all changepoint sets; the single-split score underestimates the true
-      critical penalty.
+    - ``"path_search"`` (PELT): exact secant search on the convex hull of
+      cost-vs-number-of-changepoints. Finds ``β* = max_k G_k/k`` in ~3-6
+      PELT fits instead of ~15-25. A small nudge breaks the transition tie.
+
+    - ``"detection_count"`` (default fallback): bisects ``penalty_scale``
+      until the detected count hits zero. Exact for any detector with a
+      single ``penalty_scale`` knob. About 15-25 fits per null sample.
+
+    The Monte-Carlo loop runs in parallel using ``sklearn.utils.parallel``
+    (wraps joblib; no new dependency). Each simulation draws from its own
+    independent generator spawned from a parent ``SeedSequence``, so there is
+    no shared mutable RNG state between workers. Results are reproducible for
+    a fixed ``random_state`` regardless of ``n_jobs``.
+
+    .. note::
+        The RNG stream differs from releases before ``n_jobs`` was added. A
+        given ``random_state`` integer produces a different calibrated scale
+        than before, though all statistical guarantees are unchanged.
 
     Parameters
     ----------
@@ -330,12 +452,18 @@ def calibrate_penalty_scale(
         Target FWER, in ``(0, 1)``.
     n_simulations : int, default=999
         Number of null samples drawn.
-    calibration_strategy : {"max_score", "detection_count"} or None, default=None
+    calibration_strategy : {"max_score", "detection_count", "path_search"} or None
         Override the detector's own ``_calibration_strategy`` tag. Pass
-        ``"detection_count"`` to force the exact bisection path for PELT when
-        using non-convex costs.
+        ``"detection_count"`` to force the bisection path for PELT when the
+        cost is non-convex.
     random_state : int, Generator, or None, default=None
-        Seed or generator for reproducibility.
+        Seed or generator. Used to derive a parent ``SeedSequence`` from
+        which one independent child generator is spawned per simulation.
+        Results are reproducible for a fixed value and invariant to ``n_jobs``.
+    n_jobs : int or None, default=None
+        Number of parallel workers. ``None`` uses scikit-learn's default
+        (serial unless a ``joblib.parallel_backend`` context is active);
+        ``-1`` uses all available cores. See :class:`joblib.Parallel`.
     max_scale : float, default=1e6
         Upper bound for the bisection bracket.
     rtol : float, default=1e-4
@@ -390,18 +518,23 @@ def calibrate_penalty_scale(
         strategy = calibration_strategy
 
     draw = make_null_draw(sampler, X, X_calib, n_samples, n_features)
-    rng = (
-        random_state
-        if isinstance(random_state, np.random.Generator)
-        else np.random.default_rng(random_state)
-    )
 
-    critical_scales = np.empty(n_simulations, dtype=np.float64)
-    for b in range(n_simulations):
-        X_null = draw(rng)
-        critical_scales[b] = _compute_critical_scale(
-            detector, X_null, knob, base, strategy, max_scale, rtol
+    # Design-B thread-safe RNG: spawn one independent child seed per simulation.
+    # The result is reproducible for a fixed random_state and invariant to n_jobs.
+    if isinstance(random_state, np.random.Generator):
+        entropy = int(random_state.integers(2**62))
+    elif random_state is None:
+        entropy = None
+    else:
+        entropy = int(random_state)
+    child_seeds = np.random.SeedSequence(entropy).spawn(n_simulations)
+
+    critical_scales = Parallel(n_jobs=n_jobs)(
+        delayed(_run_single_sim)(
+            seed, draw, detector, knob, base, strategy, max_scale, rtol
         )
+        for seed in child_seeds
+    )
 
     return float(np.quantile(critical_scales, 1.0 - level))
 
@@ -427,12 +560,9 @@ class CalibratedDetector(BaseEstimator):
     scale, and exposes it as ``detector_``. Prediction methods delegate to the
     calibrated detector.
 
-    .. warning::
-        When the wrapped detector is ``PELT`` (or another detector tagged
-        ``"max_score"``), calibration uses the single-split cost-reduction
-        shortcut, which is exact **only for convex costs** (L2, etc.). For
-        non-convex costs pass ``calibration_strategy="detection_count"`` to
-        force the exact bisection path.
+    PELT uses the exact ``"path_search"`` strategy (``β* = max_k G_k/k``)
+    by default. Pass ``calibration_strategy="detection_count"`` to force the
+    bisection fallback for non-standard costs.
 
     Parameters
     ----------
@@ -445,11 +575,15 @@ class CalibratedDetector(BaseEstimator):
         Target FWER.
     n_simulations : int, default=999
         Number of null samples.
-    calibration_strategy : {"max_score", "detection_count"} or None, default=None
+    calibration_strategy : {"max_score", "detection_count", "path_search"} or None
         Override the detector's calibration strategy. See
         :func:`calibrate_penalty_scale`.
     random_state : int, Generator, or None, default=None
-        Seed or generator for reproducibility.
+        Seed or generator. Passed to :func:`calibrate_penalty_scale`; results
+        are reproducible and invariant to ``n_jobs``.
+    n_jobs : int or None, default=None
+        Number of parallel workers for the Monte-Carlo loop. ``None`` uses
+        scikit-learn's default (serial unless a backend context is active).
 
     Attributes
     ----------
@@ -482,6 +616,7 @@ class CalibratedDetector(BaseEstimator):
         n_simulations: int = 999,
         calibration_strategy: str | None = None,
         random_state=None,
+        n_jobs=None,
     ):
         self.detector = detector
         self.sampler = sampler
@@ -489,6 +624,7 @@ class CalibratedDetector(BaseEstimator):
         self.n_simulations = n_simulations
         self.calibration_strategy = calibration_strategy
         self.random_state = random_state
+        self.n_jobs = n_jobs
 
     def fit(self, X, y=None, X_calib=None) -> "CalibratedDetector":
         """Calibrate and fit the wrapped detector.
@@ -521,6 +657,7 @@ class CalibratedDetector(BaseEstimator):
             n_simulations=self.n_simulations,
             calibration_strategy=self.calibration_strategy,
             random_state=self.random_state,
+            n_jobs=self.n_jobs,
         )
         self.detector_ = (
             clone(self.detector).set_params(**{knob: self.penalty_scale_}).fit(X)

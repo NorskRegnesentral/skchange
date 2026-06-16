@@ -151,6 +151,48 @@ def test_pelt_max_score_not_greater_than_detection_count():
     assert n_lower >= n_checks // 2
 
 
+def test_detection_count_handles_non_monotone_silent_at_zero():
+    """detection_count must find the UPPER firing edge even when the detector is
+    silent at near-zero penalty.
+
+    CAPA absorbs the whole series into a single anomalous segment when the
+    penalty is ~0, so its changepoint count is 0 at scale -> 0, rises for
+    moderate penalties, then falls back to 0. The detected count is therefore
+    *not* monotone in ``penalty_scale``. The bisection must return the upper
+    edge of the firing region, not collapse to ~0.
+    """
+    from skchange.new_api.interval_scorers import L2Saving
+    from skchange.new_api.tuning._fwer_calibration import (
+        _BISECT_LO,
+        _critical_scale_count,
+    )
+
+    det = CAPA(segment_saving=L2Saving())
+    knob, _ = _discover_knob(det, _null_X(n=50))
+
+    def n_cpts(X, scale):
+        fitted = clone(det).set_params(**{knob: scale}).fit(X)
+        return len(fitted.predict_changepoints(X))
+
+    # Construct a null sample that is silent at _BISECT_LO but fires at 0.1.
+    rng = np.random.default_rng(11)
+    X = None
+    for _ in range(30):
+        cand = rng.normal(size=(50, 2))
+        if n_cpts(cand, _BISECT_LO) == 0 and n_cpts(cand, 0.1) > 0:
+            X = cand
+            break
+    assert X is not None, "could not construct a non-monotone CAPA null sample"
+
+    c_b = _critical_scale_count(det, X, knob)
+
+    # The critical scale is the upper edge: clearly above zero, the detector is
+    # silent at c_b but fires just below it.
+    assert c_b > 0.01, f"critical scale collapsed to ~0 despite mid-range firing: {c_b}"
+    assert n_cpts(X, c_b) == 0, f"detector still fires at critical scale {c_b}"
+    assert n_cpts(X, c_b * 0.9) > 0, f"detector silent just below critical scale {c_b}"
+
+
 # --------------------------------------------------------------------------- #
 # Task 4.1 — calibrate_penalty_scale: positive multiplier, level monotone,
 #             reproducibility, per-detector, CROPS rejection, ESAC works
@@ -457,3 +499,76 @@ def test_x_calib_clean_gives_scale_le_contaminated():
         random_state=3,
     )
     assert scale_dirty >= scale_clean
+
+
+# --------------------------------------------------------------------------- #
+# Tasks 3.1-3.4 - n_jobs parallel calibration + thread-safe RNG
+# --------------------------------------------------------------------------- #
+
+
+def test_calibrate_n_jobs_invariant():
+    """n_jobs=1 and n_jobs=2 must return the same scale for the same random_state."""
+    X = _null_X()
+    s1 = calibrate_penalty_scale(
+        SeededBinarySegmentation(), X, n_simulations=99, random_state=42, n_jobs=1
+    )
+    s2 = calibrate_penalty_scale(
+        SeededBinarySegmentation(), X, n_simulations=99, random_state=42, n_jobs=2
+    )
+    assert s1 == s2
+
+
+def test_calibrate_reproducible_with_n_jobs():
+    """Same random_state must give the same result across two n_jobs=2 runs."""
+    X = _null_X()
+    a = calibrate_penalty_scale(
+        SeededBinarySegmentation(), X, n_simulations=99, random_state=7, n_jobs=2
+    )
+    b = calibrate_penalty_scale(
+        SeededBinarySegmentation(), X, n_simulations=99, random_state=7, n_jobs=2
+    )
+    assert a == b
+
+
+def test_random_state_types_all_accepted():
+    """random_state as int, None, and Generator must all return positive floats."""
+    X = _null_X()
+    det = SeededBinarySegmentation()
+
+    s_int = calibrate_penalty_scale(det, X, n_simulations=20, random_state=0)
+    assert isinstance(s_int, float) and s_int > 0
+
+    s_none = calibrate_penalty_scale(det, X, n_simulations=20, random_state=None)
+    assert isinstance(s_none, float) and s_none > 0
+
+    s_gen = calibrate_penalty_scale(
+        det, X, n_simulations=20, random_state=np.random.default_rng(7)
+    )
+    assert isinstance(s_gen, float) and s_gen > 0
+
+
+def test_calibrated_detector_n_jobs_fits_and_predicts():
+    """CalibratedDetector with n_jobs=2 must fit and produce valid predictions."""
+    X = _null_X()
+    cal = CalibratedDetector(
+        SeededBinarySegmentation(), n_simulations=20, random_state=0, n_jobs=2
+    ).fit(X)
+    cps = cal.predict_changepoints(X)
+    assert isinstance(cps, np.ndarray)
+    assert cal.penalty_scale_ > 0.0
+
+
+def test_calibrated_detector_n_jobs_get_params_roundtrip():
+    """n_jobs must round-trip through get_params and clone."""
+    cal = CalibratedDetector(SeededBinarySegmentation(), n_jobs=2)
+    assert cal.get_params()["n_jobs"] == 2
+    cloned = clone(cal)
+    assert cloned.get_params()["n_jobs"] == 2
+
+
+def test_detector_not_modified_by_parallel_calibration():
+    """The original detector must be unchanged when calibration runs in parallel."""
+    det = SeededBinarySegmentation(penalty_scale=3.0)
+    original_scale = det.penalty_scale
+    calibrate_penalty_scale(det, _null_X(), n_simulations=20, random_state=0, n_jobs=2)
+    assert det.penalty_scale == original_scale

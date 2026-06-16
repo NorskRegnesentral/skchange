@@ -371,7 +371,10 @@ class CAPA(BaseChangeDetector):
     array([[100, 120]])
     """
 
-    _calibration_strategy = "max_score"
+    # CAPA carries separate segment and point penalties rather than a single
+    # scalar base, so the closed-form ``max_score`` path does not apply;
+    # calibration uses the universal ``detection_count`` bisection.
+    _calibration_strategy = "detection_count"
 
     _parameter_constraints = {
         "segment_saving": [HasMethods(["fit", "precompute", "evaluate"]), None],
