@@ -1,7 +1,7 @@
-.. _change_detection_guide:
+.. _interval_scorers_guide:
 
 ================
-Change detection
+Interval Scorers
 ================
 
 .. toctree::
