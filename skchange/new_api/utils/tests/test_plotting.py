@@ -196,3 +196,90 @@ def test_plot_segmentation_rejects_label_length_mismatch(X_2d: np.ndarray) -> No
 def test_plot_segmentation_rejects_bad_anomaly_shape(X_2d: np.ndarray) -> None:
     with pytest.raises(ValueError):
         plot_segmentation(X_2d, segment_anomalies=np.array([10, 20, 30]))
+
+
+# ---------------------------------------------------------------------------
+# Input-type coverage for _as_wide_array
+# ---------------------------------------------------------------------------
+
+
+class _FakeSeries:
+    """Series-like stand-in: 1D values exposing a ``name`` attribute."""
+
+    def __init__(self, values: np.ndarray, name: str) -> None:
+        self._values = np.asarray(values)
+        self.name = name
+
+    def __array__(self, dtype: object = None) -> np.ndarray:
+        return self._values if dtype is None else self._values.astype(dtype)
+
+
+class _FakeFrame:
+    """DataFrame-like stand-in: 2D values exposing a ``columns`` attribute."""
+
+    def __init__(self, values: np.ndarray, columns: list[str]) -> None:
+        self._values = np.asarray(values)
+        self.columns = columns
+
+    def __array__(self, dtype: object = None) -> np.ndarray:
+        return self._values if dtype is None else self._values.astype(dtype)
+
+
+def test_plot_detections_accepts_python_list_1d() -> None:
+    fig = plot_detections([0.0, 1.0, 2.0, 3.0, 4.0], changepoints=np.array([2]))
+    assert isinstance(fig, go.Figure)
+
+
+def test_plot_detections_accepts_python_list_2d() -> None:
+    data = [[i, i + 1.0] for i in range(10)]
+    fig = plot_detections(data, changepoints=np.array([4]))
+    assert isinstance(fig, go.Figure)
+
+
+def test_plot_detections_accepts_dict_and_uses_keys_as_columns(
+    rng: np.random.Generator,
+) -> None:
+    data = {"a": rng.normal(size=20), "b": rng.normal(size=20)}
+    fig = plot_detections(data, changepoints=np.array([10]), data_repr="line")
+    trace_names = {trace.name for trace in fig.data}
+    assert trace_names == {"a", "b"}
+
+
+def test_plot_detections_accepts_dataframe_like_and_uses_columns(
+    rng: np.random.Generator,
+) -> None:
+    df = _FakeFrame(rng.normal(size=(30, 2)), columns=["x", "y"])
+    fig = plot_detections(df, changepoints=np.array([15]), data_repr="line")
+    trace_names = {trace.name for trace in fig.data}
+    assert trace_names == {"x", "y"}
+
+
+def test_plot_detections_accepts_series_like_and_uses_name(
+    rng: np.random.Generator,
+) -> None:
+    series = _FakeSeries(rng.normal(size=25), name="signal")
+    fig = plot_detections(series, changepoints=np.array([10]), data_repr="line")
+    trace_names = {trace.name for trace in fig.data}
+    assert trace_names == {"signal"}
+
+
+def test_plot_detections_uses_default_value_label_for_unnamed_1d(
+    rng: np.random.Generator,
+) -> None:
+    fig = plot_detections(
+        rng.normal(size=20), changepoints=np.array([10]), data_repr="line"
+    )
+    trace_names = {trace.name for trace in fig.data}
+    assert trace_names == {"value"}
+
+
+def test_plot_detections_rejects_3d_input(rng: np.random.Generator) -> None:
+    with pytest.raises(ValueError):
+        plot_detections(rng.normal(size=(5, 2, 2)), changepoints=np.array([2]))
+
+
+def test_plot_segmentation_accepts_dict_input(rng: np.random.Generator) -> None:
+    data = {"a": rng.normal(size=30), "b": rng.normal(size=30)}
+    fig = plot_segmentation(data, labels=np.repeat([0, 1], 15), x_var=0, y_var=1)
+    assert fig.layout.xaxis.title.text == "a"
+    assert fig.layout.yaxis.title.text == "b"
