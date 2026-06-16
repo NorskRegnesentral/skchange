@@ -1,20 +1,44 @@
 """Plotting utilities.
 
-Requires plotly to be installed.
+Requires plotly to be installed. Plotly is imported lazily inside the
+plotting functions so importing this module (and therefore
+``skchange.new_api.utils``) does not require it.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import plotly.express as px
-import plotly.graph_objects as go
 from numpy.typing import ArrayLike
 
 from skchange.new_api.utils.segmentation import changepoints_to_labels
 
+if TYPE_CHECKING:
+    import plotly.graph_objects as go
+
 _VALID_DATA_REPRS = ("line", "subplot-line", "point", "subplot-point", "heatmap")
+
+
+def check_plotly_support(caller_name: str) -> None:
+    """Raise ImportError with a detailed message if plotly is not installed.
+
+    Plotting utilities should lazily import plotly and call this helper
+    before any computation, mirroring scikit-learn's
+    ``check_matplotlib_support``.
+
+    Parameters
+    ----------
+    caller_name : str
+        The name of the caller that requires plotly.
+    """
+    try:
+        import plotly  # noqa: F401
+    except ImportError as exc:
+        raise ImportError(
+            f"{caller_name} requires plotly. "
+            "You can install plotly with `pip install plotly`."
+        ) from exc
 
 
 def _as_wide_array(X: Any) -> tuple[np.ndarray, list[str]]:
@@ -92,6 +116,8 @@ def _plot_time_series(
     wide-form ``dict``, which preserves them as trace names (line, point) and
     as the legend / facet label (``"variable"``).
     """
+    import plotly.express as px
+
     if data_repr == "heatmap":
         return px.imshow(
             arr_2d.T,
@@ -165,6 +191,7 @@ def plot_detections(
             "`affected_features` is only supported with `segment_anomalies`."
         )
 
+    check_plotly_support("plot_detections")
     arr_2d, columns = _as_wide_array(X)
     n_vars = arr_2d.shape[1]
     data_repr = _resolve_data_repr(data_repr, n_vars)
@@ -340,6 +367,9 @@ def plot_segmentation(
     plotly.graph_objects.Figure
         Figure with samples coloured by segment.
     """
+    check_plotly_support("plot_segmentation")
+    import plotly.express as px
+
     arr_2d, columns = _as_wide_array(X)
     n_samples, n_vars = arr_2d.shape
     segments, color_map = _segment_color_strings(
