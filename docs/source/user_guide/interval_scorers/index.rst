@@ -6,6 +6,5 @@ Interval Scorers
 
 .. toctree::
     :maxdepth: 2
-    :hidden:
 
     intro

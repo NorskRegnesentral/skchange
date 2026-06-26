@@ -11,7 +11,8 @@ examples.
     :maxdepth: 3
 
     getting_started
+    concepts
     change_detection/index
     anomaly_detection/index
     tuning/index
-    interval_scores/index
+    interval_scorers/index
