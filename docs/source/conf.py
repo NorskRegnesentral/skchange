@@ -61,7 +61,7 @@ html_js_files = [
 ]
 
 # Recommended by sphinx_design when using the MyST Parser
-myst_enable_extensions = ["colon_fence"]
+myst_enable_extensions = ["colon_fence", "deflist"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -189,9 +189,9 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
-    "secondary_sidebar_items": {
-        "**/*": ["page-toc"],
-    },
+    "secondary_sidebar_items": ["page-toc"],
+    "show_toc_level": 2,
+    "navigation_depth": 3,
 }
 html_context = {
     "github_user": "NorskRegnesentral",
