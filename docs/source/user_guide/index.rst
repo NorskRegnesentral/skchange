@@ -8,7 +8,7 @@ the library, its design and core concepts. It also aims to give a wide range of 
 examples.
 
 .. toctree::
-    :maxdepth: 3
+    :maxdepth: 2
 
     getting_started
     concepts

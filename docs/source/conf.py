@@ -191,7 +191,7 @@ html_theme_options = {
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "secondary_sidebar_items": ["page-toc"],
     "show_toc_level": 2,
-    "navigation_depth": 3,
+    "navigation_depth": 2,
 }
 html_context = {
     "github_user": "NorskRegnesentral",
