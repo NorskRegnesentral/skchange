@@ -41,6 +41,15 @@ The guide is divided into three parts, which are intended to be read in sequence
     contributing
     coding_guidelines
 
+Extending Skchange
+------------------
+Writing your own interval scorers, detectors, or other components.
+
+.. toctree::
+    :maxdepth: 1
+
+    extending
+
 For maintainers
 ---------------
 There is an additional section for maintainers, containing information on how to manage
