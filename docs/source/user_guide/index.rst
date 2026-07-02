@@ -15,4 +15,3 @@ examples.
     change_detection/index
     anomaly_detection/index
     tuning/index
-    interval_scorers/index
