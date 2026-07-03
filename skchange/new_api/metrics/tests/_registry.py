@@ -12,22 +12,26 @@ Each entry has the following keys:
 ``id`` : str
     Human-readable name used as the pytest test ID.
 ``func`` : callable
-    The metric function under test.
+    The metric function under test. Called as
+    ``func(true, pred, **kwargs)`` by the contract tests.
 ``true`` : array-like
     A representative ground-truth input.
 ``pred_different`` : array-like
     A prediction that meaningfully differs from ``true``, used to verify the
     output range.  Should *not* be identical to ``true``.
 ``perfect_value`` : float
-    The expected return value of ``func(true, true.copy())``.  Typically ``0.0``
-    for lower-is-better metrics, ``1.0`` for higher-is-better.
+    The expected return value of ``func(true, true.copy(), **kwargs)``.
+    Typically ``0.0`` for lower-is-better metrics, ``1.0`` for
+    higher-is-better.
 ``lower_better`` : bool
     ``True`` for metrics where 0.0 is the best score (e.g. Hausdorff distance).
     Controls which direction the range test checks.
-``requires_equal_length`` : bool, optional (default ``False``)
-    Set to ``True`` for metrics that require ``len(true) == len(pred)``
-    (e.g. ``rand_index``).  Tests that pass mismatched-length inputs will be
-    skipped for these metrics.
+``n_samples`` : int, optional
+    Length of the underlying time series. Set on every changepoint metric
+    case so the uniform ``(true, pred, n_samples=...)`` signature is
+    exercised. Length-invariant metrics accept and ignore it; ``rand_index``
+    and ``adjusted_rand_index`` require it. Forwarded to ``func`` as a
+    keyword argument.
 """
 
 import numpy as np
@@ -50,9 +54,7 @@ from skchange.new_api.metrics import (
 
 _CHANGEPOINTS_TRUE = np.array([10, 20, 30])
 _CHANGEPOINTS_DIFF = np.array([11, 20, 29])
-
-_LABELS_TRUE = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
-_LABELS_DIFF = np.array([0, 0, 1, 1, 2, 2, 0, 0, 1])
+_N_SAMPLES = 50  # covers the maximum index in the changepoint arrays above
 
 _INTERVALS_TRUE = np.array([[10, 20], [40, 50]])
 _INTERVALS_DIFF = np.array([[30, 35]])
@@ -66,6 +68,7 @@ METRIC_TEST_CASES = [
         "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 0.0,
         "lower_better": True,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "changepoint_precision",
@@ -74,6 +77,7 @@ METRIC_TEST_CASES = [
         "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "changepoint_recall",
@@ -82,6 +86,7 @@ METRIC_TEST_CASES = [
         "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "changepoint_f1_score",
@@ -90,24 +95,25 @@ METRIC_TEST_CASES = [
         "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "rand_index",
         "func": rand_index,
-        "true": _LABELS_TRUE,
-        "pred_different": _LABELS_DIFF,
+        "true": _CHANGEPOINTS_TRUE,
+        "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
-        "requires_equal_length": True,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "adjusted_rand_index",
         "func": adjusted_rand_index,
-        "true": _LABELS_TRUE,
-        "pred_different": _LABELS_DIFF,
+        "true": _CHANGEPOINTS_TRUE,
+        "pred_different": _CHANGEPOINTS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
-        "requires_equal_length": True,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "segment_anomaly_precision",

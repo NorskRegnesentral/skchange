@@ -21,7 +21,7 @@ class _ChangepointsDetector:
     def __init__(self, changepoints):
         self._changepoints = list(changepoints)
 
-    def predict_changepoints(self, X):
+    def predict(self, X):
         return self._changepoints
 
 
@@ -34,7 +34,7 @@ class _ChangepointsDetector:
     ],
 )
 def test_n_segments_equals_n_changepoints_plus_one(changepoints, expected):
-    """``n_segments`` returns ``len(predict_changepoints(X)) + 1``."""
+    """``n_segments`` returns ``len(predict(X)) + 1``."""
     detector = _ChangepointsDetector(changepoints)
     assert n_segments(detector, X=None) == expected
 
@@ -104,7 +104,7 @@ class _PredictDetector:
             np.asarray(segment_anomalies) if segment_anomalies is not None else None
         )
 
-    def predict_changepoints(self, X):
+    def predict(self, X):
         return self._changepoints
 
     def predict_segment_anomalies(self, X):

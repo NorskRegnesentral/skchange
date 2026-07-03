@@ -12,6 +12,14 @@ _all_metrics = pytest.mark.parametrize(
 )
 
 
+def _call(case, true, pred):
+    """Invoke the metric, forwarding ``n_samples`` when the case supplies it."""
+    n_samples = case.get("n_samples")
+    if n_samples is not None:
+        return case["func"](true, pred, n_samples)
+    return case["func"](true, pred)
+
+
 # ---------------------------------------------------------------------------
 # Return type
 # ---------------------------------------------------------------------------
@@ -20,7 +28,7 @@ _all_metrics = pytest.mark.parametrize(
 @_all_metrics
 def test_metric_returns_float(case):
     """All metrics must return a plain Python float."""
-    result = case["func"](case["true"], case["true"].copy())
+    result = _call(case, case["true"], case["true"].copy())
     assert type(result) is float
 
 
@@ -33,14 +41,14 @@ def test_metric_returns_float(case):
 def test_metric_accepts_list_inputs(case):
     """Metrics must accept plain Python lists as inputs."""
     true_list = case["true"].tolist()
-    result = case["func"](true_list, true_list)
+    result = _call(case, true_list, true_list)
     assert isinstance(result, float)
 
 
 @_all_metrics
 def test_metric_accepts_numpy_inputs(case):
     """Metrics must accept numpy arrays as inputs."""
-    result = case["func"](case["true"], case["true"].copy())
+    result = _call(case, case["true"], case["true"].copy())
     assert isinstance(result, float)
 
 
@@ -52,7 +60,7 @@ def test_metric_accepts_numpy_inputs(case):
 @_all_metrics
 def test_metric_perfect_prediction(case):
     """metric(x, x) must equal the expected perfect value."""
-    result = case["func"](case["true"], case["true"].copy())
+    result = _call(case, case["true"], case["true"].copy())
     assert result == pytest.approx(case["perfect_value"])
 
 
@@ -64,7 +72,7 @@ def test_metric_perfect_prediction(case):
 @_all_metrics
 def test_metric_output_in_range(case):
     """Output must be in [0, 1] for bounded metrics, >= 0 for Hausdorff."""
-    result = case["func"](case["true"], case["pred_different"])
+    result = _call(case, case["true"], case["pred_different"])
     if case["lower_better"]:
         # Hausdorff: non-negative
         assert result >= 0.0
@@ -82,7 +90,7 @@ def test_metric_does_not_mutate_inputs(case):
     """Metrics must not modify their input arrays."""
     true_copy = case["true"].copy()
     pred = case["true"].copy()
-    case["func"](case["true"], pred)
+    _call(case, case["true"], pred)
     np.testing.assert_array_equal(case["true"], true_copy)
     np.testing.assert_array_equal(pred, true_copy)
 
@@ -96,21 +104,16 @@ def test_metric_does_not_mutate_inputs(case):
 def test_metric_both_empty_returns_defined(case):
     """metric(empty, empty) must return a finite float without raising."""
     empty = np.empty((0,) + np.asarray(case["true"]).shape[1:], dtype=int)
-    result = case["func"](empty, empty)
+    result = _call(case, empty, empty)
     assert isinstance(result, float)
     assert math.isfinite(result)
 
 
 @_all_metrics
 def test_metric_one_empty_returns_defined(case):
-    """metric(true, empty) and metric(empty, pred) must return a float without raising.
-
-    Skipped for metrics that require equal-length inputs (e.g. rand_index).
-    """
-    if case.get("requires_equal_length", False):
-        pytest.skip("metric requires equal-length inputs")
+    """metric(true, empty) and metric(empty, pred) must return a float."""
     empty = np.empty((0,) + np.asarray(case["true"]).shape[1:], dtype=int)
-    result_true_only = case["func"](case["true"], empty)
-    result_pred_only = case["func"](empty, case["true"].copy())
+    result_true_only = _call(case, case["true"], empty)
+    result_pred_only = _call(case, empty, case["true"].copy())
     assert isinstance(result_true_only, float)
     assert isinstance(result_pred_only, float)
