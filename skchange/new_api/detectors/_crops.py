@@ -323,10 +323,9 @@ class CROPS(BaseChangeDetector):
     [1]_, which in turn employs the PELT algorithm to repeatedly solve
     penalised optimal partitioning problems for different penalties.
 
-    When predicting changepoints through ``predict_changepoints`` (or
-    ``predict_all``), the detector selects the best segmentation among the
-    optimal partitionings within the penalty range, using the
-    ``selection_method`` criterion.
+    When predicting changepoints through ``predict`` (or ``predict_all``), the
+    detector selects the best segmentation among the optimal partitionings
+    within the penalty range, using the ``selection_method`` criterion.
 
     Parameters
     ----------
@@ -407,7 +406,7 @@ class CROPS(BaseChangeDetector):
     >>> X = np.concatenate([rng.normal(0, 1, (100, 1)),
     ...                     rng.normal(10, 1, (100, 1))])
     >>> detector = CROPS(min_penalty=1.0, max_penalty=50.0)
-    >>> detector.fit(X).predict_changepoints(X)
+    >>> detector.fit_predict(X)
     array([100])
     """
 
@@ -610,7 +609,7 @@ class CROPS(BaseChangeDetector):
             "optimal_penalty": optimal_penalty,
         }
 
-    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
+    def predict(self, X: ArrayLike) -> np.ndarray:
         """Detect changepoints in a time series.
 
         Parameters
@@ -621,6 +620,9 @@ class CROPS(BaseChangeDetector):
         Returns
         -------
         changepoints : np.ndarray of shape (n_changepoints,)
-            Sorted integer indices of detected changepoints.
+            Sorted integer indices of detected changepoints. A changepoint is defined
+            as the first index of a segment, such that the data segments are given
+            by ``X[:cpt[0]], X[cpt[0]:cpt[1]], ..., X[cpt[-1]:]``.
+            Empty array if no changepoints are detected.
         """
         return self.predict_all(X)["changepoints"]
