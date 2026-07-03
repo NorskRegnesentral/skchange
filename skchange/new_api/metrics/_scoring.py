@@ -15,7 +15,7 @@ from skchange.new_api.utils._param_validation import validate_params
 
 
 def n_changepoints(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
-    return float(len(detector.predict_changepoints(X)))
+    return float(len(detector.predict(X)))
 
 
 def n_segment_anomalies(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
@@ -23,7 +23,7 @@ def n_segment_anomalies(detector, X: ArrayLike, y: ArrayLike | None = None) -> f
 
 
 def n_segments(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
-    return float(len(detector.predict_changepoints(X)) + 1)
+    return float(len(detector.predict(X)) + 1)
 
 
 BUILTIN_SCORERS: dict[str, Callable[[Any, ArrayLike, ArrayLike | None], float]] = {
@@ -54,7 +54,7 @@ def resolve_scoring(
 def make_detector_scorer(
     metric: Callable,
     *,
-    response_method: str = "predict_changepoints",
+    response_method: str = "predict",
 ) -> Callable[[Any, ArrayLike, ArrayLike | None], float]:
     """Wrap a ``(y_true, y_pred) -> float`` metric as a detector scorer.
 
@@ -68,10 +68,9 @@ def make_detector_scorer(
     metric : callable
         A metric from :mod:`skchange.new_api.metrics` with signature
         ``(y_true, y_pred) -> float``.
-    response_method : str, default="predict_changepoints"
+    response_method : str, default="predict"
         Name of the detector method that supplies ``y_pred``. Typical
-        values: ``"predict_changepoints"``, ``"predict_segment_anomalies"``,
-        ``"predict"``.
+        values: ``"predict"``, ``"predict_segment_anomalies"``.
     """
 
     def scorer(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:

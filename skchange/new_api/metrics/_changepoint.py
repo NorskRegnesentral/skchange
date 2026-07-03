@@ -1,21 +1,33 @@
 """Changepoint-based evaluation metrics.
 
-Functions in this module take **changepoint index arrays** as their native input —
-the sorted integer arrays returned by ``predict_changepoints()``.
+Functions in this module take **changepoint index arrays** as their native input
+— the sorted integer arrays returned by ``predict()``.
+
+Every function shares the uniform signature
+``(changepoints_true, changepoints_pred, n_samples=None, ...)`` so metrics are
+interchangeable in a strategy pattern. Metrics that intrinsically depend on the
+series length (``rand_index``, ``adjusted_rand_index``) validate that
+``n_samples`` is provided and raise otherwise. Metrics that are length-invariant
+(Hausdorff, precision, recall, F1) accept ``n_samples`` for signature uniformity
+and ignore it.
 """
 
 import numbers
 
 import numpy as np
+from sklearn.metrics import adjusted_rand_score as _adjusted_rand_score
+from sklearn.metrics import rand_score as _rand_score
 
 from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._param_validation import Interval, validate_params
+from skchange.new_api.utils.segmentation import changepoints_to_labels
 
 
 @validate_params(
     {
         "changepoints_true": ["array-like"],
         "changepoints_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
         "max_distance": [Interval(numbers.Real, 0, None, closed="left"), None],
     },
     prefer_skip_nested_validation=True,
@@ -23,6 +35,7 @@ from skchange.new_api.utils._param_validation import Interval, validate_params
 def hausdorff_metric(
     changepoints_true: ArrayLike,
     changepoints_pred: ArrayLike,
+    n_samples: int | None = None,
     *,
     max_distance: float | None = None,
 ) -> float:
@@ -34,9 +47,11 @@ def hausdorff_metric(
     Parameters
     ----------
     changepoints_true : array-like of shape (n_changepoints_true,)
-        True changepoint indices, as returned by ``predict_changepoints()``.
+        True changepoint indices, as returned by ``predict()``.
     changepoints_pred : array-like of shape (n_changepoints_pred,)
-        Predicted changepoint indices, as returned by ``predict_changepoints()``.
+        Predicted changepoint indices, as returned by ``predict()``.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across changepoint metrics; unused.
     max_distance : float | None, default=None
         Cap on the returned distance. If None, no cap is applied.
 
@@ -51,6 +66,7 @@ def hausdorff_metric(
     >>> hausdorff_metric([10, 20], [12, 20])
     2.0
     """
+    del n_samples  # accepted for signature uniformity; unused
     cp_true = np.asarray(changepoints_true)
     cp_pred = np.asarray(changepoints_pred)
 
@@ -89,6 +105,7 @@ def _count_tp(
     {
         "changepoints_true": ["array-like"],
         "changepoints_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
         "tolerance": [Interval(numbers.Integral, 0, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
@@ -96,6 +113,7 @@ def _count_tp(
 def changepoint_precision(
     changepoints_true: ArrayLike,
     changepoints_pred: ArrayLike,
+    n_samples: int | None = None,
     *,
     tolerance: int = 5,
 ) -> float:
@@ -109,9 +127,11 @@ def changepoint_precision(
     Parameters
     ----------
     changepoints_true : array-like of shape (n_changepoints_true,)
-        True changepoint indices, as returned by ``predict_changepoints()``.
+        True changepoint indices, as returned by ``predict()``.
     changepoints_pred : array-like of shape (n_changepoints_pred,)
-        Predicted changepoint indices, as returned by ``predict_changepoints()``.
+        Predicted changepoint indices, as returned by ``predict()``.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across changepoint metrics; unused.
     tolerance : int, default=5
         Maximum sample distance for a match to count as correct.
 
@@ -125,6 +145,7 @@ def changepoint_precision(
     >>> changepoint_precision([10, 20], [12, 20], tolerance=5)
     1.0
     """
+    del n_samples  # accepted for signature uniformity; unused
     cp_true = np.asarray(changepoints_true)
     cp_pred = np.asarray(changepoints_pred)
 
@@ -141,6 +162,7 @@ def changepoint_precision(
     {
         "changepoints_true": ["array-like"],
         "changepoints_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
         "tolerance": [Interval(numbers.Integral, 0, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
@@ -148,6 +170,7 @@ def changepoint_precision(
 def changepoint_recall(
     changepoints_true: ArrayLike,
     changepoints_pred: ArrayLike,
+    n_samples: int | None = None,
     *,
     tolerance: int = 5,
 ) -> float:
@@ -161,9 +184,11 @@ def changepoint_recall(
     Parameters
     ----------
     changepoints_true : array-like of shape (n_changepoints_true,)
-        True changepoint indices, as returned by ``predict_changepoints()``.
+        True changepoint indices, as returned by ``predict()``.
     changepoints_pred : array-like of shape (n_changepoints_pred,)
-        Predicted changepoint indices, as returned by ``predict_changepoints()``.
+        Predicted changepoint indices, as returned by ``predict()``.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across changepoint metrics; unused.
     tolerance : int, default=5
         Maximum sample distance for a match to count as correct.
 
@@ -177,6 +202,7 @@ def changepoint_recall(
     >>> changepoint_recall([10, 20], [12, 20], tolerance=5)
     1.0
     """
+    del n_samples  # accepted for signature uniformity; unused
     cp_true = np.asarray(changepoints_true)
     cp_pred = np.asarray(changepoints_pred)
 
@@ -193,6 +219,7 @@ def changepoint_recall(
     {
         "changepoints_true": ["array-like"],
         "changepoints_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
         "tolerance": [Interval(numbers.Integral, 0, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
@@ -200,6 +227,7 @@ def changepoint_recall(
 def changepoint_f1_score(
     changepoints_true: ArrayLike,
     changepoints_pred: ArrayLike,
+    n_samples: int | None = None,
     *,
     tolerance: int = 5,
 ) -> float:
@@ -212,9 +240,11 @@ def changepoint_f1_score(
     Parameters
     ----------
     changepoints_true : array-like of shape (n_changepoints_true,)
-        True changepoint indices, as returned by ``predict_changepoints()``.
+        True changepoint indices, as returned by ``predict()``.
     changepoints_pred : array-like of shape (n_changepoints_pred,)
-        Predicted changepoint indices, as returned by ``predict_changepoints()``.
+        Predicted changepoint indices, as returned by ``predict()``.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across changepoint metrics; unused.
     tolerance : int, default=5
         Maximum sample distance for a match to count as correct.
 
@@ -229,6 +259,7 @@ def changepoint_f1_score(
     >>> changepoint_f1_score([10, 20], [12, 20], tolerance=5)
     1.0
     """
+    del n_samples  # accepted for signature uniformity; unused
     precision = changepoint_precision(
         changepoints_true, changepoints_pred, tolerance=tolerance
     )
@@ -238,3 +269,106 @@ def changepoint_f1_score(
     if precision + recall == 0.0:
         return 0.0
     return float(2 * precision * recall / (precision + recall))
+
+
+def _require_n_samples(n_samples: int | None, func_name: str) -> int:
+    if n_samples is None:
+        raise ValueError(
+            f"{func_name} requires n_samples: the metric depends on the total "
+            "series length, which cannot be inferred from changepoint indices "
+            "alone."
+        )
+    return int(n_samples)
+
+
+@validate_params(
+    {
+        "changepoints_true": ["array-like"],
+        "changepoints_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
+    },
+    prefer_skip_nested_validation=True,
+)
+def rand_index(
+    changepoints_true: ArrayLike,
+    changepoints_pred: ArrayLike,
+    n_samples: int | None = None,
+) -> float:
+    """Compute the Rand index between two changepoint-defined segmentations.
+
+    Inflates both changepoint arrays to per-sample segment labels via
+    :func:`skchange.new_api.utils.segmentation.changepoints_to_labels` and
+    delegates to :func:`sklearn.metrics.rand_score`. Higher is better.
+
+    Parameters
+    ----------
+    changepoints_true : array-like of shape (n_changepoints_true,)
+        True changepoint indices, as returned by ``predict()``.
+    changepoints_pred : array-like of shape (n_changepoints_pred,)
+        Predicted changepoint indices, as returned by ``predict()``.
+    n_samples : int
+        Length of the underlying time series. Required — the Rand index
+        depends on segment lengths, which cannot be inferred from changepoint
+        indices alone.
+
+    Returns
+    -------
+    float
+        Rand index in [0, 1]. Higher is better.
+
+    Examples
+    --------
+    >>> rand_index([50], [50], n_samples=100)
+    1.0
+    """
+    n = _require_n_samples(n_samples, "rand_index")
+    labels_true = changepoints_to_labels(np.asarray(changepoints_true), n_samples=n)
+    labels_pred = changepoints_to_labels(np.asarray(changepoints_pred), n_samples=n)
+    return float(_rand_score(labels_true, labels_pred))
+
+
+@validate_params(
+    {
+        "changepoints_true": ["array-like"],
+        "changepoints_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
+    },
+    prefer_skip_nested_validation=True,
+)
+def adjusted_rand_index(
+    changepoints_true: ArrayLike,
+    changepoints_pred: ArrayLike,
+    n_samples: int | None = None,
+) -> float:
+    """Compute the adjusted Rand index between two changepoint-defined segmentations.
+
+    Similar to :func:`rand_index` but adjusted for chance. Inflates both
+    changepoint arrays to per-sample labels and delegates to
+    :func:`sklearn.metrics.adjusted_rand_score`.
+
+    Parameters
+    ----------
+    changepoints_true : array-like of shape (n_changepoints_true,)
+        True changepoint indices, as returned by ``predict()``.
+    changepoints_pred : array-like of shape (n_changepoints_pred,)
+        Predicted changepoint indices, as returned by ``predict()``.
+    n_samples : int
+        Length of the underlying time series. Required — the adjusted Rand
+        index depends on segment lengths, which cannot be inferred from
+        changepoint indices alone.
+
+    Returns
+    -------
+    float
+        Adjusted Rand index in [-1, 1]. Higher is better.
+        1.0 = perfect agreement, ~0.0 = random labeling.
+
+    Examples
+    --------
+    >>> adjusted_rand_index([50], [50], n_samples=100)
+    1.0
+    """
+    n = _require_n_samples(n_samples, "adjusted_rand_index")
+    labels_true = changepoints_to_labels(np.asarray(changepoints_true), n_samples=n)
+    labels_pred = changepoints_to_labels(np.asarray(changepoints_pred), n_samples=n)
+    return float(_adjusted_rand_score(labels_true, labels_pred))
