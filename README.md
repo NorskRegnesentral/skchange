@@ -57,8 +57,7 @@ X = generate_piecewise_normal_data(
 )
 
 detector = MovingWindow(bandwidth=20)
-detector.fit(X)
-detector.predict(X)
+detector.fit_predict(X)
 ```
 ```text
 array([ 50, 100, 150, 200])
