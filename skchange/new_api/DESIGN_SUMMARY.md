@@ -22,7 +22,7 @@ Complete design documentation for the new changepoint detection API.
 **Detectors operate on one (univariate or multivariate) time series at a time**
 
 - **Input**: `detector.fit(X)` where `X` has shape `(n_samples, n_features)`
-- **Output**: `predict(X)` returns `np.ndarray` of shape `(n_samples,)` — dense segment labels
+- **Output**: `predict(X)` returns `np.ndarray` of shape `(n_changepoints,)` — sorted changepoint indices
 - **Univariate**: Always 2D with `n_features=1`, never 1D arrays
 - **Multi-series workflows**: Handled externally via loops or parallel processing
 
@@ -31,47 +31,59 @@ Complete design documentation for the new changepoint detection API.
 - ✅ User controls memory and parallelization
 - ✅ Simpler detector implementation
 
-### 2. Dual Output Format
-**Dense labels from `predict()`, sparse changepoints from `predict_changepoints()`**
+### 2. Output Format
+**`predict()` returns changepoint indices; the dense-label view is a utility function**
 
-Both methods are part of the universal interface — all detectors implement them:
+`predict(X) -> np.ndarray (n_changepoints,)` is the universal interface — every
+detector implements it. It returns sorted integer indices of detected
+changepoints. A changepoint at index `t` means sample `t` is the first sample
+of a new segment such that the data segments are `X[:cpt[0]], X[cpt[0]:cpt[1]], ...,
+X[cpt[-1]:]`. Empty array if no changepoints are detected.
 
-- `predict_changepoints(X) -> np.ndarray (n_changepoints,)` — sorted indices of
-  segment boundaries. The primary method subclasses implement.
-- `predict(X) -> np.ndarray (n_samples,)` — one segment label per input sample.
-  Labels are integers; they can reoccur across non-contiguous segments (e.g. two
-  normal runs both get label 0 in an anomaly detector). This mirrors sklearn
-  clusterers and classifiers returning per-sample labels from `predict()`.
+For epidemic-changepoint detectors that additionally identify a privileged
+"background" segment (CAPA, CircularBinarySegmentation in anomaly mode),
+`predict()` returns the anomaly boundaries as changepoints. The
+`predict_segment_anomalies()` additive method exposes the segments themselves
+as `(n_anomalies, 2)` `[start, end)` intervals.
 
-`predict` is derived from `predict_changepoints` by default. Subclasses that
-natively produce labels (e.g. CAPA uses `0 = normal, 1..K = anomaly`) override
-`predict` directly and also override `predict_changepoints` to derive boundaries
-from the labels.
+A per-sample dense-label view is **not** part of the detector contract. When a
+label array is required, post-process the output with the utility:
 
-**Why `predict()` returns dense labels:**
-- ✅ **Sklearn standard** — sklearn clusterers and classifiers return per-sample labels as arrays from `predict()`
-- ✅ **Pipeline compatible** — downstream steps (scalers, classifiers) expect arrays
-- ✅ **Metric compatible** — relevant sklearn scoring utilities work directly
+```python
+from skchange.new_api.utils.segmentation import changepoints_to_labels
+cps = detector.fit(X).predict(X)
+labels = changepoints_to_labels(cps, n_samples=len(X))
+```
 
-**Why `predict_changepoints()`:**
-- ✅ **Sparse representation** — `[50, 100, 150]` is clearer than a 200-element label array
-- ✅ **Algorithm-aligned** — detection algorithms work with changepoint locations
-- ✅ **Metric-friendly** — Hausdorff, F1, etc. compare changepoint locations directly
+**Why `predict()` returns changepoints:**
+- ✅ **Domain-primary** — changepoint locations are what users of a change
+  detector actually want; docs and downstream code read naturally.
+- ✅ **Compact representation** — `[50, 100, 150]` is clearer than a 200-element
+  label array.
+- ✅ **Algorithm-aligned** — detection algorithms produce changepoint locations
+  natively; no artificial expansion to per-sample labels.
+- ✅ **Metric-friendly** — Hausdorff, F1, etc. compare changepoint locations
+  directly.
+- ✅ **One universal contract** — every detector in the library is a
+  changepoint-based method, and the output shape is uniform across the family.
+
+**Why the dense-label view is a util, not a method:**
+- Skchange is a changepoint detection library, so alternative representations are
+  secondary.
+- The conversion is a trivial post-processing step.
+- Less API surface for detectors to maintain and document.
 
 ### 3. Additional Detector-Specific Output
 
-Some detectors compute richer outputs alongside changepoints — test statistic scores, affected features, uncertainty estimates, etc. These are exposed through typed `predict_*` methods defined only on the concrete detector that computes them:
-
-```python
-def predict_scores(self, X) -> np.ndarray: # detector-internal scores
-def predict_proba(self, X) -> np.ndarray:  # posterior probability per sample
-```
+Some detectors compute richer outputs alongside changepoints — test statistic scores,
+affected features etc. These are exposed through typed `predict_*` methods defined only
+on the concrete detector that computes them.
 
 **Convention: `predict_scores(X, return_index=False) -> np.ndarray`**
 
 When a detector exposes `predict_scores`, it returns a 1D array of the detector's internal scoring objective. The array length is detector-specific (one entry per evaluated interval, candidate split, window, etc.) — there is no contract that it equals `n_samples`. With `return_index=True` it returns an `(scores, index_dict)` tuple, where `index_dict` carries algorithm-specific metadata that locates each score on the input timeline (e.g. interval start/end arrays for PELT, split points for binary segmentation). Paired with `skchange.new_api.tuning.unpenalised_scores`, this gives a uniform primitive for penalty calibration across detectors.
 
-**Convention: `predict_segment_anoamlies -> np.ndarray`**
+**Convention: `predict_segment_anomalies -> np.ndarray`**
 
 When a detector identifies anomalous segments, it may expose a `predict_segment_anomalies()` method returning an array of shape `(n_anomalies, 2)` with start/end indices of anomalous segments.
 
@@ -144,14 +156,14 @@ Multi-series workflows are handled **outside** the detector using standard patte
 from joblib import Parallel, delayed
 
 results = Parallel(n_jobs=-1)(
-    delayed(lambda X: detector.fit(X).predict_changepoints(X))(X_i)
+    delayed(lambda X: detector.fit(X).predict(X))(X_i)
     for X_i in series_list
 )
 
 # Memory-efficient streaming
 for series_id in tqdm(all_series):
     X = load_series(series_id)
-    changepoints = detector.fit(X).predict_changepoints(X)
+    changepoints = detector.fit(X).predict(X)
     save_result(changepoints)
     del X  # Free memory
 ```
@@ -179,30 +191,23 @@ for series_id in tqdm(all_series):
 
 ## Output Type Design
 
-### Two Output Methods
+### The `predict()` Contract
 
 ```python
 class BaseChangeDetector(BaseEstimator):
-    def predict(self, X) -> np.ndarray:               # shape (n_samples,)
-        """Dense segment labels — sklearn standard."""
-
-    def predict_changepoints(self, X) -> np.ndarray:  # shape (n_changepoints,)
-        """Sparse changepoint indices — subclasses implement this."""
+    def predict(self, X) -> np.ndarray:  # shape (n_changepoints,)
+        """Sorted integer indices of detected changepoints."""
 ```
 
-**`predict()` is derived automatically:**
-```python
-def predict(self, X):
-    changepoints = self.predict_changepoints(X)
-    return changepoints_to_labels(changepoints, n_samples=len(X))
-```
+Subclasses implement `predict()` directly and return the sparse changepoint
+representation. There is no derived dense-label method on the base class.
 
 ### `changepoints_to_labels()` Utility
 
 Converts changepoint indices to a dense label array:
 
 ```python
-from skchange.new_api.utils import changepoints_to_labels
+from skchange.new_api.utils.segmentation import changepoints_to_labels
 
 changepoints = np.array([50, 100])
 labels = changepoints_to_labels(changepoints, n_samples=150)
@@ -216,7 +221,9 @@ labels = changepoints_to_labels(changepoints, n_samples=150, labels=np.array([0,
 
 ### Design Philosophy
 
-**Minimal implementations:** Subclasses implement only `predict_changepoints()`. `predict()` is derived for free. Subclasses may override `predict()` directly when the algorithm natively produces dense labels that might be shared across segments.
+**Minimal implementations:** Subclasses implement only `fit` and `predict()`. A dense
+per-sample label view is intentionally *not* part of the detector contract;
+users who want it call `changepoints_to_labels(cps, n_samples=len(X))`.
 
 **Detector-specific metadata goes in fitted attributes:** Following sklearn convention, additional information (scores, thresholds, convergence info) is stored as fitted attributes (e.g., `detector.scores_`), not in the return value.
 
@@ -239,7 +246,7 @@ pipe = Pipeline([
     ('detector', MyDetector()),
 ])
 pipe.fit(X_train)
-labels = pipe.predict(X_test)   # np.ndarray (n_samples,)
+cps = pipe.predict(X_test)   # np.ndarray (n_changepoints,)
 
 # Cloning ✅
 from sklearn.base import clone
@@ -318,13 +325,11 @@ class MyDetector(BaseChangeDetector):
         self.threshold_ = self.threshold * np.std(X)
         return self
 
-    def predict_changepoints(self, X):
+    def predict(self, X):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self._detect(X)              # Returns np.ndarray of indices
 ```
-
-`predict()` is automatically derived from `predict_changepoints()` by `BaseChangeDetector`.
 
 ### Parameter Validation
 
@@ -378,7 +383,7 @@ class ClassifierChangeDetector(BaseChangeDetector):
         self.classifier_ = self.classifier
         return self
 
-    def predict_changepoints(self, X):
+    def predict(self, X):
         scores = [self.classifier_.predict(window) for window in windows(X)]
         return self._detect_from_scores(scores)
 ```
@@ -498,7 +503,7 @@ class MyDetector(BaseChangeDetector):
         self.threshold_ = self.threshold * np.std(X)
         return self
 
-    def predict_changepoints(self, X):
+    def predict(self, X):
         check_is_fitted(self)
         X = validate_data(self, X, reset=False)
         return self._detect(X)   # np.ndarray of changepoint indices
@@ -511,23 +516,23 @@ class MyDetector(BaseChangeDetector):
 detector = MyDetector(threshold=1.5)
 detector.fit(X_train)
 
-changepoints = detector.predict_changepoints(X_test)  # np.array([50, 100])
-labels = detector.predict(X_test)                     # np.array([0,0,...,1,1,...,2])
+changepoints = detector.predict(X_test)               # np.array([50, 100])
+
+# Convert changepoints to dense labels via the utility
+from skchange.new_api.utils.segmentation import changepoints_to_labels
+labels = changepoints_to_labels(changepoints, n_samples=len(X_test))
+#                                                     # np.array([0,0,...,1,1,...,2])
 
 # Pipelines
 pipe = Pipeline([('scaler', StandardScaler()), ('detector', MyDetector())])
-labels = pipe.fit(X_train).predict(X_test)
+changepoints = pipe.fit(X_train).predict(X_test)
 
 # Parallel processing across series
 from joblib import Parallel, delayed
 all_changepoints = Parallel(n_jobs=-1)(
-    delayed(lambda X: MyDetector(threshold=1.5).fit(X).predict_changepoints(X))(X_i)
+    delayed(lambda X: MyDetector(threshold=1.5).fit(X).predict(X))(X_i)
     for X_i in series_list
 )
-
-# Convert changepoints to dense labels manually
-from skchange.new_api.utils import changepoints_to_labels
-labels = changepoints_to_labels(changepoints, n_samples=len(X_test))
 ```
 
 ---

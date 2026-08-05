@@ -16,7 +16,7 @@ class _StubDetector(BaseChangeDetector):
         self.n_samples_in_ = X.shape[0]
         return self
 
-    def predict_changepoints(self, X):
+    def predict(self, X):
         return np.array(self._changepoints, dtype=np.intp)
 
     def set_changepoints(self, changepoints):
@@ -34,41 +34,29 @@ def stub():
     return det
 
 
-def test_predict_changepoints_not_implemented():
-    """predict_changepoints() must raise NotImplementedError on the bare base class."""
+def test_predict_not_implemented():
+    """predict() must raise NotImplementedError on the bare base class."""
 
     class BareDetector(BaseChangeDetector):
         def fit(self, X, y=None):
             return self
 
     with pytest.raises(NotImplementedError):
-        BareDetector().predict_changepoints(np.zeros((10, 1)))
+        BareDetector().predict(np.zeros((10, 1)))
 
 
 def test_predict_no_changepoints(stub):
-    """predict() with no changepoints returns all-zero labels."""
+    """predict() with no changepoints returns an empty array."""
     stub.set_changepoints([])
-    labels = stub.predict(np.zeros((_N, 1)))
-    assert labels.shape == (_N,)
-    assert np.all(labels == 0)
+    cpts = stub.predict(np.zeros((_N, 1)))
+    assert cpts.shape == (0,)
 
 
-def test_predict_with_changepoints(stub):
-    """predict() converts changepoints to correct segment labels."""
+def test_predict_returns_changepoints(stub):
+    """predict() must return the changepoint indices."""
     stub.set_changepoints([4, 7])
-    labels = stub.predict(np.zeros((_N, 1)))
-    assert labels.shape == (_N,)
-    assert np.all(labels[:4] == 0)
-    assert np.all(labels[4:7] == 1)
-    assert np.all(labels[7:] == 2)
-
-
-def test_predict_changepoint_is_first_sample_of_new_segment(stub):
-    """Changepoint index t must be the first sample of the new segment."""
-    stub.set_changepoints([5])
-    labels = stub.predict(np.zeros((_N, 1)))
-    assert labels[4] != labels[5], "Label must change at the changepoint index."
-    assert labels[5] == labels[6], "Changepoint index belongs to the new segment."
+    cpts = stub.predict(np.zeros((_N, 1)))
+    np.testing.assert_array_equal(cpts, np.array([4, 7]))
 
 
 def test_fit_predict_equals_fit_then_predict():
@@ -76,9 +64,9 @@ def test_fit_predict_equals_fit_then_predict():
     X = np.zeros((_N, 1))
     det1 = _StubDetector().set_changepoints([3, 7])
     det2 = _StubDetector().set_changepoints([3, 7])
-    labels_combined = det1.fit_predict(X)
-    labels_separate = det2.fit(X).predict(X)
-    np.testing.assert_array_equal(labels_combined, labels_separate)
+    cpts_combined = det1.fit_predict(X)
+    cpts_separate = det2.fit(X).predict(X)
+    np.testing.assert_array_equal(cpts_combined, cpts_separate)
 
 
 def test_sklearn_tags_type():

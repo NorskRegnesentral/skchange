@@ -5,10 +5,12 @@
 """
 
 from skchange.new_api.metrics._changepoint import (
+    adjusted_rand_index,
     changepoint_f1_score,
     changepoint_precision,
     changepoint_recall,
     hausdorff_metric,
+    rand_index,
 )
 from skchange.new_api.metrics._scoring import (
     make_detector_scorer,
@@ -22,7 +24,6 @@ from skchange.new_api.metrics._segment_anomaly import (
     segment_anomaly_precision,
     segment_anomaly_recall,
 )
-from skchange.new_api.metrics._segment_label import adjusted_rand_index, rand_index
 
 __all__ = [
     "hausdorff_metric",

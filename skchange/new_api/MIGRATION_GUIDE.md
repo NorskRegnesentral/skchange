@@ -56,12 +56,10 @@ df = generate_piecewise_normal_data(means=[0, 5, 0], lengths=[50, 50, 50], seed=
 detector = PELT(penalty=10.0)
 detector.fit(df)  # ArrayLike input (pd.DataFrame, np.ndarray, ...)
 
-labels = detector.predict(df)              # np.ndarray of per-sample segment labels
-cps = detector.predict_changepoints(df)    # np.ndarray of changepoint indices
-# Optional: detectors may expose `predict_scores(X)` returning the internal
-# scoring objective as a 1D array (length is detector-specific; use
-# `return_index=True` to also get timeline metadata), and
-# `predict_all(X)` returning algorithm-specific extras as a dict.
+cps = detector.predict(df)                 # np.ndarray of changepoint indices
+# For a per-sample dense-label view, post-process with the utility:
+from skchange.new_api.utils.segmentation import changepoints_to_labels
+labels = changepoints_to_labels(cps, n_samples=len(df))
 ```
 
 **Key differences at a glance:**
@@ -69,9 +67,9 @@ cps = detector.predict_changepoints(df)    # np.ndarray of changepoint indices
 | | Old API | New API |
 |---|---|---|
 | Input | `pd.DataFrame` | `ArrayLike`, 2D (`np.ndarray`, `pd.DataFrame`, ...) |
-| Primary output (`predict`) | `pd.DataFrame` with `"ilocs"` column | `np.ndarray` of per-sample segment labels |
-| Changepoints | `predict()["iloc"]` → `pd.Series` | `predict_changepoints()` → `np.ndarray` |
-| Dense labels | `transform()` → `pd.Series` | `predict()` → `np.ndarray` |
+| Primary output (`predict`) | `pd.DataFrame` with `"ilocs"` column | `np.ndarray` of changepoint indices |
+| Changepoints | `predict()["iloc"]` → `pd.Series` | `predict()` → `np.ndarray` |
+| Dense labels | `transform()` → `pd.Series` | `changepoints_to_labels(cps, n_samples)` util → `np.ndarray` |
 | Anomaly intervals | `predict()` → `pd.DataFrame` with `"ilocs"` column of `[start, end)` intervals | `predict_segment_anomalies()` → `np.ndarray` of shape `(n_anomalies, 2)` |
 | Detector scores | Attribute (e.g. `scores_`) | `predict_scores()` → 1D `np.ndarray` (where supported) |
 | Extras (cumulative costs, etc.) | Attributes | `predict_all()` → `dict` (where supported) |
