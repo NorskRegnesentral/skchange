@@ -27,11 +27,11 @@ Each entry has the following keys:
     ``True`` for metrics where 0.0 is the best score (e.g. Hausdorff distance).
     Controls which direction the range test checks.
 ``n_samples`` : int, optional
-    Length of the underlying time series. Set on every changepoint metric
-    case so the uniform ``(true, pred, n_samples=...)`` signature is
-    exercised. Length-invariant metrics accept and ignore it; ``rand_index``
-    and ``adjusted_rand_index`` require it. Forwarded to ``func`` as a
-    keyword argument.
+    Length of the underlying time series. Set on every metric case so the
+    uniform ``(true, pred, n_samples=...)`` signature is exercised.
+    Length-invariant metrics accept and ignore it; ``rand_index`` and
+    ``adjusted_rand_index`` require it. Forwarded to ``func`` as a keyword
+    argument.
 """
 
 import numpy as np
@@ -122,6 +122,7 @@ METRIC_TEST_CASES = [
         "pred_different": _INTERVALS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "segment_anomaly_recall",
@@ -130,6 +131,7 @@ METRIC_TEST_CASES = [
         "pred_different": _INTERVALS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
+        "n_samples": _N_SAMPLES,
     },
     {
         "id": "segment_anomaly_f1_score",
@@ -138,5 +140,6 @@ METRIC_TEST_CASES = [
         "pred_different": _INTERVALS_DIFF,
         "perfect_value": 1.0,
         "lower_better": False,
+        "n_samples": _N_SAMPLES,
     },
 ]

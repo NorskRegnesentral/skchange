@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from skchange.new_api.metrics import rand_index
 from skchange.new_api.metrics._scoring import (
     BUILTIN_SCORERS,
     make_detector_scorer,
@@ -112,26 +113,30 @@ class _PredictDetector:
 
 
 def test_make_detector_scorer_forwards_y_true_and_y_pred_to_metric():
-    """The wrapped scorer calls ``metric(y, y_pred)`` with the y supplied at
-    scoring time and y_pred obtained from the detector's response method.
+    """The wrapped scorer calls ``metric(y, y_pred, n_samples=len(X))`` with the
+    y supplied at scoring time and y_pred obtained from the detector's response
+    method.
     """
     received = {}
 
-    def fake_metric(y_true, y_pred):
+    def fake_metric(y_true, y_pred, n_samples=None):
         received["y_true"] = y_true
         received["y_pred"] = y_pred
+        received["n_samples"] = n_samples
         return 0.5
 
     y_true = np.array([10, 50])
     y_pred = np.array([12, 48])
     detector = _PredictDetector(changepoints=y_pred)
+    X = np.zeros((100, 1))
 
     scorer = make_detector_scorer(fake_metric)
-    score = scorer(detector, X=None, y=y_true)
+    score = scorer(detector, X=X, y=y_true)
 
     assert score == 0.5
     assert received["y_true"] is y_true
     np.testing.assert_array_equal(received["y_pred"], y_pred)
+    assert received["n_samples"] == len(X)
 
 
 def test_make_detector_scorer_uses_response_method_argument():
@@ -139,20 +144,35 @@ def test_make_detector_scorer_uses_response_method_argument():
     y_pred = np.array([[5, 10], [20, 30]])
     detector = _PredictDetector(segment_anomalies=y_pred)
 
-    def identity_metric(y_true, y_pred):
+    def identity_metric(y_true, y_pred, n_samples=None):
         return float(np.array_equal(y_true, y_pred))
 
     scorer = make_detector_scorer(
         identity_metric, response_method="predict_segment_anomalies"
     )
+    X = np.zeros((100, 1))
 
-    assert scorer(detector, X=None, y=y_pred) == 1.0
+    assert scorer(detector, X=X, y=y_pred) == 1.0
+
+
+def test_make_detector_scorer_forwards_n_samples_for_rand_index():
+    """``rand_index`` requires ``n_samples`` and must work end-to-end via
+    ``make_detector_scorer``.
+    """
+    y_true = np.array([50])
+    y_pred = np.array([50])
+    detector = _PredictDetector(changepoints=y_pred)
+    X = np.zeros((100, 1))
+
+    scorer = make_detector_scorer(rand_index)
+
+    assert scorer(detector, X=X, y=y_true) == 1.0
 
 
 def test_make_detector_scorer_raises_when_y_is_none():
     """Metric-based scorers require a reference ``y``."""
 
-    def fake_metric(y_true, y_pred):
+    def fake_metric(y_true, y_pred, n_samples=None):
         return 0.0
 
     scorer = make_detector_scorer(fake_metric)
