@@ -3,13 +3,12 @@
 Functions in this module take **changepoint index arrays** as their native input
 — the sorted integer arrays returned by ``predict()``.
 
-Every function shares the uniform signature
-``(changepoints_true, changepoints_pred, n_samples=None, ...)`` so metrics are
-interchangeable in a strategy pattern. Metrics that intrinsically depend on the
-series length (``rand_index``, ``adjusted_rand_index``) validate that
-``n_samples`` is provided and raise otherwise. Metrics that are length-invariant
-(Hausdorff, precision, recall, F1) accept ``n_samples`` for signature uniformity
-and ignore it.
+Every function accepts ``(changepoints_true, changepoints_pred, n_samples, ...)``
+so metrics are interchangeable in a strategy pattern. Metrics that intrinsically
+depend on the series length (``rand_index``, ``adjusted_rand_index``) make
+``n_samples`` a required argument. Metrics that are length-invariant (Hausdorff,
+precision, recall, F1) accept ``n_samples`` for signature uniformity but ignore
+it, so it defaults to ``None``.
 """
 
 import numbers
@@ -271,28 +270,18 @@ def changepoint_f1_score(
     return float(2 * precision * recall / (precision + recall))
 
 
-def _require_n_samples(n_samples: int | None, func_name: str) -> int:
-    if n_samples is None:
-        raise ValueError(
-            f"{func_name} requires n_samples: the metric depends on the total "
-            "series length, which cannot be inferred from changepoint indices "
-            "alone."
-        )
-    return int(n_samples)
-
-
 @validate_params(
     {
         "changepoints_true": ["array-like"],
         "changepoints_pred": ["array-like"],
-        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
 )
 def rand_index(
     changepoints_true: ArrayLike,
     changepoints_pred: ArrayLike,
-    n_samples: int | None = None,
+    n_samples: int,
 ) -> float:
     """Compute the Rand index between two changepoint-defined segmentations.
 
@@ -307,9 +296,8 @@ def rand_index(
     changepoints_pred : array-like of shape (n_changepoints_pred,)
         Predicted changepoint indices, as returned by ``predict()``.
     n_samples : int
-        Length of the underlying time series. Required — the Rand index
-        depends on segment lengths, which cannot be inferred from changepoint
-        indices alone.
+        Length of the underlying time series. The Rand index depends on segment
+        lengths, which cannot be inferred from changepoint indices alone.
 
     Returns
     -------
@@ -321,9 +309,12 @@ def rand_index(
     >>> rand_index([50], [50], n_samples=100)
     1.0
     """
-    n = _require_n_samples(n_samples, "rand_index")
-    labels_true = changepoints_to_labels(np.asarray(changepoints_true), n_samples=n)
-    labels_pred = changepoints_to_labels(np.asarray(changepoints_pred), n_samples=n)
+    labels_true = changepoints_to_labels(
+        np.asarray(changepoints_true), n_samples=n_samples
+    )
+    labels_pred = changepoints_to_labels(
+        np.asarray(changepoints_pred), n_samples=n_samples
+    )
     return float(_rand_score(labels_true, labels_pred))
 
 
@@ -331,20 +322,22 @@ def rand_index(
     {
         "changepoints_true": ["array-like"],
         "changepoints_pred": ["array-like"],
-        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left")],
     },
     prefer_skip_nested_validation=True,
 )
 def adjusted_rand_index(
     changepoints_true: ArrayLike,
     changepoints_pred: ArrayLike,
-    n_samples: int | None = None,
+    n_samples: int,
 ) -> float:
     """Compute the adjusted Rand index between two changepoint-defined segmentations.
 
     Similar to :func:`rand_index` but adjusted for chance. Inflates both
-    changepoint arrays to per-sample labels and delegates to
-    :func:`sklearn.metrics.adjusted_rand_score`.
+    changepoint arrays to per-sample labels by
+    :func:`skchange.new_api.utils.segmentation.changepoints_to_labels`
+    and delegates to
+    :func:`sklearn.metrics.adjusted_rand_score` for the computation.
 
     Parameters
     ----------
@@ -353,9 +346,9 @@ def adjusted_rand_index(
     changepoints_pred : array-like of shape (n_changepoints_pred,)
         Predicted changepoint indices, as returned by ``predict()``.
     n_samples : int
-        Length of the underlying time series. Required — the adjusted Rand
-        index depends on segment lengths, which cannot be inferred from
-        changepoint indices alone.
+        Length of the underlying time series. The adjusted Rand index depends
+        on segment lengths, which cannot be inferred from changepoint indices
+        alone.
 
     Returns
     -------
@@ -368,7 +361,10 @@ def adjusted_rand_index(
     >>> adjusted_rand_index([50], [50], n_samples=100)
     1.0
     """
-    n = _require_n_samples(n_samples, "adjusted_rand_index")
-    labels_true = changepoints_to_labels(np.asarray(changepoints_true), n_samples=n)
-    labels_pred = changepoints_to_labels(np.asarray(changepoints_pred), n_samples=n)
+    labels_true = changepoints_to_labels(
+        np.asarray(changepoints_true), n_samples=n_samples
+    )
+    labels_pred = changepoints_to_labels(
+        np.asarray(changepoints_pred), n_samples=n_samples
+    )
     return float(_adjusted_rand_score(labels_true, labels_pred))
