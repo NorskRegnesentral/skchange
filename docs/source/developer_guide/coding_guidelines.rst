@@ -76,15 +76,15 @@ The most important rules are:
 Detectors may expose any of the following ``predict_*`` methods, depending on
 what the algorithm computes.
 
-* ``predict(X)`` returns an ndarray of shape ``(n_samples,)`` containing dense
-  per-sample integer segment labels. It is part of the universal interface and
-  is always implemented.
-* ``predict_changepoints(X)`` returns an ndarray of shape
-  ``(n_changepoints,)`` containing sorted start indices of segments. It
-  is part of the universal interface and is always implemented.
+* ``predict(X)`` returns an ndarray of shape ``(n_changepoints,)`` containing
+  sorted integer indices of detected changepoints. A changepoint is defined
+  as the first index of a segment, such that the data segments are given
+  by ``X[:cpt[0]], X[cpt[0]:cpt[1]], ..., X[cpt[-1]:]``.
+  Empty array if no changepoints are detected.
 * ``predict_segment_anomalies(X)`` returns an ndarray of shape
   ``(n_anomalies, 2)`` containing start (inclusive) and end (exclusive) indices of
-  anomalous segments. It is only implemented on detectors that identify anomalous
+  anomalous segments. Empty array if no segment anomalies are detected.
+  It is only implemented on detectors that identify anomalous
   segments.
 * ``predict_scores(X, return_index=False)`` returns the detector's internal
   scoring objective as a 1D ndarray whose length is detector-specific. When

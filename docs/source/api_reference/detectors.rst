@@ -6,9 +6,10 @@ Detectors
 Detectors operate on a single (univariate or multivariate) time series and
 segment it into homogeneous regions. All detectors inherit from
 :class:`~skchange.new_api.detectors.BaseChangeDetector` and expose the
-universal interface ``predict`` and ``predict_changepoints``. Some detectors
-additionally expose ``predict_segment_anomalies``, ``predict_scores`` or
-``predict_all``, depending on what the underlying algorithm computes.
+universal ``predict`` method, which returns a sorted numpy array of
+changepoint indices. Some detectors additionally expose
+``predict_segment_anomalies``, ``predict_scores`` or ``predict_all``,
+depending on what the underlying algorithm computes.
 
 Base
 ----
@@ -22,7 +23,7 @@ Base
 
 Changepoint detectors
 ---------------------
-Detectors that implement ``predict`` and ``predict_changepoints``.
+Detectors that implement ``predict``.
 
 .. currentmodule:: skchange.new_api.detectors
 
