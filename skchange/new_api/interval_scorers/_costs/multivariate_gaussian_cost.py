@@ -18,6 +18,34 @@ _MAX_N_SAMPLES_DEFAULT_CACHE = 10_000
 _MAX_N_FEATURES_DEFAULT_CACHE = 100
 
 
+def _multivariate_gaussian_precompute(
+    X: np.ndarray,
+    store_cov: bool | None,
+) -> dict:
+    """Build the shared cache for multivariate Gaussian interval scorers."""
+    n_samples, n_features = X.shape
+    if store_cov is None:
+        store_cov = (
+            n_samples <= _MAX_N_SAMPLES_DEFAULT_CACHE
+            and n_features <= _MAX_N_FEATURES_DEFAULT_CACHE
+        )
+
+    if not store_cov:
+        return {"X": X, "store_cov": False}
+
+    feature_sums = np.zeros((n_samples + 1, n_features))
+    np.cumsum(X, axis=0, out=feature_sums[1:])
+    outer_product_sums = np.zeros((n_samples + 1, n_features, n_features))
+    np.einsum("ni,nj->nij", X, X, out=outer_product_sums[1:])
+    np.cumsum(outer_product_sums[1:], axis=0, out=outer_product_sums[1:])
+    cache = {
+        "feature_sums": feature_sums,
+        "outer_product_sums": outer_product_sums,
+        "store_cov": True,
+    }
+    return cache
+
+
 @njit(cache=True)
 def _multivariate_gaussian_cost_mle(
     starts: np.ndarray,
@@ -65,13 +93,13 @@ def _multivariate_gaussian_cost_mle(
 def _multivariate_gaussian_cost_mle_cached(
     starts: np.ndarray,
     ends: np.ndarray,
-    sums: np.ndarray,
+    feature_sums: np.ndarray,
     outer_product_sums: np.ndarray,
     min_size: int,
 ) -> np.ndarray:
     """Twice negative Gaussian log-likelihood from cumulative moments."""
     n_intervals = len(starts)
-    p = sums.shape[1]
+    p = feature_sums.shape[1]
     costs = np.empty((n_intervals, 1))
     for i in range(n_intervals):
         n = ends[i] - starts[i]
@@ -79,7 +107,7 @@ def _multivariate_gaussian_cost_mle_cached(
             costs[i, 0] = np.inf
             continue
 
-        partial_sum = sums[ends[i]] - sums[starts[i]]
+        partial_sum = feature_sums[ends[i]] - feature_sums[starts[i]]
         mean = partial_sum / n
         partial_outer_product_sum = (
             outer_product_sums[ends[i]] - outer_product_sums[starts[i]]
@@ -92,6 +120,24 @@ def _multivariate_gaussian_cost_mle_cached(
             twice_nll = n * p * np.log(2 * np.pi) + n * log_det_cov + p * n
             costs[i, 0] = twice_nll
     return costs
+
+
+def _multivariate_gaussian_cost_mle_from_cache(
+    starts: np.ndarray,
+    ends: np.ndarray,
+    cache: dict,
+    min_size: int,
+) -> np.ndarray:
+    """Evaluate the MLE cost using the representation stored in ``cache``."""
+    if cache["store_cov"]:
+        return _multivariate_gaussian_cost_mle_cached(
+            starts,
+            ends,
+            cache["feature_sums"],
+            cache["outer_product_sums"],
+            min_size,
+        )
+    return _multivariate_gaussian_cost_mle(starts, ends, cache["X"], min_size)
 
 
 class MultivariateGaussianCost(BaseCost):
@@ -111,7 +157,7 @@ class MultivariateGaussianCost(BaseCost):
 
     Parameters
     ----------
-    use_cache : bool or None, default=None
+    store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums.
         If ``None``, caching is used when the precomputed data has at most
         10,000 samples and at most 100 features. Caching uses
@@ -135,10 +181,10 @@ class MultivariateGaussianCost(BaseCost):
     >>> cost.evaluate(cache, np.array([[0, 50], [50, 100]]))
     """
 
-    _parameter_constraints: dict = {"use_cache": ["boolean", None]}
+    _parameter_constraints: dict = {"store_cov": ["boolean", None]}
 
-    def __init__(self, use_cache: bool | None = None):
-        self.use_cache = use_cache
+    def __init__(self, store_cov: bool | None = None):
+        self.store_cov = store_cov
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Return tags marking this scorer as aggregated."""
@@ -184,31 +230,11 @@ class MultivariateGaussianCost(BaseCost):
             If caching is enabled, contains zero-prefixed cumulative sums and
             cumulative outer-product sums. Otherwise, contains the validated
             data under ``"X"``. The resolved strategy is stored under
-            ``"use_cache"``.
+            ``"store_cov"``.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
-        n_samples, n_features = X.shape
-        use_cache = self.use_cache
-        if use_cache is None:
-            use_cache = (
-                n_samples <= _MAX_N_SAMPLES_DEFAULT_CACHE
-                and n_features <= _MAX_N_FEATURES_DEFAULT_CACHE
-            )
-
-        if not use_cache:
-            return {"X": X, "use_cache": False}
-
-        sums = np.zeros((n_samples + 1, n_features))
-        np.cumsum(X, axis=0, out=sums[1:])
-        outer_product_sums = np.zeros((n_samples + 1, n_features, n_features))
-        np.einsum("ni,nj->nij", X, X, out=outer_product_sums[1:])
-        np.cumsum(outer_product_sums[1:], axis=0, out=outer_product_sums[1:])
-        return {
-            "sums": sums,
-            "outer_product_sums": outer_product_sums,
-            "use_cache": True,
-        }
+        return _multivariate_gaussian_precompute(X, self.store_cov)
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate the multivariate Gaussian cost on intervals.
@@ -232,15 +258,9 @@ class MultivariateGaussianCost(BaseCost):
             caller_name=self.__class__.__name__,
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
-        if cache["use_cache"]:
-            return _multivariate_gaussian_cost_mle_cached(
-                starts,
-                ends,
-                cache["sums"],
-                cache["outer_product_sums"],
-                self.min_size,
-            )
-        return _multivariate_gaussian_cost_mle(starts, ends, cache["X"], self.min_size)
+        return _multivariate_gaussian_cost_mle_from_cache(
+            starts, ends, cache, self.min_size
+        )
 
     def get_default_penalty(self) -> float:
         """Get the default BIC penalty for the fitted cost.
