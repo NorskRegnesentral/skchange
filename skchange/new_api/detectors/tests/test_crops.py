@@ -173,10 +173,10 @@ def test_predict_all_metadata_contract(selection_method):
         assert int(n_cp) in result["changepoints_lookup"]
 
 
-def test_predict_changepoints_recovers_true_changepoints():
+def test_predict_recovers_true_changepoints():
     """CROPS with BIC selection recovers the true changepoints on clean data."""
     X = _make_data(n_per_seg=60, n_segments=3)
-    cps = CROPS().fit(X).predict_changepoints(X)
+    cps = CROPS().fit(X).predict(X)
     np.testing.assert_array_equal(cps, [60, 120])
 
 
@@ -192,15 +192,9 @@ def test_elbow_selection_with_short_path_warns():
 def test_prune_false_matches_prune_true():
     """Disabling pruning yields the same optimal changepoints."""
     X = _make_data()
-    cps_pruned = (
-        CROPS(min_penalty=0.5, max_penalty=200.0, prune=True)
-        .fit(X)
-        .predict_changepoints(X)
-    )
+    cps_pruned = CROPS(min_penalty=0.5, max_penalty=200.0, prune=True).fit(X).predict(X)
     cps_unpruned = (
-        CROPS(min_penalty=0.5, max_penalty=200.0, prune=False)
-        .fit(X)
-        .predict_changepoints(X)
+        CROPS(min_penalty=0.5, max_penalty=200.0, prune=False).fit(X).predict(X)
     )
     np.testing.assert_array_equal(cps_pruned, cps_unpruned)
 
@@ -217,12 +211,12 @@ def test_default_penalty_bounds_resolved_from_cost():
 def test_step_size_greater_than_one_constrains_changepoints():
     """``step_size > 1`` exercises the step-size PELT path; cps respect the step."""
     X = _make_data()
-    cps = CROPS(step_size=5).fit(X).predict_changepoints(X)
+    cps = CROPS(step_size=5).fit(X).predict(X)
     assert np.all(cps % 5 == 0)
 
 
 def test_min_segment_length_one_recovers_changepoints():
     """``min_segment_length=1`` exercises the dedicated PELT-min-1 path."""
     X = _make_data(n_per_seg=60, n_segments=3)
-    cps = CROPS(min_segment_length=1).fit(X).predict_changepoints(X)
+    cps = CROPS(min_segment_length=1).fit(X).predict(X)
     np.testing.assert_array_equal(cps, [60, 120])

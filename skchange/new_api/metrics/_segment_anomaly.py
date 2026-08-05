@@ -3,12 +3,19 @@
 Functions in this module take **interval arrays** as their native input —
 arrays of shape ``(n_anomalies, 2)`` where each row is a ``[start, end)``
 index pair, as returned by ``predict_segment_anomalies()``.
+
+Every function accepts ``(intervals_true, intervals_pred, n_samples, ...)`` so
+metrics are interchangeable in a strategy pattern. Current metrics are
+length-invariant and ignore ``n_samples``; it is kept for signature
+uniformity and future length-dependent segment-anomaly metrics.
 """
+
+import numbers
 
 import numpy as np
 
 from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._param_validation import validate_params
+from skchange.new_api.utils._param_validation import Interval, validate_params
 
 
 def _count_tp(it: np.ndarray, ip: np.ndarray) -> int:
@@ -30,12 +37,14 @@ def _count_tp(it: np.ndarray, ip: np.ndarray) -> int:
     {
         "intervals_true": ["array-like"],
         "intervals_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
     },
     prefer_skip_nested_validation=True,
 )
 def segment_anomaly_precision(
     intervals_true: ArrayLike,
     intervals_pred: ArrayLike,
+    n_samples: int | None = None,
 ) -> float:
     """Compute detection precision for segment anomalies.
 
@@ -52,6 +61,8 @@ def segment_anomaly_precision(
     intervals_pred : array-like of shape (n_pred, 2)
         Predicted anomalous intervals, as returned by
         ``predict_segment_anomalies()``. Each row is a ``[start, end)`` index pair.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across segment-anomaly metrics; unused.
 
     Returns
     -------
@@ -79,12 +90,14 @@ def segment_anomaly_precision(
     {
         "intervals_true": ["array-like"],
         "intervals_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
     },
     prefer_skip_nested_validation=True,
 )
 def segment_anomaly_recall(
     intervals_true: ArrayLike,
     intervals_pred: ArrayLike,
+    n_samples: int | None = None,
 ) -> float:
     """Compute detection recall for segment anomalies.
 
@@ -101,6 +114,8 @@ def segment_anomaly_recall(
     intervals_pred : array-like of shape (n_pred, 2)
         Predicted anomalous intervals, as returned by
         ``predict_segment_anomalies()``. Each row is a ``[start, end)`` index pair.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across segment-anomaly metrics; unused.
 
     Returns
     -------
@@ -128,12 +143,14 @@ def segment_anomaly_recall(
     {
         "intervals_true": ["array-like"],
         "intervals_pred": ["array-like"],
+        "n_samples": [Interval(numbers.Integral, 1, None, closed="left"), None],
     },
     prefer_skip_nested_validation=True,
 )
 def segment_anomaly_f1_score(
     intervals_true: ArrayLike,
     intervals_pred: ArrayLike,
+    n_samples: int | None = None,
 ) -> float:
     """Compute the F1 score for segment anomaly detection.
 
@@ -152,6 +169,8 @@ def segment_anomaly_f1_score(
         Predicted anomalous intervals, as returned by
         ``predict_segment_anomalies()``.  Each row is a ``[start, end)`` index
         pair.
+    n_samples : int | None, default=None
+        Accepted for signature uniformity across segment-anomaly metrics; unused.
 
     Returns
     -------

@@ -59,7 +59,7 @@ def test_capa_linear_trend_saving_finds_no_changepoint():
     X = make_no_change_X(scorer, loc=BASELINE_INTERCEPT)
     capa = _make_capa(scorer)
     capa.fit(X)
-    cpts = capa.predict_changepoints(X)
+    cpts = capa.predict(X)
     assert len(cpts) == 0, f"Expected 0 changepoints, got {len(cpts)}: {cpts}"
 
 
@@ -75,7 +75,7 @@ def test_capa_linear_trend_saving_finds_single_changepoint():
     )
     capa = _make_capa(scorer)
     capa.fit(X)
-    cpts = capa.predict_changepoints(X)
+    cpts = capa.predict(X)
     assert len(cpts) == 1, f"Expected 1 changepoint, got {len(cpts)}: {cpts}"
     assert (
         abs(cpts[0] - CHANGEPOINT) <= 6

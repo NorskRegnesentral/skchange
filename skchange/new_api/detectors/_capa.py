@@ -329,9 +329,9 @@ class CAPA(BaseChangeDetector):
     include_point_anomalies : bool, default=False
         If ``True``, detected point anomalies are included alongside segment
         anomalies in the output of ``predict``, ``predict_segment_anomalies``,
-        ``predict_changepoints``, and ``predict_scores`` treated as single-sample
-        intervals. Point anomalies are always available via ``predict_all`` regardless
-        of this setting.
+        and ``predict_scores`` treated as single-sample intervals. Point
+        anomalies are always available via ``predict_all`` regardless of this
+        setting.
 
     Attributes
     ----------
@@ -687,7 +687,7 @@ class CAPA(BaseChangeDetector):
         )
         return all_intervals[np.argsort(all_intervals[:, 0])]
 
-    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
+    def predict(self, X: ArrayLike) -> np.ndarray:
         """Return sorted anomaly boundary indices.
 
         Each anomaly interval ``[start, end)`` contributes two changepoints:
@@ -701,9 +701,10 @@ class CAPA(BaseChangeDetector):
         Returns
         -------
         changepoints : np.ndarray of shape (n_changepoints,)
-            Sorted unique inner boundary indices of detected anomalies.
-            When ``include_point_anomalies=True``, point anomaly indices are
-            also included. Use ``predict_all`` to access them separately.
+            Sorted integer indices of detected changepoints. A changepoint is defined
+            as the first index of a segment, such that the data segments are given
+            by ``X[:cpt[0]], X[cpt[0]:cpt[1]], ..., X[cpt[-1]:]``.
+            Empty array if no changepoints are detected.
         """
         anomalies = self.predict_segment_anomalies(X)
         if len(anomalies) == 0:
@@ -771,26 +772,3 @@ class CAPA(BaseChangeDetector):
                 ends = result["segment_ends"]
             return scores, {"starts": starts, "ends": ends}
         return scores
-
-    def predict(self, X: ArrayLike) -> np.ndarray:
-        """Detect anomalies, returning per-sample segment labels.
-
-        Parameters
-        ----------
-        X : ArrayLike of shape (n_samples, n_features)
-            Time series to analyse.
-
-        Returns
-        -------
-        labels : np.ndarray of shape (n_samples,)
-            Integer labels: ``0`` for normal samples, ``1, ..., K`` for each
-            detected anomaly in chronological order. When
-            ``include_point_anomalies=True``, point anomalies are included as
-            single-sample intervals and numbered together with segment anomalies.
-        """
-        intervals = self.predict_segment_anomalies(X)
-        n_samples = validate_data(self, X, reset=False, ensure_2d=True).shape[0]
-        labels = np.zeros(n_samples, dtype=np.intp)
-        for label, (start, end) in enumerate(intervals, start=1):
-            labels[start:end] = label
-        return labels
