@@ -5,7 +5,7 @@ import pytest
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 
-from skchange.new_api.tuning import GaussianMCSampler, PermutationSampler
+from skchange.new_api.tuning import GaussianSampler, PermutationSampler
 from skchange.new_api.tuning._null_models import _resolve_sampler, make_null_draw
 
 
@@ -51,21 +51,21 @@ def test_permutation_sampler_sample_before_fit_raises():
 
 def test_gaussian_sampler_shape_dtype_and_no_fit_needed():
     rng = np.random.default_rng(0)
-    out = GaussianMCSampler().sample(30, 4, rng)  # no fit() call
+    out = GaussianSampler().sample(30, 4, rng)  # no fit() call
     assert out.shape == (30, 4)
     assert out.dtype == np.float64
 
 
 def test_gaussian_sampler_respects_mean_and_std():
     rng = np.random.default_rng(0)
-    out = GaussianMCSampler(mean=5.0, std=2.0).sample(100000, 1, rng)
+    out = GaussianSampler(mean=5.0, std=2.0).sample(100000, 1, rng)
     assert abs(out.mean() - 5.0) < 0.05
     assert abs(out.std() - 2.0) < 0.05
 
 
 def test_resolve_sampler_aliases_and_passthrough():
     assert isinstance(_resolve_sampler("permutation"), PermutationSampler)
-    assert isinstance(_resolve_sampler("gaussian"), GaussianMCSampler)
+    assert isinstance(_resolve_sampler("gaussian"), GaussianSampler)
     inst = PermutationSampler()
     assert _resolve_sampler(inst) is inst
     f = lambda n, p, rng: rng.normal(size=(n, p))  # noqa: E731
@@ -117,6 +117,6 @@ def test_make_null_draw_feature_mismatch_raises():
 
 
 def test_samplers_are_sklearn_cloneable():
-    for sampler in [PermutationSampler(replace=True), GaussianMCSampler(std=2.0)]:
+    for sampler in [PermutationSampler(replace=True), GaussianSampler(std=2.0)]:
         cloned = clone(sampler)
         assert cloned.get_params() == sampler.get_params()

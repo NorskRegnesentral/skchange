@@ -195,6 +195,7 @@ omit = [
 ]
 
 [tool.pytest.ini_options]
+addopts = "-m 'not slow'"
 markers = [
-  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "slow: marks tests as slow (run with '-m slow' or override addopts)",
 ]

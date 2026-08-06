@@ -280,8 +280,8 @@ def _critical_scale_count(
     """
 
     def still_fires(scale: float) -> bool:
-        fitted = clone(detector).set_params(**{knob: scale}).fit(X)
-        return len(fitted.predict_changepoints(X)) > 0
+        cps = clone(detector).set_params(**{knob: scale}).fit_predict(X)
+        return len(cps) > 0
 
     # Upper bracket: smallest doubling scale (from 1) at which the detector is
     # silent. Valid regardless of the low-penalty behaviour.
@@ -370,9 +370,7 @@ def _run_single_sim(seed, draw_fn, detector, knob, base, strategy, max_scale, rt
 
 @validate_params(
     {
-        "detector": [
-            HasMethods(["fit", "set_params", "get_params", "predict_changepoints"])
-        ],
+        "detector": [HasMethods(["fit", "set_params", "get_params", "predict"])],
         "X": ["array-like"],
         "X_calib": [None, "array-like"],
         "sampler": [str, callable, HasMethods(["sample"])],
@@ -436,8 +434,9 @@ def calibrate_penalty_scale(
     ----------
     detector : estimator
         A detector exposing ``fit``, ``set_params``, ``get_params``,
-        ``predict_changepoints``, and a scalar ``penalty_scale``. Not modified.
+        ``predict``, and a scalar ``penalty_scale``. Not modified.
     X : array-like of shape (n_samples, n_features)
+        Calibration data to sample from/based on.
         Data to be analysed for changes. Determines the null sample length
         and the base penalty.
     X_calib : array-like of shape (n_calib, n_features), optional
@@ -569,7 +568,7 @@ class CalibratedDetector(BaseEstimator):
     ----------
     detector : estimator
         Detector to calibrate. Must expose a scalar ``penalty_scale`` parameter
-        and ``predict_changepoints``.
+        and ``predict``.
     sampler : str, sampler instance, or callable, default="permutation"
         Null model passed to :func:`calibrate_penalty_scale`.
     level : float, default=0.05
@@ -605,7 +604,7 @@ class CalibratedDetector(BaseEstimator):
     ... ).fit(X)
     >>> cal.penalty_scale_ > 0
     True
-    >>> cps = cal.predict_changepoints(X)
+    >>> cps = cal.predict(X)
     """
 
     def __init__(
@@ -664,12 +663,6 @@ class CalibratedDetector(BaseEstimator):
             clone(self.detector).set_params(**{knob: self.penalty_scale_}).fit(X)
         )
         return self
-
-    @available_if(_detector_has("predict_changepoints"))
-    def predict_changepoints(self, X) -> np.ndarray:
-        """Delegate to the calibrated detector."""
-        check_is_fitted(self, "detector_")
-        return self.detector_.predict_changepoints(X)
 
     @available_if(_detector_has("predict_segment_anomalies"))
     def predict_segment_anomalies(self, X) -> np.ndarray:

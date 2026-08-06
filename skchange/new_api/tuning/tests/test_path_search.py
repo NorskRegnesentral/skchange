@@ -91,8 +91,7 @@ def test_path_search_terminates_zero_changepoints():
     assert base is not None
 
     c_b = _critical_scale_path_search(det, X, knob, base)
-    fitted = clone(det).set_params(**{knob: c_b}).fit(X)
-    cps = fitted.predict_changepoints(X)
+    cps = clone(det).set_params(**{knob: c_b}).fit_predict(X)
     assert len(cps) == 0, f"PELT at scale={c_b:.6f} still detects: {cps}"
 
 
@@ -104,8 +103,8 @@ def test_path_search_zero_changepoints_on_blip():
     assert base is not None
 
     c_b = _critical_scale_path_search(det, X, knob, base)
-    fitted = clone(det).set_params(**{knob: c_b}).fit(X)
-    assert len(fitted.predict_changepoints(X)) == 0
+    cps = clone(det).set_params(**{knob: c_b}).fit_predict(X)
+    assert len(cps) == 0
 
 
 def test_path_search_fewer_fits_than_bisection():

@@ -22,6 +22,60 @@ from sklearn.base import BaseEstimator, clone
 from skchange.new_api.utils.validation import check_is_fitted
 
 
+class BaseNullSampler:
+    """Base class for null-distribution samplers for FWER calibration.
+
+    A null sampler produces change-free ("null") data sets used by FWER
+    calibration. Subclasses are pure config objects that hold their
+    hyperparameters on ``self`` and implement :meth:`sample`, which takes the
+    reference data, a draw size, and a per-call RNG.
+
+    Design notes
+    ------------
+    * **Stateless config object.** Only hyperparameters live on ``self``. No
+      ``fit``, no cached data, no RNG. Samplers are cheap to pickle and safe
+      to share across ``joblib`` workers.
+    * **RNG per call.** The caller (e.g. ``CalibratedDetector``) owns the
+      master seed, spawns child seeds via ``SeedSequence.spawn()``, and
+      passes a fresh ``Generator`` to each ``sample`` call. This keeps
+      parallel draws independent and individual draws reproducible.
+    * **``X`` always required.** Parametric subclasses read only
+      ``X.shape[1]``. Data-based subclasses resample its rows. One uniform
+      signature, no optional arguments.
+    * **Duck-typed contract.** Consumers only need
+      ``sample(X, n_samples, rng) -> ndarray``. A plain callable with the
+      same signature works in place of a subclass.
+    """
+
+    def sample(
+        self,
+        X: np.ndarray,
+        n_samples: int,
+        rng: np.random.Generator,
+    ) -> np.ndarray:
+        """Draw one null sample of shape ``(n_samples, X.shape[1])``.
+
+        Parameters
+        ----------
+        X : ndarray of shape (n_ref, n_features)
+            Reference data. Data-based samplers resample its rows.
+            Parametric samplers use only its second dimension.
+        n_samples : int
+            Number of rows to return.
+        rng : numpy.random.Generator
+            Per-call random generator supplied by the caller.
+
+        Returns
+        -------
+        ndarray of shape (n_samples, X.shape[1])
+        """
+        raise NotImplementedError("Subclasses must implement `sample`.")
+
+    def __repr__(self) -> str:
+        params = ", ".join(f"{k}={v!r}" for k, v in vars(self).items())
+        return f"{type(self).__name__}({params})"
+
+
 class BaseDataSampler(BaseEstimator):
     """Base class for data-based null samplers.
 
@@ -111,7 +165,7 @@ class PermutationSampler(BaseDataSampler):
         return self.data_[idx].astype(np.float64, copy=True)
 
 
-class GaussianMCSampler(BaseParametricSampler):
+class GaussianSampler(BaseParametricSampler):
     """Parametric null sampler drawing i.i.d. Gaussian data.
 
     Each entry is drawn independently from ``N(mean, std**2)``. Use this when the
@@ -128,9 +182,9 @@ class GaussianMCSampler(BaseParametricSampler):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.tuning import GaussianMCSampler
+    >>> from skchange.new_api.tuning import GaussianSampler
     >>> rng = np.random.default_rng(0)
-    >>> GaussianMCSampler().sample(50, 2, rng).shape
+    >>> GaussianSampler().sample(50, 2, rng).shape
     (50, 2)
     """
 
@@ -148,7 +202,7 @@ class GaussianMCSampler(BaseParametricSampler):
 
 _NAMED_SAMPLERS = {
     "permutation": PermutationSampler,
-    "gaussian": GaussianMCSampler,
+    "gaussian": GaussianSampler,
 }
 
 

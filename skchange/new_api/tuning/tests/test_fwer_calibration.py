@@ -16,7 +16,7 @@ from skchange.new_api.detectors import (
 from skchange.new_api.interval_scorers import ESACScore
 from skchange.new_api.tuning import (
     CalibratedDetector,
-    GaussianMCSampler,
+    GaussianSampler,
     calibrate_penalty_scale,
 )
 from skchange.new_api.tuning._fwer_calibration import _discover_knob
@@ -29,8 +29,15 @@ _ALL_SUPPORTED = [
     PELT,
 ]
 
+# Simulation counts kept as small as each assertion can tolerate. Fast tests
+# only need "scale > 0" or reproducibility, which are 1-sim properties.
+# Monotone tests must resolve a signed inequality (e.g. dirty >= clean), so
+# they need enough sims for the two scales to separate reliably.
+_FAST_N_SIMS = 10
+_MONOTONE_N_SIMS = 50
 
-def _null_X(n=120, p=2, seed=0):
+
+def _null_X(n=60, p=2, seed=0):
     return np.random.default_rng(seed).normal(size=(n, p))
 
 
@@ -171,8 +178,8 @@ def test_detection_count_handles_non_monotone_silent_at_zero():
     knob, _ = _discover_knob(det, _null_X(n=50))
 
     def n_cpts(X, scale):
-        fitted = clone(det).set_params(**{knob: scale}).fit(X)
-        return len(fitted.predict_changepoints(X))
+        cps = clone(det).set_params(**{knob: scale}).fit_predict(X)
+        return len(cps)
 
     # Construct a null sample that is silent at _BISECT_LO but fires at 0.1.
     rng = np.random.default_rng(11)
@@ -202,7 +209,7 @@ def test_detection_count_handles_non_monotone_silent_at_zero():
 @pytest.mark.parametrize("detector_cls", _ALL_SUPPORTED, ids=lambda c: c.__name__)
 def test_returns_positive_float(detector_cls):
     scale = calibrate_penalty_scale(
-        detector_cls(), _null_X(), n_simulations=99, random_state=0
+        detector_cls(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0
     )
     assert isinstance(scale, float)
     assert scale > 0.0
@@ -211,10 +218,10 @@ def test_returns_positive_float(detector_cls):
 def test_reproducible_with_seed():
     X = _null_X()
     a = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, n_simulations=99, random_state=42
+        SeededBinarySegmentation(), X, n_simulations=_FAST_N_SIMS, random_state=42
     )
     b = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, n_simulations=99, random_state=42
+        SeededBinarySegmentation(), X, n_simulations=_FAST_N_SIMS, random_state=42
     )
     assert a == b
 
@@ -222,10 +229,18 @@ def test_reproducible_with_seed():
 def test_lower_level_gives_larger_scale():
     X = _null_X()
     strict = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, level=0.01, n_simulations=499, random_state=0
+        SeededBinarySegmentation(),
+        X,
+        level=0.01,
+        n_simulations=_MONOTONE_N_SIMS,
+        random_state=0,
     )
     loose = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, level=0.20, n_simulations=499, random_state=0
+        SeededBinarySegmentation(),
+        X,
+        level=0.20,
+        n_simulations=_MONOTONE_N_SIMS,
+        random_state=0,
     )
     assert strict >= loose
 
@@ -235,7 +250,7 @@ def test_gaussian_sampler_runs():
         SeededBinarySegmentation(),
         _null_X(),
         sampler="gaussian",
-        n_simulations=99,
+        n_simulations=_FAST_N_SIMS,
         random_state=0,
     )
     assert scale > 0.0
@@ -246,15 +261,15 @@ def test_sampler_instance_and_callable():
     s1 = calibrate_penalty_scale(
         SeededBinarySegmentation(),
         X,
-        sampler=GaussianMCSampler(std=1.0),
-        n_simulations=99,
+        sampler=GaussianSampler(std=1.0),
+        n_simulations=_FAST_N_SIMS,
         random_state=0,
     )
     s2 = calibrate_penalty_scale(
         SeededBinarySegmentation(),
         X,
         sampler=lambda n, p, rng: rng.normal(size=(n, p)),
-        n_simulations=99,
+        n_simulations=_FAST_N_SIMS,
         random_state=0,
     )
     assert s1 > 0.0 and s2 > 0.0
@@ -273,13 +288,16 @@ def test_x_calib_clean_vs_contaminated():
     X_contaminated = np.vstack([rng.normal(0, 1, (60, 2)), rng.normal(6, 1, (60, 2))])
     X_clean = rng.normal(0, 1, (400, 2))
     dirty = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X_contaminated, n_simulations=299, random_state=1
+        SeededBinarySegmentation(),
+        X_contaminated,
+        n_simulations=_MONOTONE_N_SIMS,
+        random_state=1,
     )
     clean = calibrate_penalty_scale(
         SeededBinarySegmentation(),
         X_contaminated,
         X_calib=X_clean,
-        n_simulations=299,
+        n_simulations=_MONOTONE_N_SIMS,
         random_state=1,
     )
     assert dirty > clean
@@ -306,19 +324,23 @@ def test_esac_based_detector_is_calibratable():
         SeededBinarySegmentation(change_score=ESACScore()),
         _null_X(n=200, p=5),
         sampler="gaussian",
-        n_simulations=49,
+        n_simulations=_FAST_N_SIMS,
         random_state=0,
     )
     assert scale > 0.0
 
 
 def test_capa_is_calibratable():
-    scale = calibrate_penalty_scale(CAPA(), _null_X(), n_simulations=49, random_state=0)
+    scale = calibrate_penalty_scale(
+        CAPA(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0
+    )
     assert scale > 0.0
 
 
 def test_pelt_is_calibratable():
-    scale = calibrate_penalty_scale(PELT(), _null_X(), n_simulations=49, random_state=0)
+    scale = calibrate_penalty_scale(
+        PELT(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0
+    )
     assert scale > 0.0
 
 
@@ -343,7 +365,7 @@ def test_invalid_level_gt_one_raises():
 
 def test_calibrated_detector_fit_sets_attributes():
     cal = CalibratedDetector(
-        SeededBinarySegmentation(), n_simulations=99, random_state=0
+        SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(_null_X())
     check_is_fitted(cal)
     assert cal.penalty_scale_ > 0.0
@@ -356,15 +378,15 @@ def test_calibrated_detector_predict_before_fit_raises():
 
     cal = CalibratedDetector(SeededBinarySegmentation())
     with pytest.raises(NotFittedError):
-        cal.predict_changepoints(_null_X())
+        cal.predict(_null_X())
 
 
 def test_calibrated_detector_predicts():
     X = _null_X()
     cal = CalibratedDetector(
-        SeededBinarySegmentation(), n_simulations=99, random_state=0
+        SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(X)
-    cps = cal.predict_changepoints(X)
+    cps = cal.predict(X)
     assert isinstance(cps, np.ndarray)
 
 
@@ -381,7 +403,7 @@ def test_calibrated_detector_x_calib_kwarg():
     X = rng.normal(size=(80, 2))
     X_clean = rng.normal(size=(300, 2))
     cal = CalibratedDetector(
-        SeededBinarySegmentation(), n_simulations=99, random_state=0
+        SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(X, X_calib=X_clean)
     assert cal.penalty_scale_ > 0.0
 
@@ -401,7 +423,9 @@ def test_calibrated_detector_crops_raises():
 
 
 def test_calibrated_detector_pelt():
-    cal = CalibratedDetector(PELT(), n_simulations=49, random_state=0).fit(_null_X())
+    cal = CalibratedDetector(PELT(), n_simulations=_FAST_N_SIMS, random_state=0).fit(
+        _null_X()
+    )
     assert cal.penalty_scale_ > 0.0
     assert hasattr(cal, "detector_")
 
@@ -431,8 +455,7 @@ def test_empirical_fwer_controlled(detector_cls, sampler):
     false_alarms = 0
     for _ in range(n_eval):
         X_null = rng.normal(size=(n, p))
-        detector.fit(X_null)
-        if len(detector.predict_changepoints(X_null)) > 0:
+        if len(detector.fit_predict(X_null)) > 0:
             false_alarms += 1
     empirical_fwer = false_alarms / n_eval
     assert empirical_fwer <= level + tol, (
@@ -461,10 +484,7 @@ def test_calibration_targets_level_not_zero(detector_cls):
     false_alarms = sum(
         1
         for _ in range(n_eval)
-        if len(
-            detector.fit(X_null := rng.normal(size=(n, p))).predict_changepoints(X_null)
-        )
-        > 0
+        if len(detector.fit_predict(rng.normal(size=(n, p)))) > 0
     )
     empirical_fwer = false_alarms / n_eval
     # FWER must be close to level from above (not driven to 0).
@@ -488,14 +508,14 @@ def test_x_calib_clean_gives_scale_le_contaminated():
     scale_dirty = calibrate_penalty_scale(
         SeededBinarySegmentation(),
         X_contaminated,
-        n_simulations=299,
+        n_simulations=_MONOTONE_N_SIMS,
         random_state=3,
     )
     scale_clean = calibrate_penalty_scale(
         SeededBinarySegmentation(),
         X_contaminated,
         X_calib=X_clean,
-        n_simulations=299,
+        n_simulations=_MONOTONE_N_SIMS,
         random_state=3,
     )
     assert scale_dirty >= scale_clean
@@ -510,10 +530,18 @@ def test_calibrate_n_jobs_invariant():
     """n_jobs=1 and n_jobs=2 must return the same scale for the same random_state."""
     X = _null_X()
     s1 = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, n_simulations=99, random_state=42, n_jobs=1
+        SeededBinarySegmentation(),
+        X,
+        n_simulations=_FAST_N_SIMS,
+        random_state=42,
+        n_jobs=1,
     )
     s2 = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, n_simulations=99, random_state=42, n_jobs=2
+        SeededBinarySegmentation(),
+        X,
+        n_simulations=_FAST_N_SIMS,
+        random_state=42,
+        n_jobs=2,
     )
     assert s1 == s2
 
@@ -522,10 +550,18 @@ def test_calibrate_reproducible_with_n_jobs():
     """Same random_state must give the same result across two n_jobs=2 runs."""
     X = _null_X()
     a = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, n_simulations=99, random_state=7, n_jobs=2
+        SeededBinarySegmentation(),
+        X,
+        n_simulations=_FAST_N_SIMS,
+        random_state=7,
+        n_jobs=2,
     )
     b = calibrate_penalty_scale(
-        SeededBinarySegmentation(), X, n_simulations=99, random_state=7, n_jobs=2
+        SeededBinarySegmentation(),
+        X,
+        n_simulations=_FAST_N_SIMS,
+        random_state=7,
+        n_jobs=2,
     )
     assert a == b
 
@@ -553,7 +589,7 @@ def test_calibrated_detector_n_jobs_fits_and_predicts():
     cal = CalibratedDetector(
         SeededBinarySegmentation(), n_simulations=20, random_state=0, n_jobs=2
     ).fit(X)
-    cps = cal.predict_changepoints(X)
+    cps = cal.predict(X)
     assert isinstance(cps, np.ndarray)
     assert cal.penalty_scale_ > 0.0
 
