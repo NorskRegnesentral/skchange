@@ -38,7 +38,9 @@ def test_penalty_scale_scales_all_sparsity_penalties():
     X = _make_X()
     base = ESACScore(penalty_scale=1.0).fit(X)
     scaled = ESACScore(penalty_scale=3.0).fit(X)
-    np.testing.assert_allclose(scaled.sparsity_penalties_, 3.0 * base.sparsity_penalties_)
+    np.testing.assert_allclose(
+        scaled.sparsity_penalties_, 3.0 * base.sparsity_penalties_
+    )
 
 
 def test_penalty_scale_preserves_dense_sparse_ratio():
@@ -55,7 +57,9 @@ def test_default_scale_matches_legacy_behaviour():
     """penalty_scale=1 must reproduce the same sparsity penalties as before."""
     X = _make_X()
     old = ESACScore(penalty_scale_dense=2.0, penalty_scale_sparse=1.5).fit(X)
-    new = ESACScore(penalty_scale=1.0, penalty_scale_dense=2.0, penalty_scale_sparse=1.5).fit(X)
+    new = ESACScore(
+        penalty_scale=1.0, penalty_scale_dense=2.0, penalty_scale_sparse=1.5
+    ).fit(X)
     np.testing.assert_array_equal(old.sparsity_penalties_, new.sparsity_penalties_)
 
 

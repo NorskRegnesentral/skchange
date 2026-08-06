@@ -51,9 +51,9 @@ def test_path_search_agrees_with_bisection():
         c_path = _critical_scale_path_search(det, X, knob, base)
         c_bisect = _critical_scale_count(det, X, knob)
 
-        assert c_path == pytest.approx(c_bisect, rel=0.02), (
-            f"Sample {i}: path_search={c_path:.6f}, bisection={c_bisect:.6f}"
-        )
+        assert c_path == pytest.approx(
+            c_bisect, rel=0.02
+        ), f"Sample {i}: path_search={c_path:.6f}, bisection={c_bisect:.6f}"
 
 
 # --------------------------------------------------------------------------- #
@@ -135,9 +135,9 @@ def test_path_search_fewer_fits_than_bisection():
     _critical_scale_count(det, X, knob)
     bisect_fits = len(fit_log)
 
-    assert path_fits < bisect_fits, (
-        f"path_search used {path_fits} fits vs bisection {bisect_fits}"
-    )
+    assert (
+        path_fits < bisect_fits
+    ), f"path_search used {path_fits} fits vs bisection {bisect_fits}"
     # Design target: ~3-6 path fits vs ~15-25 bisection fits
     assert path_fits <= 15, f"path_search used too many fits: {path_fits}"
 
