@@ -14,8 +14,7 @@ from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
-_MAX_N_SAMPLES_DEFAULT_CACHE = 10_000
-_MAX_N_FEATURES_DEFAULT_CACHE = 100
+MAX_COV_CACHE_ELEMENTS = 100_000_000
 
 
 def _multivariate_gaussian_precompute(
@@ -25,10 +24,7 @@ def _multivariate_gaussian_precompute(
     """Build the shared cache for multivariate Gaussian interval scorers."""
     n_samples, n_features = X.shape
     if store_cov is None:
-        store_cov = (
-            n_samples <= _MAX_N_SAMPLES_DEFAULT_CACHE
-            and n_features <= _MAX_N_FEATURES_DEFAULT_CACHE
-        )
+        store_cov = n_samples * n_features**2 <= MAX_COV_CACHE_ELEMENTS
 
     if not store_cov:
         return {"X": X, "store_cov": False}
@@ -159,8 +155,9 @@ class MultivariateGaussianCost(BaseCost):
     ----------
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums.
-        If ``None``, caching is used when the precomputed data has at most
-        10,000 samples and at most 100 features. Caching uses
+        If ``None``, caching is used when
+        :math:`n_{\text{samples}} p^2 \leq \texttt{MAX\_COV\_CACHE\_ELEMENTS}`.
+        Caching uses
         :math:`O(n p^2)` memory but makes covariance calculation independent
         of interval length.
 

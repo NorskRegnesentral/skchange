@@ -9,6 +9,13 @@ from skchange.new_api.conftest import (
 )
 from skchange.new_api.detectors import CAPA
 from skchange.new_api.interval_scorers import MultivariateGaussianSaving
+from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
+    _multivariate_gaussian_precompute,
+)
+from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving import (
+    _multivariate_gaussian_cost_fixed,
+    _multivariate_gaussian_cost_fixed_cached,
+)
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_MEAN = 0.0  # scalar; broadcast to all features
@@ -82,3 +89,35 @@ def test_capa_multivariate_gaussian_saving_finds_single_changepoint():
     assert (
         abs(cpts[0] - CHANGEPOINT) <= 6
     ), f"Changepoint {cpts[0]} is too far from true changepoint {CHANGEPOINT}."
+
+
+def test_cached_fixed_cost_handles_undersized_intervals():
+    """Cached fixed Gaussian cost returns inf for short intervals and keeps looping."""
+    rng = np.random.default_rng(123)
+    X = rng.normal(size=(8, 2))
+    cache = _multivariate_gaussian_precompute(X, store_cov=True)
+
+    starts = np.array([0, 0], dtype=np.int64)
+    ends = np.array([2, 8], dtype=np.int64)
+    min_size = 3
+    mean = np.zeros(2)
+    inv_cov = np.eye(2)
+    log_det_cov = 0.0
+
+    cached_costs = _multivariate_gaussian_cost_fixed_cached(
+        starts,
+        ends,
+        cache["feature_sums"],
+        cache["outer_product_sums"],
+        mean,
+        log_det_cov,
+        inv_cov,
+        min_size,
+    )
+    uncached_costs = _multivariate_gaussian_cost_fixed(
+        starts, ends, X, mean, log_det_cov, inv_cov, min_size
+    )
+
+    assert np.isinf(cached_costs[0, 0])
+    assert np.isfinite(cached_costs[1, 0])
+    np.testing.assert_allclose(cached_costs, uncached_costs)
