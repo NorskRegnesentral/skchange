@@ -32,13 +32,23 @@ class BaseNullSampler:
       master seed, spawns child seeds via ``SeedSequence.spawn()``, and
       passes a fresh ``Generator`` to each ``sample`` call. This keeps
       parallel draws independent and individual draws reproducible.
-    * **``X`` always required.** Parametric subclasses read only
-      ``X.shape[1]``. Data-based subclasses resample its rows. One uniform
-      signature, no optional arguments.
+    * **``X`` always required by the contract.** Parametric subclasses read
+      only ``X.shape[1]``; data-based subclasses resample its rows. One uniform
+      signature, no optional arguments. Whether a *caller* must supply real
+      reference data is advertised by :attr:`requires_reference_data`.
     * **Duck-typed contract.** Consumers only need
       ``sample(X, n_samples, rng) -> ndarray``. A plain callable with the
       same signature works in place of a subclass.
+
+    Attributes
+    ----------
+    requires_reference_data : bool
+        Whether the sampler needs real reference data to draw from. ``True``
+        for data-based samplers (the default), ``False`` for parametric
+        samplers that synthesise data from the feature count alone.
     """
+
+    requires_reference_data: bool = True
 
     def sample(
         self,
@@ -138,6 +148,8 @@ class GaussianSampler(BaseNullSampler):
     (50, 2)
     """
 
+    requires_reference_data: bool = False
+
     def __init__(self, mean: float = 0.0, std: float = 1.0):
         self.mean = mean
         self.std = std
@@ -179,3 +191,29 @@ def resolve_sampler(sampler):
         "`sampler` must be a string alias, an object with a `sample` method, "
         f"or a callable; got {type(sampler).__name__!r}."
     )
+
+
+def sampler_requires_data(sampler) -> bool:
+    """Whether a sampler needs real reference data (``X``) to draw from.
+
+    Parametric samplers (e.g. ``GaussianSampler``) synthesise data from the
+    feature count alone and return ``False``. Data-based samplers and plain
+    callables (whose needs cannot be introspected) return ``True``, so callers
+    must supply ``X`` to be safe.
+
+    Parameters
+    ----------
+    sampler : str, sampler instance, or callable
+        The same specification accepted by :func:`resolve_sampler`.
+
+    Returns
+    -------
+    bool
+        ``True`` if reference data is required, ``False`` otherwise.
+    """
+    if isinstance(sampler, str):
+        cls = _NAMED_SAMPLERS.get(sampler)
+        if cls is None:
+            return True
+        sampler = cls()
+    return bool(getattr(sampler, "requires_reference_data", True))

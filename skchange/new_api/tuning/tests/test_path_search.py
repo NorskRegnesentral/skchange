@@ -12,7 +12,6 @@ from skchange.new_api.detectors import PELT
 from skchange.new_api.tuning._fwer_calibration import (
     _BISECT_LO,
     _critical_scale_count,
-    _critical_scale_max_score,
     _critical_scale_path_search,
     _discover_knob,
 )
@@ -54,27 +53,6 @@ def test_path_search_agrees_with_bisection():
         assert c_path == pytest.approx(
             c_bisect, rel=0.02
         ), f"Sample {i}: path_search={c_path:.6f}, bisection={c_bisect:.6f}"
-
-
-# --------------------------------------------------------------------------- #
-# Task 1.2 — blip series: path_search exceeds max_score
-# --------------------------------------------------------------------------- #
-
-
-def test_path_search_exceeds_max_score_on_blip():
-    """On a blip series (G_2/2 > G_1), path_search c_b > max_score c_b."""
-    X = _blip_X(m=15, a=10.0)
-    det = PELT()
-    knob, base = _discover_knob(det, X)
-    assert base is not None
-
-    c_path = _critical_scale_path_search(det, X, knob, base)
-    c_max = _critical_scale_max_score(det, X, knob, base)
-
-    assert c_path > c_max * 1.5, (
-        f"Blip series: path_search={c_path:.4f} should clearly exceed "
-        f"max_score={c_max:.4f} (expected >=1.5x ratio)"
-    )
 
 
 # --------------------------------------------------------------------------- #

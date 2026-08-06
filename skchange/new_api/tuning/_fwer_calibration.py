@@ -44,7 +44,10 @@ from sklearn.utils import get_tags
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.parallel import Parallel, delayed
 
-from skchange.new_api.tuning._null_models import resolve_sampler
+from skchange.new_api.tuning._null_models import (
+    resolve_sampler,
+    sampler_requires_data,
+)
 from skchange.new_api.tuning._penalty_calibration import unpenalised_scores
 from skchange.new_api.utils._param_validation import (
     HasMethods,
@@ -92,12 +95,12 @@ def _discover_knob(detector, X) -> tuple[str, float | None]:
     # Case 1: top-level penalty_scale present.
     if "penalty_scale" in params:
         fitted = clone(detector).set_params(penalty_scale=1.0).fit(X)
-        penalty_ = getattr(fitted, "penalty_", _SENTINEL)
 
-        if penalty_ is _SENTINEL:
+        if not hasattr(fitted, "penalty_"):
             # Detector has penalty_scale but no standard penalty_ attr (e.g. CAPA).
             return "penalty_scale", None
 
+        penalty_ = fitted.penalty_
         if penalty_ is None:
             # penalty_ is None -> inherently penalised scorer at top level.
             # Fall through to nested search.
@@ -127,13 +130,6 @@ def _discover_knob(detector, X) -> tuple[str, float | None]:
     )
 
 
-class _Sentinel:
-    pass
-
-
-_SENTINEL = _Sentinel()
-
-
 # --------------------------------------------------------------------------- #
 # Critical-scale computation
 # --------------------------------------------------------------------------- #
@@ -142,9 +138,11 @@ _SENTINEL = _Sentinel()
 def _critical_scale_max_score(detector, X: np.ndarray, knob: str, base: float) -> float:
     """Closed-form critical scale via ``c_b = max(S) / base``.
 
-    Uses the detector's ``_unpenalised_change_scores`` hook to obtain ``S``.
-    For scan-and-threshold detectors the hook returns ``unpenalised_scores``;
-    for PELT it returns single-split cost reductions.
+    Obtains ``S``, the vector of unpenalised interval scores, from
+    :func:`unpenalised_scores`. Valid for scan-and-threshold detectors, which
+    threshold each interval score independently. Does not apply to PELT, whose
+    joint optimisation makes the single-split score an underestimate (that case
+    is rejected upstream in :func:`calibrate_penalty_scale`).
 
     Parameters
     ----------
@@ -162,14 +160,10 @@ def _critical_scale_max_score(detector, X: np.ndarray, knob: str, base: float) -
     c_b : float
         Critical scale for this null sample.
     """
-    fitted = clone(detector).set_params(**{knob: 1.0}).fit(X)
-    if hasattr(fitted, "_unpenalised_change_scores"):
-        S = np.asarray(fitted._unpenalised_change_scores(X), dtype=np.float64)
-    else:
-        S = np.asarray(
-            unpenalised_scores(detector, X, knob, no_penalty_value=0.0),
-            dtype=np.float64,
-        )
+    S = np.asarray(
+        unpenalised_scores(detector, X, knob, no_penalty_value=0.0),
+        dtype=np.float64,
+    )
     max_s = float(S.max()) if S.size else 0.0
     return max(max_s, 0.0) / base
 
@@ -192,6 +186,11 @@ def _critical_scale_path_search(
     Finds ``β* = max_{k≥1} G_k/k`` where ``G_k`` is the best total cost
     reduction with ``k`` changepoints. Each iteration jumps to the exact hull
     vertex for the current penalty, converging in ~3-6 PELT fits.
+
+    This is the same cost-versus-number-of-changepoints secant walk that
+    :class:`~skchange.new_api.detectors.CROPS` uses to trace the full penalty
+    path (``threshold = (cost_high - cost_low) / (k_low - k_high)``), specialised
+    here to the single top hull vertex ``β*`` rather than every vertex.
 
     A small upward nudge (``beta* x 1e-3``) breaks the transition tie so that
     PELT at the returned scale reports zero changepoints.
@@ -382,8 +381,9 @@ def _run_single_sim(
 @validate_params(
     {
         "detector": [HasMethods(["fit", "set_params", "get_params", "predict"])],
-        "X": ["array-like"],
-        "X_calib": [None, "array-like"],
+        "n_samples": [Interval(Integral, 1, None, closed="left")],
+        "n_features": [Interval(Integral, 1, None, closed="left")],
+        "X": [None, "array-like"],
         "sampler": [str, callable, HasMethods(["sample"])],
         "level": [Interval(Real, 0, 1, closed="neither")],
         "n_simulations": [Interval(Integral, 1, None, closed="left")],
@@ -395,9 +395,10 @@ def _run_single_sim(
 )
 def calibrate_penalty_scale(
     detector,
-    X,
+    n_samples,
+    n_features,
     *,
-    X_calib=None,
+    X=None,
     sampler="permutation",
     level: float = 0.05,
     n_simulations: int = 999,
@@ -446,18 +447,23 @@ def calibrate_penalty_scale(
     detector : estimator
         A detector exposing ``fit``, ``set_params``, ``get_params``,
         ``predict``, and a scalar ``penalty_scale``. Not modified.
-    X : array-like of shape (n_samples, n_features)
-        Calibration data to sample from/based on.
-        Data to be analysed for changes. Determines the null sample length
-        and the base penalty.
-    X_calib : array-like of shape (n_calib, n_features), optional
-        Separate change-free data used as the null source for data-based
-        samplers. When ``None``, the null is drawn from ``X``. Providing clean
-        calibration data avoids conservatism when ``X`` contains a real change.
-        Ignored by parametric samplers.
+    n_samples : int
+        Number of rows of the data to be analysed *after* calibration. Every
+        null sample is drawn with this many rows, and the base penalty is
+        evaluated at this length.
+    n_features : int
+        Number of columns (features) of the data to be analysed after
+        calibration.
+    X : array-like of shape (n_calib, n_features), optional
+        Calibration data: the change-free null source that data-based samplers
+        (e.g. ``"permutation"``) resample from. Its row count ``n_calib`` need
+        not equal ``n_samples`` (but must be at least ``n_samples`` for
+        permutation without replacement); its feature count must equal
+        ``n_features``. Required for data-based samplers; ignored by parametric
+        samplers (e.g. ``"gaussian"``), which may be used with ``X=None``.
     sampler : str, sampler instance, or callable, default="permutation"
-        Null model. ``"permutation"`` resamples rows; ``"gaussian"`` draws
-        i.i.d. N(0,1). A callable must have signature
+        Null model. ``"permutation"`` resamples rows of ``X``; ``"gaussian"``
+        draws i.i.d. N(0,1). A callable must have signature
         ``f(X, n_samples, rng) -> ndarray``.
     level : float, default=0.05
         Target FWER, in ``(0, 1)``.
@@ -489,57 +495,73 @@ def calibrate_penalty_scale(
     Raises
     ------
     ValueError
-        If the detector has no single ``penalty_scale`` knob (e.g. CROPS).
+        If the detector has no single ``penalty_scale`` knob (e.g. CROPS); if a
+        data-based sampler is used without calibration data ``X``; if ``X``'s
+        feature count differs from ``n_features``; or if
+        ``calibration_strategy="max_score"`` is requested for a detector whose
+        strategy is ``"path_search"`` (e.g. PELT).
 
     Examples
     --------
-    >>> import numpy as np
     >>> from skchange.new_api.detectors import SeededBinarySegmentation
     >>> from skchange.new_api.tuning import calibrate_penalty_scale
-    >>> rng = np.random.default_rng(0)
-    >>> X = rng.normal(size=(150, 2))
     >>> scale = calibrate_penalty_scale(
-    ...     SeededBinarySegmentation(), X, n_simulations=99, random_state=0
+    ...     SeededBinarySegmentation(), 150, 2,
+    ...     sampler="gaussian", n_simulations=99, random_state=0,
     ... )
     >>> scale > 0
     True
     """
-    X = np.asarray(X, dtype=np.float64)
-    if X.ndim != 2:
-        raise ValueError(f"`X` must be 2-D, got shape {X.shape}.")
-    n_samples, n_features = X.shape
-
-    if X_calib is not None:
-        X_calib = np.asarray(X_calib, dtype=np.float64)
-        if X_calib.ndim != 2:
-            raise ValueError(f"`X_calib` must be 2-D, got shape {X_calib.shape}.")
-        if X_calib.shape[1] != n_features:
+    # Resolve the null source. Data-based samplers require calibration data;
+    # parametric samplers may run from the target shape alone.
+    if X is None:
+        if sampler_requires_data(sampler):
             raise ValueError(
-                f"`X_calib` has {X_calib.shape[1]} features but `X` has "
+                f"Sampler {sampler!r} requires calibration data. Pass "
+                f"`X=<change-free data>` with {n_features} features, or use a "
+                f"parametric sampler such as 'gaussian'."
+            )
+        # Shape carrier: parametric samplers read only the feature count.
+        null_source = np.empty((1, n_features), dtype=np.float64)
+    else:
+        null_source = np.asarray(X, dtype=np.float64)
+        if null_source.ndim != 2:
+            raise ValueError(f"`X` must be 2-D, got shape {null_source.shape}.")
+        if null_source.shape[1] != n_features:
+            raise ValueError(
+                f"`X` has {null_source.shape[1]} features but `n_features` is "
                 f"{n_features}. They must match."
             )
 
-    # Discover the knob and base penalty once (anchored to len(X)).
-    knob, base = _discover_knob(detector, X)
-
-    # Resolve the calibration strategy.
-    if calibration_strategy is None:
-        strategy = get_tags(detector).change_detector_tags.calibration_strategy
-    else:
-        strategy = calibration_strategy
-
-    sample_fn = resolve_sampler(sampler)
-    null_source = X_calib if X_calib is not None else X
-
-    # Design-B thread-safe RNG: spawn one independent child seed per simulation.
-    # The result is reproducible for a fixed random_state and invariant to n_jobs.
     if isinstance(random_state, np.random.Generator):
         entropy = int(random_state.integers(2**62))
     elif random_state is None:
         entropy = None
     else:
         entropy = int(random_state)
-    child_seeds = np.random.SeedSequence(entropy).spawn(n_simulations)
+    probe_seed, *child_seeds = np.random.SeedSequence(entropy).spawn(n_simulations + 1)
+
+    # Discover the knob and base penalty once, at the target shape. The base is
+    # the detector's own default penalty at (n_samples, n_features); it depends
+    # only on the shape, so a benign standard-normal probe of that shape yields
+    # the correct value without needing the real data.
+    X_probe = np.random.default_rng(probe_seed).standard_normal((n_samples, n_features))
+    knob, base = _discover_knob(detector, X_probe)
+
+    # Resolve the calibration strategy and guard invalid overrides.
+    natural_strategy = get_tags(detector).change_detector_tags.calibration_strategy
+    strategy = (
+        calibration_strategy if calibration_strategy is not None else (natural_strategy)
+    )
+    if strategy == "max_score" and natural_strategy == "path_search":
+        raise ValueError(
+            f"calibration_strategy='max_score' does not apply to "
+            f"{type(detector).__name__} (its calibration strategy is "
+            f"'path_search'): the single-split score underestimates the true "
+            f"critical penalty. Use 'path_search' or 'detection_count'."
+        )
+
+    sample_fn = resolve_sampler(sampler)
 
     critical_scales = Parallel(n_jobs=n_jobs)(
         delayed(_run_single_sim)(
@@ -669,10 +691,16 @@ class CalibratedDetector(BaseEstimator):
         # Discover the knob to know what parameter to set on the detector.
         knob, _ = _discover_knob(self.detector, X)
 
+        # The analysis data supplies the target shape; ``X_calib`` (when given)
+        # is the null source, otherwise the analysis data itself is resampled.
+        n_samples, n_features = X.shape
+        calib_source = X_calib if X_calib is not None else X
+
         self.penalty_scale_ = calibrate_penalty_scale(
             self.detector,
-            X,
-            X_calib=X_calib,
+            n_samples,
+            n_features,
+            X=calib_source,
             sampler=self.sampler,
             level=self.level,
             n_simulations=self.n_simulations,

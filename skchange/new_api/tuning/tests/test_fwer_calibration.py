@@ -41,8 +41,124 @@ def _null_X(n=60, p=2, seed=0):
     return np.random.default_rng(seed).normal(size=(n, p))
 
 
+def _calibrate(detector, X=None, *, X_calib=None, **kwargs):
+    """Adapter onto the ``(n_samples, n_features)`` signature.
+
+    Mirrors the pre-refactor call style used throughout these behavioural
+    tests: the first data array ``X`` supplies the target shape; ``X_calib``
+    (if given) is the null source, otherwise ``X`` itself is. New-signature
+    behaviour is exercised directly in the "target-shape signature" section
+    below.
+    """
+    if X is None:
+        X = _null_X()
+    n_samples, n_features = X.shape
+    null = X_calib if X_calib is not None else X
+    return calibrate_penalty_scale(detector, n_samples, n_features, X=null, **kwargs)
+
+
 # --------------------------------------------------------------------------- #
-# Task 3.1 — Knob discovery
+# Target-shape signature: calibrate from (n_samples, n_features), X optional
+# --------------------------------------------------------------------------- #
+
+
+def test_calibrate_from_shape_alone_with_gaussian_sampler():
+    """A parametric sampler needs no data: shape alone must suffice."""
+    scale = calibrate_penalty_scale(
+        SeededBinarySegmentation(),
+        60,
+        2,
+        sampler="gaussian",
+        n_simulations=_FAST_N_SIMS,
+        random_state=0,
+    )
+    assert isinstance(scale, float) and scale > 0.0
+
+
+def test_calibration_data_may_be_longer_than_target():
+    """X may have more rows than n_samples; null draws use n_samples rows."""
+    X_calib = _null_X(n=300, p=2)
+    scale = calibrate_penalty_scale(
+        SeededBinarySegmentation(),
+        60,
+        2,
+        X=X_calib,
+        sampler="permutation",
+        n_simulations=_FAST_N_SIMS,
+        random_state=0,
+    )
+    assert scale > 0.0
+
+
+def test_data_sampler_without_calibration_data_raises():
+    """A data-based sampler with X=None must raise a clear error."""
+    with pytest.raises(ValueError, match="calibration data|`X`|requires data"):
+        calibrate_penalty_scale(
+            SeededBinarySegmentation(),
+            60,
+            2,
+            sampler="permutation",
+            n_simulations=_FAST_N_SIMS,
+        )
+
+
+def test_calibration_data_wrong_n_features_raises():
+    """X with a feature count different from n_features must raise."""
+    with pytest.raises(ValueError, match="features"):
+        calibrate_penalty_scale(
+            SeededBinarySegmentation(),
+            60,
+            2,
+            X=_null_X(n=60, p=3),
+            sampler="permutation",
+            n_simulations=_FAST_N_SIMS,
+        )
+
+
+def test_base_penalty_depends_only_on_target_shape():
+    """The discovered base must equal the detector's default penalty at (N, p)
+    and be independent of the probe/calibration data values."""
+    N, p = 70, 3
+    det = SeededBinarySegmentation()
+
+    knob, base_a = _discover_knob(det, np.random.default_rng(0).standard_normal((N, p)))
+    _, base_b = _discover_knob(det, np.random.default_rng(999).standard_normal((N, p)))
+
+    # Value-independent: two different probe draws give the same base.
+    assert base_a == pytest.approx(base_b, rel=1e-12)
+
+    # Equals the detector's own default penalty at that shape.
+    fitted = (
+        clone(det)
+        .set_params(**{knob: 1.0})
+        .fit(np.random.default_rng(1).standard_normal((N, p)))
+    )
+    assert fitted.penalty_ == pytest.approx(base_a, rel=1e-10)
+
+
+def test_max_score_forced_on_pelt_raises():
+    """Forcing max_score on PELT must raise, naming valid strategies."""
+    with pytest.raises(ValueError, match="max_score"):
+        calibrate_penalty_scale(
+            PELT(),
+            60,
+            2,
+            X=_null_X(),
+            calibration_strategy="max_score",
+            n_simulations=_FAST_N_SIMS,
+        )
+
+
+def test_pelt_default_strategy_still_calibrates():
+    """PELT without an override still calibrates via path_search."""
+    scale = calibrate_penalty_scale(
+        PELT(), 60, 2, X=_null_X(), n_simulations=_FAST_N_SIMS, random_state=0
+    )
+    assert scale > 0.0
+
+
+# --------------------------------------------------------------------------- #
+# Knob discovery
 # --------------------------------------------------------------------------- #
 
 
@@ -86,7 +202,7 @@ def test_knob_discovery_base_equals_penalty_at_scale_one():
 
 
 # --------------------------------------------------------------------------- #
-# Task 3.2 — max_score closed form c_b = max(S) / base
+# max_score closed form c_b = max(S) / base
 # --------------------------------------------------------------------------- #
 
 
@@ -121,41 +237,6 @@ def test_max_score_returns_zero_when_silent_at_scale_zero():
     assert base is not None
     c = _critical_scale_max_score(det, X, knob, base)
     assert c >= 0.0
-
-
-# --------------------------------------------------------------------------- #
-# Task 3.3 — PELT single-split hook (already covered in test_pelt.py)
-# 3.4 — PELT max_score ≈ detection_count on a convex cost
-# --------------------------------------------------------------------------- #
-
-
-def test_pelt_max_score_not_greater_than_detection_count():
-    """max_score (single-split bound) must not exceed detection_count on most samples.
-
-    PELT can combine multiple splits, so the single-split score underestimates
-    the true critical penalty on average. This is why PELT uses detection_count
-    as its calibration strategy rather than max_score.
-    """
-    from skchange.new_api.tuning._fwer_calibration import (
-        _critical_scale_count,
-        _critical_scale_max_score,
-    )
-
-    rng = np.random.default_rng(7)
-    n_checks = 20
-    n_lower = 0
-    for _ in range(n_checks):
-        X = rng.normal(size=(80, 2))
-        det = PELT()
-        knob, base = _discover_knob(det, X)
-        assert base is not None
-        c_max = _critical_scale_max_score(det, X, knob, base)
-        c_count = _critical_scale_count(det, X, knob)
-        if c_max < c_count:
-            n_lower += 1
-
-    # max_score is strictly lower than detection_count on most samples.
-    assert n_lower >= n_checks // 2
 
 
 def test_detection_count_handles_non_monotone_silent_at_zero():
@@ -201,14 +282,14 @@ def test_detection_count_handles_non_monotone_silent_at_zero():
 
 
 # --------------------------------------------------------------------------- #
-# Task 4.1 — calibrate_penalty_scale: positive multiplier, level monotone,
-#             reproducibility, per-detector, CROPS rejection, ESAC works
+# calibrate_penalty_scale: positive multiplier, level monotone,
+# reproducibility, per-detector, CROPS rejection, ESAC works
 # --------------------------------------------------------------------------- #
 
 
 @pytest.mark.parametrize("detector_cls", _ALL_SUPPORTED, ids=lambda c: c.__name__)
 def test_returns_positive_float(detector_cls):
-    scale = calibrate_penalty_scale(
+    scale = _calibrate(
         detector_cls(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0
     )
     assert isinstance(scale, float)
@@ -217,10 +298,10 @@ def test_returns_positive_float(detector_cls):
 
 def test_reproducible_with_seed():
     X = _null_X()
-    a = calibrate_penalty_scale(
+    a = _calibrate(
         SeededBinarySegmentation(), X, n_simulations=_FAST_N_SIMS, random_state=42
     )
-    b = calibrate_penalty_scale(
+    b = _calibrate(
         SeededBinarySegmentation(), X, n_simulations=_FAST_N_SIMS, random_state=42
     )
     assert a == b
@@ -228,14 +309,14 @@ def test_reproducible_with_seed():
 
 def test_lower_level_gives_larger_scale():
     X = _null_X()
-    strict = calibrate_penalty_scale(
+    strict = _calibrate(
         SeededBinarySegmentation(),
         X,
         level=0.01,
         n_simulations=_MONOTONE_N_SIMS,
         random_state=0,
     )
-    loose = calibrate_penalty_scale(
+    loose = _calibrate(
         SeededBinarySegmentation(),
         X,
         level=0.20,
@@ -246,7 +327,7 @@ def test_lower_level_gives_larger_scale():
 
 
 def test_gaussian_sampler_runs():
-    scale = calibrate_penalty_scale(
+    scale = _calibrate(
         SeededBinarySegmentation(),
         _null_X(),
         sampler="gaussian",
@@ -258,14 +339,14 @@ def test_gaussian_sampler_runs():
 
 def test_sampler_instance_and_callable():
     X = _null_X()
-    s1 = calibrate_penalty_scale(
+    s1 = _calibrate(
         SeededBinarySegmentation(),
         X,
         sampler=GaussianSampler(std=1.0),
         n_simulations=_FAST_N_SIMS,
         random_state=0,
     )
-    s2 = calibrate_penalty_scale(
+    s2 = _calibrate(
         SeededBinarySegmentation(),
         X,
         sampler=lambda X, n, rng: rng.normal(size=(n, X.shape[1])),
@@ -279,7 +360,7 @@ def test_detector_not_modified_by_calibration():
     """The input detector's parameters must be unchanged after calibration."""
     det = SeededBinarySegmentation(penalty_scale=3.0)
     original_scale = det.penalty_scale
-    calibrate_penalty_scale(det, _null_X(), n_simulations=20, random_state=0)
+    _calibrate(det, _null_X(), n_simulations=20, random_state=0)
     assert det.penalty_scale == original_scale
 
 
@@ -287,13 +368,13 @@ def test_x_calib_clean_vs_contaminated():
     rng = np.random.default_rng(0)
     X_contaminated = np.vstack([rng.normal(0, 1, (60, 2)), rng.normal(6, 1, (60, 2))])
     X_clean = rng.normal(0, 1, (400, 2))
-    dirty = calibrate_penalty_scale(
+    dirty = _calibrate(
         SeededBinarySegmentation(),
         X_contaminated,
         n_simulations=_MONOTONE_N_SIMS,
         random_state=1,
     )
-    clean = calibrate_penalty_scale(
+    clean = _calibrate(
         SeededBinarySegmentation(),
         X_contaminated,
         X_calib=X_clean,
@@ -305,7 +386,7 @@ def test_x_calib_clean_vs_contaminated():
 
 def test_x_calib_feature_mismatch_raises():
     with pytest.raises(ValueError, match="features"):
-        calibrate_penalty_scale(
+        _calibrate(
             SeededBinarySegmentation(),
             _null_X(p=2),
             X_calib=_null_X(p=3),
@@ -315,12 +396,12 @@ def test_x_calib_feature_mismatch_raises():
 
 def test_crops_raises_unsupported_error():
     with pytest.raises(ValueError, match="penalty_scale"):
-        calibrate_penalty_scale(CROPS(), _null_X(), n_simulations=10)
+        _calibrate(CROPS(), _null_X(), n_simulations=10)
 
 
 def test_esac_based_detector_is_calibratable():
     """ESACScore-based detector must now return a positive multiplier."""
-    scale = calibrate_penalty_scale(
+    scale = _calibrate(
         SeededBinarySegmentation(change_score=ESACScore()),
         _null_X(n=200, p=5),
         sampler="gaussian",
@@ -331,35 +412,27 @@ def test_esac_based_detector_is_calibratable():
 
 
 def test_capa_is_calibratable():
-    scale = calibrate_penalty_scale(
-        CAPA(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0
-    )
+    scale = _calibrate(CAPA(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0)
     assert scale > 0.0
 
 
 def test_pelt_is_calibratable():
-    scale = calibrate_penalty_scale(
-        PELT(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0
-    )
+    scale = _calibrate(PELT(), _null_X(), n_simulations=_FAST_N_SIMS, random_state=0)
     assert scale > 0.0
 
 
 def test_invalid_level_raises():
     with pytest.raises(ValueError):
-        calibrate_penalty_scale(
-            SeededBinarySegmentation(), _null_X(), level=0.0, n_simulations=10
-        )
+        _calibrate(SeededBinarySegmentation(), _null_X(), level=0.0, n_simulations=10)
 
 
 def test_invalid_level_gt_one_raises():
     with pytest.raises(ValueError):
-        calibrate_penalty_scale(
-            SeededBinarySegmentation(), _null_X(), level=1.0, n_simulations=10
-        )
+        _calibrate(SeededBinarySegmentation(), _null_X(), level=1.0, n_simulations=10)
 
 
 # --------------------------------------------------------------------------- #
-# Task 4.3 — CalibratedDetector
+# CalibratedDetector
 # --------------------------------------------------------------------------- #
 
 
@@ -431,7 +504,7 @@ def test_calibrated_detector_pelt():
 
 
 # --------------------------------------------------------------------------- #
-# Task 5.1 — Slow: empirical FWER control
+# Slow: empirical FWER control
 # --------------------------------------------------------------------------- #
 
 
@@ -441,7 +514,7 @@ def test_calibrated_detector_pelt():
 def test_empirical_fwer_controlled(detector_cls, sampler):
     n, p, level, tol = 120, 2, 0.05, 0.04
     X = _null_X(n=n, p=p, seed=0)
-    scale = calibrate_penalty_scale(
+    scale = _calibrate(
         detector_cls(),
         X,
         sampler=sampler,
@@ -470,7 +543,7 @@ def test_calibration_targets_level_not_zero(detector_cls):
     """Calibrated FWER should be ~level, not zero (using (1-level) quantile)."""
     n, p, level, tol = 120, 2, 0.05, 0.04
     X = _null_X(n=n, p=p, seed=0)
-    scale = calibrate_penalty_scale(
+    scale = _calibrate(
         detector_cls(),
         X,
         sampler="gaussian",
@@ -495,7 +568,7 @@ def test_calibration_targets_level_not_zero(detector_cls):
 
 
 # --------------------------------------------------------------------------- #
-# Task 5.2 — X_calib contamination
+# X_calib contamination
 # --------------------------------------------------------------------------- #
 
 
@@ -505,13 +578,13 @@ def test_x_calib_clean_gives_scale_le_contaminated():
     X_contaminated = np.vstack([rng.normal(0, 1, (60, 2)), rng.normal(8, 1, (60, 2))])
     X_clean = rng.normal(0, 1, (400, 2))
 
-    scale_dirty = calibrate_penalty_scale(
+    scale_dirty = _calibrate(
         SeededBinarySegmentation(),
         X_contaminated,
         n_simulations=_MONOTONE_N_SIMS,
         random_state=3,
     )
-    scale_clean = calibrate_penalty_scale(
+    scale_clean = _calibrate(
         SeededBinarySegmentation(),
         X_contaminated,
         X_calib=X_clean,
@@ -522,21 +595,21 @@ def test_x_calib_clean_gives_scale_le_contaminated():
 
 
 # --------------------------------------------------------------------------- #
-# Tasks 3.1-3.4 - n_jobs parallel calibration + thread-safe RNG
+# n_jobs parallel calibration + thread-safe RNG
 # --------------------------------------------------------------------------- #
 
 
 def test_calibrate_n_jobs_invariant():
     """n_jobs=1 and n_jobs=2 must return the same scale for the same random_state."""
     X = _null_X()
-    s1 = calibrate_penalty_scale(
+    s1 = _calibrate(
         SeededBinarySegmentation(),
         X,
         n_simulations=_FAST_N_SIMS,
         random_state=42,
         n_jobs=1,
     )
-    s2 = calibrate_penalty_scale(
+    s2 = _calibrate(
         SeededBinarySegmentation(),
         X,
         n_simulations=_FAST_N_SIMS,
@@ -549,14 +622,14 @@ def test_calibrate_n_jobs_invariant():
 def test_calibrate_reproducible_with_n_jobs():
     """Same random_state must give the same result across two n_jobs=2 runs."""
     X = _null_X()
-    a = calibrate_penalty_scale(
+    a = _calibrate(
         SeededBinarySegmentation(),
         X,
         n_simulations=_FAST_N_SIMS,
         random_state=7,
         n_jobs=2,
     )
-    b = calibrate_penalty_scale(
+    b = _calibrate(
         SeededBinarySegmentation(),
         X,
         n_simulations=_FAST_N_SIMS,
@@ -571,15 +644,13 @@ def test_random_state_types_all_accepted():
     X = _null_X()
     det = SeededBinarySegmentation()
 
-    s_int = calibrate_penalty_scale(det, X, n_simulations=20, random_state=0)
+    s_int = _calibrate(det, X, n_simulations=20, random_state=0)
     assert isinstance(s_int, float) and s_int > 0
 
-    s_none = calibrate_penalty_scale(det, X, n_simulations=20, random_state=None)
+    s_none = _calibrate(det, X, n_simulations=20, random_state=None)
     assert isinstance(s_none, float) and s_none > 0
 
-    s_gen = calibrate_penalty_scale(
-        det, X, n_simulations=20, random_state=np.random.default_rng(7)
-    )
+    s_gen = _calibrate(det, X, n_simulations=20, random_state=np.random.default_rng(7))
     assert isinstance(s_gen, float) and s_gen > 0
 
 
@@ -606,5 +677,5 @@ def test_detector_not_modified_by_parallel_calibration():
     """The original detector must be unchanged when calibration runs in parallel."""
     det = SeededBinarySegmentation(penalty_scale=3.0)
     original_scale = det.penalty_scale
-    calibrate_penalty_scale(det, _null_X(), n_simulations=20, random_state=0, n_jobs=2)
+    _calibrate(det, _null_X(), n_simulations=20, random_state=0, n_jobs=2)
     assert det.penalty_scale == original_scale

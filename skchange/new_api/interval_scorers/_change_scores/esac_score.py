@@ -97,14 +97,23 @@ class ESACScore(BaseChangeScore):
 
     Parameters
     ----------
+    penalty_scale : float, default=1.0
+        A single master multiplier applied on top of the whole penalty
+        function. It scales the dense and sparse constants
+        (``penalty_scale_dense`` and ``penalty_scale_sparse``) by the *same*
+        factor, so their ratio is preserved. This is the knob FWER calibration
+        tunes; ``1.0`` recovers the reference penalty.
     penalty_scale_dense : float, default=2.0
         The leading constant in the penalty function taken as in (8) in [1]_ in
         the dense case where the candidate sparsity level ``t`` is greater than
-        or equal to ``sqrt(p * log(n))``.
+        or equal to ``sqrt(p * log(n))``. Left at its theoretically motivated
+        default; ``penalty_scale`` rescales it together with the sparse
+        constant.
     penalty_scale_sparse : float, default=1.5
         The leading constant in the penalty function taken as in (8) in [1]_ in
         the sparse case where the candidate sparsity level ``t`` is less than
-        ``sqrt(p * log(n))``.
+        ``sqrt(p * log(n))``. Left at its theoretically motivated default;
+        ``penalty_scale`` rescales it together with the dense constant.
 
     Attributes
     ----------
@@ -126,6 +135,13 @@ class ESACScore(BaseChangeScore):
     mean-centering make it self-penalised). The ``non_negative_scores`` tag is
     set to ``False`` because the score can be negative when no sparse signal
     exceeds the internal thresholds.
+
+    The penalty has two regime constants (``penalty_scale_dense`` and
+    ``penalty_scale_sparse``) rather than one. Calibration does not touch them
+    individually: the single master ``penalty_scale`` multiplies the assembled
+    penalty vector, rescaling both regimes together. This keeps their relative
+    sizes fixed while exposing one dial to tune. Adjust the dense/sparse
+    constants directly only if you specifically want to change their ratio.
 
     References
     ----------
