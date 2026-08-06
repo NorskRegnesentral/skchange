@@ -157,7 +157,7 @@ _NAMED_SAMPLERS = {
 }
 
 
-def _resolve_sampler(sampler):
+def resolve_sampler(sampler):
     """Resolve a sampler spec to a callable ``(X, n_samples, rng) -> ndarray``.
 
     Accepts a string alias (``"permutation"``, ``"gaussian"``), an object with

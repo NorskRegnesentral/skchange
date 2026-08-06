@@ -10,7 +10,7 @@ from skchange.new_api.tuning import (
     GaussianSampler,
     PermutationSampler,
 )
-from skchange.new_api.tuning._null_models import _resolve_sampler
+from skchange.new_api.tuning._null_models import resolve_sampler
 
 # --------------------------------------------------------------------------- #
 # PermutationSampler
@@ -78,39 +78,39 @@ def test_gaussian_sampler_ignores_reference_values():
 
 
 # --------------------------------------------------------------------------- #
-# _resolve_sampler
+# resolve_sampler
 # --------------------------------------------------------------------------- #
 
 
 def test_resolve_sampler_string_aliases():
     rng = np.random.default_rng(0)
     X = rng.normal(size=(10, 2))
-    perm_fn = _resolve_sampler("permutation")
-    gauss_fn = _resolve_sampler("gaussian")
+    perm_fn = resolve_sampler("permutation")
+    gauss_fn = resolve_sampler("gaussian")
     assert perm_fn(X, 5, rng).shape == (5, 2)
     assert gauss_fn(X, 5, rng).shape == (5, 2)
 
 
 def test_resolve_sampler_instance_returns_bound_sample_method():
     inst = PermutationSampler(replace=True)
-    fn = _resolve_sampler(inst)
+    fn = resolve_sampler(inst)
     # The returned callable dispatches to the instance's `sample`.
     assert fn.__self__ is inst  # type: ignore[attr-defined]
 
 
 def test_resolve_sampler_callable_passthrough():
     f = lambda X, n, rng: rng.normal(size=(n, X.shape[1]))  # noqa: E731
-    assert _resolve_sampler(f) is f
+    assert resolve_sampler(f) is f
 
 
 def test_resolve_sampler_unknown_string_raises():
     with pytest.raises(ValueError, match="Unknown sampler"):
-        _resolve_sampler("nope")
+        resolve_sampler("nope")
 
 
 def test_resolve_sampler_bad_type_raises():
     with pytest.raises(TypeError):
-        _resolve_sampler(123)
+        resolve_sampler(123)
 
 
 # --------------------------------------------------------------------------- #

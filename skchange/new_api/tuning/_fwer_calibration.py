@@ -44,7 +44,7 @@ from sklearn.utils import get_tags
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.parallel import Parallel, delayed
 
-from skchange.new_api.tuning._null_models import _resolve_sampler
+from skchange.new_api.tuning._null_models import resolve_sampler
 from skchange.new_api.tuning._penalty_calibration import unpenalised_scores
 from skchange.new_api.utils._param_validation import (
     HasMethods,
@@ -528,7 +528,7 @@ def calibrate_penalty_scale(
     else:
         strategy = calibration_strategy
 
-    sample_fn = _resolve_sampler(sampler)
+    sample_fn = resolve_sampler(sampler)
     null_source = X_calib if X_calib is not None else X
 
     # Design-B thread-safe RNG: spawn one independent child seed per simulation.
