@@ -133,8 +133,6 @@ def test_cached_and_uncached_multivariate_gaussian_variants_are_equal(
     uncached_scorer = scorer_class(store_cov=False, **scorer_kwargs).fit(X)
 
     actual = cached_scorer.evaluate(cached_scorer.precompute(X), interval_specs)
-    expected = uncached_scorer.evaluate(
-        uncached_scorer.precompute(X), interval_specs
-    )
+    expected = uncached_scorer.evaluate(uncached_scorer.precompute(X), interval_specs)
 
     np.testing.assert_allclose(actual, expected, rtol=1e-10, atol=1e-10)
