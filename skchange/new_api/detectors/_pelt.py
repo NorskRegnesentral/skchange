@@ -565,7 +565,7 @@ class PELT(BaseChangeDetector):
     >>> X = np.concatenate([rng.normal(0, 1, (100, 1)),
     ...                     rng.normal(10, 1, (100, 1))])
     >>> detector = PELT()
-    >>> detector.fit(X).predict_changepoints(X)
+    >>> detector.fit(X).predict(X)
     array([100])
     """
 
@@ -736,7 +736,7 @@ class PELT(BaseChangeDetector):
             "interval_costs": pelt_result.interval_costs,
         }
 
-    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
+    def predict(self, X: ArrayLike) -> np.ndarray:
         """Detect changepoints in a time series.
 
         Parameters
@@ -747,7 +747,10 @@ class PELT(BaseChangeDetector):
         Returns
         -------
         changepoints : np.ndarray of shape (n_changepoints,)
-            Sorted integer indices of detected changepoints.
+            Sorted integer indices of detected changepoints. A changepoint is defined
+            as the first index of a segment, such that the data segments are given
+            by ``X[:cpt[0]], X[cpt[0]:cpt[1]], ..., X[cpt[-1]:]``.
+            Empty array if no changepoints are detected.
         """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)

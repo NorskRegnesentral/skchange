@@ -548,7 +548,7 @@ class MovingWindow(BaseChangeDetector):
             "bws": bws,
         }
 
-    def predict_changepoints(self, X: ArrayLike) -> np.ndarray:
+    def predict(self, X: ArrayLike) -> np.ndarray:
         """Detect changepoints in a time series.
 
         Parameters
@@ -559,9 +559,9 @@ class MovingWindow(BaseChangeDetector):
         Returns
         -------
         changepoints : np.ndarray of shape (n_changepoints,)
-            Sorted integer indices of detected changepoints. A changepoint at
-            index ``t`` means sample ``t`` is the first sample of a new segment,
-            i.e. a structural break occurs between samples ``t-1`` and ``t``.
+            Sorted integer indices of detected changepoints. A changepoint is defined
+            as the first index of a segment, such that the data segments are given
+            by ``X[:cpt[0]], X[cpt[0]:cpt[1]], ..., X[cpt[-1]:]``.
             Empty array if no changepoints are detected.
         """
         return self.predict_all(X)["changepoints"]

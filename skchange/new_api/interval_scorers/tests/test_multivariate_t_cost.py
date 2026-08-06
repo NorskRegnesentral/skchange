@@ -712,7 +712,7 @@ def test_MultiVariateTCost_with_PELT(
     change_detector = PELT(cost=mv_t_cost, min_segment_length=2 * p + 1)
 
     change_detector.fit(X)
-    change_points = change_detector.predict_changepoints(X)
+    change_points = change_detector.predict(X)
 
     fitted_dof = change_detector.cost_.dof_
 
@@ -756,7 +756,7 @@ def test_MultiVariateTCost_with_moving_window(
     )
 
     change_detector.fit(X)
-    change_points = change_detector.predict_changepoints(X)
+    change_points = change_detector.predict(X)
 
     fitted_dof = change_detector.change_score_.cost_.dof_
 

@@ -96,87 +96,40 @@ def test_detector_fit_does_not_alter_input(estimator):
 
 
 # ---------------------------------------------------------------------------
-# predict_changepoints() contract tests
+# predict() contract tests
 # ---------------------------------------------------------------------------
 
 
 @_all_detectors
-def test_detector_predict_changepoints_output_type(estimator):
-    """predict_changepoints() must return a 1-D integer ndarray."""
+def test_detector_predict_output_type(estimator):
+    """predict() must return a 1-D integer ndarray of changepoint indices."""
     X = make_single_change_X(estimator)
     estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
+    cpts = estimator.predict(X)
     assert isinstance(cpts, np.ndarray)
     assert cpts.ndim == 1
     assert np.issubdtype(cpts.dtype, np.integer)
 
 
 @_all_detectors
-def test_detector_predict_changepoints_in_range(estimator):
-    """All predicted changepoints must be valid sample indices."""
+def test_detector_predict_in_range(estimator):
+    """All predicted changepoints must lie in the closed interval [1, n_samples-1]."""
     X = make_single_change_X(estimator)
     estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
-    assert np.all(cpts >= 1) and np.all(cpts <= X.shape[0] - 1)
+    cpts = estimator.predict(X)
+    n = X.shape[0]
+    assert np.all(
+        (cpts >= 1) & (cpts <= n - 1)
+    ), f"Changepoints {cpts} are outside the closed interval [1, {n - 1}]."
 
 
 @_all_detectors
-def test_detector_predict_changepoints_sorted(estimator):
-    """predict_changepoints() must return strictly sorted indices."""
+def test_detector_predict_sorted(estimator):
+    """predict() must return strictly sorted indices."""
     X = make_single_change_X(estimator)
     estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
+    cpts = estimator.predict(X)
     assert np.all(np.diff(cpts) > 0), "Changepoint indices must be strictly sorted."
-
-
-@_all_detectors
-def test_detector_predict_changepoints_does_not_alter_input(estimator):
-    """predict_changepoints() must not mutate the input array."""
-    X = make_single_change_X(estimator)
-    estimator.fit(X)
-    X_copy = X.copy()
-    estimator.predict_changepoints(X)
-    np.testing.assert_array_equal(X, X_copy)
-
-
-# ---------------------------------------------------------------------------
-# predict() contract tests
-# ---------------------------------------------------------------------------
-
-
-@_all_detectors
-def test_detector_predict_output_shape(estimator):
-    """predict() must return a 1-D integer array of length n_samples."""
-    X = make_single_change_X(estimator)
-    estimator.fit(X)
-    labels = estimator.predict(X)
-    assert isinstance(labels, np.ndarray)
-    assert labels.shape == (X.shape[0],)
-    assert np.issubdtype(labels.dtype, np.integer)
-
-
-@_all_detectors
-def test_detector_predict_labels_contiguous(estimator):
-    """predict() labels must be 0-indexed and contiguous integers."""
-    X = make_single_change_X(estimator)
-    estimator.fit(X)
-    labels = estimator.predict(X)
-    unique = np.unique(labels)
-    assert unique[0] == 0
-    assert np.array_equal(unique, np.arange(len(unique)))
-
-
-@_all_detectors
-def test_detector_predict_consistent_with_predict_changepoints(estimator):
-    """predict() segment boundaries must match predict_changepoints() indices."""
-    X = make_single_change_X(estimator)
-    estimator.fit(X)
-    labels = estimator.predict(X)
-    cpts = estimator.predict_changepoints(X)
-    for cpt in cpts:
-        assert (
-            labels[cpt - 1] != labels[cpt]
-        ), f"Expected label change at changepoint {cpt}."
 
 
 @_all_detectors
@@ -187,23 +140,6 @@ def test_detector_predict_does_not_alter_input(estimator):
     X_copy = X.copy()
     estimator.predict(X)
     np.testing.assert_array_equal(X, X_copy)
-
-
-@_all_detectors
-def test_detector_predict_label_count(estimator):
-    """The number of unique labels must equal to or less than n_changepoints + 1.
-
-    Labels may reoccur later in a sequence, thus <= and not ==.
-    """
-    X = make_single_change_X(estimator)
-    estimator.fit(X)
-    labels = estimator.predict(X)
-    cpts = estimator.predict_changepoints(X)
-    n_unique = len(np.unique(labels))
-    assert n_unique <= len(cpts) + 1, (
-        f"Expected <= {len(cpts) + 1} unique labels for {len(cpts)} changepoints, "
-        f"got {n_unique}."
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -290,9 +226,9 @@ def test_detector_fit_predict_equals_fit_then_predict(estimator):
     """fit_predict() must give the same result as fit() then predict()."""
     X = make_single_change_X(estimator)
     cloned = clone(estimator)
-    labels_combined = estimator.fit_predict(X)
-    labels_separate = cloned.fit(X).predict(X)
-    np.testing.assert_array_equal(labels_combined, labels_separate)
+    cpts_combined = estimator.fit_predict(X)
+    cpts_separate = cloned.fit(X).predict(X)
+    np.testing.assert_array_equal(cpts_combined, cpts_separate)
 
 
 # ---------------------------------------------------------------------------
@@ -305,7 +241,7 @@ def test_detector_finds_single_changepoint(estimator):
     """Detectors must find the single changepoint in a simple two-segment problem."""
     X = make_single_change_X(estimator)
     estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
+    cpts = estimator.predict(X)
     assert len(cpts) == 1, f"Expected 1 changepoint, got {len(cpts)}: {cpts}"
     assert (
         abs(cpts[0] - CHANGEPOINT) <= 6
@@ -317,7 +253,7 @@ def test_detector_finds_no_changepoint(estimator):
     """Detectors must not flag changepoints in stationary (no-change) data."""
     X = make_no_change_X(estimator)
     estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
+    cpts = estimator.predict(X)
     assert len(cpts) == 0, f"Expected 0 changepoints, got {len(cpts)}: {cpts}"
 
 
@@ -330,13 +266,17 @@ def test_detector_finds_no_changepoint(estimator):
 def test_detector_runs_on_multivariate(estimator):
     """Detectors that accept multivariate input must run end-to-end on n_features=3.
 
-    A minimal smoke test: fit, then predict_changepoints. No assertions on the
+    A minimal smoke test: fit, then predict. No assertions on the
     result other than the standard output contract.
     """
     if not estimator.__sklearn_tags__().input_tags.multivariate:
         pytest.skip("estimator does not support multivariate input")
     X = make_single_change_X(estimator, n_features=3)
     estimator.fit(X)
-    cpts = estimator.predict_changepoints(X)
+    cpts = estimator.predict(X)
     assert isinstance(cpts, np.ndarray)
     assert cpts.ndim == 1
+    n = X.shape[0]
+    assert np.all(
+        (cpts >= 1) & (cpts <= n - 1)
+    ), f"Changepoints {cpts} are outside the closed interval [1, {n - 1}]."

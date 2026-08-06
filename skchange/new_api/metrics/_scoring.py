@@ -1,7 +1,7 @@
 """Detector scorers and a metric-to-scorer adapter.
 
-A *scorer* is a callable ``(detector, X, y=None) -> float`` that evaluates a
-fitted detector on data. This module provides:
+A *scorer* in the sklearn sense is a callable ``(detector, X, y=None) -> float`` that
+evaluates a fitted detector on data. This module provides:
 
 .. note::
     Unlike sklearn scorers, scorers here are **not** required to follow the
@@ -15,7 +15,7 @@ from skchange.new_api.utils._param_validation import validate_params
 
 
 def n_changepoints(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
-    return float(len(detector.predict_changepoints(X)))
+    return float(len(detector.predict(X)))
 
 
 def n_segment_anomalies(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
@@ -23,7 +23,7 @@ def n_segment_anomalies(detector, X: ArrayLike, y: ArrayLike | None = None) -> f
 
 
 def n_segments(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
-    return float(len(detector.predict_changepoints(X)) + 1)
+    return float(len(detector.predict(X)) + 1)
 
 
 BUILTIN_SCORERS: dict[str, Callable[[Any, ArrayLike, ArrayLike | None], float]] = {
@@ -54,30 +54,29 @@ def resolve_scoring(
 def make_detector_scorer(
     metric: Callable,
     *,
-    response_method: str = "predict_changepoints",
+    response_method: str = "predict",
 ) -> Callable[[Any, ArrayLike, ArrayLike | None], float]:
-    """Wrap a ``(y_true, y_pred) -> float`` metric as a detector scorer.
+    """Wrap a metric as a detector scorer.
 
     Returns a callable ``(detector, X, y) -> float`` that calls
-    ``response_method`` on ``detector`` and forwards ``(y, y_pred)`` to
-    ``metric``. Mirrors :func:`sklearn.metrics.make_scorer`'s
-    ``response_method`` argument.
+    ``response_method`` on ``detector`` and forwards
+    ``(y, y_pred, n_samples=len(X))`` to ``metric``. Mirrors
+    :func:`sklearn.metrics.make_scorer`'s ``response_method`` argument.
 
     Parameters
     ----------
     metric : callable
         A metric from :mod:`skchange.new_api.metrics` with signature
-        ``(y_true, y_pred) -> float``.
-    response_method : str, default="predict_changepoints"
+        ``(y_true, y_pred, n_samples, ...)``.
+    response_method : str, default="predict"
         Name of the detector method that supplies ``y_pred``. Typical
-        values: ``"predict_changepoints"``, ``"predict_segment_anomalies"``,
-        ``"predict"``.
+        values: ``"predict"``, ``"predict_segment_anomalies"``.
     """
 
     def scorer(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
         if y is None:
             raise ValueError("`y` is required for metric-based scorers; got None.")
         y_pred = getattr(detector, response_method)(X)
-        return float(metric(y, y_pred))
+        return float(metric(y, y_pred, n_samples=len(X)))
 
     return scorer
