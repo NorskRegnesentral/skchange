@@ -44,7 +44,7 @@ from sklearn.utils import get_tags
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.parallel import Parallel, delayed
 
-from skchange.new_api.tuning._null_models import make_null_draw
+from skchange.new_api.tuning._null_models import _resolve_sampler
 from skchange.new_api.tuning._penalty_calibration import unpenalised_scores
 from skchange.new_api.utils._param_validation import (
     HasMethods,
@@ -353,7 +353,18 @@ def _compute_critical_scale(
 _VALID_STRATEGIES = {"max_score", "detection_count", "path_search"}
 
 
-def _run_single_sim(seed, draw_fn, detector, knob, base, strategy, max_scale, rtol):
+def _run_single_sim(
+    seed,
+    sample_fn,
+    null_source,
+    n_samples,
+    detector,
+    knob,
+    base,
+    strategy,
+    max_scale,
+    rtol,
+):
     """Execute one null-sample critical-scale simulation.
 
     Called in parallel by ``calibrate_penalty_scale``. Each invocation draws
@@ -362,7 +373,7 @@ def _run_single_sim(seed, draw_fn, detector, knob, base, strategy, max_scale, rt
     RNG state between parallel tasks.
     """
     rng = np.random.default_rng(seed)
-    X_null = draw_fn(rng)
+    X_null = sample_fn(null_source, n_samples, rng)
     return _compute_critical_scale(
         detector, X_null, knob, base, strategy, max_scale, rtol
     )
@@ -447,7 +458,7 @@ def calibrate_penalty_scale(
     sampler : str, sampler instance, or callable, default="permutation"
         Null model. ``"permutation"`` resamples rows; ``"gaussian"`` draws
         i.i.d. N(0,1). A callable must have signature
-        ``f(n_samples, n_features, rng) -> ndarray``.
+        ``f(X, n_samples, rng) -> ndarray``.
     level : float, default=0.05
         Target FWER, in ``(0, 1)``.
     n_simulations : int, default=999
@@ -517,7 +528,8 @@ def calibrate_penalty_scale(
     else:
         strategy = calibration_strategy
 
-    draw = make_null_draw(sampler, X, X_calib, n_samples, n_features)
+    sample_fn = _resolve_sampler(sampler)
+    null_source = X_calib if X_calib is not None else X
 
     # Design-B thread-safe RNG: spawn one independent child seed per simulation.
     # The result is reproducible for a fixed random_state and invariant to n_jobs.
@@ -531,7 +543,16 @@ def calibrate_penalty_scale(
 
     critical_scales = Parallel(n_jobs=n_jobs)(
         delayed(_run_single_sim)(
-            seed, draw, detector, knob, base, strategy, max_scale, rtol
+            seed,
+            sample_fn,
+            null_source,
+            n_samples,
+            detector,
+            knob,
+            base,
+            strategy,
+            max_scale,
+            rtol,
         )
         for seed in child_seeds
     )

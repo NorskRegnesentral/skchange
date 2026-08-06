@@ -268,7 +268,7 @@ def test_sampler_instance_and_callable():
     s2 = calibrate_penalty_scale(
         SeededBinarySegmentation(),
         X,
-        sampler=lambda n, p, rng: rng.normal(size=(n, p)),
+        sampler=lambda X, n, rng: rng.normal(size=(n, X.shape[1])),
         n_simulations=_FAST_N_SIMS,
         random_state=0,
     )
