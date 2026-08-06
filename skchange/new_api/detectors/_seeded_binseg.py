@@ -374,8 +374,6 @@ class SeededBinarySegmentation(BaseChangeDetector):
     array([100])
     """
 
-    _calibration_strategy = "max_score"
-
     _parameter_constraints = {
         "change_score": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": ["array-like", Interval(Real, 0, None, closed="left"), None],
@@ -415,6 +413,7 @@ class SeededBinarySegmentation(BaseChangeDetector):
         tags.change_detector_tags.linear_trend_segment = (
             scorer_tags.interval_scorer_tags.linear_trend_segment
         )
+        tags.change_detector_tags.calibration_strategy = "max_score"
         return tags
 
     @_fit_context(prefer_skip_nested_validation=False)

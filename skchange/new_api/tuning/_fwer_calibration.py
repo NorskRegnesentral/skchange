@@ -13,7 +13,7 @@ smallest ``penalty_scale`` that suppresses every detection -- and returns the
 ``(1 - level)`` quantile of those critical scales.
 
 **Three mechanisms** are used, selected automatically by the detector's
-``_calibration_strategy`` class attribute:
+``change_detector_tags.calibration_strategy`` tag:
 
 - ``"max_score"`` (scan-and-threshold detectors: SBS, MW, CBS, CAPA):
   closed-form ``c_b = max(S) / base``, where ``S`` is the vector of
@@ -40,6 +40,7 @@ from numbers import Integral, Real
 
 import numpy as np
 from sklearn.base import BaseEstimator, clone
+from sklearn.utils import get_tags
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.parallel import Parallel, delayed
 
@@ -405,7 +406,7 @@ def calibrate_penalty_scale(
     the probability of at least one false detection is approximately ``level``.
 
     Three calibration mechanisms are available, selected by the detector's
-    ``_calibration_strategy`` class attribute (or overridden by
+    ``change_detector_tags.calibration_strategy`` tag (or overridden by
     ``calibration_strategy``):
 
     - ``"max_score"`` (scan-and-threshold detectors: SBS, MW, CBS, CAPA):
@@ -453,7 +454,7 @@ def calibrate_penalty_scale(
     n_simulations : int, default=999
         Number of null samples drawn.
     calibration_strategy : {"max_score", "detection_count", "path_search"} or None
-        Override the detector's own ``_calibration_strategy`` tag. Pass
+        Override the detector's own ``calibration_strategy`` tag. Pass
         ``"detection_count"`` to force the bisection path for PELT when the
         cost is non-convex.
     random_state : int, Generator, or None, default=None
@@ -513,7 +514,7 @@ def calibrate_penalty_scale(
 
     # Resolve the calibration strategy.
     if calibration_strategy is None:
-        strategy = getattr(detector, "_calibration_strategy", "detection_count")
+        strategy = get_tags(detector).change_detector_tags.calibration_strategy
     else:
         strategy = calibration_strategy
 

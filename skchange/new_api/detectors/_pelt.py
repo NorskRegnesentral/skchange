@@ -569,14 +569,6 @@ class PELT(BaseChangeDetector):
     array([100])
     """
 
-    # Calibration strategy: exact convex-hull path search.
-    # PELT optimises jointly over all changepoint sets, so the single-split
-    # score (max_score) underestimates the true critical penalty β*. The path
-    # search finds β* = max_{k≥1} G_k/k exactly in ~3-6 fits by tracking hull
-    # vertices of the cost-vs-changepoint-count curve. The bisection fallback
-    # ("detection_count") remains available via the calibration_strategy kwarg.
-    _calibration_strategy = "path_search"
-
     _parameter_constraints = {
         "cost": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": [Interval(Real, 0, None, closed="left"), None],
@@ -616,6 +608,7 @@ class PELT(BaseChangeDetector):
         tags.change_detector_tags.linear_trend_segment = (
             scorer_tags.interval_scorer_tags.linear_trend_segment
         )
+        tags.change_detector_tags.calibration_strategy = "path_search"
         return tags
 
     @_fit_context(prefer_skip_nested_validation=False)

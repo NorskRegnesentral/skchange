@@ -26,16 +26,6 @@ class BaseChangeDetector(BaseEstimator):
     class when the algorithm supports them. No intermediate base class is
     needed.
 
-    Class Attributes
-    ----------------
-    _calibration_strategy : str
-        How FWER calibration computes the per-null-sample critical scale.
-        ``"detection_count"`` (default) bisects ``penalty_scale`` until the
-        number of detections hits zero — exact for any detector with a single
-        penalty knob. ``"max_score"`` uses a closed-form statistic (one fit per
-        null sample) and is overridden on supported scan-and-threshold detectors
-        and PELT.
-
     Examples
     --------
     >>> class MyDetector(BaseChangeDetector):
@@ -49,8 +39,6 @@ class BaseChangeDetector(BaseEstimator):
     ...     def predict(self, X):
     ...         return np.array([50, 100])
     """
-
-    _calibration_strategy: str = "detection_count"
 
     def predict(self, X: ArrayLike) -> np.ndarray:
         """Detect changepoints in a time series.
