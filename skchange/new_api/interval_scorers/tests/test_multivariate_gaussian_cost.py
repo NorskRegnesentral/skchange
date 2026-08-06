@@ -8,6 +8,9 @@ from skchange.new_api.interval_scorers import (
     MultivariateGaussianSaving,
     MultivariateGaussianScore,
 )
+from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
+    MAX_COV_CACHE_ELEMENTS,
+)
 
 
 def test_precompute_cumulative_moments():
@@ -37,14 +40,14 @@ def test_precompute_cumulative_moments():
 @pytest.mark.parametrize(
     "shape, expected_store_cov",
     [
-        ((10_000, 1), True),
-        ((10_001, 1), False),
-        ((2, 100), True),
-        ((2, 101), False),
+        ((10_000, 100), True),
+        ((10_001, 100), False),
+        ((200, 50), True),
+        ((2000, 500), False),
     ],
 )
 def test_automatic_cache_selection(shape, expected_store_cov):
-    """Automatic caching uses inclusive sample and feature thresholds."""
+    """Automatic caching uses the inclusive n_samples * n_features**2 threshold."""
     X = np.zeros(shape)
     cost = MultivariateGaussianCost().fit(X)
 
@@ -52,6 +55,7 @@ def test_automatic_cache_selection(shape, expected_store_cov):
 
     assert cost.store_cov is None
     assert cache["store_cov"] is expected_store_cov
+    assert cache["store_cov"] is (shape[0] * shape[1] ** 2 <= MAX_COV_CACHE_ELEMENTS)
 
 
 @pytest.mark.parametrize(
