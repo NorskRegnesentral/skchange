@@ -57,7 +57,7 @@ def unpenalised_scores(
         - ``str`` / iterable of ``str``: each parameter is set to
           ``no_penalty_value``.
         - ``Mapping[str, Any]``: each parameter is set to its mapped
-          value; ``no_penalty_value`` is ignored.
+          value, and ``no_penalty_value`` is ignored.
     no_penalty_value : float or np.ndarray, default=0.0
         No-penalty value used when ``penalty_param`` is a string or
         iterable. Use ``0.0`` for additive penalties, ``1.0`` for
@@ -142,8 +142,8 @@ def penalty_curve(
     X : array-like of shape (n_samples, n_features)
         Data to fit and score on.
     y : array-like, optional, default=None
-        Reference passed as the third argument to ``scoring``. Not
-        passed to ``detector.fit`` — skchange detectors are
+        Reference passed as the third argument to ``scoring``. It is not
+        passed to ``detector.fit`` because skchange detectors are
         unsupervised, so ``y`` is purely a scoring reference.
     penalty_name : str
         Detector parameter to vary. Any name accepted by ``set_params``
@@ -203,8 +203,8 @@ def penalty_curve(
     candidates = np.asarray(penalty_range)
     if candidates.ndim != 1:
         raise ValueError(
-            "`penalty_range` must be 1-dimensional; "
-            f"got array of shape {candidates.shape}."
+            "`penalty_range` must be 1-dimensional. "
+            f"Got array of shape {candidates.shape}."
         )
     if candidates.size == 0:
         raise ValueError("`penalty_range` must contain at least one value.")

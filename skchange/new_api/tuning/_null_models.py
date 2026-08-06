@@ -35,8 +35,8 @@ class BaseNullSampler:
       passes a fresh ``Generator`` to each ``sample`` call. This keeps
       parallel draws independent and individual draws reproducible.
     * **``X`` always required by the contract.** Parametric subclasses read
-      only ``X.shape[1]``; data-based subclasses resample its rows. One uniform
-      signature, no optional arguments. Whether a *caller* must supply real
+      only ``X.shape[1]``. Data-based subclasses resample its rows. One uniform
+      signature, no optional arguments. Whether a caller must supply real
       reference data is advertised by :attr:`requires_reference_data`.
     * **Duck-typed contract.** Consumers only need
       ``sample(X, n_samples, rng) -> ndarray``. A plain callable with the
@@ -85,15 +85,15 @@ class PermutationSampler(BaseNullSampler):
     """Non-parametric null sampler that resamples rows of ``X``.
 
     Resampling whole rows preserves the cross-feature (joint) distribution while
-    destroying any temporal structure -- the "independent and identically
-    distributed in time" null hypothesis. This is the default null model.
+    destroying any temporal structure. This is the "independent and identically
+    distributed in time" null hypothesis, and the default null model.
 
     Parameters
     ----------
     replace : bool, default=False
-        If ``False``, draw rows without replacement (a permutation / subsample);
-        this requires ``n_samples <= len(X)``. If ``True``, draw with
-        replacement (a row bootstrap), which works for any ``n_samples``.
+        If ``False``, draw rows without replacement (a permutation or
+        subsample), which requires ``n_samples <= len(X)``. If ``True``, draw
+        with replacement (a row bootstrap), which works for any ``n_samples``.
 
     Examples
     --------
@@ -129,9 +129,9 @@ class GaussianSampler(BaseNullSampler):
     """Parametric null sampler drawing i.i.d. Gaussian data.
 
     Each entry is drawn independently from ``N(mean, std**2)``. Uses only
-    ``X.shape[1]`` from the reference data; the values are ignored. Use this
-    when the change-free distribution is (approximately) known to be Gaussian;
-    it gives the tightest calibration in that case.
+    ``X.shape[1]`` from the reference data, and the values are ignored. Use this
+    when the change-free distribution is approximately known to be Gaussian. It
+    gives the tightest calibration in that case.
 
     Parameters
     ----------
@@ -280,7 +280,7 @@ def resolve_sampler(sampler):
         return sampler
     raise TypeError(
         "`sampler` must be a string alias, an object with a `sample` method, "
-        f"or a callable; got {type(sampler).__name__!r}."
+        f"or a callable. Got {type(sampler).__name__!r}."
     )
 
 
