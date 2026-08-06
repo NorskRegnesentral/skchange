@@ -6,6 +6,7 @@ from skchange.new_api.tuning._fwer_calibration import (
 )
 from skchange.new_api.tuning._null_models import (
     BaseNullSampler,
+    BlockBootstrapSampler,
     GaussianSampler,
     PermutationSampler,
 )
@@ -16,6 +17,7 @@ from skchange.new_api.tuning._penalty_calibration import (
 
 __all__ = [
     "BaseNullSampler",
+    "BlockBootstrapSampler",
     "CalibratedDetector",
     "GaussianSampler",
     "PermutationSampler",

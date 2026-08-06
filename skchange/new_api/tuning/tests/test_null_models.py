@@ -7,10 +7,14 @@ import pytest
 
 from skchange.new_api.tuning import (
     BaseNullSampler,
+    BlockBootstrapSampler,
     GaussianSampler,
     PermutationSampler,
 )
-from skchange.new_api.tuning._null_models import resolve_sampler
+from skchange.new_api.tuning._null_models import (
+    resolve_sampler,
+    sampler_requires_data,
+)
 
 # --------------------------------------------------------------------------- #
 # PermutationSampler
@@ -75,6 +79,98 @@ def test_gaussian_sampler_ignores_reference_values():
     out = GaussianSampler().sample(X_shifted, 5_000, rng)
     # Centred at 0, unaffected by the huge values in X.
     assert abs(out.mean()) < 0.1
+
+
+# --------------------------------------------------------------------------- #
+# BlockBootstrapSampler
+# --------------------------------------------------------------------------- #
+
+
+def _row_indices(out, X):
+    """Map each row of ``out`` back to its row index in ``X`` (rows unique)."""
+    lookup = {tuple(row): i for i, row in enumerate(X)}
+    return [lookup[tuple(row)] for row in out]
+
+
+def test_block_bootstrap_shape_and_rows_from_reference():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 3))
+    out = BlockBootstrapSampler(block_length=5).sample(X, 40, rng)
+    assert out.shape == (40, 3)
+    assert out.dtype == np.float64
+    original = {tuple(r) for r in X}
+    assert all(tuple(r) in original for r in out)
+
+
+def test_block_bootstrap_wraps_and_warns_when_pool_too_small():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(5, 2))
+    with pytest.warns(UserWarning, match="reference"):
+        out = BlockBootstrapSampler(block_length=3).sample(X, 20, rng)
+    assert out.shape == (20, 2)
+
+
+def test_block_bootstrap_default_block_length_is_cube_root():
+    sampler = BlockBootstrapSampler()  # block_length=None
+    assert sampler._effective_block_length(1000) == max(1, int(1000 ** (1 / 3)))
+    assert sampler._effective_block_length(8) == 2
+    assert sampler._effective_block_length(1) == 1
+
+
+def test_block_bootstrap_length_one_is_iid():
+    """block_length=1 draws each row independently (an i.i.d. row bootstrap)."""
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(30, 2))
+    out = BlockBootstrapSampler(block_length=1).sample(X, 500, rng)
+    assert out.shape == (500, 2)
+    # With independent single-row draws, adjacent output rows are contiguous in
+    # X only by chance, so the fraction of contiguous adjacent pairs stays low.
+    idx = _row_indices(out, X)
+    contiguous = sum((idx[i] + 1) % len(X) == idx[i + 1] for i in range(len(idx) - 1))
+    assert contiguous < 0.2 * len(idx)
+
+
+def test_block_bootstrap_blocks_are_contiguous_slices():
+    """For block_length>1, each block is a contiguous wrap-around slice of X."""
+    rng = np.random.default_rng(2)
+    X = rng.normal(size=(40, 1))
+    block_length = 6
+    n_samples = 37
+    out = BlockBootstrapSampler(block_length=block_length).sample(X, n_samples, rng)
+    idx = _row_indices(out, X)
+    n_ref = len(X)
+    for start in range(0, n_samples, block_length):
+        block = idx[start : start + block_length]
+        for a, b in zip(block, block[1:]):
+            assert (a + 1) % n_ref == b, "rows within a block must be contiguous"
+
+
+def test_block_bootstrap_invalid_block_length_raises():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(20, 2))
+    with pytest.raises(ValueError, match="block_length"):
+        BlockBootstrapSampler(block_length=0).sample(X, 10, rng)
+
+
+def test_block_bootstrap_requires_reference_data():
+    assert BlockBootstrapSampler().requires_reference_data is True
+    assert sampler_requires_data("block_bootstrap") is True
+
+
+def test_block_bootstrap_reproducible_with_seed():
+    X = np.random.default_rng(0).normal(size=(50, 2))
+    a = BlockBootstrapSampler(block_length=4).sample(X, 30, np.random.default_rng(7))
+    b = BlockBootstrapSampler(block_length=4).sample(X, 30, np.random.default_rng(7))
+    c = BlockBootstrapSampler(block_length=4).sample(X, 30, np.random.default_rng(8))
+    np.testing.assert_array_equal(a, b)
+    assert not np.array_equal(a, c)
+
+
+def test_block_bootstrap_alias_resolves():
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(60, 2))
+    fn = resolve_sampler("block_bootstrap")
+    assert fn(X, 20, rng).shape == (20, 2)
 
 
 # --------------------------------------------------------------------------- #

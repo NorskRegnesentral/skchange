@@ -12,6 +12,8 @@ ignore its values. A plain callable with the same signature is accepted
 anywhere a sampler is expected, as an escape hatch for custom null models.
 """
 
+import warnings
+
 import numpy as np
 
 
@@ -163,9 +165,98 @@ class GaussianSampler(BaseNullSampler):
         return rng.normal(self.mean, self.std, (n_samples, X.shape[1]))
 
 
+class BlockBootstrapSampler(BaseNullSampler):
+    """Circular block bootstrap null sampler.
+
+    Draws a null sample by copying contiguous blocks of ``X`` from random start
+    positions, wrapping around the end of ``X`` (Politis and Romano, 1992).
+    Blocks of length ``block_length`` are laid end to end until ``n_samples``
+    rows are filled, with the final block truncated to fit. Whole rows are
+    copied together, so dependence across features is preserved.
+
+    Unlike :class:`PermutationSampler`, which reshuffles rows independently and
+    destroys all temporal order, the block bootstrap keeps short-range temporal
+    dependence inside each block. Use it when the change-free data is serially
+    dependent (autocorrelated), where an i.i.d. permutation would misstate the
+    false alarm rate.
+
+    Parameters
+    ----------
+    block_length : int or None, default=None
+        Length of each resampled block. ``None`` resolves at draw time to
+        ``max(1, int(len(X) ** (1 / 3)))``, the cube-root rate for block
+        bootstraps under weak dependence (Hall, Horowitz and Jing, 1995).
+        ``block_length=1`` reduces to an i.i.d. row bootstrap.
+
+    Notes
+    -----
+    A block bootstrap reproduces dependence only up to the block scale. At each
+    join between two consecutive blocks the copied rows come from unrelated
+    parts of ``X``, which adds a small artificial discontinuity. The circular
+    scheme removes the edge under-weighting of the plain moving block bootstrap
+    but not this join effect.
+
+    References
+    ----------
+    Politis, D. N. and Romano, J. P. (1992). A circular block resampling
+    procedure for stationary data.
+
+    Hall, P., Horowitz, J. L. and Jing, B.-Y. (1995). On blocking rules for the
+    bootstrap with dependent data. Biometrika, 82(3), 561-574.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from skchange.new_api.tuning import BlockBootstrapSampler
+    >>> rng = np.random.default_rng(0)
+    >>> X = rng.normal(size=(100, 2))
+    >>> BlockBootstrapSampler(block_length=10).sample(X, 50, rng).shape
+    (50, 2)
+    """
+
+    def __init__(self, block_length: int | None = None):
+        self.block_length = block_length
+
+    def _effective_block_length(self, n_ref: int) -> int:
+        """Resolve the block length for a reference pool of ``n_ref`` rows."""
+        if self.block_length is None:
+            return max(1, int(n_ref ** (1 / 3)))
+        return self.block_length
+
+    def sample(
+        self,
+        X: np.ndarray,
+        n_samples: int,
+        rng: np.random.Generator,
+    ) -> np.ndarray:
+        n_ref = X.shape[0]
+        block_length = self._effective_block_length(n_ref)
+        if block_length < 1:
+            raise ValueError(f"block_length must be at least 1, got {block_length}.")
+        if n_ref < n_samples:
+            warnings.warn(
+                f"BlockBootstrapSampler drew {n_samples} rows from a reference "
+                f"pool of only {n_ref} rows. The circular bootstrap wraps around, "
+                f"but calibration may be unreliable with so few rows.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        out = np.empty((n_samples, X.shape[1]), dtype=np.float64)
+        t = 0
+        while t < n_samples:
+            start = int(rng.integers(0, n_ref))
+            length = min(block_length, n_samples - t)
+            idx = np.arange(start, start + length) % n_ref
+            out[t : t + length] = X[idx]
+            t += length
+        return out
+
+
 _NAMED_SAMPLERS = {
     "permutation": PermutationSampler,
     "gaussian": GaussianSampler,
+    "block_bootstrap": BlockBootstrapSampler,
 }
 
 
