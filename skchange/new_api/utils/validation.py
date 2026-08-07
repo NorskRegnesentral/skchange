@@ -214,14 +214,18 @@ def check_interval_specs(
         # ordered, in-range). Skip all sklearn-level checks.
         return interval_specs
 
-    interval_specs = check_array(interval_specs, ensure_2d=True, dtype=np.intp)
+    if interval_specs.ndim != 2:
+        raise ValueError(
+            f"`{arg_name}` must be a 2D array, got a {interval_specs.ndim}D array "
+            f"in {caller_name}."
+        )
     if interval_specs.shape[1] != n_cols:
         raise ValueError(
             f"`{arg_name}` must have {n_cols} columns, "
             f"got {interval_specs.shape[1]} in {caller_name}."
         )
 
-    if interval_specs.size > 0 and (check_sorted or min_size is not None):
+    if check_sorted or min_size is not None:
         diffs = np.diff(interval_specs, axis=1)
         if check_sorted and min_size is None and np.any(diffs <= 0):
             raise ValueError(
@@ -236,11 +240,13 @@ def check_interval_specs(
                 f"in {caller_name}."
             )
 
-    if n_samples is not None and interval_specs.size > 0:
-        out_of_range = interval_specs[
-            (interval_specs < 0) | (interval_specs > n_samples)
-        ]
-        if out_of_range.size > 0:
+    if n_samples is not None:
+        vmin = interval_specs.min()
+        vmax = interval_specs.max()
+        if vmin < 0 or vmax > n_samples:
+            out_of_range = interval_specs[
+                (interval_specs < 0) | (interval_specs > n_samples)
+            ]
             raise ValueError(
                 f"`{arg_name}` entries must be in [0, {n_samples}], "
                 f"got e.g. {out_of_range[0]} in {caller_name}."
