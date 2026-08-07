@@ -140,8 +140,11 @@ def log_det_covariance(X: np.ndarray) -> float:
         The log of the absolute value of the determinant of the covariance matrix.
         Returns np.nan if the covariance matrix is not positive definite.
     """
-    p = X.shape[1]
-    cov = np.cov(X, rowvar=False, ddof=0).reshape(p, p)
+    n = X.shape[0]
+    # A manual computation of cov as below is faster than np.cov for most X shapes.
+    mean = np.sum(X, axis=0) / n
+    Xc = X - mean
+    cov = (Xc.T @ Xc) / n
     det_sign, log_abs_det = np.linalg.slogdet(cov)
 
     if det_sign <= 0:
