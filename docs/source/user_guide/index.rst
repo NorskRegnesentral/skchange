@@ -11,7 +11,7 @@ examples.
     :maxdepth: 2
 
     getting_started
-    concepts
+    concepts/index
     change_detection/index
     anomaly_detection/index
     tuning/index
