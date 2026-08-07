@@ -3,9 +3,8 @@
 ================
 Change detection
 ================
-This section is a hands-on guide to detecting *changepoints* — abrupt changes
-in the distribution of a time series — with Skchange. Each subsection focuses
-on a specific *distributional feature* (mean, variance, covariance matrix, linear
+This section is a hands-on guide to detecting changepoints with Skchange.
+Each subsection focuses on a specific *distributional feature* (mean, variance, covariance matrix, linear
 slope, ...) and shows how to pick a scorer and a detector for that feature, along with
 plots of the results.
 
