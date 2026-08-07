@@ -63,7 +63,7 @@ def test_unpenalised_scores_sanity(estimator):
     if is_penalised_score(scorer):
         return
     if is_cost(scorer):
-        # Costs are raw fit values, not savings/change scores — can be negative.
+        # Costs are raw fit values, not savings or change scores, so negative is ok.
         return
     if isinstance(scorer, MultivariateTSaving):
         # The multivariate-T MLE is iterative and not exactly subadditive in

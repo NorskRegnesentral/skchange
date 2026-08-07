@@ -1,7 +1,8 @@
 """Tests for PELT path-search critical-scale computation.
 
-All tests here import ``_critical_scale_path_search``, which is added as part
-of task 2.1. Tests are written before the implementation per CLAUDE.md conventions.
+These tests test ``_critical_scale_path_search``. They check that it agrees
+with the bisection fallback, that PELT reports zero changepoints at the returned
+scale, and that it uses fewer fits than bisection.
 """
 
 import numpy as np
@@ -34,7 +35,7 @@ def _blip_X(m=15, a=10.0):
 
 
 # --------------------------------------------------------------------------- #
-# Task 1.1 — path_search agrees with bisection (detection_count)
+# path_search agrees with bisection (detection_count)
 # --------------------------------------------------------------------------- #
 
 
@@ -56,7 +57,7 @@ def test_path_search_agrees_with_bisection():
 
 
 # --------------------------------------------------------------------------- #
-# Task 1.3 — zero changepoints at returned scale; fewer fits than bisection
+# Zero changepoints at the returned scale, and fewer fits than bisection
 # --------------------------------------------------------------------------- #
 
 
@@ -102,7 +103,7 @@ def test_path_search_fewer_fits_than_bisection():
     knob, base = _discover_knob(det, X)
     assert base is not None
 
-    # Count path-search fits (clear first; _discover_knob used 1 fit already)
+    # Count path-search fits
     fit_log.clear()
     _critical_scale_path_search(det, X, knob, base)
     path_fits = len(fit_log)
@@ -115,7 +116,7 @@ def test_path_search_fewer_fits_than_bisection():
     assert (
         path_fits < bisect_fits
     ), f"path_search used {path_fits} fits vs bisection {bisect_fits}"
-    # Design target: ~3-6 path fits vs ~15-25 bisection fits
+    # Expected: about 3 to 6 path fits versus 15 to 25 for bisection
     assert path_fits <= 15, f"path_search used too many fits: {path_fits}"
 
 

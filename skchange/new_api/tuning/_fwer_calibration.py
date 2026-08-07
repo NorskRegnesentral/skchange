@@ -60,7 +60,7 @@ from skchange.new_api.utils._param_validation import (
 from skchange.new_api.utils.validation import check_is_fitted, validate_data
 
 # --------------------------------------------------------------------------- #
-# Knob discovery (D4)
+# Knob discovery
 # --------------------------------------------------------------------------- #
 
 
