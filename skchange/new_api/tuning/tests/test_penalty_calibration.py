@@ -133,7 +133,7 @@ def test_unpenalised_scores_invalid_penalty_param_type_raises():
     detector = SeededBinarySegmentation()
     X = make_single_change_X(detector)
     with pytest.raises((TypeError, ValueError)):
-        unpenalised_scores(detector, X, penalty_param=123)
+        unpenalised_scores(detector, X, penalty_param=123)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------

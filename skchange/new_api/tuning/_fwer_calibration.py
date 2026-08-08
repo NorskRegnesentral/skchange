@@ -219,7 +219,10 @@ def _critical_scale_path_search(
         penalized_opt = result["cumulative_optimal_costs"][-1]
         c_k = penalized_opt - k * fitted.penalty_  # unpenalized segmentation cost
         G_k = C_0 - c_k
-        if G_k <= 0 or k <= 0:
+        if G_k <= 0 or k <= 0:  # pragma: no cover
+            # Defensive guard. For a proper cost, adding changepoints never
+            # increases the cost, so G_k >= 0, and k is already known positive
+            # here. This only fires on numerical pathology.
             break
 
         beta_new = G_k / k

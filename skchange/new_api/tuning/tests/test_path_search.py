@@ -132,6 +132,28 @@ def test_path_search_returns_positive_scale():
         assert c_b > 0.0, f"path_search returned non-positive scale: {c_b}"
 
 
+def test_path_search_converges_at_hull_vertex():
+    """The secant walk can stop at the hull vertex, not only via zero cps.
+
+    With clean, well separated blocks the average cost reduction per
+    changepoint stabilises, so ``beta_new <= beta`` triggers and the loop
+    exits at the top vertex while PELT still reports changepoints at that
+    penalty. The returned scale, after the tie nudge, must still silence PELT.
+    """
+    rng = np.random.default_rng(19)
+    blocks = [np.full((23, 1), level * 11.407) for level in range(5)]
+    X = np.vstack(blocks) + rng.normal(size=(115, 1)) * 0.419
+
+    det = PELT()
+    knob, base = _discover_knob(det, X)
+    assert base is not None
+
+    c_b = _critical_scale_path_search(det, X, knob, base)
+    assert c_b > 0.0
+    cps = clone(det).set_params(**{knob: c_b}).fit_predict(X)
+    assert len(cps) == 0, f"PELT at hull-vertex scale={c_b:.6f} still detects: {cps}"
+
+
 def test_path_search_fallback_when_no_detections_at_tiny_scale():
     """If PELT fires nothing at _BISECT_LO, path_search returns _BISECT_LO."""
     # Near-constant signal: nothing to detect even at tiny penalty.

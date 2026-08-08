@@ -115,6 +115,19 @@ def test_calibration_data_wrong_n_features_raises():
         )
 
 
+def test_calibration_data_non_2d_raises():
+    """A calibration array that is not 2-D must raise a clear error."""
+    with pytest.raises(ValueError, match="2-D"):
+        calibrate_penalty_scale(
+            SeededBinarySegmentation(),
+            60,
+            2,
+            X=np.arange(10.0),  # 1-D
+            sampler="permutation",
+            n_simulations=_FAST_N_SIMS,
+        )
+
+
 def test_base_penalty_depends_only_on_target_shape():
     """The discovered base must equal the detector's default penalty at (N, p)
     and be independent of the probe/calibration data values."""
@@ -201,6 +214,52 @@ def test_knob_discovery_base_equals_penalty_at_scale_one():
     assert fitted_at_one.penalty_ == pytest.approx(base, rel=1e-10)
 
 
+def test_knob_discovery_array_valued_penalty_gives_no_scalar_base():
+    """A detector whose ``penalty_`` is a vector has no scalar base.
+
+    When ``penalty_scale`` is present but the fitted ``penalty_`` is array
+    valued, there is no single base to divide by, so the closed form is
+    unavailable and ``base`` must be ``None``. Only the bisection fallback
+    applies to such a detector.
+    """
+    from sklearn.base import BaseEstimator
+
+    class ArrayPenaltyDetector(BaseEstimator):
+        def __init__(self, penalty_scale=1.0):
+            self.penalty_scale = penalty_scale
+
+        def fit(self, X, y=None):
+            self.penalty_ = np.array([1.0, 2.0])
+            return self
+
+    knob, base = _discover_knob(ArrayPenaltyDetector(), np.zeros((10, 2)))
+    assert knob == "penalty_scale"
+    assert base is None
+
+
+def test_knob_discovery_skips_nested_penalty_scale_that_fails_to_fit():
+    """A nested ``__penalty_scale`` that errors on fit is skipped, not fatal.
+
+    The nested search probes each ``*__penalty_scale`` candidate by fitting a
+    clone. If that probe raises, the candidate is skipped. With no usable knob
+    at all, a clear ``ValueError`` is raised.
+    """
+    from sklearn.base import BaseEstimator
+
+    class FailingNestedDetector(BaseEstimator):
+        def get_params(self, deep=True):
+            return {"scorer__penalty_scale": 1.0}
+
+        def set_params(self, **params):
+            return self
+
+        def fit(self, X, y=None):
+            raise RuntimeError("probe fit deliberately fails")
+
+    with pytest.raises(ValueError, match="penalty_scale"):
+        _discover_knob(FailingNestedDetector(), np.zeros((10, 2)))
+
+
 # --------------------------------------------------------------------------- #
 # max_score closed form c_b = max(S) / base
 # --------------------------------------------------------------------------- #
@@ -279,6 +338,51 @@ def test_detection_count_handles_non_monotone_silent_at_zero():
     assert c_b > 0.01, f"critical scale collapsed to ~0 despite mid-range firing: {c_b}"
     assert n_cpts(X, c_b) == 0, f"detector still fires at critical scale {c_b}"
     assert n_cpts(X, c_b * 0.9) > 0, f"detector silent just below critical scale {c_b}"
+
+
+def test_detection_count_returns_max_scale_when_never_silent():
+    """If the detector keeps firing past ``max_scale``, the guard returns it.
+
+    The upper bracket doubles the scale until the detector falls silent. When a
+    strong change survives every scale up to the guard, the search stops and
+    returns ``max_scale`` rather than looping forever.
+    """
+    from skchange.new_api.tuning._fwer_calibration import _critical_scale_count
+
+    rng = np.random.default_rng(0)
+    X = (
+        np.vstack([np.zeros((40, 1)), np.full((40, 1), 50.0)])
+        + rng.normal(size=(80, 1)) * 0.1
+    )
+    det = PELT()
+    knob, _ = _discover_knob(det, X)
+    # The change is large enough that PELT still fires at penalty_scale=1.
+    assert len(clone(det).set_params(**{knob: 1.0}).fit_predict(X)) > 0
+
+    max_scale = 1.5
+    c_b = _critical_scale_count(det, X, knob, max_scale=max_scale)
+    assert c_b == pytest.approx(max_scale)
+
+
+def test_detection_count_returns_bisect_lo_when_detector_never_fires():
+    """A detector silent at every scale needs no penalty: return ``_BISECT_LO``.
+
+    On a constant series there is nothing to detect. The upper bracket never
+    enters its loop, the low bracket finds no firing scale on the geometric
+    grid, and the routine returns the floor scale.
+    """
+    from skchange.new_api.tuning._fwer_calibration import (
+        _BISECT_LO,
+        _critical_scale_count,
+    )
+
+    X = np.zeros((60, 1)) + 1e-9  # effectively constant, zero variance
+    det = SeededBinarySegmentation()
+    knob, _ = _discover_knob(det, X)
+    assert len(clone(det).set_params(**{knob: _BISECT_LO}).fit_predict(X)) == 0
+
+    c_b = _critical_scale_count(det, X, knob)
+    assert c_b == pytest.approx(_BISECT_LO)
 
 
 # --------------------------------------------------------------------------- #
@@ -488,6 +592,30 @@ def test_calibrated_detector_delegates_segment_anomalies():
     assert hasattr(cal_cbs, "predict_segment_anomalies")
     cal_sbs = CalibratedDetector(SeededBinarySegmentation())
     assert not hasattr(cal_sbs, "predict_segment_anomalies")
+
+
+def test_calibrated_detector_predict_segment_anomalies_returns_prediction():
+    """A fitted wrapper forwards predict_segment_anomalies to the detector."""
+    X = _null_X()
+    cal = CalibratedDetector(
+        CircularBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
+    ).fit(X)
+    out = cal.predict_segment_anomalies(X)
+    assert isinstance(out, np.ndarray)
+
+
+def test_calibrated_detector_predict_scores_delegates():
+    """A fitted wrapper forwards predict_scores to the calibrated detector."""
+    X = _null_X()
+    cal = CalibratedDetector(
+        SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
+    ).fit(X)
+    assert hasattr(cal, "predict_scores")
+    scores = cal.predict_scores(X)
+    assert isinstance(scores, np.ndarray)
+    # return_index forwards through to the detector as well.
+    values, index = cal.predict_scores(X, return_index=True)
+    assert isinstance(values, np.ndarray)
 
 
 def test_calibrated_detector_crops_raises():

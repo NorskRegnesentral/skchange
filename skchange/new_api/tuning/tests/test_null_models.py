@@ -209,6 +209,16 @@ def test_resolve_sampler_bad_type_raises():
         resolve_sampler(123)
 
 
+def test_sampler_requires_data_unknown_string_is_conservative():
+    """An unrecognised string alias is treated as data-based (returns True).
+
+    ``sampler_requires_data`` cannot introspect a name it does not know, so it
+    errs on the safe side and reports that reference data is required. The
+    unknown name is only rejected later, when ``resolve_sampler`` runs.
+    """
+    assert sampler_requires_data("definitely-not-a-real-sampler") is True
+
+
 # --------------------------------------------------------------------------- #
 # BaseNullSampler contract
 # --------------------------------------------------------------------------- #
