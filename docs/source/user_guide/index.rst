@@ -12,6 +12,7 @@ examples.
 
     getting_started
     concepts/index
+    detectors/index
     change_detection/index
     anomaly_detection/index
     tuning/index
