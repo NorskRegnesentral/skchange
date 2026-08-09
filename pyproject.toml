@@ -193,3 +193,9 @@ omit = [
   "*/tests/*",
   "*/test_*.py"
 ]
+
+[tool.pytest.ini_options]
+addopts = "-m 'not slow'"
+markers = [
+  "slow: marks tests as slow (run with '-m slow' or override addopts)",
+]
