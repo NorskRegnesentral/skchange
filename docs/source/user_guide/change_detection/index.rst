@@ -12,6 +12,8 @@ which introduces the change detector API, interval scorers, and penalties. For
 an overview and feature comparison of the available detectors, see the
 :doc:`Detectors </user_guide/detectors/index>` section.
 
+Work in progress.
+
 .. toctree::
     :maxdepth: 1
 

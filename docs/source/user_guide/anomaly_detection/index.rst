@@ -3,6 +3,7 @@
 =========================
 Segment anomaly detection
 =========================
+Work in progress.
 
 .. toctree::
     :maxdepth: 2
