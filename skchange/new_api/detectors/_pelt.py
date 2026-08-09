@@ -755,7 +755,7 @@ class PELT(BaseChangeDetector):
         X: ArrayLike,
         return_index: bool = False,
     ) -> np.ndarray | tuple[np.ndarray, dict[str, np.ndarray]]:
-        """Return the unpenalised cost at every interval the PELT DP evaluated.
+        """Return the cost at every interval the PELT dynamic programme evaluated.
 
         Runs PELT on ``X`` with the fitted state and returns the
         feature-summed cost value at every ``(start, end)`` interval the

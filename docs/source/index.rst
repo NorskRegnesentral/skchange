@@ -61,7 +61,7 @@ Quick example
     df = generate_piecewise_normal_data(
         means=[0, 5, 10, 5, 0], lengths=[50] * 5, seed=1,
     )
-    cps = MovingWindow(bandwidth=20).fit(df).predict_changepoints(df)
+    cps = MovingWindow(bandwidth=20).fit_predict(df)
     # array([ 50, 100, 150, 200])
 
 See the :doc:`user_guide/index` for more, including multivariate anomaly
