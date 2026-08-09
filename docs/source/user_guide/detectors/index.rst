@@ -26,60 +26,53 @@ The table below compares the detectors at a glance. Column meanings:
   around an anomalous interval against a baseline) rather than a full
   segmentation.
 - **Tuning**: How much hyperparameter tweaking is typically needed to get
-  reliable performance. ``low`` means only a penalty or nothing to set,
-  ``medium`` means a couple of additional knobs that matter in practice,
-  ``high`` means a critical hyperparameter that must be chosen carefully.
+  reliable performance. "low" means only a penalty or nothing to set,
+  "medium" means a couple of additional knobs that matter in practice,
+  "high" means a critical hyperparameter that must be chosen carefully.
 
 Follow the detector link for a detailed discussion of the trade-offs.
 
 .. list-table::
     :header-rows: 1
-    :widths: 24 14 16 16 9 9 12
+    :widths: 24 16 16 9 9 12
 
     * - Detector
-      - Scorer
       - Few CPs
       - Many CPs
       - Sparse MV
       - Anomalies
       - Tuning
     * - :doc:`PELT <pelt>`
-      - ``cost``
       - slow, :math:`O(n^2)`
       - fast, :math:`O(n)`
       - no
       - no
       - low
     * - :doc:`CROPS <crops>`
-      - ``cost``
       - slow, :math:`O(n^2 \log n)`
       - medium, :math:`O(n \log n)`
       - no
       - no
       - low
     * - :doc:`SeededBinarySegmentation <seeded_binseg>`
-      - ``change_score``
       - fast, :math:`O(n \log n)`
       - fast, :math:`O(n \log n)`
       - yes
       - no
       - medium
     * - :doc:`MovingWindow <moving_window>`
-      - ``change_score``
       - fast, :math:`O(n)`
       - fast, :math:`O(n)`
       - yes
       - no
       - high
     * - :doc:`CircularBinarySegmentation <circular_binseg>`
-      - ``transient_score``
       - slow, :math:`O(n^2 \log n)`
       - slow, :math:`O(n^2 \log n)`
       - yes
       - yes
       - medium
     * - :doc:`CAPA <capa>`
-      - ``saving``
       - slow, :math:`O(n^2)`
       - fast, :math:`O(n)`
       - yes
