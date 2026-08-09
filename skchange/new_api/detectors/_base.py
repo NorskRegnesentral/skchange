@@ -63,7 +63,7 @@ class BaseChangeDetector(BaseEstimator):
         )
 
     def fit_predict(self, X, y: ArrayLike | None = None, **fit_params) -> np.ndarray:
-        """Fit to data, then predict per-sample segment labels.
+        """Fit to data, then predict changepoints on the same data.
 
         Equivalent to calling fit(X, y).predict(X).
 
