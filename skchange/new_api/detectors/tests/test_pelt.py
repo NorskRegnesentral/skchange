@@ -217,9 +217,9 @@ def test_pelt_with_step_size(cost: L2Cost, penalty: float, step_size: int):
     ``ruptures.Pelt(jump=step_size)``, and the final cumulative cost must equal
     the recomputed penalised partition cost."""
     X = ALTERNATING_SEQUENCE
-    detector = PELT(cost=cost, step_size=step_size, penalty=penalty).fit(X)
+    detector = PELT(cost=cost, step_size=step_size, penalty=penalty)
 
-    cpts = detector.predict_changepoints(X)
+    cpts = detector.fit_predict(X)
     result = detector.predict_all(X)
 
     assert len(cpts) > 0
@@ -242,8 +242,8 @@ def test_pelt_with_step_size(cost: L2Cost, penalty: float, step_size: int):
 def test_jump_pelt_with_fewer_samples_than_twice_step_size_returns_no_cpts():
     """When ``n_samples < 2 * step_size`` jump-PELT has no room to split."""
     X = np.random.default_rng(0).standard_normal((10, 1))
-    detector = PELT(cost=L2Cost(), step_size=6, penalty=1.0).fit(X)
-    cpts = detector.predict_changepoints(X)
+    detector = PELT(cost=L2Cost(), step_size=6, penalty=1.0)
+    cpts = detector.fit_predict(X)
     np.testing.assert_array_equal(cpts, np.array([], dtype=cpts.dtype))
 
 
