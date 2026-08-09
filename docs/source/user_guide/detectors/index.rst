@@ -16,20 +16,19 @@ Which detector to reach for
 The table below compares the detectors at a glance. Column meanings:
 
 - **Scorer**: The interval scorer type the detector accepts through its
-  constructor (``cost``, ``change_score``, ``transient_score``, or ``saving``).
+  constructor.
 - **Few CPs** / **Many CPs**: Run-time on a series of length :math:`n` when the
   true number of changepoints is small vs. proportional to :math:`n`. Reported
   as a qualitative label plus the corresponding big-O complexity.
 - **Sparse MV**: Supports array-valued penalties and aggregation schemes tailored
-  to sparse changes in multivariate data (where only a few features change).
+  to sparse changes in multivariate data, where only a few features change.
 - **Anomalies**: Naturally produces segment anomalies (pairs of changepoints
   around an anomalous interval against a baseline) rather than a full
   segmentation.
 - **Tuning**: How much hyperparameter tweaking is typically needed to get
-  reliable performance. ``low`` means only a penalty (or nothing) to set,
-  ``medium`` means a couple of additional knobs that matter in practice
-  (e.g. ``min_subinterval_length``, ``agg``), ``high`` means a critical
-  hyperparameter that must be chosen carefully (e.g. ``bandwidth``).
+  reliable performance. ``low`` means only a penalty or nothing to set,
+  ``medium`` means a couple of additional knobs that matter in practice,
+  ``high`` means a critical hyperparameter that must be chosen carefully.
 
 Follow the detector link for a detailed discussion of the trade-offs.
 
