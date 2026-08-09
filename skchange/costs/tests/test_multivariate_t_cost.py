@@ -554,7 +554,7 @@ def test_iterative_t_dof_estimate():
     mean = np.arange(p) * (-1 * np.ones(p)).cumprod()
 
     mv_t_dist = st.multivariate_t(loc=mean, shape=cov, df=t_dof)
-    mv_t_samples = mv_t_dist.rvs(n_samples)
+    mv_t_samples = mv_t_dist.rvs(n_samples, random_state=seed)
 
     sample_medians = np.median(mv_t_samples, axis=0)
     centered_samples = mv_t_samples - sample_medians
