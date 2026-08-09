@@ -132,8 +132,6 @@ def penalty_curve(
     Intended as a utility for exploring and plotting results for different penalty
     values. Selecting a final value from the curve is left to the caller.
 
-    TODO: See also CROPS for specialised PELT.
-
     Parameters
     ----------
     detector : estimator
@@ -169,6 +167,11 @@ def penalty_curve(
         unknown built-in name.
     TypeError
         ``scoring`` is neither a string nor a callable.
+
+    See Also
+    --------
+    skchange.new_api.detectors.CROPS : Specialised PELT search for multiple
+    changepoints.
 
     Examples
     --------
