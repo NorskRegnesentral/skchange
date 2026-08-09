@@ -618,6 +618,24 @@ def test_calibrated_detector_predict_scores_delegates():
     assert isinstance(values, np.ndarray)
 
 
+def test_calibrated_detector_predict_all_delegates():
+    """A fitted wrapper forwards predict_all to the calibrated detector."""
+    X = _null_X()
+    cal = CalibratedDetector(
+        SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
+    ).fit(X)
+    assert hasattr(cal, "predict_all")
+    result = cal.predict_all(X)
+    assert isinstance(result, dict)
+    assert "changepoints" in result
+    assert isinstance(result["changepoints"], np.ndarray)
+    # The wrapper's result must match the calibrated detector's result.
+    expected = cal.detector_.predict_all(X)
+    assert result.keys() == expected.keys()
+    for key, expected_value in expected.items():
+        np.testing.assert_array_equal(result[key], expected_value)
+
+
 def test_calibrated_detector_crops_raises():
     with pytest.raises(ValueError, match="penalty_scale"):
         CalibratedDetector(CROPS()).fit(_null_X())

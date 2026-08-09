@@ -707,23 +707,29 @@ class CalibratedDetector(BaseEstimator):
         )
         return self
 
-    @available_if(_detector_has("predict_segment_anomalies"))
-    def predict_segment_anomalies(self, X) -> np.ndarray:
-        """Delegate to the calibrated detector."""
-        check_is_fitted(self, "detector_")
-        return self.detector_.predict_segment_anomalies(X)
-
     @available_if(_detector_has("predict"))
     def predict(self, X) -> np.ndarray:
         """Delegate to the calibrated detector."""
         check_is_fitted(self, "detector_")
         return self.detector_.predict(X)
 
+    @available_if(_detector_has("predict_segment_anomalies"))
+    def predict_segment_anomalies(self, X) -> np.ndarray:
+        """Delegate to the calibrated detector."""
+        check_is_fitted(self, "detector_")
+        return self.detector_.predict_segment_anomalies(X)
+
     @available_if(_detector_has("predict_scores"))
     def predict_scores(self, X, return_index: bool = False):
         """Delegate to the calibrated detector."""
         check_is_fitted(self, "detector_")
         return self.detector_.predict_scores(X, return_index=return_index)
+
+    @available_if(_detector_has("predict_all"))
+    def predict_all(self, X):
+        """Delegate to the calibrated detector."""
+        check_is_fitted(self, "detector_")
+        return self.detector_.predict_all(X)
 
     def __sklearn_tags__(self):
         """Propagate tags from the wrapped detector."""
