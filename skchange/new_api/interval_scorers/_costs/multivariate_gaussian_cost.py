@@ -14,7 +14,7 @@ from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
-MAX_COV_CACHE_ELEMENTS = 100_000_000
+MAX_COV_CACHE_ELEMENTS = int(1.0e5)
 
 
 def _multivariate_gaussian_precompute(
