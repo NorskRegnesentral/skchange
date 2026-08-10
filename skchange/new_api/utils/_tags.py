@@ -40,9 +40,25 @@ class ChangeDetectorTags:
         Whether the detector is designed for data where each segment follows a
         linear trend. When ``True``, test fixtures will generate piecewise linear
         data with a kink at the changepoint rather than a mean shift.
+    calibration_strategy : str, default="detection_count"
+        How FWER calibration computes the per-null-sample critical penalty
+        scale for this detector.
+
+        - ``"detection_count"`` (default): bisect ``penalty_scale`` until the
+          number of detections hits zero. Exact for any detector with a single
+          ``penalty_scale`` knob. No structural assumption required.
+        - ``"max_score"``: closed-form ``c_b = max(S) / base``. Exact for
+          scan-and-threshold detectors that threshold each interval score
+          independently (e.g. SeededBinarySegmentation, MovingWindow,
+          CircularBinarySegmentation).
+        - ``"path_search"``: exact secant search on the convex hull of
+          cost-vs-number-of-changepoints. Used by PELT because the
+          single-split ``max_score`` underestimates its true critical
+          penalty.
     """
 
     linear_trend_segment: bool = False
+    calibration_strategy: str = "detection_count"
 
 
 @dataclass(slots=True)
@@ -61,9 +77,8 @@ class IntervalScorerTags:
         indicates change/anomaly. If False, external penalisation needed.
     non_negative_scores : bool, default=True
         Whether the scorer is guaranteed to return non-negative values on
-        homogeneous data. Most costs and savings satisfy this. Set to False
-        for costs that are test statistics which can be <= 0 by construction
-        (e.g. ``RankCost``).
+        homogeneous data. Most change scores, transient scores and savings satisfy this
+        unless they are penalised.
     linear_trend_segment : bool, default=False
         Whether the scorer is designed for data where each segment follows a
         linear trend. When ``True``, test fixtures will generate piecewise linear

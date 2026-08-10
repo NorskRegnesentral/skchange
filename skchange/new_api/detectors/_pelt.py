@@ -572,6 +572,7 @@ class PELT(BaseChangeDetector):
     _parameter_constraints = {
         "cost": [HasMethods(["fit", "precompute", "evaluate"]), None],
         "penalty": [Interval(Real, 0, None, closed="left"), None],
+        "penalty_scale": [Interval(Real, 0, None, closed="neither")],
         "min_segment_length": [Interval(Integral, 1, None, closed="left"), None],
         "prune": ["boolean"],
         "split_cost": [Interval(Real, 0, None, closed="left")],
@@ -583,6 +584,7 @@ class PELT(BaseChangeDetector):
         self,
         cost: BaseCost | None = None,
         penalty: float | None = None,
+        penalty_scale: float = 1.0,
         min_segment_length: int | None = None,
         prune: bool = True,
         split_cost: float = 0.0,
@@ -591,6 +593,7 @@ class PELT(BaseChangeDetector):
     ):
         self.cost = cost
         self.penalty = penalty
+        self.penalty_scale = penalty_scale
         self.min_segment_length = min_segment_length
         self.prune = prune
         self.split_cost = split_cost
@@ -605,6 +608,7 @@ class PELT(BaseChangeDetector):
         tags.change_detector_tags.linear_trend_segment = (
             scorer_tags.interval_scorer_tags.linear_trend_segment
         )
+        tags.change_detector_tags.calibration_strategy = "path_search"
         return tags
 
     @_fit_context(prefer_skip_nested_validation=False)
@@ -652,9 +656,10 @@ class PELT(BaseChangeDetector):
             )
         self.min_segment_length_ = min_segment_length
 
-        self.penalty_ = (
+        base_penalty = (
             self.cost_.get_default_penalty() if self.penalty is None else self.penalty
         )
+        self.penalty_ = self.penalty_scale * base_penalty
 
         return self
 
@@ -750,7 +755,7 @@ class PELT(BaseChangeDetector):
         X: ArrayLike,
         return_index: bool = False,
     ) -> np.ndarray | tuple[np.ndarray, dict[str, np.ndarray]]:
-        """Return the unpenalised cost at every interval the PELT DP evaluated.
+        """Return the cost at every interval the PELT dynamic programme evaluated.
 
         Runs PELT on ``X`` with the fitted state and returns the
         feature-summed cost value at every ``(start, end)`` interval the

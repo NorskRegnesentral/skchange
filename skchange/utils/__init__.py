@@ -1,1 +1,1 @@
-"""Utility helpers for skchange."""
+"""Utility functions and helpers for skchange."""

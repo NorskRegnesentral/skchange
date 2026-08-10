@@ -1,11 +1,17 @@
 .. _datasets:
 
+========
 Datasets
 ========
+Synthetic data generators and loaders for real datasets bundled with
+Skchange.
 
 Generate toy data
 -----------------
-.. currentmodule:: skchange.datasets
+Generators for piecewise-constant, piecewise-normal, piecewise-regression
+and piecewise-linear-trend data.
+
+.. currentmodule:: skchange.new_api.datasets
 
 .. autosummary::
     :toctree: auto_generated/
@@ -18,19 +24,12 @@ Generate toy data
 
 Load real datasets
 ------------------
+Loaders for real datasets bundled with Skchange.
+
+.. currentmodule:: skchange.new_api.datasets
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
     load_hvac_system_data
-
-Deprecated
-----------
-.. autosummary::
-    :toctree: auto_generated/
-    :template: functions.rst
-
-    generate_anomalous_data
-    generate_changing_data
-    generate_alternating_data

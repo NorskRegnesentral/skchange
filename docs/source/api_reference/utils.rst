@@ -1,49 +1,52 @@
 .. _utils:
 
-Utility functions
-=================
+=========
+Utilities
+=========
+General-purpose helpers used across Skchange: tag classes that declare
+estimator capabilities, input and parameter validators, and segmentation
+conversions.
 
-Data validation
----------------
-.. currentmodule:: skchange.utils.validation.data
+Tags
+----
+Dataclasses that declare detector and interval-scorer capabilities.
+
+.. currentmodule:: skchange.new_api.utils
+
+.. autosummary::
+    :toctree: auto_generated/
+    :template: class.rst
+
+    SkchangeTags
+    SkchangeInputTags
+    ChangeDetectorTags
+    IntervalScorerTags
+
+Validation
+----------
+Input and parameter validation helpers.
+
+.. currentmodule:: skchange.new_api.utils
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    check_data
+    validate_data
+    check_interval_scorer
+    check_interval_specs
+    check_penalty
 
-Cuts validation
----------------
+Segmentation
+------------
+Conversions between dense per-sample segment labels and sparse changepoint
+indices.
 
-.. currentmodule:: skchange.utils.validation.cuts
-
-.. autosummary::
-    :toctree: auto_generated/
-    :template: functions.rst
-
-    check_cuts_array
-
-
-Parameter validation
---------------------
-.. currentmodule:: skchange.utils.validation.parameters
+.. currentmodule:: skchange.new_api.utils
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    check_larger_than
-    check_smaller_than
-    check_in_interval
-
-Plotting
---------
-.. currentmodule:: skchange.utils.plotting
-
-.. autosummary::
-    :toctree: auto_generated/
-    :template: functions.rst
-
-    plot_detections
-    plot_scatter_segmentation
+    changepoints_to_labels
+    labels_to_changepoints

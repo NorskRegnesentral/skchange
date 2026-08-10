@@ -6,6 +6,10 @@ from skchange.new_api.utils._tags import (
     SkchangeInputTags,
     SkchangeTags,
 )
+from skchange.new_api.utils.plotting import (
+    plot_detections,
+    plot_segmentation,
+)
 from skchange.new_api.utils.segmentation import (
     changepoints_to_labels,
     labels_to_changepoints,
@@ -26,6 +30,8 @@ __all__ = [
     "check_interval_specs",
     "check_penalty",
     "changepoints_to_labels",
-    "validate_data",
     "labels_to_changepoints",
+    "plot_detections",
+    "plot_segmentation",
+    "validate_data",
 ]

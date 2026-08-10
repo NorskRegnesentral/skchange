@@ -1,11 +1,11 @@
 .. _anomaly_detection_guide:
 
-=================
-Anomaly detection
-=================
+=========================
+Segment anomaly detection
+=========================
+Work in progress.
 
 .. toctree::
-    :maxdepth: 1
-    :hidden:
+    :maxdepth: 2
 
     intro

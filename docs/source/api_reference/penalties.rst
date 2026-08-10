@@ -1,48 +1,52 @@
 .. _penalties:
 
+=========
 Penalties
 =========
-Penalties govern the trade-off between the number of change points and the fit of the
-model. They are used by all current detectors in ``skchange``. Utility functions are
-provided for helping to create commonly used penalties.
-
+Penalties govern the trade-off between the number of changepoints in the
+model and the fit of the model. They are used by all detectors in Skchange.
+Helper functions are provided for the commonly used penalty shapes.
 
 Constant penalties
 ------------------
-The penalty for each additional change point in the model is constant.
+The penalty for each additional changepoint is constant.
 
-.. currentmodule:: skchange.penalties
+.. currentmodule:: skchange.new_api.penalties
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    make_bic_penalty
-    make_chi2_penalty
-
+    bic_penalty
+    chi2_penalty
 
 Linear penalties
-------------------
-The penalty for each additional change point in the model is linear in the number of
-variables affected by the change. Only relevant for multivariate data.Some detectors
-use such penalties to identify the variables responsible for the change or anomaly.
-Penalised scores using linear penalties are faster to compute than non-linear penalties.
+----------------
+The penalty for each additional changepoint is linear in the number of
+variables affected by the change. Only relevant for multivariate data. Some
+detectors use such penalties to identify the variables responsible for the
+change or anomaly. Penalised scores using linear penalties are faster to
+compute than non-linear penalties.
+
+.. currentmodule:: skchange.new_api.penalties
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    make_linear_penalty
-    make_linear_chi2_penalty
+    linear_penalty
+    linear_chi2_penalty
 
 Nonlinear penalties
-------------------
-The penalty for each additional change point in the model is non-linear in the number of
-variables affected by the change. Only relevant for multivariate data. Some detectors
-use such penalties to identify the variables responsible for the change or anomaly.
+-------------------
+The penalty for each additional changepoint is non-linear in the number of
+variables affected by the change. Only relevant for multivariate data.
+
+.. currentmodule:: skchange.new_api.penalties
 
 .. autosummary::
     :toctree: auto_generated/
     :template: functions.rst
 
-    make_nonlinear_chi2_penalty
+    nonlinear_chi2_penalty
+    mvcapa_penalty
