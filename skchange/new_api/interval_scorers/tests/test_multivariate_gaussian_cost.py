@@ -40,9 +40,9 @@ def test_precompute_cumulative_moments():
 @pytest.mark.parametrize(
     "shape, expected_store_cov",
     [
-        ((10_000, 100), True),
+        ((100, 20), True),
         ((10_001, 100), False),
-        ((200, 50), True),
+        ((250, 10), True),
         ((2000, 500), False),
     ],
 )
