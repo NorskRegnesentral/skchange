@@ -155,11 +155,8 @@ class MultivariateGaussianCost(BaseCost):
     ----------
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums.
-        If ``None``, caching is used when
-        :math:`n_{\text{samples}} p^2 \leq \texttt{MAX\_COV\_CACHE\_ELEMENTS}`.
-        Caching uses
-        :math:`O(n p^2)` memory but makes covariance calculation independent
-        of interval length.
+        If ``None``, caching is used when the precomputed data would take
+        up at most :const:`MAX_COV_CACHE_ELEMENTS` elements.
 
     Notes
     -----

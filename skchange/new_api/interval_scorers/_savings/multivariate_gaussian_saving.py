@@ -171,8 +171,8 @@ class MultivariateGaussianSaving(BaseSaving):
         the given mean.
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums for
-        the segment-wise MLE cost. If ``None``, caching is used when the
-        precomputed data has at most 10,000 samples and at most 100 features.
+        the segment-wise MLE cost. If ``None``, caching is used when the precomputed
+        data would take up at most :const:`MAX_COV_CACHE_ELEMENTS` elements.
 
     Notes
     -----

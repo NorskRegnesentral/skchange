@@ -153,8 +153,8 @@ class MultivariateGaussianScore(BaseChangeScore):
         Whether to apply the Bartlett correction to the change scores.
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums.
-        If ``None``, caching is used when the precomputed data has at most
-        10,000 samples and at most 100 features.
+        If ``None``, caching is used when the precomputed data would take
+        up at most :const:`MAX_COV_CACHE_ELEMENTS` elements.
 
     References
     ----------
