@@ -13,6 +13,15 @@ from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import 
 )
 
 
+@pytest.mark.parametrize(
+    "scorer_class",
+    [MultivariateGaussianCost, MultivariateGaussianSaving, MultivariateGaussianScore],
+)
+def test_cache_limit_is_formatted_in_class_docstring(scorer_class):
+    """Class docstrings show the current cache limit with digit separators."""
+    assert f"{MAX_COV_CACHE_ELEMENTS:_}" in scorer_class.__doc__
+
+
 def test_precompute_cumulative_moments():
     """Cached moments have a zero prefix and contain the expected sums."""
     X = np.array([[1.0, 2.0], [3.0, 4.0], [-1.0, 2.0]])

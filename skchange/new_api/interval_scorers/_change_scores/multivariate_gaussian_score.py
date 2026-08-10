@@ -9,6 +9,7 @@ from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
     _multivariate_gaussian_cost_mle_from_cache,
     _multivariate_gaussian_precompute,
+    _with_max_cov_cache_elements_doc,
 )
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.types import ArrayLike
@@ -129,6 +130,7 @@ def _compute_bartlett_corrections(
     return bartlett_corrections
 
 
+@_with_max_cov_cache_elements_doc
 class MultivariateGaussianScore(BaseChangeScore):
     """Multivariate Gaussian change score for a change in mean and/or covariance.
 
@@ -154,7 +156,7 @@ class MultivariateGaussianScore(BaseChangeScore):
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums.
         If ``None``, caching is used when the precomputed data would take
-        up at most :const:`MAX_COV_CACHE_ELEMENTS` elements.
+        up at most ``{MAX_COV_CACHE_ELEMENTS:_}`` elements.
 
     References
     ----------

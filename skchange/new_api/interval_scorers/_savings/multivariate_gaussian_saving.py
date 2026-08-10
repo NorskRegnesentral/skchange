@@ -11,6 +11,7 @@ from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
     _multivariate_gaussian_cost_mle_from_cache,
     _multivariate_gaussian_precompute,
+    _with_max_cov_cache_elements_doc,
 )
 from skchange.new_api.interval_scorers._savings._utils import (
     resolve_baseline_location_and_scatter,
@@ -134,6 +135,7 @@ def _multivariate_gaussian_cost_fixed_from_cache(
     )
 
 
+@_with_max_cov_cache_elements_doc
 class MultivariateGaussianSaving(BaseSaving):
     r"""Multivariate Gaussian saving for a fixed mean and covariance baseline.
 
@@ -172,7 +174,7 @@ class MultivariateGaussianSaving(BaseSaving):
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums for
         the segment-wise MLE cost. If ``None``, caching is used when the precomputed
-        data would take up at most :const:`MAX_COV_CACHE_ELEMENTS` elements.
+        data would take up at most ``{MAX_COV_CACHE_ELEMENTS:_}`` elements.
 
     Notes
     -----

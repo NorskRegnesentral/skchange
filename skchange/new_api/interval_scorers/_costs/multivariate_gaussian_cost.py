@@ -14,7 +14,15 @@ from skchange.new_api.utils._param_validation import _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import check_interval_specs, validate_data
 
-MAX_COV_CACHE_ELEMENTS = int(1.0e5)
+MAX_COV_CACHE_ELEMENTS = 100_000
+
+
+def _with_max_cov_cache_elements_doc(cls):
+    """Insert the formatted covariance cache limit into a class docstring."""
+    cls.__doc__ = cls.__doc__.replace(
+        "{MAX_COV_CACHE_ELEMENTS:_}", f"{MAX_COV_CACHE_ELEMENTS:_}"
+    )
+    return cls
 
 
 def _multivariate_gaussian_precompute(
@@ -136,6 +144,7 @@ def _multivariate_gaussian_cost_mle_from_cache(
     return _multivariate_gaussian_cost_mle(starts, ends, cache["X"], min_size)
 
 
+@_with_max_cov_cache_elements_doc
 class MultivariateGaussianCost(BaseCost):
     r"""Multivariate Gaussian (negative log-likelihood) cost.
 
@@ -156,7 +165,7 @@ class MultivariateGaussianCost(BaseCost):
     store_cov : bool or None, default=None
         Whether to cache cumulative sums and cumulative outer-product sums.
         If ``None``, caching is used when the precomputed data would take
-        up at most :const:`MAX_COV_CACHE_ELEMENTS` elements.
+        up at most ``{MAX_COV_CACHE_ELEMENTS:_}`` elements.
 
     Notes
     -----
