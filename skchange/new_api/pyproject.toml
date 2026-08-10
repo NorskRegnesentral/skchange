@@ -63,6 +63,11 @@ dev = [
     "ipykernel",
 ]
 
+# docs - documentation dependency set, install via "pip install skchange-new-api[docs]"
+docs = [
+    "pandas>=1.1",
+]
+
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
