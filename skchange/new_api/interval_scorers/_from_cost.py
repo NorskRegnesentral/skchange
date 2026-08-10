@@ -124,9 +124,11 @@ class CostChangeScore(BaseChangeScore):
         right_intervals = interval_specs[:, [1, 2]]
         full_intervals = interval_specs[:, [0, 2]]
 
-        left_costs = _deduplicate_cost_evaluate(self.cost_, cache, left_intervals)
-        right_costs = _deduplicate_cost_evaluate(self.cost_, cache, right_intervals)
-        no_change_costs = _deduplicate_cost_evaluate(self.cost_, cache, full_intervals)
+        all_intervals = np.concatenate(
+            [left_intervals, right_intervals, full_intervals], axis=0
+        )
+        all_costs = _deduplicate_cost_evaluate(self.cost_, cache, all_intervals)
+        left_costs, right_costs, no_change_costs = np.split(all_costs, 3)
 
         change_scores = no_change_costs - (left_costs + right_costs)
         return _warn_and_clamp_negative_scores(change_scores, self, "change")
