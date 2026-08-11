@@ -9,7 +9,9 @@ from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseSaving
 from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
-    _multivariate_gaussian_cost_mle,
+    _multivariate_gaussian_cost_mle_from_cache,
+    _multivariate_gaussian_precompute,
+    _with_max_cov_cache_elements_doc,
 )
 from skchange.new_api.interval_scorers._savings._utils import (
     resolve_baseline_location_and_scatter,
@@ -72,6 +74,68 @@ def _multivariate_gaussian_cost_fixed(
     return costs
 
 
+@njit(cache=True)
+def _multivariate_gaussian_cost_fixed_cached(
+    starts: np.ndarray,
+    ends: np.ndarray,
+    feature_sums: np.ndarray,
+    outer_product_sums: np.ndarray,
+    mean: np.ndarray,
+    log_det_cov: float,
+    inv_cov: np.ndarray,
+    min_size: int,
+) -> np.ndarray:
+    """Twice negative fixed Gaussian log-likelihood from cumulative moments."""
+    n_intervals = len(starts)
+    p = feature_sums.shape[1]
+    costs = np.empty((n_intervals, 1))
+    mean_inv_cov_mean = mean @ inv_cov @ mean
+    for i in range(n_intervals):
+        n = ends[i] - starts[i]
+        if n < min_size:
+            costs[i, 0] = np.inf
+            continue
+        partial_sum = feature_sums[ends[i]] - feature_sums[starts[i]]
+        partial_outer_product_sum = (
+            outer_product_sums[ends[i]] - outer_product_sums[starts[i]]
+        )
+        quadratic_form = (
+            np.sum(inv_cov * partial_outer_product_sum)
+            - 2.0 * (mean @ inv_cov @ partial_sum)
+            + n * mean_inv_cov_mean
+        )
+        twice_nll = n * p * np.log(2 * np.pi) + n * log_det_cov + quadratic_form
+        costs[i, 0] = twice_nll
+    return costs
+
+
+def _multivariate_gaussian_cost_fixed_from_cache(
+    starts: np.ndarray,
+    ends: np.ndarray,
+    cache: dict,
+    mean: np.ndarray,
+    log_det_cov: float,
+    inv_cov: np.ndarray,
+    min_size: int,
+) -> np.ndarray:
+    """Evaluate the fixed cost using the representation stored in ``cache``."""
+    if cache["store_cov"]:
+        return _multivariate_gaussian_cost_fixed_cached(
+            starts,
+            ends,
+            cache["feature_sums"],
+            cache["outer_product_sums"],
+            mean,
+            log_det_cov,
+            inv_cov,
+            min_size,
+        )
+    return _multivariate_gaussian_cost_fixed(
+        starts, ends, cache["X"], mean, log_det_cov, inv_cov, min_size
+    )
+
+
+@_with_max_cov_cache_elements_doc
 class MultivariateGaussianSaving(BaseSaving):
     r"""Multivariate Gaussian saving for a fixed mean and covariance baseline.
 
@@ -107,6 +171,10 @@ class MultivariateGaussianSaving(BaseSaving):
         of the training window. If ``baseline_mean`` is provided but
         ``baseline_cov`` is ``None``, the scatter is computed by centering at
         the given mean.
+    store_cov : bool or None, default=None
+        Whether to cache cumulative sums and cumulative outer-product sums for
+        the segment-wise MLE cost. If ``None``, caching is used when the precomputed
+        data would take up at most ``{MAX_COV_CACHE_ELEMENTS:_}`` elements.
 
     Notes
     -----
@@ -128,15 +196,18 @@ class MultivariateGaussianSaving(BaseSaving):
     _parameter_constraints: dict = {
         "baseline_mean": ["array-like", Real, None],
         "baseline_cov": ["array-like", Real, None],
+        "store_cov": ["boolean", None],
     }
 
     def __init__(
         self,
         baseline_mean: ArrayLike | float | None = None,
         baseline_cov: ArrayLike | float | None = None,
+        store_cov: bool | None = None,
     ):
         self.baseline_mean = baseline_mean
         self.baseline_cov = baseline_cov
+        self.store_cov = store_cov
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Return tags marking this scorer as aggregated."""
@@ -186,7 +257,7 @@ class MultivariateGaussianSaving(BaseSaving):
         return self
 
     def precompute(self, X: ArrayLike) -> dict:
-        """Store the data for segment-wise evaluation.
+        """Precompute data for segment-wise evaluation.
 
         Parameters
         ----------
@@ -196,12 +267,11 @@ class MultivariateGaussianSaving(BaseSaving):
         Returns
         -------
         cache : dict
-            Dictionary with key ``"X"``: the validated data array of shape
-            ``(n_samples, n_features)``.
+            Shared multivariate Gaussian cache.
         """
         check_is_fitted(self)
         X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
-        return {"X": X}
+        return _multivariate_gaussian_precompute(X, self.store_cov)
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate the multivariate Gaussian saving on intervals.
@@ -225,17 +295,18 @@ class MultivariateGaussianSaving(BaseSaving):
             caller_name=self.__class__.__name__,
         )
         starts, ends = interval_specs[:, 0], interval_specs[:, 1]
-        X = cache["X"]
-        fixed_cost = _multivariate_gaussian_cost_fixed(
+        fixed_cost = _multivariate_gaussian_cost_fixed_from_cache(
             starts,
             ends,
-            X,
+            cache,
             self.baseline_mean_,
             self._log_det_cov,
             self._inv_cov,
             self.min_size,
         )
-        mle_cost = _multivariate_gaussian_cost_mle(starts, ends, X, self.min_size)
+        mle_cost = _multivariate_gaussian_cost_mle_from_cache(
+            starts, ends, cache, self.min_size
+        )
         return fixed_cost - mle_cost
 
     def get_default_penalty(self) -> float:
