@@ -177,9 +177,11 @@ def _score_circular_intervals(
     )
     all_outer_starts = np.repeat(starts, n_inner)
     all_outer_ends = np.repeat(ends, n_inner)
-    interval_specs = np.column_stack(
-        (all_outer_starts, all_inner_starts, all_inner_ends, all_outer_ends)
-    )
+    interval_specs = np.empty((all_inner_starts.size, 4), dtype=np.int64)
+    interval_specs[:, 0] = all_outer_starts
+    interval_specs[:, 1] = all_inner_starts
+    interval_specs[:, 2] = all_inner_ends
+    interval_specs[:, 3] = all_outer_ends
     raw_scores = transient_score.evaluate(cache, interval_specs)
     penalised_scores = aggregate_and_penalise(raw_scores, agg_mode, penalty)
 
