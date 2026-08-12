@@ -415,13 +415,15 @@ def _run_pelt_with_step_size(
     for obs_interval_start, obs_interval_end in observation_intervals:
         # Add the next start to the admissible starts set:
         eval_starts = np.concatenate((eval_starts, np.array([obs_interval_start])))
-        eval_ends = np.repeat(obs_interval_end + 1, len(eval_starts))
-        eval_intervals = np.column_stack((eval_starts, eval_ends))
-        interval_costs = np.sum(cost.evaluate(cache, eval_intervals), axis=1)
+        eval_intervals = np.empty((eval_starts.size, 2), dtype=np.int64)
+        eval_intervals[:, 0] = eval_starts
+        eval_intervals[:, 1] = obs_interval_end + 1
+        with skip_validation():
+            interval_costs = np.sum(cost.evaluate(cache, eval_intervals), axis=1)
 
         if log_costs:
             eval_starts_log.append(eval_starts.copy())
-            eval_ends_log.append(eval_ends)
+            eval_ends_log.append(eval_intervals[:, 1].copy())
             eval_costs_log.append(interval_costs)
 
         pelt_cost_evals += len(eval_starts)
