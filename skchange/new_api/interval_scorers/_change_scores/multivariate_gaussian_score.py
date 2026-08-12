@@ -3,17 +3,22 @@
 __author__ = ["johannvk"]
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
-    _multivariate_gaussian_cost_mle,
+    _multivariate_gaussian_cost_mle_from_cache,
+    _multivariate_gaussian_precompute,
+    _with_max_cov_cache_elements_doc,
 )
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_is_fitted,
+    validate_data,
+)
 
 
 @njit(cache=True)
@@ -128,6 +133,7 @@ def _compute_bartlett_corrections(
     return bartlett_corrections
 
 
+@_with_max_cov_cache_elements_doc
 class MultivariateGaussianScore(BaseChangeScore):
     """Multivariate Gaussian change score for a change in mean and/or covariance.
 
@@ -150,6 +156,10 @@ class MultivariateGaussianScore(BaseChangeScore):
     ----------
     apply_bartlett_correction : bool, default=True
         Whether to apply the Bartlett correction to the change scores.
+    store_cov : bool or None, default=None
+        Whether to cache cumulative sums and cumulative outer-product sums.
+        If ``None``, caching is used when the precomputed data would take
+        up at most ``{MAX_COV_CACHE_ELEMENTS:_}`` elements.
 
     References
     ----------
@@ -171,10 +181,16 @@ class MultivariateGaussianScore(BaseChangeScore):
 
     _parameter_constraints: dict = {
         "apply_bartlett_correction": ["boolean"],
+        "store_cov": ["boolean", None],
     }
 
-    def __init__(self, apply_bartlett_correction: bool = True):
+    def __init__(
+        self,
+        apply_bartlett_correction: bool = True,
+        store_cov: bool | None = None,
+    ):
         self.apply_bartlett_correction = apply_bartlett_correction
+        self.store_cov = store_cov
 
     def __sklearn_tags__(self) -> SkchangeTags:
         """Return tags marking this scorer as aggregated."""
@@ -187,6 +203,12 @@ class MultivariateGaussianScore(BaseChangeScore):
         """Minimum sub-interval size (n_features + 1 to keep each side full-rank)."""
         check_is_fitted(self)
         return self.n_features_in_ + 1
+
+    def precompute(self, X: ArrayLike) -> dict:
+        """Precompute shared multivariate Gaussian cumulative moments."""
+        check_is_fitted(self)
+        X = validate_data(self, X, ensure_2d=True, dtype=np.float64, reset=False)
+        return _multivariate_gaussian_precompute(X, self.store_cov)
 
     def evaluate(self, cache: dict, interval_specs: ArrayLike) -> np.ndarray:
         """Evaluate the multivariate Gaussian change score on intervals.
@@ -209,11 +231,15 @@ class MultivariateGaussianScore(BaseChangeScore):
         splits = interval_specs[:, 1]
         ends = interval_specs[:, 2]
 
-        X = cache["X"]
-
-        left_costs = _multivariate_gaussian_cost_mle(starts, splits, X, self.min_size)
-        right_costs = _multivariate_gaussian_cost_mle(splits, ends, X, self.min_size)
-        full_costs = _multivariate_gaussian_cost_mle(starts, ends, X, self.min_size)
+        left_costs = _multivariate_gaussian_cost_mle_from_cache(
+            starts, splits, cache, self.min_size
+        )
+        right_costs = _multivariate_gaussian_cost_mle_from_cache(
+            splits, ends, cache, self.min_size
+        )
+        full_costs = _multivariate_gaussian_cost_mle_from_cache(
+            starts, ends, cache, self.min_size
+        )
 
         raw_scores = full_costs - (left_costs + right_costs)
 

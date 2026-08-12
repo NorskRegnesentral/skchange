@@ -515,10 +515,9 @@ class MovingWindow(BaseChangeDetector):
 
         # Rebuild the (n_samples, n_bandwidths) score matrix that the selection
         # methods expect. Each flat entry lands at row=splits[i], col=bw_index[i].
-        bw_to_col = {int(bw): j for j, bw in enumerate(active_bws)}
-        score_matrix = np.full((n_samples, len(active_bws)), np.nan)
-        for i in range(len(scores)):
-            score_matrix[splits[i], bw_to_col[int(bws[i])]] = scores[i]
+        score_matrix = np.full((n_samples, active_bws.size), np.nan)
+        bw_cols = np.searchsorted(active_bws, bws)
+        score_matrix[splits, bw_cols] = scores
 
         if self.selection_method == "detection_length":
             min_detection_length = int(self.min_detection_fraction * active_bws[0])

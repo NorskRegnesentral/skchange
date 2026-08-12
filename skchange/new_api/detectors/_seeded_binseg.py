@@ -175,7 +175,10 @@ def _score_seeded_intervals(
         all_splits = np.concatenate(splits_per_interval)
         all_starts = np.repeat(starts, n_splits)
         all_ends = np.repeat(ends, n_splits)
-        interval_specs = np.column_stack((all_starts, all_splits, all_ends))
+        interval_specs = np.empty((all_splits.size, 3), dtype=np.int64)
+        interval_specs[:, 0] = all_starts
+        interval_specs[:, 1] = all_splits
+        interval_specs[:, 2] = all_ends
 
         # Evaluate the change score on all specs in a single call. This is
         # much faster than calling ``change_score.evaluate`` once per interval.

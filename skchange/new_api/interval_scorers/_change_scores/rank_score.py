@@ -3,7 +3,6 @@
 __author__ = ["johannvk"]
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.interval_scorers._costs.rank_cost import (
@@ -12,7 +11,11 @@ from skchange.new_api.interval_scorers._costs.rank_cost import (
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_is_fitted,
+    validate_data,
+)
 
 
 def _compute_sorted_ranks(

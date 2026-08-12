@@ -31,6 +31,7 @@ from skchange.new_api.utils._score_aggregation import (
 )
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
+    skip_validation,
     validate_data,
 )
 
@@ -95,53 +96,56 @@ def _run_capa(
     else:
         max_segment_penalty = np.inf  # Don't prune when the penalty is unknown.
 
-    for t in range(min_segment_length - 1, n_samples):
-        # Extend the admissible segment starts by one at each step.
-        starts = np.append(starts, np.intp(t - min_segment_length + 1))
+    with skip_validation():
+        for t in range(min_segment_length - 1, n_samples):
+            # Extend the admissible segment starts by one at each step.
+            starts = np.append(starts, np.intp(t - min_segment_length + 1))
 
-        # Evaluate all candidate segment anomaly intervals [start, t+1).
-        ends = np.full(len(starts), t + 1, dtype=np.intp)
-        intervals = np.column_stack((starts, ends))
-        raw_segment_scores = segment_saving.evaluate(segment_cache, intervals)
-        segment_savings = aggregate_and_penalise(
-            raw_segment_scores, segment_agg_mode, segment_penalty
-        )
-        if log_savings:
-            segment_savings_chunks.append(segment_savings)
-            segment_starts_chunks.append(starts.copy())
-            segment_ends_chunks.append(ends)
-        candidate_savings = opt_savings[starts] + segment_savings
-        best_segment_idx = int(np.argmax(candidate_savings))
-        opt_segment_saving = candidate_savings[best_segment_idx]
-        opt_segment_start = starts[best_segment_idx]
+            # Evaluate all candidate segment anomaly intervals [start, t+1).
+            intervals = np.empty((starts.size, 2), dtype=np.intp)
+            intervals[:, 0] = starts
+            intervals[:, 1] = t + 1
+            raw_segment_scores = segment_saving.evaluate(segment_cache, intervals)
+            segment_savings = aggregate_and_penalise(
+                raw_segment_scores, segment_agg_mode, segment_penalty
+            )
+            if log_savings:
+                segment_savings_chunks.append(segment_savings)
+                segment_starts_chunks.append(starts.copy())
+                segment_ends_chunks.append(intervals[:, 1].copy())
+            candidate_savings = opt_savings[starts] + segment_savings
+            best_segment_idx = int(np.argmax(candidate_savings))
+            opt_segment_saving = candidate_savings[best_segment_idx]
+            opt_segment_start = starts[best_segment_idx]
 
-        # Evaluate point anomaly [t, t+1).
-        raw_point_score = point_saving.evaluate(point_cache, np.array([[t, t + 1]]))
-        point_saving_value = float(
-            aggregate_and_penalise(raw_point_score, point_agg_mode, point_penalty)[0]
-        )
-        if log_savings:
-            point_savings_list.append(point_saving_value)
-            point_indices_list.append(t)
-        opt_point_saving = float(opt_savings[t]) + point_saving_value
+            # Evaluate point anomaly [t, t+1).
+            raw_point_score = point_saving.evaluate(point_cache, np.array([[t, t + 1]]))
+            point_saving_value = aggregate_and_penalise(
+                raw_point_score, point_agg_mode, point_penalty
+            )  # single value returned as 1D array of length 1
+            point_saving_value = float(point_saving_value[0])
+            if log_savings:
+                point_savings_list.append(point_saving_value)
+                point_indices_list.append(t)
+            opt_point_saving = float(opt_savings[t]) + point_saving_value
 
-        # Choose the best option: no anomaly, segment anomaly, or point anomaly.
-        options = np.array(
-            [float(opt_savings[t]), opt_segment_saving, opt_point_saving]
-        )
-        best = int(np.argmax(options))
-        opt_savings[t + 1] = options[best]
-        if best == 1:
-            opt_anomaly_starts[t] = opt_segment_start
-        elif best == 2:
-            opt_anomaly_starts[t] = t
+            # Choose the best option: no anomaly, segment anomaly, or point anomaly.
+            options = np.array(
+                [float(opt_savings[t]), opt_segment_saving, opt_point_saving]
+            )
+            best = int(np.argmax(options))
+            opt_savings[t + 1] = options[best]
+            if best == 1:
+                opt_anomaly_starts[t] = opt_segment_start
+            elif best == 2:
+                opt_anomaly_starts[t] = t
 
-        # Prune starts that can no longer improve on the current optimal saving or
-        # that would form segments longer than max_segment_length.
-        prune = (candidate_savings + max_segment_penalty <= opt_savings[t + 1]) | (
-            starts < t - max_segment_length + 2
-        )
-        starts = starts[~prune]
+            # Prune starts that can no longer improve on the current optimal saving or
+            # that would form segments longer than max_segment_length.
+            prune = (candidate_savings + max_segment_penalty <= opt_savings[t + 1]) | (
+                starts < t - max_segment_length + 2
+            )
+            starts = starts[~prune]
 
     if log_savings:
         segment_savings_all = np.concatenate(segment_savings_chunks)
