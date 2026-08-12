@@ -31,6 +31,7 @@ from skchange.new_api.utils._score_aggregation import (
 )
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
+    skip_validation,
     validate_data,
 )
 
@@ -100,23 +101,26 @@ def _run_capa(
         starts = np.append(starts, np.intp(t - min_segment_length + 1))
 
         # Evaluate all candidate segment anomaly intervals [start, t+1).
-        ends = np.full(len(starts), t + 1, dtype=np.intp)
-        intervals = np.column_stack((starts, ends))
-        raw_segment_scores = segment_saving.evaluate(segment_cache, intervals)
+        intervals = np.empty((starts.size, 2), dtype=np.intp)
+        intervals[:, 0] = starts
+        intervals[:, 1] = t + 1
+        with skip_validation():
+            raw_segment_scores = segment_saving.evaluate(segment_cache, intervals)
         segment_savings = aggregate_and_penalise(
             raw_segment_scores, segment_agg_mode, segment_penalty
         )
         if log_savings:
             segment_savings_chunks.append(segment_savings)
             segment_starts_chunks.append(starts.copy())
-            segment_ends_chunks.append(ends)
+            segment_ends_chunks.append(intervals[:, 1].copy())
         candidate_savings = opt_savings[starts] + segment_savings
         best_segment_idx = int(np.argmax(candidate_savings))
         opt_segment_saving = candidate_savings[best_segment_idx]
         opt_segment_start = starts[best_segment_idx]
 
         # Evaluate point anomaly [t, t+1).
-        raw_point_score = point_saving.evaluate(point_cache, np.array([[t, t + 1]]))
+        with skip_validation():
+            raw_point_score = point_saving.evaluate(point_cache, np.array([[t, t + 1]]))
         point_saving_value = float(
             aggregate_and_penalise(raw_point_score, point_agg_mode, point_penalty)[0]
         )
