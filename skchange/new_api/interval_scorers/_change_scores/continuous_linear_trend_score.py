@@ -5,7 +5,6 @@ __author__ = ["johannvk"]
 from numbers import Integral
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseChangeScore
 from skchange.new_api.penalties import bic_penalty
@@ -15,6 +14,7 @@ from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
 from skchange.new_api.utils.validation import (
     check_interval_specs,
+    check_is_fitted,
     check_time_col,
     validate_data,
 )

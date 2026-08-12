@@ -4,7 +4,6 @@ import warnings
 
 import numpy as np
 from sklearn.base import clone
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import (
     BaseChangeScore,
@@ -16,6 +15,7 @@ from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils.validation import (
     check_interval_scorer,
     check_interval_specs,
+    check_is_fitted,
     skip_validation,
     validate_data,
 )

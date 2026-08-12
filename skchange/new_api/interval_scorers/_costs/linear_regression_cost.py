@@ -5,7 +5,6 @@ __author__ = ["johannvk"]
 from numbers import Integral
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
@@ -13,7 +12,11 @@ from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import Interval, _fit_context
 from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import check_interval_specs, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_is_fitted,
+    validate_data,
+)
 
 
 @njit(cache=True)
