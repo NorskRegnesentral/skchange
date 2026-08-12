@@ -228,64 +228,66 @@ def _run_pelt(
         len(potential_change_point_indices) + 1
     ) // 2 - 1
 
-    for current_obs_ind in potential_change_point_indices:
-        latest_start = current_obs_ind - min_segment_shift
-        opt_cost_obs_ind = current_obs_ind + 1
+    with skip_validation():
+        for current_obs_ind in potential_change_point_indices:
+            latest_start = current_obs_ind - min_segment_shift
+            opt_cost_obs_ind = current_obs_ind + 1
 
-        if prune:
-            starts_to_prune = pruning_indices[current_obs_ind % min_segment_length]
-            if starts_to_prune.size:
-                # cost_eval_starts and starts_to_prune are both sorted and unique.
-                keep_mask = np.isin(
-                    cost_eval_starts,
-                    starts_to_prune,
-                    assume_unique=True,
-                    invert=True,
-                )
-                cost_eval_starts = cost_eval_starts[keep_mask]
+            if prune:
+                starts_to_prune = pruning_indices[current_obs_ind % min_segment_length]
+                if starts_to_prune.size:
+                    # cost_eval_starts and starts_to_prune are both sorted and unique.
+                    keep_mask = np.isin(
+                        cost_eval_starts,
+                        starts_to_prune,
+                        assume_unique=True,
+                        invert=True,
+                    )
+                    cost_eval_starts = cost_eval_starts[keep_mask]
 
-        # Add the next start to the admissible starts set:
-        cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))
-        cost_eval_intervals = np.empty((cost_eval_starts.size, 2), dtype=np.int64)
-        cost_eval_intervals[:, 0] = cost_eval_starts
-        cost_eval_intervals[:, 1] = current_obs_ind + 1
-        with skip_validation():
+            # Add the next start to the admissible starts set:
+            cost_eval_starts = np.concatenate(
+                (cost_eval_starts, np.array([latest_start]))
+            )
+            cost_eval_intervals = np.empty((cost_eval_starts.size, 2), dtype=np.int64)
+            cost_eval_intervals[:, 0] = cost_eval_starts
+            cost_eval_intervals[:, 1] = current_obs_ind + 1
             interval_costs = np.sum(cost.evaluate(cache, cost_eval_intervals), axis=1)
 
-        if log_costs:
-            eval_starts_log.append(cost_eval_starts.copy())
-            eval_ends_log.append(cost_eval_intervals[:, 1].copy())
-            eval_costs_log.append(interval_costs)
+            if log_costs:
+                eval_starts_log.append(cost_eval_starts.copy())
+                eval_ends_log.append(cost_eval_intervals[:, 1].copy())
+                eval_costs_log.append(interval_costs)
 
-        num_pelt_cost_evals += len(cost_eval_starts)
+            num_pelt_cost_evals += len(cost_eval_starts)
 
-        # Add the cost and penalty for a new segment:
-        candidate_opt_costs = opt_cost[cost_eval_starts] + interval_costs + penalty
+            # Add the cost and penalty for a new segment:
+            candidate_opt_costs = opt_cost[cost_eval_starts] + interval_costs + penalty
 
-        argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
-        prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
+            argmin_candidate_cost = np.argmin(candidate_opt_costs)
+            opt_cost[opt_cost_obs_ind] = candidate_opt_costs[argmin_candidate_cost]
+            prev_cpts[current_obs_ind] = cost_eval_starts[argmin_candidate_cost]
 
-        if prune:
-            # Trimming the admissible starts set: (reuse the array of optimal costs)
-            current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
+            if prune:
+                # Trimming the admissible starts set: (reuse the array of optimal costs)
+                current_obs_ind_opt_cost = opt_cost[opt_cost_obs_ind]
 
-            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-            start_inclusion_threshold = (
-                current_obs_ind_opt_cost
-                # Apply pruning margin to the current optimal cost:
-                + abs_current_obs_opt_cost * pruning_margin
-                # Moved from 'negative' on left side
-                # to 'positive' on right side.
-                + penalty
-                # Remove from right side of inequality.
-                - split_cost
-            )
+                abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+                start_inclusion_threshold = (
+                    current_obs_ind_opt_cost
+                    # Apply pruning margin to the current optimal cost:
+                    + abs_current_obs_opt_cost * pruning_margin
+                    # Moved from 'negative' on left side
+                    # to 'positive' on right side.
+                    + penalty
+                    # Remove from right side of inequality.
+                    - split_cost
+                )
 
-            # Store indices to prune for the `min_segment_length`'th next observation:
-            pruning_indices[current_obs_ind % min_segment_length] = cost_eval_starts[
-                candidate_opt_costs > start_inclusion_threshold
-            ]
+                # Store indices to prune for the `min_segment_length`'th next obs:
+                pruning_indices[current_obs_ind % min_segment_length] = (
+                    cost_eval_starts[candidate_opt_costs > start_inclusion_threshold]
+                )
 
     pruning_fraction = (
         1.0 - num_pelt_cost_evals / num_opt_part_cost_evals
@@ -412,51 +414,53 @@ def _run_pelt_with_step_size(
     eval_ends_log: list[np.ndarray] = []
     eval_costs_log: list[np.ndarray] = []
 
-    for obs_interval_start, obs_interval_end in observation_intervals:
-        # Add the next start to the admissible starts set:
-        eval_starts = np.concatenate((eval_starts, np.array([obs_interval_start])))
-        eval_intervals = np.empty((eval_starts.size, 2), dtype=np.int64)
-        eval_intervals[:, 0] = eval_starts
-        eval_intervals[:, 1] = obs_interval_end + 1
-        with skip_validation():
+    with skip_validation():
+        for obs_interval_start, obs_interval_end in observation_intervals:
+            # Add the next start to the admissible starts set:
+            eval_starts = np.concatenate((eval_starts, np.array([obs_interval_start])))
+            eval_intervals = np.empty((eval_starts.size, 2), dtype=np.int64)
+            eval_intervals[:, 0] = eval_starts
+            eval_intervals[:, 1] = obs_interval_end + 1
             interval_costs = np.sum(cost.evaluate(cache, eval_intervals), axis=1)
 
-        if log_costs:
-            eval_starts_log.append(eval_starts.copy())
-            eval_ends_log.append(eval_intervals[:, 1].copy())
-            eval_costs_log.append(interval_costs)
+            if log_costs:
+                eval_starts_log.append(eval_starts.copy())
+                eval_ends_log.append(eval_intervals[:, 1].copy())
+                eval_costs_log.append(interval_costs)
 
-        pelt_cost_evals += len(eval_starts)
+            pelt_cost_evals += len(eval_starts)
 
-        # Add the penalty for a new segment:
-        candidate_opt_costs = opt_cost[eval_starts] + interval_costs + penalty
+            # Add the penalty for a new segment:
+            candidate_opt_costs = opt_cost[eval_starts] + interval_costs + penalty
 
-        argmin_candidate_cost = np.argmin(candidate_opt_costs)
-        opt_cost[obs_interval_start + 1 : obs_interval_end + 1 + 1] = (
-            candidate_opt_costs[argmin_candidate_cost]
-        )
-        prev_cpts[obs_interval_start : obs_interval_end + 1] = eval_starts[
-            argmin_candidate_cost
-        ]
-
-        if prune:
-            # Trimming the admissible starts set: (reuse the array of optimal costs)
-            current_obs_ind_opt_cost = opt_cost[obs_interval_start + 1]
-
-            abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
-            start_inclusion_threshold = (
-                current_obs_ind_opt_cost
-                # Apply pruning margin to the current optimal cost:
-                + abs_current_obs_opt_cost * pruning_margin
-                # Moved from 'negative' on left side
-                # to 'positive' on right side.
-                + penalty
-                # Remove from right side of inequality.
-                - split_cost
+            argmin_candidate_cost = np.argmin(candidate_opt_costs)
+            opt_cost[obs_interval_start + 1 : obs_interval_end + 1 + 1] = (
+                candidate_opt_costs[argmin_candidate_cost]
             )
+            prev_cpts[obs_interval_start : obs_interval_end + 1] = eval_starts[
+                argmin_candidate_cost
+            ]
 
-            new_start_inclusion_mask = candidate_opt_costs <= start_inclusion_threshold
-            eval_starts = eval_starts[new_start_inclusion_mask]
+            if prune:
+                # Trimming the admissible starts set: (reuse the array of optimal costs)
+                current_obs_ind_opt_cost = opt_cost[obs_interval_start + 1]
+
+                abs_current_obs_opt_cost = np.abs(current_obs_ind_opt_cost)
+                start_inclusion_threshold = (
+                    current_obs_ind_opt_cost
+                    # Apply pruning margin to the current optimal cost:
+                    + abs_current_obs_opt_cost * pruning_margin
+                    # Moved from 'negative' on left side
+                    # to 'positive' on right side.
+                    + penalty
+                    # Remove from right side of inequality.
+                    - split_cost
+                )
+
+                new_start_inclusion_mask = (
+                    candidate_opt_costs <= start_inclusion_threshold
+                )
+                eval_starts = eval_starts[new_start_inclusion_mask]
 
     pruning_fraction = (
         (1.0 - pelt_cost_evals / opt_part_cost_evals)
