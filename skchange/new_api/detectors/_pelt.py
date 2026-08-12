@@ -234,11 +234,15 @@ def _run_pelt(
 
         if prune:
             starts_to_prune = pruning_indices[current_obs_ind % min_segment_length]
-            # Delete the start indices that can be pruned:
-            cost_eval_starts = np.delete(
-                cost_eval_starts,
-                np.where(np.isin(cost_eval_starts, starts_to_prune))[0],
-            )
+            if starts_to_prune.size:
+                # cost_eval_starts and starts_to_prune are both sorted and unique.
+                keep_mask = np.isin(
+                    cost_eval_starts,
+                    starts_to_prune,
+                    assume_unique=True,
+                    invert=True,
+                )
+                cost_eval_starts = cost_eval_starts[keep_mask]
 
         # Add the next start to the admissible starts set:
         cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))
