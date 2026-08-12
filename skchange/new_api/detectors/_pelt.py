@@ -17,7 +17,11 @@ from skchange.new_api.types import ArrayLike, Self
 from skchange.new_api.utils import SkchangeTags
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.new_api.utils.validation import (
+    check_interval_scorer,
+    skip_validation,
+    validate_data,
+)
 
 
 @dataclass(frozen=True, kw_only=True, eq=False)
@@ -240,7 +244,8 @@ def _run_pelt(
         cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))
         cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
         cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
-        interval_costs = np.sum(cost.evaluate(cache, cost_eval_intervals), axis=1)
+        with skip_validation():
+            interval_costs = np.sum(cost.evaluate(cache, cost_eval_intervals), axis=1)
 
         if log_costs:
             eval_starts_log.append(cost_eval_starts.copy())
