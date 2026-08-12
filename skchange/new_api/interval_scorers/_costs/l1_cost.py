@@ -3,14 +3,16 @@
 __author__ = ["johannvk"]
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 from skchange.new_api.interval_scorers._base import BaseCost
 from skchange.new_api.penalties import bic_penalty
 from skchange.new_api.types import ArrayLike
 from skchange.new_api.utils._numba import njit
 from skchange.new_api.utils._numeric import col_median
-from skchange.new_api.utils.validation import check_interval_specs
+from skchange.new_api.utils.validation import (
+    check_interval_specs,
+    check_is_fitted,
+)
 
 
 @njit(cache=True)
@@ -46,7 +48,14 @@ def l1_cost(
         start, end = starts[i], ends[i]
         segment = X[start:end]
         mle_locations = col_median(segment, output_array=mle_locations)
-        costs[i, :] = np.sum(np.abs(segment - mle_locations), axis=0)
+        # The loop below is twice as fast as
+        # np.sum(np.abs(segment - mle_locations), axis=0) for large segments.
+        for j in range(n_columns):
+            m = mle_locations[j]
+            s = 0.0
+            for k in range(end - start):
+                s += abs(segment[k, j] - m)
+            costs[i, j] = s
 
     return costs
 
