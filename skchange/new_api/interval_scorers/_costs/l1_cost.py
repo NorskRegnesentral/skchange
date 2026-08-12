@@ -46,7 +46,14 @@ def l1_cost(
         start, end = starts[i], ends[i]
         segment = X[start:end]
         mle_locations = col_median(segment, output_array=mle_locations)
-        costs[i, :] = np.sum(np.abs(segment - mle_locations), axis=0)
+        # The loop below is twice as fast as
+        # np.sum(np.abs(segment - mle_locations), axis=0) for large segments.
+        for j in range(n_columns):
+            m = mle_locations[j]
+            s = 0.0
+            for k in range(end - start):
+                s += abs(segment[k, j] - m)
+            costs[i, j] = s
 
     return costs
 
