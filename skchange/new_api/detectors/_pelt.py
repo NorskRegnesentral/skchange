@@ -246,14 +246,15 @@ def _run_pelt(
 
         # Add the next start to the admissible starts set:
         cost_eval_starts = np.concatenate((cost_eval_starts, np.array([latest_start])))
-        cost_eval_ends = np.repeat(current_obs_ind + 1, len(cost_eval_starts))
-        cost_eval_intervals = np.column_stack((cost_eval_starts, cost_eval_ends))
+        cost_eval_intervals = np.empty((cost_eval_starts.size, 2), dtype=np.int64)
+        cost_eval_intervals[:, 0] = cost_eval_starts
+        cost_eval_intervals[:, 1] = current_obs_ind + 1
         with skip_validation():
             interval_costs = np.sum(cost.evaluate(cache, cost_eval_intervals), axis=1)
 
         if log_costs:
             eval_starts_log.append(cost_eval_starts.copy())
-            eval_ends_log.append(cost_eval_ends)
+            eval_ends_log.append(cost_eval_intervals[:, 1].copy())
             eval_costs_log.append(interval_costs)
 
         num_pelt_cost_evals += len(cost_eval_starts)
