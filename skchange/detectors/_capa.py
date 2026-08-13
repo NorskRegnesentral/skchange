@@ -91,10 +91,8 @@ def _run_capa(
     # Pruning requires an upper bound on the segment penalty value.
     if segment_penalty is not None:
         max_segment_penalty = float(np.max(np.atleast_1d(segment_penalty)))
-    elif hasattr(segment_saving, "penalty_"):
-        max_segment_penalty = float(np.max(np.atleast_1d(segment_saving.penalty_)))
     else:
-        max_segment_penalty = np.inf  # Don't prune when the penalty is unknown.
+        max_segment_penalty = np.inf  # Penalised scorers: pruning is not possible.
 
     with skip_validation():
         for t in range(min_segment_length - 1, n_samples):
