@@ -1,26 +1,27 @@
 """Tests for regression data generation"""
 
-import pandas as pd
+import numpy as np
 import pytest
 
-from skchange.datasets import generate_piecewise_regression_data
+from skchange.new_api.datasets import generate_piecewise_regression_data
 
 
 def test_generate_piecewise_regression_data_default():
     """Test default generation of piecewise regression data."""
-    df, feature_cols, target_cols = generate_piecewise_regression_data()
-    assert isinstance(df, pd.DataFrame)
-    assert all(col in df.columns for col in feature_cols + target_cols)
+    X, y = generate_piecewise_regression_data()
+    assert isinstance(X, np.ndarray)
+    assert isinstance(y, np.ndarray)
+    assert X.shape[0] == y.shape[0]
 
 
 @pytest.mark.parametrize("lengths", [100, [100], [50, 50], [30, 20, 50]])
 def test_generate_piecewise_regression_data_valid_lengths(lengths):
-    df, feature_cols, target_cols, params = generate_piecewise_regression_data(
+    X, y, params = generate_piecewise_regression_data(
         lengths=lengths, return_params=True
     )
-    assert isinstance(df, pd.DataFrame)
-    assert all(col in df.columns for col in feature_cols)
-    assert all(col in df.columns for col in target_cols)
+    assert isinstance(X, np.ndarray)
+    assert isinstance(y, np.ndarray)
+    assert X.shape[0] == y.shape[0]
     assert isinstance(params, dict)
 
 

@@ -5,12 +5,10 @@ __author__ = ["Tveten"]
 from numbers import Number
 
 import numpy as np
-import pandas as pd
 import scipy.stats
 
-from ..utils.validation.generation import check_random_generator, check_segment_lengths
 from ._generate import generate_piecewise_data
-from ._utils import recycle_list
+from ._utils import check_random_generator, check_segment_lengths, recycle_list
 
 
 def get_n_variables(
@@ -186,7 +184,7 @@ def generate_piecewise_normal_data(
     randomise_affected_variables: bool = False,
     seed: int | np.random.Generator | None = None,
     return_params: bool = False,
-) -> pd.DataFrame:
+) -> np.ndarray | tuple[np.ndarray, dict]:
     """Generate piecewise multivariate normal data.
 
     Generates piecewise multivariate normal data, where the distributional changes
@@ -256,8 +254,8 @@ def generate_piecewise_normal_data(
 
     Returns
     -------
-    pd.DataFrame
-        DataFrame with generated data.
+    np.ndarray of shape (n_samples, n_variables)
+        Array with generated data.
 
     dict
         Dictionary containing the parameters used to generate the data.
@@ -269,51 +267,12 @@ def generate_piecewise_normal_data(
 
     Examples
     --------
-    >>> # Example 1: Two segments with specified means
-    >>> from skchange.datasets import generate_piecewise_normal_data
-    >>> df = generate_piecewise_normal_data(
+    >>> from skchange.new_api.datasets import generate_piecewise_normal_data
+    >>> X = generate_piecewise_normal_data(
     ...     means=[0, 5], lengths=5, n_segments=2, n_variables=1, seed=0
     ... )
-    >>> df
-              0
-    0  0.640423
-    1  0.104900
-    2 -0.535669
-    3  0.361595
-    4  1.304000
-    5  5.947081
-    6  4.296265
-    7  3.734579
-    8  4.376726
-    9  5.041326
-
-    >>> # Example 2: Unspecified means, variances and lengths
-    >>> df, params = generate_piecewise_normal_data(
-    ...     n_samples=10, n_segments=2, n_variables=2, seed=1, return_params=True
-    ... )
-    >>> df
-              0         1
-    0 -3.143268  2.391830
-    1 -2.241742  2.104844
-    2 -2.577892  2.357425
-    3 -3.342769  1.647802
-    4 -3.088434  2.409558
-    5  0.932471  1.518255
-    6  0.110841  1.553519
-    7  0.900891  1.535109
-    8  2.186813  2.817436
-    9 -1.818413 -0.078302
-    >>> params
-    {'n_segments': 2,
-    'n_samples': np.int64(10),
-    'means': [array([-2.60631446,  1.81071173]), array([0.89274914, 1.81071173])],
-    'variances': [array([[1., 0.],
-            [0., 1.]]),
-    array([[1., 0.],
-            [0., 1.]])],
-    'lengths': array([5, 5]),
-    'change_points': array([5]),
-    'affected_variables': [array([0, 1]), array([0])]}
+    >>> X.shape
+    (10, 1)
     """
     random_generator = check_random_generator(seed)
     if n_variables < 1:
@@ -350,7 +309,7 @@ def generate_piecewise_normal_data(
         scipy.stats.multivariate_normal(mean=mean, cov=cov)
         for mean, cov in zip(means, covs)
     ]
-    df, _params = generate_piecewise_data(
+    X, _params = generate_piecewise_data(
         distributions=distributions,
         lengths=lengths,
         seed=random_generator,
@@ -366,233 +325,6 @@ def generate_piecewise_normal_data(
             "change_points": _params["change_points"],
             "affected_variables": affected_variables,
         }
-        return df, params
+        return X, params
     else:
-        return df
-
-
-def _check_change_points(change_points: int | list[int], n: int) -> list[int]:
-    """Check if change points are valid.
-
-    Parameters
-    ----------
-    change_points : list of int
-        List of change points.
-    n : int
-        Total number of observations.
-
-    Raises
-    ------
-    ValueError
-        If any change point is out of bounds.
-    """
-    if isinstance(change_points, Number):
-        change_points = [change_points]
-
-    change_points = sorted(change_points)
-    if any([cpt > n - 1 or cpt < 0 for cpt in change_points]):
-        raise ValueError(
-            "Change points must be within the range of the data."
-            f" Got n={n}, max(change_points)={change_points} and"
-            f" min(change_points)={min(change_points)}."
-        )
-    if len(change_points) >= 2 and min(np.diff(change_points)) < 1:
-        raise ValueError(
-            "Change points must be at least 1 apart."
-            f" Got change_points={change_points}."
-        )
-
-    return change_points
-
-
-def generate_changing_data(
-    n: int = 100,
-    changepoints: int | list[int] = 50,
-    means: float | list[float] | list[np.ndarray] = 0.0,
-    variances: float | list[float] | list[np.ndarray] = 1.0,
-    random_state: int = None,
-):
-    """
-    Generate piecewise multivariate normal data with changing means and variances.
-
-    DEPRECATED: Use `generate_piecewise_normal_data` instead.
-
-    Parameters
-    ----------
-    n : int, optional, default=100
-        Number of observations.
-    changepoints : int or list of ints, optional, default=50
-        Changepoints in the data.
-    means : list of floats or list of arrays, optional, default=0.0
-        List of means for each segment.
-    variances : list of floats or list of arrays, optional, default=1.0
-        List of variances for each segment.
-    random_state : int or `RandomState`, optional
-        Seed or random state for reproducible results. Defaults to None.
-
-    Returns
-    -------
-    `pd.DataFrame`
-        DataFrame with generated data.
-    """
-    change_points = _check_change_points(changepoints, n)
-
-    if isinstance(means, Number):
-        means = [means]
-    if isinstance(variances, Number):
-        variances = [variances]
-
-    means = [np.asarray(mean).reshape(-1) for mean in means]
-    variances = [np.asarray(variance).reshape(-1) for variance in variances]
-
-    n_segments = len(change_points) + 1
-    if len(means) == 1:
-        means = means * n_segments
-    if len(variances) == 1:
-        variances = variances * n_segments
-
-    if n_segments != len(means) or n_segments != len(variances):
-        raise ValueError(
-            "Number of segments (len(changepoints) + 1),"
-            + " means and variances must be the same."
-        )
-
-    p = len(means[0])
-    x = scipy.stats.multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
-    change_points = [0] + change_points + [n]
-    for prev_cpt, next_cpt, mean, variance in zip(
-        change_points[:-1], change_points[1:], means, variances
-    ):
-        x[prev_cpt:next_cpt] = mean + np.sqrt(variance) * x[prev_cpt:next_cpt]
-
-    out_columns = [f"var{i}" for i in range(p)]
-    df = pd.DataFrame(x, index=range(len(x)), columns=out_columns)
-    return df
-
-
-def generate_anomalous_data(
-    n: int = 100,
-    anomalies: tuple[int, int] | list[tuple[int, int]] = (70, 80),
-    means: float | list[float] | list[np.ndarray] = 3.0,
-    variances: float | list[float] | list[np.ndarray] = 1.0,
-    random_state: int = None,
-) -> pd.DataFrame:
-    """
-    Generate multivariate normal data with anomalies.
-
-    DEPRECATED: Use `generate_piecewise_normal_data` instead.
-
-    Parameters
-    ----------
-    n : int, optional (default=100)
-        Number of observations.
-    anomalies : list of tuples, optional (default=[(71, 80)])
-        List of tuples of the form [start, end) indicating the start and end of an
-        anomaly.
-    means : list of floats or list of arrays, optional (default=[0.0])
-        List of means for each segment.
-    variances : list of floats or list of arrays, optional (default=[1.0])
-        List of variances for each segment.
-    random_state : int or `RandomState`, optional
-        Seed or random state for reproducible results. Defaults to None.
-
-    Returns
-    -------
-    `pd.DataFrame`
-        DataFrame with generated data.
-    """
-    if isinstance(anomalies, tuple):
-        anomalies = [anomalies]
-    if isinstance(means, Number):
-        means = [means]
-    if isinstance(variances, Number):
-        variances = [variances]
-
-    means = [np.asarray(mean).reshape(-1) for mean in means]
-    variances = [np.asarray(variance).reshape(-1) for variance in variances]
-
-    if len(means) == 1:
-        means = means * len(anomalies)
-    if len(variances) == 1:
-        variances = variances * len(anomalies)
-
-    if len(anomalies) != len(means) or len(anomalies) != len(variances):
-        raise ValueError("Number of anomalies, means and variances must be the same.")
-    if any([len(anomaly) != 2 for anomaly in anomalies]):
-        raise ValueError("Anomalies must be of length 2.")
-    if any([anomaly[1] <= anomaly[0] for anomaly in anomalies]):
-        raise ValueError("The start of an anomaly must be before its end.")
-    if any([anomaly[0] < 0 for anomaly in anomalies]):
-        raise ValueError("Anomalies must start at a non-negative index.")
-    if any([anomaly[1] > n for anomaly in anomalies]):
-        raise ValueError("Anomalies must be within the range of the data.")
-
-    p = len(means[0])
-    x = scipy.stats.multivariate_normal.rvs(np.zeros(p), np.eye(p), n, random_state)
-    for anomaly, mean, variance in zip(anomalies, means, variances):
-        start, end = anomaly
-        x[start:end] = mean + np.sqrt(variance) * x[start:end]
-
-    out_columns = [f"var{i}" for i in range(p)]
-    df = pd.DataFrame(x, index=range(len(x)), columns=out_columns)
-    return df
-
-
-def generate_alternating_data(
-    n_segments: int,
-    segment_length: int,
-    p: int = 1,
-    mean: float = 0.0,
-    variance: float = 1.0,
-    affected_proportion: float = 1.0,
-    random_state: int = None,
-) -> pd.DataFrame:
-    """
-    Generate multivariate normal data that is alternating between two states.
-
-    DEPRECATED: Use `generate_piecewise_normal_data` instead.
-
-    The data alternates between a state with mean 0 and variance 1 and a state with
-    mean `mean` and variance `variance`. The length of the segments are all identical
-    and equal to `segment_length`. The proportion of components that are affected by
-    the change is determined by `affected_proportion`.
-
-    Parameters
-    ----------
-    n_segments : int
-        Number of segments to generate.
-    segment_length : int
-        Length of each segment.
-    p : int, optional (default=1)
-        Number of dimensions.
-    mean : float, optional (default=0.0)
-        Mean of every other segment.
-    variance : float, optional (default=1.0)
-        Variances of every other segment.
-    affected_proportion : float, optional (default=1.0)
-        Proportion of components {1, ..., p} that are affected by each change in
-        every other segment.
-    random_state : int or `RandomState`, optional
-        Seed or random state for reproducible results. Defaults to None.
-
-    Returns
-    -------
-    `pd.DataFrame`
-        DataFrame with generated data.
-    """
-    means = []
-    vars = []
-    n_affected = int(np.round(p * affected_proportion))
-    for i in range(n_segments):
-        zero_mean = [0] * p
-        changed_mean = [mean] * n_affected + [0] * (p - n_affected)
-        mean_vec = zero_mean if i % 2 == 0 else changed_mean
-        means.append(mean_vec)
-        one_var = [1] * p
-        changed_var = [variance] * n_affected + [1] * (p - n_affected)
-        vars_vec = one_var if i % 2 == 0 else changed_var
-        vars.append(vars_vec)
-
-    n = segment_length * n_segments
-    changepoints = [segment_length * i for i in range(1, n_segments)]
-    return generate_changing_data(n, changepoints, means, vars, random_state)
+        return X

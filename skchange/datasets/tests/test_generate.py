@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pytest
 from scipy.stats import (
     bernoulli,
@@ -15,20 +14,21 @@ from scipy.stats import (
     uniform,
 )
 
-from skchange.datasets import GENERATORS, generate_piecewise_data
+from skchange.new_api.datasets import GENERATORS, generate_piecewise_data
 
 
 @pytest.mark.parametrize("generate", GENERATORS)
 def test_generate_piecewise_data_expected_output_lengths(generate):
-    def get_df_and_params(output: tuple):
-        df = None
+    def get_array_and_params(output: tuple):
+        arr = None
         params = None
         for item in output:
-            if isinstance(item, pd.DataFrame):
-                df = item
+            if isinstance(item, np.ndarray):
+                if arr is None:
+                    arr = item
             if isinstance(item, dict):
                 params = item
-        return df, params
+        return arr, params
 
     lengths = [10, 20]
     n_segments = 5
@@ -40,18 +40,18 @@ def test_generate_piecewise_data_expected_output_lengths(generate):
         n_samples=n_samples,
         return_params=True,
     )
-    df, params = get_df_and_params(output)
-    assert df.shape[0] == params["n_samples"]
-    assert df.shape[0] == np.sum(lengths)
+    arr, params = get_array_and_params(output)
+    assert arr.shape[0] == params["n_samples"]
+    assert arr.shape[0] == np.sum(lengths)
 
     output = generate(
         n_segments=n_segments,
         n_samples=n_samples,
         return_params=True,
     )
-    df, params = get_df_and_params(output)
-    assert df.shape[0] == params["n_samples"]
-    assert df.shape[0] == n_samples
+    arr, params = get_array_and_params(output)
+    assert arr.shape[0] == params["n_samples"]
+    assert arr.shape[0] == n_samples
 
     output = generate(
         lengths=lengths[0],
@@ -59,9 +59,9 @@ def test_generate_piecewise_data_expected_output_lengths(generate):
         n_samples=n_samples,
         return_params=True,
     )
-    df, params = get_df_and_params(output)
-    assert df.shape[0] == params["n_samples"]
-    assert df.shape[0] == lengths[0] * n_segments
+    arr, params = get_array_and_params(output)
+    assert arr.shape[0] == params["n_samples"]
+    assert arr.shape[0] == lengths[0] * n_segments
 
 
 SCIPY_DISTRIBUTIONS = [
@@ -80,13 +80,14 @@ SCIPY_DISTRIBUTIONS = [
 @pytest.mark.parametrize("distribution", SCIPY_DISTRIBUTIONS + [None])
 def test_generate_piecewise_data(distribution: rv_continuous | rv_discrete):
     length = 10
-    df = generate_piecewise_data(
+    arr = generate_piecewise_data(
         distributions=distribution,
         lengths=[length],
         seed=42,
     )
-    assert df.shape[0] == length
-    assert df.columns == pd.RangeIndex(start=0, stop=df.shape[1])
+    assert isinstance(arr, np.ndarray)
+    assert arr.ndim == 2
+    assert arr.shape[0] == length
 
 
 def test_generate_piecewise_data_invalid_distributions():
@@ -145,25 +146,25 @@ def test_generate_piecewise_data_invalid_lengths(lengths: list):
 
 def test_generate_piecewise_data_seed():
     length = 100
-    df1 = generate_piecewise_data(
+    arr1 = generate_piecewise_data(
         distributions=[norm],
         lengths=length,
         seed=42,
     )
-    df2 = generate_piecewise_data(
+    arr2 = generate_piecewise_data(
         distributions=[norm],
         lengths=length,
         seed=42,
     )
-    pd.testing.assert_frame_equal(df1, df2)
+    np.testing.assert_array_equal(arr1, arr2)
 
-    df3 = generate_piecewise_data(
+    arr3 = generate_piecewise_data(
         distributions=[norm],
         lengths=[length],
     )
 
     with pytest.raises(AssertionError):
-        pd.testing.assert_frame_equal(df1, df3)
+        np.testing.assert_array_equal(arr1, arr3)
 
     with pytest.raises(TypeError):
         generate_piecewise_data(

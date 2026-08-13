@@ -1,15 +1,16 @@
 """Tests for continous piecewise linear data generation."""
 
-import pandas as pd
+import numpy as np
 import pytest
 
-from skchange.datasets import generate_continuous_piecewise_linear_data
+from skchange.new_api.datasets import generate_continuous_piecewise_linear_data
 
 
 def test_generate_continuous_piecewise_linear_data_default():
-    df = generate_continuous_piecewise_linear_data()
-    assert isinstance(df, pd.DataFrame)
-    assert not df.empty
+    arr = generate_continuous_piecewise_linear_data()
+    assert isinstance(arr, np.ndarray)
+    assert arr.ndim == 2
+    assert arr.size > 0
 
 
 @pytest.mark.parametrize(
@@ -26,8 +27,8 @@ def test_generate_continuous_piecewise_linear_data_valid_slopes(
     slopes: float | list[float],
 ):
     """Test that invalid slopes raise ValueError."""
-    df = generate_continuous_piecewise_linear_data(slopes=slopes)
-    assert not df.empty
+    arr = generate_continuous_piecewise_linear_data(slopes=slopes)
+    assert arr.size > 0
 
 
 def test_generate_continuous_piecewise_linear_data_invalid_noise_std():

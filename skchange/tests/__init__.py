@@ -1,1 +1,1 @@
-"""Tests for skchange module."""
+"""General tests for the new API."""
