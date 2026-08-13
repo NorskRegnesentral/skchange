@@ -87,14 +87,12 @@ def _as_wide_array(X: Any) -> tuple[np.ndarray, list[str]]:
 
 def _resolve_data_repr(
     data_repr: str | None,
-    n_variables: int,
-    max_variables_for_line_plot: int = 10,
+    n_features: int,
+    max_features_for_line_plot: int = 10,
 ) -> str:
     """Resolve ``data_repr=None`` to ``"heatmap"`` or ``"subplot-line"``."""
     if data_repr is None:
-        return (
-            "heatmap" if n_variables > max_variables_for_line_plot else "subplot-line"
-        )
+        return "heatmap" if n_features > max_features_for_line_plot else "subplot-line"
     if data_repr not in _VALID_DATA_REPRS:
         raise ValueError(
             f"Unknown data representation: {data_repr!r}. "
@@ -123,7 +121,7 @@ def _plot_time_series(
             color_continuous_scale="Viridis",
             x=np.arange(arr_2d.shape[0]),
             y=columns,
-            labels={"x": "index", "y": "variable", "color": "value"},
+            labels={"x": "index", "y": "feature", "color": "value"},
             **kwargs,
         )
     # go.Scatter has no dataframe backend dependency (unlike plotly.express).
