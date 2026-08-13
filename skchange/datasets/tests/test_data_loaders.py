@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from skchange.datasets import load_hvac_system_data
 
@@ -25,7 +26,7 @@ def test_load_hvac_system_data():
 
 
 def test_load_hvac_system_data_as_frame():
-    import pandas as pd
+    pd = pytest.importorskip("pandas")
 
     data = load_hvac_system_data(as_frame=True)
     frame = data["frame"]
