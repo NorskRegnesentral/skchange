@@ -39,7 +39,7 @@ Key features
 
 Mission
 -------
-The goal of ``skchange`` is to provide a library for fast and easy-to-use changepoint-based algorithms for change and anomaly detection.
+The goal of ``skchange`` is to provide a library for fast and easy-to-use changepoint detection algorithms.
 The primary focus is on modern methods in the statistical literature.
 
 
