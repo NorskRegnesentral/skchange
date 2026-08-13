@@ -1,4 +1,4 @@
-"""Extension template for new-API interval scorers.
+"""Extension template for interval scorers.
 
 Generic template for implementing a new interval scorer in
 ``skchange.interval_scorers``. Covers all four scorer types:
@@ -33,7 +33,6 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 from numbers import Real
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 # todo: pick ONE base class from the four below and delete the others.
 from skchange.interval_scorers._base import (
@@ -56,6 +55,7 @@ from skchange.utils._param_validation import (
 from skchange.utils._tags import SkchangeTags
 from skchange.utils.validation import (
     check_interval_specs,
+    check_is_fitted,
     validate_data,
 )
 
