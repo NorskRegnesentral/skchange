@@ -111,7 +111,6 @@ requires = [
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
 
-# ruff setting adapted from sktime
 [tool.ruff]
 line-length = 88
 exclude = [".git"]
