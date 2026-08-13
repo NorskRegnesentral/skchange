@@ -9,13 +9,8 @@
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
 
 Skchange provides fast and flexible changepoint detection algorithms within a [scikit-learn](https://scikit-learn.org/)-like API.
+See the [documentation](https://skchange.readthedocs.io/) for full details.
 Users upgrading from 0.15.x should consult the [migration guide](MIGRATION_GUIDE.md).
-
-## Documentation
-
-* [Documentation](https://skchange.readthedocs.io/)
-* [Notebook tutorial](https://github.com/sktime/sktime-tutorial-pydata-global-2024)
-
 
 ## Installation
 It is recommended to install skchange with [numba](https://numba.readthedocs.io/en/stable/) for faster performance:
