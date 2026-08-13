@@ -41,6 +41,34 @@ def _warn_and_clamp_negative_scores(
     return np.maximum(scores, 0.0)
 
 
+def _deduplicate_cost_evaluate(
+    cost: BaseIntervalScorer, cache: dict, cost_interval_specs: ArrayLike
+) -> np.ndarray:
+    """Deduplicate calls to a cost scorer's ``evaluate`` method.
+
+    Parameters
+    ----------
+    cost : BaseIntervalScorer
+        Cost scorer to evaluate.
+    cache : dict
+        Cache from ``cost.precompute()``.
+    cost_interval_specs : array-like of shape (n_cost_specs, 2)
+        Interval boundaries ``[start, end)`` for cost evaluation.
+
+    Returns
+    -------
+    costs : ndarray of shape (n_cost_specs,) or (n_cost_specs, n_features)
+        Cost values for each interval specification.
+    """
+    unique_cost_intervals, inverse_unique = np.unique(
+        cost_interval_specs,
+        axis=0,
+        return_inverse=True,
+    )
+    costs = cost.evaluate(cache, unique_cost_intervals)[inverse_unique]
+    return costs
+
+
 class CostChangeScore(BaseChangeScore):
     """Change scorer constructed from a cost scorer.
 
@@ -96,9 +124,11 @@ class CostChangeScore(BaseChangeScore):
         right_intervals = interval_specs[:, [1, 2]]
         full_intervals = interval_specs[:, [0, 2]]
 
-        left_costs = self.cost_.evaluate(cache, left_intervals)
-        right_costs = self.cost_.evaluate(cache, right_intervals)
-        no_change_costs = self.cost_.evaluate(cache, full_intervals)
+        all_intervals = np.concatenate(
+            [left_intervals, right_intervals, full_intervals], axis=0
+        )
+        all_costs = _deduplicate_cost_evaluate(self.cost_, cache, all_intervals)
+        left_costs, right_costs, no_change_costs = np.split(all_costs, 3)
 
         change_scores = no_change_costs - (left_costs + right_costs)
         return _warn_and_clamp_negative_scores(change_scores, self, "change")
