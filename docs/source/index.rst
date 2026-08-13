@@ -39,8 +39,8 @@ Key features
 
 Mission
 -------
-The goal of ``skchange`` is to provide a library for fast and easy-to-use changepoint detection algorithms.
-The primary focus is on modern methods in the statistical literature.
+The goal of ``skchange`` is to provide a library for fast and easy-to-use offline changepoint detection algorithms.
+We focus mainly on modern methods in the statistical literature.
 
 
 Quick example
