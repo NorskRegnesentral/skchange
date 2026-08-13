@@ -399,8 +399,8 @@ def _run_single_sim(
 )
 def calibrate_penalty_scale(
     detector,
-    n_samples,
-    n_features,
+    target_n_samples,
+    target_n_features,
     *,
     X=None,
     sampler="permutation",
@@ -441,24 +441,25 @@ def calibrate_penalty_scale(
     detector : estimator
         A detector exposing ``fit``, ``set_params``, ``get_params``,
         ``predict``, and a scalar ``penalty_scale``. Not modified.
-    n_samples : int
+    target_n_samples : int
         Number of rows of the data to be analysed *after* calibration. Every
         null sample is drawn with this many rows, and the base penalty is
         evaluated at this length.
-    n_features : int
+    target_n_features : int
         Number of columns (features) of the data to be analysed after
         calibration.
-    X : array-like of shape (n_calib, n_features), optional
+    X : array-like of shape (n_calib, target_n_features), optional
         Calibration data, the change-free null source that data-based samplers
         (e.g. ``"permutation"``) resample from. Its row count ``n_calib`` need
-        not equal ``n_samples``, though it must be at least ``n_samples`` for
-        permutation without replacement. Its feature count must equal
-        ``n_features``. Required for data-based samplers. Parametric samplers
-        (e.g. ``"gaussian"``) ignore it and may be used with ``X=None``.
+        not equal ``target_n_samples``, though it must be at least
+        ``target_n_samples`` for permutation without replacement. Its feature
+        count must equal ``target_n_features``. Required for data-based
+        samplers. Parametric samplers (e.g. ``"gaussian"``) ignore it and may
+        be used with ``X=None``.
     sampler : str, sampler instance, or callable, default="permutation"
         Null model. ``"permutation"`` resamples rows of ``X``. ``"gaussian"``
         draws i.i.d. N(0,1). A callable must have signature
-        ``f(X, n_samples, rng) -> ndarray``.
+        ``f(X, target_n_samples, rng) -> ndarray``.
     level : float, default=0.05
         Target FWER, in ``(0, 1)``.
     n_simulations : int, default=999
@@ -512,19 +513,18 @@ def calibrate_penalty_scale(
         if sampler_requires_data(sampler):
             raise ValueError(
                 f"Sampler {sampler!r} requires calibration data. Pass "
-                f"`X=<change-free data>` with {n_features} features, or use a "
+                f"`X=<change-free data>` with {target_n_features} features, or use a "
                 f"parametric sampler such as 'gaussian'."
             )
-        # Shape carrier: parametric samplers read only the feature count.
-        null_source = np.empty((1, n_features), dtype=np.float64)
+        null_source = np.empty((1, target_n_features), dtype=np.float64)
     else:
         null_source = np.asarray(X, dtype=np.float64)
         if null_source.ndim != 2:
             raise ValueError(f"`X` must be 2-D, got shape {null_source.shape}.")
-        if null_source.shape[1] != n_features:
+        if null_source.shape[1] != target_n_features:
             raise ValueError(
-                f"`X` has {null_source.shape[1]} features but `n_features` is "
-                f"{n_features}. They must match."
+                f"`X` has {null_source.shape[1]} features but `target_n_features` is "
+                f"{target_n_features}. They must match."
             )
 
     if isinstance(random_state, np.random.Generator):
@@ -535,11 +535,10 @@ def calibrate_penalty_scale(
         entropy = int(random_state)
     probe_seed, *child_seeds = np.random.SeedSequence(entropy).spawn(n_simulations + 1)
 
-    # Discover the knob and base penalty once, at the target shape. The base is
-    # the detector's own default penalty at (n_samples, n_features). It depends
-    # only on the shape, so a benign standard-normal probe of that shape yields
-    # the correct value without needing the real data.
-    X_probe = np.random.default_rng(probe_seed).standard_normal((n_samples, n_features))
+    # Discover the knob and base penalty once, at the target shape.
+    X_probe = np.random.default_rng(probe_seed).standard_normal(
+        (target_n_samples, target_n_features)
+    )
     knob, base = _discover_knob(detector, X_probe)
 
     # Resolve the calibration strategy and guard invalid overrides.
@@ -562,7 +561,7 @@ def calibrate_penalty_scale(
             seed,
             sample_fn,
             null_source,
-            n_samples,
+            target_n_samples,
             detector,
             knob,
             base,
@@ -597,6 +596,11 @@ class CalibratedDetector(BaseEstimator):
     scale, and exposes it as ``detector_``. Prediction methods delegate to the
     calibrated detector.
 
+    ``fit`` takes change-free calibration data ``X``. If the data you intend to
+    detect on has a different shape, pass ``target_n_samples`` and/or
+    ``target_n_features`` so that null samples are simulated at the correct
+    size; they default to the shape of the calibration data.
+
     PELT uses the exact ``"path_search"`` strategy (``β* = max_k G_k/k``)
     by default. Pass ``calibration_strategy="detection_count"`` to force the
     bisection fallback for non-standard costs.
@@ -606,6 +610,13 @@ class CalibratedDetector(BaseEstimator):
     detector : estimator
         Detector to calibrate. Must expose a scalar ``penalty_scale`` parameter
         and ``predict``.
+    target_n_samples : int or None, default=None
+        Number of samples in the data that will be passed to ``predict``.
+        Null samples are simulated at this length and the base penalty is
+        evaluated at this size. Defaults to ``X.shape[0]`` seen in ``fit``.
+    target_n_features : int or None, default=None
+        Number of features in the data that will be passed to ``predict``.
+        Defaults to ``X.shape[1]`` seen in ``fit``.
     sampler : str, sampler instance, or callable, default="permutation"
         Null model passed to :func:`calibrate_penalty_scale`.
     level : float, default=0.05
@@ -648,6 +659,8 @@ class CalibratedDetector(BaseEstimator):
         self,
         detector,
         *,
+        target_n_samples: int | None = None,
+        target_n_features: int | None = None,
         sampler="permutation",
         level: float = 0.05,
         n_simulations: int = 999,
@@ -656,6 +669,8 @@ class CalibratedDetector(BaseEstimator):
         n_jobs=None,
     ):
         self.detector = detector
+        self.target_n_samples = target_n_samples
+        self.target_n_features = target_n_features
         self.sampler = sampler
         self.level = level
         self.n_simulations = n_simulations
@@ -663,18 +678,15 @@ class CalibratedDetector(BaseEstimator):
         self.random_state = random_state
         self.n_jobs = n_jobs
 
-    def fit(self, X, y=None, X_calib=None) -> "CalibratedDetector":
-        """Calibrate and fit the wrapped detector.
+    def fit(self, X, y=None) -> "CalibratedDetector":
+        """Calibrate and fit the wrapped detector on change-free data.
 
         Parameters
         ----------
-        X : array-like of shape (n_samples, n_features)
-            Data to be analysed for changes.
+        X : array-like of shape (n_calib, n_features)
+            Change-free calibration data used by the null sampler.
         y : Ignored
-            Present for API consistency (detectors are unsupervised).
-        X_calib : array-like of shape (n_calib, n_features), optional
-            Separate change-free data for the null sampler. See
-            :func:`calibrate_penalty_scale`.
+            Present for API consistency.
 
         Returns
         -------
@@ -682,19 +694,20 @@ class CalibratedDetector(BaseEstimator):
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
-        # Discover the knob to know what parameter to set on the detector.
         knob, _ = _discover_knob(self.detector, X)
 
-        # The analysis data supplies the target shape. ``X_calib``, when given,
-        # is the null source, otherwise the analysis data itself is resampled.
-        n_samples, n_features = X.shape
-        calib_source = X_calib if X_calib is not None else X
+        n_samples = (
+            self.target_n_samples if self.target_n_samples is not None else X.shape[0]
+        )
+        n_features = (
+            self.target_n_features if self.target_n_features is not None else X.shape[1]
+        )
 
         self.penalty_scale_ = calibrate_penalty_scale(
             self.detector,
             n_samples,
             n_features,
-            X=calib_source,
+            X=X,
             sampler=self.sampler,
             level=self.level,
             n_simulations=self.n_simulations,

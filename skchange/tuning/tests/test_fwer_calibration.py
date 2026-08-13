@@ -42,7 +42,7 @@ def _null_X(n=60, p=2, seed=0):
 
 
 def _calibrate(detector, X=None, *, X_calib=None, **kwargs):
-    """Adapter onto the ``(n_samples, n_features)`` signature.
+    """Adapter onto the ``(target_n_samples, target_n_features)`` signature.
 
     Mirrors the pre-refactor call style used throughout these behavioural
     tests: the first data array ``X`` supplies the target shape; ``X_calib``
@@ -52,9 +52,11 @@ def _calibrate(detector, X=None, *, X_calib=None, **kwargs):
     """
     if X is None:
         X = _null_X()
-    n_samples, n_features = X.shape
+    target_n_samples, target_n_features = X.shape
     null = X_calib if X_calib is not None else X
-    return calibrate_penalty_scale(detector, n_samples, n_features, X=null, **kwargs)
+    return calibrate_penalty_scale(
+        detector, target_n_samples, target_n_features, X=null, **kwargs
+    )
 
 
 # --------------------------------------------------------------------------- #
