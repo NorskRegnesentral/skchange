@@ -48,6 +48,6 @@ def _expected_failed_checks(estimator):
     ALL_ESTIMATORS,
     expected_failed_checks=_expected_failed_checks,
 )
-def test_new_api_estimators_sklearn_compatibility(estimator, check):
+def test_sklearn_compatibility(estimator, check):
     """Run sklearn's estimator checks on all skchange estimators."""
     check(estimator)
