@@ -126,22 +126,29 @@ def _plot_time_series(
             labels={"x": "index", "y": "variable", "color": "value"},
             **kwargs,
         )
-    # Use long-form keyword arrays so plotly does not need pandas.
-    n_samples = arr_2d.shape[0]
-    x = np.tile(np.arange(n_samples), len(columns))
-    y = arr_2d.T.ravel()
-    variable = np.repeat(columns, n_samples)
-    if data_repr == "line":
-        return px.line(x=x, y=y, color=variable, **kwargs)
-    if data_repr == "subplot-line":
-        return px.line(x=x, y=y, facet_row=variable, **kwargs)
-    if data_repr == "point":
-        return px.scatter(x=x, y=y, color=variable, **kwargs)
-    if data_repr == "subplot-point":
-        return px.scatter(x=x, y=y, facet_row=variable, **kwargs)
-    raise ValueError(  # pragma: no cover - guarded by _resolve_data_repr
-        f"Unknown data representation: {data_repr!r}."
-    )
+    # go.Scatter has no dataframe backend dependency (unlike plotly.express).
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    n_samples, n_cols = arr_2d.shape
+    x = np.arange(n_samples)
+    mode = "lines" if "line" in data_repr else "markers"
+
+    if data_repr.startswith("subplot-"):
+        fig = make_subplots(rows=n_cols, cols=1, shared_xaxes=True)
+        for i, name in enumerate(columns):
+            fig.add_trace(
+                go.Scatter(x=x, y=arr_2d[:, i], mode=mode, name=name),
+                row=i + 1,
+                col=1,
+            )
+    else:
+        fig = go.Figure()
+        for i, name in enumerate(columns):
+            fig.add_trace(go.Scatter(x=x, y=arr_2d[:, i], mode=mode, name=name))
+    if kwargs:
+        fig.update_layout(**kwargs)
+    return fig
 
 
 def plot_detections(
@@ -198,7 +205,7 @@ def plot_detections(
     n_vars = arr_2d.shape[1]
     data_repr = _resolve_data_repr(data_repr, n_vars)
     fig = _plot_time_series(arr_2d, columns, data_repr, **kwargs)
-    n_subplots = len([k for k in fig.layout if k.startswith("yaxis")])
+    n_subplots = n_vars if data_repr.startswith("subplot-") else 1
     visual_cpt_adjustment = -0.5 if data_repr == "heatmap" else 0.0
 
     if changepoints is not None:
@@ -370,7 +377,9 @@ def plot_segmentation(
         Figure with samples coloured by segment.
     """
     check_plotly_support("plot_segmentation")
-    import plotly.express as px
+    import plotly.colors
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
     arr_2d, columns = _as_wide_array(X)
     n_samples, n_vars = arr_2d.shape
@@ -382,14 +391,33 @@ def plot_segmentation(
     )
 
     if x_var == "index":
-        return px.scatter(
-            x=np.tile(np.arange(n_samples), n_vars),
-            y=arr_2d.T.ravel(),
-            facet_row=np.repeat(np.asarray(columns), n_samples),
-            color=np.tile(segments, n_vars),
-            color_discrete_map=color_map,
-            labels={"x": "index", "y": "value", "color": "segment"},
-        )
+        unique_segs = list(dict.fromkeys(segments.tolist()))
+        color_seq = plotly.colors.qualitative.Plotly
+        resolved_cmap = color_map or {}
+        seg_to_color = {
+            seg: resolved_cmap.get(seg, color_seq[i % len(color_seq)])
+            for i, seg in enumerate(unique_segs)
+        }
+        fig = make_subplots(rows=n_vars, cols=1, shared_xaxes=True)
+        shown_in_legend: set[str] = set()
+        for j in range(n_vars):
+            for seg in unique_segs:
+                mask = segments == seg
+                fig.add_trace(
+                    go.Scatter(
+                        x=np.where(mask)[0],
+                        y=arr_2d[mask, j],
+                        mode="markers",
+                        name=seg,
+                        marker_color=seg_to_color[seg],
+                        showlegend=seg not in shown_in_legend,
+                        legendgroup=seg,
+                    ),
+                    row=j + 1,
+                    col=1,
+                )
+                shown_in_legend.add(seg)
+        return fig
 
     if y_var is None:
         raise ValueError("`y_var` is required when `x_var` is a column index.")
@@ -401,10 +429,24 @@ def plot_segmentation(
     x_name, y_name = columns[x_idx], columns[y_idx]
     if x_name == y_name:
         x_name, y_name = f"{x_name} (x)", f"{y_name} (y)"
-    return px.scatter(
-        x=arr_2d[:, x_idx],
-        y=arr_2d[:, y_idx],
-        color=segments,
-        color_discrete_map=color_map,
-        labels={"x": x_name, "y": y_name, "color": "segment"},
-    )
+    unique_segs = list(dict.fromkeys(segments.tolist()))
+    color_seq = plotly.colors.qualitative.Plotly
+    resolved_cmap = color_map or {}
+    seg_to_color = {
+        seg: resolved_cmap.get(seg, color_seq[i % len(color_seq)])
+        for i, seg in enumerate(unique_segs)
+    }
+    fig = go.Figure()
+    for seg in unique_segs:
+        mask = segments == seg
+        fig.add_trace(
+            go.Scatter(
+                x=arr_2d[mask, x_idx],
+                y=arr_2d[mask, y_idx],
+                mode="markers",
+                name=seg,
+                marker_color=seg_to_color[seg],
+            )
+        )
+    fig.update_layout(xaxis_title=x_name, yaxis_title=y_name)
+    return fig
