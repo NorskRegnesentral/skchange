@@ -140,7 +140,9 @@ def _plot_time_series(
                 row=i + 1,
                 col=1,
             )
-            fig.update_yaxes(title_text=name, row=i + 1, col=1)
+            # Fall back to "value" only for auto-generated names on a single subplot.
+            y_title = "value" if (n_cols == 1 and name == str(i)) else name
+            fig.update_yaxes(title_text=y_title, row=i + 1, col=1)
         fig.update_xaxes(title_text="index", row=n_cols, col=1)
         fig.update_layout(legend_title_text="feature")
     else:
