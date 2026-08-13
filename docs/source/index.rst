@@ -4,20 +4,10 @@
 Welcome to skchange
 ===================
 
-A python library for fast change point and segment anomaly detection.
-
-**Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
-See `Issue #120 <https://github.com/NorskRegnesentral/skchange/issues/120>`_ and the
-`migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/skchange/MIGRATION_GUIDE.md>`_ for details.
-
-- **New API (recommended)** is previewed in ``skchange.*`` and becomes the default in 0.17.0, when the same names move to top-level (``skchange.detectors``, ``skchange.interval_scorers``, ``skchange.penalties``, ...). Drop ``new_api.`` from imports when upgrading.
-- **Current API** (``skchange.change_detectors``, ``skchange.costs``, ...) emits a ``FutureWarning`` in 0.16.x and is removed in 0.17.0.
-
-If you need stability and the old `sktime <https://www.sktime.net/>`_ compatibility, pin to a 0.15.x release:
-
-.. code-block:: bash
-
-    pip install "skchange<0.16"
+Skchange provides fast and flexible changepoint detection algorithms within a
+`scikit-learn <https://scikit-learn.org>`_-like API.
+Users upgrading from 0.15.x should consult the
+`migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/MIGRATION_GUIDE.md>`_.
 
 Installation
 ------------
@@ -38,11 +28,14 @@ For better computational performance, it is recommended to install skchange with
 Key features
 ------------
 
-- **Fast**: `Numba <https://numba.readthedocs.io>`_ is used for performance.
-- **Easy to use**: Follows the conventions of `scikit-learn <https://scikit-learn.org>`_.
-- **Easy to extend**: Make your own detectors by inheriting from the base class templates. Create custom detection scores and cost functions.
+- **Theoretically grounded algorithms**: Fast exact and approximate search methods with solid statistical foundations.
+- **High performance**: `Numba <https://numba.readthedocs.io>`_ is used extensively for computational speed.
 - **Segment anomaly detection**: Detect intervals of anomalous behaviour in time series data.
-- **Subset anomaly detection**: Detect intervals of anomalous behaviour in time series data, and infer the subset of variables that are responsible for the anomaly.
+- **High-dimensional data**: Algorithms covering settings where either few (sparse changes) or many features (dense changes) change simultaneously.
+- **Automatic penalty calibration**: Data-driven utilities for calibrating the detection threshold to balance false alarms against missed detections.
+- **Large scorer library**: A broad collection of built-in cost functions and statistical tests for a wide range of data distributions.
+- **Easy to use**: Familiar ``fit`` / ``predict`` API for both users and contributors.
+- **Easy to extend**: Inherit from base class templates to add custom costs and statistical tests for your dataset and problem.
 
 Mission
 -------
@@ -58,14 +51,13 @@ Quick example
     from skchange.datasets import generate_piecewise_normal_data
     from skchange.detectors import MovingWindow
 
-    df = generate_piecewise_normal_data(
+    X = generate_piecewise_normal_data(
         means=[0, 5, 10, 5, 0], lengths=[50] * 5, seed=1,
     )
-    cps = MovingWindow(bandwidth=20).fit_predict(df)
+    cps = MovingWindow(bandwidth=20).fit_predict(X)
     # array([ 50, 100, 150, 200])
 
-See the :doc:`user_guide/index` for more, including multivariate anomaly
-detection with variable identification, or jump to the
+See the :doc:`user_guide/index` for more, or jump to the
 :doc:`api_reference/index`.
 
 Licence
