@@ -6,7 +6,6 @@ import numpy as np
 def changepoints_to_labels(
     changepoints: np.ndarray,
     n_samples: int,
-    labels: np.ndarray | None = None,
 ) -> np.ndarray:
     """Convert changepoint indices to per-sample segment labels.
 
@@ -16,9 +15,6 @@ def changepoints_to_labels(
         Changepoint indices, shape (n_changepoints,).
     n_samples : int
         Number of samples in the time series.
-    labels : np.ndarray | None, default=None
-        Segment labels, shape (n_changepoints + 1,).
-        If None, auto-generates [0, 1, 2, ...].
 
     Returns
     -------
@@ -35,12 +31,7 @@ def changepoints_to_labels(
     array([0, 1, 2])
     """
     changepoints = np.asarray(changepoints, dtype=int)
-
-    if labels is None:
-        labels = np.arange(len(changepoints) + 1, dtype=int)
-    else:
-        labels = np.asarray(labels, dtype=int)
-
+    labels = np.arange(len(changepoints) + 1, dtype=int)
     dense_labels = np.zeros(n_samples, dtype=int)
 
     if len(changepoints) > 0:
