@@ -1,9 +1,11 @@
 [project]
 name = "skchange"
 version = "0.16.0"
-description = "Sktime-compatible change and anomaly detection"
+description = "A python library for fast and flexible changepoint detection"
 authors = [
     {name = "Martin Tveten", email = "tveten@nr.no"},
+    {name = "Johannes Voll Kolstø", email = "jvkolsto@nr.no"},
+    {name = "Per August Jarval Moen", email = "pamoen@math.uio.no"},
 ]
 maintainers = [
     {name = "Martin Tveten", email = "tveten@nr.no"},
@@ -37,9 +39,8 @@ classifiers = [
 ]
 requires-python = ">=3.10,<3.15"
 dependencies = [
-  "numpy>=1.21",
-  "pandas>=1.1",
-  "sktime>=0.35",
+    "numpy>=1.21",
+    "scikit-learn>=1.6",  # sklearn tags are stable public API from >= 1.6.
 ]
 
 [project.urls]
@@ -77,7 +78,7 @@ dev = [
     "plotly",
     "ruptures",
     "nbformat>=4.2.0",
-    "scipy>=1.14.1,<2.0.0"
+    "scipy>=1.14.1,<2.0.0",
 ]
 
 # docs - the documentation dependency set, install via "pip install skchange[docs]"
