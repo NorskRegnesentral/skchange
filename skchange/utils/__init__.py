@@ -12,7 +12,6 @@ from skchange.utils.plotting import (
 )
 from skchange.utils.segmentation import (
     changepoints_to_labels,
-    labels_to_changepoints,
 )
 from skchange.utils.validation import (
     check_interval_scorer,
@@ -30,7 +29,6 @@ __all__ = [
     "check_interval_specs",
     "check_penalty",
     "changepoints_to_labels",
-    "labels_to_changepoints",
     "plot_detections",
     "plot_segmentation",
     "validate_data",

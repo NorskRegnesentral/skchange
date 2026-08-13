@@ -49,4 +49,3 @@ indices.
     :template: functions.rst
 
     changepoints_to_labels
-    labels_to_changepoints
