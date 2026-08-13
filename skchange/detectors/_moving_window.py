@@ -342,15 +342,13 @@ class MovingWindow(BaseChangeDetector):
 
     Examples
     --------
+    >>> import numpy as np
     >>> from skchange.detectors import MovingWindow
-    >>> from skchange.datasets import generate_alternating_data
-    >>> df = generate_alternating_data(n_segments=4, mean=10, segment_length=100, p=5)
+    >>> from skchange.datasets import generate_piecewise_normal_data
+    >>> X = generate_piecewise_normal_data(means=[0, 10, 0, 10], lengths=100, seed=1)
     >>> detector = MovingWindow()
-    >>> detector.fit_predict(df)
-       ilocs
-    0    100
-    1    200
-    2    300
+    >>> detector.fit_predict(X)
+    array([100, 200, 300])
     """
 
     _parameter_constraints = {
