@@ -582,8 +582,12 @@ def test_calibrated_detector_x_calib_kwarg():
     X = rng.normal(size=(80, 2))
     X_clean = rng.normal(size=(300, 2))
     cal = CalibratedDetector(
-        SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
-    ).fit(X, X_calib=X_clean)
+        SeededBinarySegmentation(),
+        target_n_samples=X.shape[0],
+        target_n_features=X.shape[1],
+        n_simulations=_FAST_N_SIMS,
+        random_state=0,
+    ).fit(X_clean)
     assert cal.penalty_scale_ > 0.0
 
 
