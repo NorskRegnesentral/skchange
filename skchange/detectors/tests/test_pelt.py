@@ -17,7 +17,7 @@ from skchange.datasets import generate_piecewise_normal_data
 from skchange.detectors import PELT
 from skchange.detectors._crops import _evaluate_segmentation
 from skchange.detectors._pelt import _run_pelt
-from skchange.interval_scorers import L2Cost
+from skchange.interval_scorers import L2Cost, L2Saving, MultivariateGaussianCost
 
 # ---------------------------------------------------------------------------
 # Test data
@@ -312,3 +312,42 @@ def test_pelt_penalty_scale_changes_detections():
     n_tight = len(tight.predict(X))
     n_loose = len(loose.predict(X))
     assert n_tight <= n_loose
+
+
+# ---------------------------------------------------------------------------
+# fit() ValueError contracts
+# ---------------------------------------------------------------------------
+
+
+class _PenalisedCost(L2Cost):
+    """L2Cost with penalised=True to exercise the allow_penalised=False guard."""
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.interval_scorer_tags.penalised = True
+        return tags
+
+
+def test_pelt_fit_rejects_non_cost_scorer():
+    X = np.random.default_rng(0).standard_normal((50, 1))
+    with pytest.raises(ValueError, match="cost"):
+        PELT(cost=L2Saving()).fit(X)
+
+
+def test_pelt_fit_rejects_penalised_cost():
+    X = np.random.default_rng(0).standard_normal((50, 1))
+    with pytest.raises(ValueError, match="cost"):
+        PELT(cost=_PenalisedCost()).fit(X)
+
+
+def test_pelt_fit_rejects_min_segment_length_below_cost_min_size():
+    # MultivariateGaussianCost has min_size = n_features + 1 = 4 on 3-feature data.
+    X = np.random.default_rng(0).standard_normal((50, 3))
+    with pytest.raises(ValueError, match="min_segment_length"):
+        PELT(cost=MultivariateGaussianCost(), min_segment_length=1).fit(X)
+
+
+def test_pelt_fit_rejects_min_segment_length_greater_than_step_size():
+    X = np.random.default_rng(0).standard_normal((50, 1))
+    with pytest.raises(ValueError, match="min_segment_length"):
+        PELT(step_size=2, min_segment_length=5).fit(X)
