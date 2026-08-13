@@ -145,6 +145,8 @@ def _plot_time_series(
             fig.update_yaxes(title_text=name, row=i + 1, col=1)
         fig.update_xaxes(title_text="index", row=n_cols, col=1)
         fig.update_layout(legend_title_text="feature")
+    else:
+        fig = go.Figure()
         for i, name in enumerate(columns):
             fig.add_trace(go.Scatter(x=x, y=arr_2d[:, i], mode=mode, name=name))
         fig.update_layout(yaxis_title="value", legend_title_text="feature")
