@@ -6,7 +6,7 @@ Welcome to skchange
 
 Skchange provides fast and flexible changepoint detection algorithms within a
 `scikit-learn <https://scikit-learn.org>`_-like API.
-Users upgrading from 0.15.x should consult the
+Users upgrading from version <0.17 should consult the
 `migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/MIGRATION_GUIDE.md>`_.
 
 Installation
@@ -28,14 +28,13 @@ For better computational performance, it is recommended to install skchange with
 Key features
 ------------
 
-- **Theoretically grounded algorithms**: Fast exact and approximate search methods with solid statistical foundations.
-- **High performance**: `Numba <https://numba.readthedocs.io>`_ is used extensively for computational speed.
+- **Theoretical soundness**: Exact and approximate changepoint detection algorithms with solid statistical foundations.
+- **Flexible**: Detectors are composed of modular costs or statistical tests. Browse the :doc:`api_reference/interval_scorers` for built-in options or see :doc:`developer_guide/extending` to implement your own.
+- **Fast**: `Numba <https://numba.readthedocs.io>`_ is used extensively for computational speed.
+- **Easy to use**: Familiar `scikit-learn <https://scikit-learn.org>`_ ``fit`` / ``predict`` API for both users and contributors.
 - **Segment anomaly detection**: Detect intervals of anomalous behaviour in time series data.
-- **High-dimensional data**: Algorithms covering settings where either few (sparse changes) or many features (dense changes) change simultaneously.
-- **Automatic penalty calibration**: Data-driven utilities for calibrating the detection threshold to balance false alarms against missed detections.
-- **Large scorer library**: A broad collection of built-in cost functions and statistical tests for a wide range of data distributions.
-- **Easy to use**: Familiar ``fit`` / ``predict`` API for both users and contributors.
-- **Easy to extend**: Inherit from base class templates to add custom costs and statistical tests for your dataset and problem.
+- **High-dimensional data**: Algorithms suitable for high-dimensional data with an unknown number of changing features.
+- **Automatic penalty calibration**: Data-driven utilities for calibrating the false alarm rate.
 
 Mission
 -------
@@ -57,8 +56,7 @@ Quick example
     cps = MovingWindow(bandwidth=20).fit_predict(X)
     # array([ 50, 100, 150, 200])
 
-See the :doc:`user_guide/index` for more, or jump to the
-:doc:`api_reference/index`.
+See the :doc:`user_guide/index` for more, or jump to the :doc:`api_reference/index`.
 
 Licence
 -------
