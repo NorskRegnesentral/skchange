@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 from sklearn.utils import Tags
 
-from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.utils._tags import ChangeDetectorTags, SkchangeTags
+from skchange.detectors._base import BaseChangeDetector
+from skchange.utils._tags import ChangeDetectorTags, SkchangeTags
 
 
 class _StubDetector(BaseChangeDetector):

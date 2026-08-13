@@ -6,8 +6,8 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._tags import ChangeDetectorTags, SkchangeTags
+from skchange.types import ArrayLike
+from skchange.utils._tags import ChangeDetectorTags, SkchangeTags
 
 
 class BaseChangeDetector(BaseEstimator):
@@ -123,7 +123,7 @@ def is_change_detector(estimator) -> bool:
 
     Examples
     --------
-    >>> from skchange.new_api.detectors import MovingWindow, is_change_detector
+    >>> from skchange.detectors import MovingWindow, is_change_detector
     >>> is_change_detector(MovingWindow())
     True
     """

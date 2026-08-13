@@ -9,13 +9,13 @@ search loop.
 import numpy as np
 import pytest
 
-from skchange.new_api.detectors._crops import (
+from skchange.detectors._crops import (
     CROPS,
     _crops_elbow_scores,
     _evaluate_segmentation,
     _segmentation_bic_value,
 )
-from skchange.new_api.interval_scorers import ESACScore, GaussianCost, L2Cost
+from skchange.interval_scorers import ESACScore, GaussianCost, L2Cost
 
 
 def _make_data(n_per_seg: int = 60, n_segments: int = 3, seed: int = 0) -> np.ndarray:

@@ -13,11 +13,11 @@ import pytest
 import ruptures as rpt
 from sklearn.base import clone
 
-from skchange.new_api.datasets import generate_piecewise_normal_data
-from skchange.new_api.detectors import PELT
-from skchange.new_api.detectors._crops import _evaluate_segmentation
-from skchange.new_api.detectors._pelt import _run_pelt
-from skchange.new_api.interval_scorers import L2Cost
+from skchange.datasets import generate_piecewise_normal_data
+from skchange.detectors import PELT
+from skchange.detectors._crops import _evaluate_segmentation
+from skchange.detectors._pelt import _run_pelt
+from skchange.interval_scorers import L2Cost
 
 # ---------------------------------------------------------------------------
 # Test data

@@ -11,15 +11,15 @@ from numbers import Real
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseSaving
-from skchange.new_api.interval_scorers._costs.linear_trend_cost import (
+from skchange.interval_scorers._base import BaseSaving
+from skchange.interval_scorers._costs.linear_trend_cost import (
     fit_indexed_linear_trend,
 )
-from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._param_validation import _fit_context
-from skchange.new_api.utils.validation import (
+from skchange.penalties import chi2_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit
+from skchange.utils._param_validation import _fit_context
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     validate_data,
@@ -118,7 +118,7 @@ class LinearTrendSaving(BaseSaving):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import LinearTrendSaving
+    >>> from skchange.interval_scorers import LinearTrendSaving
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(100, 2))
     >>> scorer = LinearTrendSaving()

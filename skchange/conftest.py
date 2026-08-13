@@ -1,4 +1,4 @@
-"""Shared pytest fixtures and test data helpers for ``skchange.new_api`` tests."""
+"""Shared pytest fixtures and test data helpers for ``skchange`` tests."""
 
 import numpy as np
 import pytest

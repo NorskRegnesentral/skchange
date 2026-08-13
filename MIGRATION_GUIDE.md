@@ -12,12 +12,12 @@ skchange is transitioning from a pandas/sktime-based API to a numpy/sklearn-base
 
 | Version | Status | Old API | New API |
 |---------|--------|---------|------|
-| **0.15.x** | Released | Default ✓ (silent) | Preview in `skchange.new_api` (feedback welcome) |
-| **0.16.0** | Next release | Default, emits `FutureWarning` on import | Preview in `skchange.new_api` |
-| **0.17.0** | Following release | **Removed** | **Default** ✓ at permanent locations; `skchange.new_api` raises `ImportError` pointing to the new locations |
-| **0.18.0** | Cleanup | — | `skchange.new_api` stub removed |
+| **0.15.x** | Released | Default ✓ (silent) | Preview in `skchange` (feedback welcome) |
+| **0.16.0** | Next release | Default, emits `FutureWarning` on import | Preview in `skchange` |
+| **0.17.0** | Following release | **Removed** | **Default** ✓ at permanent locations; `skchange` raises `ImportError` pointing to the new locations |
+| **0.18.0** | Cleanup | — | `skchange` stub removed |
 
-**`skchange.new_api` is a temporary preview path** for early feedback. It will be replaced in 0.17.0 when the new API is promoted to its permanent location (e.g. `skchange.detectors`, `skchange.interval_scorers`, ...). Do not rely on the `skchange.new_api` import path in production code.
+**`skchange` is a temporary preview path** for early feedback. It will be replaced in 0.17.0 when the new API is promoted to its permanent location (e.g. `skchange.detectors`, `skchange.interval_scorers`, ...). Do not rely on the `skchange` import path in production code.
 
 **Pinning recommendation**: If you need stability right now, pin to a 0.15.x release:
 ```bash
@@ -42,13 +42,13 @@ df = generate_piecewise_normal_data(means=[0, 5, 0], lengths=[50, 50, 50], seed=
 detector = PELT(penalty=10.0)
 detector.fit(df)
 
-cps = detector.predict(df)      # pd.DataFrame with "ilocs" column
-labels = detector.transform(df) # pd.Series with segment labels
+cps = detector.predict(df)  # pd.DataFrame with "ilocs" column
+labels = detector.transform(df)  # pd.Series with segment labels
 ```
 
 ### New API
 ```python
-from skchange.new_api.detectors import PELT
+from skchange.detectors import PELT
 from skchange.datasets import generate_piecewise_normal_data
 
 df = generate_piecewise_normal_data(means=[0, 5, 0], lengths=[50, 50, 50], seed=1)
@@ -56,9 +56,10 @@ df = generate_piecewise_normal_data(means=[0, 5, 0], lengths=[50, 50, 50], seed=
 detector = PELT(penalty=10.0)
 detector.fit(df)  # ArrayLike input (pd.DataFrame, np.ndarray, ...)
 
-cps = detector.predict(df)                 # np.ndarray of changepoint indices
+cps = detector.predict(df)  # np.ndarray of changepoint indices
 # For a per-sample dense-label view, post-process with the utility:
-from skchange.new_api.utils.segmentation import changepoints_to_labels
+from skchange.utils.segmentation import changepoints_to_labels
+
 labels = changepoints_to_labels(cps, n_samples=len(df))
 ```
 

@@ -8,9 +8,9 @@ import scipy.linalg as sla
 import scipy.stats as st
 from scipy.special import digamma, gammaln
 
-from skchange.new_api.detectors import PELT, MovingWindow
-from skchange.new_api.interval_scorers import MultivariateTCost
-from skchange.new_api.interval_scorers._costs.multivariate_t_cost import (
+from skchange.detectors import PELT, MovingWindow
+from skchange.interval_scorers import MultivariateTCost
+from skchange.interval_scorers._costs.multivariate_t_cost import (
     _isotropic_mv_t_dof_estimate,
     _iterative_mv_t_dof_estimate,
     _kurtosis_mv_t_dof_estimate,
@@ -19,7 +19,7 @@ from skchange.new_api.interval_scorers._costs.multivariate_t_cost import (
     _solve_for_mle_scale_matrix,
     maximum_likelihood_mv_t_scale_matrix,
 )
-from skchange.new_api.utils._numba import numba_available
+from skchange.utils._numba import numba_available
 
 
 def estimate_scale_matrix_trace_nojit(centered_samples: np.ndarray, dof: float):
@@ -747,7 +747,7 @@ def test_MultiVariateTCost_with_moving_window(
 
     X = np.vstack([mv_t_1_samples, mv_t_2_samples])
 
-    from skchange.new_api.interval_scorers import CostChangeScore
+    from skchange.interval_scorers import CostChangeScore
 
     t_cost = MultivariateTCost(fixed_dof=cost_dof)
     change_score = CostChangeScore(t_cost)

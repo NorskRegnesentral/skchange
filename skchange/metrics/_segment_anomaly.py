@@ -14,8 +14,8 @@ import numbers
 
 import numpy as np
 
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._param_validation import Interval, validate_params
+from skchange.types import ArrayLike
+from skchange.utils._param_validation import Interval, validate_params
 
 
 def _count_tp(it: np.ndarray, ip: np.ndarray) -> int:

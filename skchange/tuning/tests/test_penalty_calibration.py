@@ -1,16 +1,16 @@
-"""Tests for ``skchange.new_api.tuning._penalty_calibration``."""
+"""Tests for ``skchange.tuning._penalty_calibration``."""
 
 import numpy as np
 import pytest
 
-from skchange.new_api.conftest import make_single_change_X
-from skchange.new_api.detectors import SeededBinarySegmentation
-from skchange.new_api.detectors.tests._registry import DETECTOR_TEST_INSTANCES
-from skchange.new_api.interval_scorers import is_cost, is_penalised_score
-from skchange.new_api.interval_scorers._savings.multivariate_t_saving import (
+from skchange.conftest import make_single_change_X
+from skchange.detectors import SeededBinarySegmentation
+from skchange.detectors.tests._registry import DETECTOR_TEST_INSTANCES
+from skchange.interval_scorers import is_cost, is_penalised_score
+from skchange.interval_scorers._savings.multivariate_t_saving import (
     MultivariateTSaving,
 )
-from skchange.new_api.tuning import penalty_curve, unpenalised_scores
+from skchange.tuning import penalty_curve, unpenalised_scores
 
 _all_detectors = pytest.mark.parametrize(
     "estimator", DETECTOR_TEST_INSTANCES, indirect=True, ids=repr

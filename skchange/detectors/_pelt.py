@@ -10,14 +10,14 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.interval_scorers._base import BaseCost
-from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._param_validation import HasMethods, Interval, _fit_context
-from skchange.new_api.utils.validation import (
+from skchange.detectors._base import BaseChangeDetector
+from skchange.interval_scorers._base import BaseCost
+from skchange.interval_scorers._costs.l2_cost import L2Cost
+from skchange.types import ArrayLike, Self
+from skchange.utils import SkchangeTags
+from skchange.utils._numba import njit
+from skchange.utils._param_validation import HasMethods, Interval, _fit_context
+from skchange.utils.validation import (
     check_interval_scorer,
     skip_validation,
     validate_data,
@@ -576,7 +576,7 @@ class PELT(BaseChangeDetector):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import PELT
+    >>> from skchange.detectors import PELT
     >>> rng = np.random.default_rng(2)
     >>> X = np.concatenate([rng.normal(0, 1, (100, 1)),
     ...                     rng.normal(10, 1, (100, 1))])
@@ -777,7 +777,7 @@ class PELT(BaseChangeDetector):
         feature-summed cost value at every ``(start, end)`` interval the
         dynamic programme actually evaluated. With pruning enabled, the set
         of evaluated intervals depends on the current ``penalty_``; set
-        ``prune=False`` (or run via :func:`skchange.new_api.tuning.unpenalised_scores`
+        ``prune=False`` (or run via :func:`skchange.tuning.unpenalised_scores`
         with the penalty zeroed) to obtain the full optimal-partitioning grid.
 
         Parameters

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from sklearn.base import clone
 
-from skchange.new_api.interval_scorers import ESACScore
+from skchange.interval_scorers import ESACScore
 
 
 def _make_X(n=80, p=5, seed=0):

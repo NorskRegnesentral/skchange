@@ -12,8 +12,8 @@ from sklearn.model_selection import GroupKFold, ParameterGrid
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from skchange.new_api.detectors import MovingWindow
-from skchange.new_api.metrics import rand_index
+from skchange.detectors import MovingWindow
+from skchange.metrics import rand_index
 
 rng = np.random.default_rng(0)
 

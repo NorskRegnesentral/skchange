@@ -12,8 +12,8 @@ import time
 
 import numpy as np
 
-from skchange.new_api.detectors import MovingWindow
-from skchange.new_api.interval_scorers import CUSUM, CostChangeScore, L1Cost
+from skchange.detectors import MovingWindow
+from skchange.interval_scorers import CUSUM, CostChangeScore, L1Cost
 
 N_SAMPLES = 10_000
 SEED = 0

@@ -1,15 +1,15 @@
-"""Unit tests for ``skchange.new_api.utils._score_aggregation``."""
+"""Unit tests for ``skchange.utils._score_aggregation``."""
 
 import numpy as np
 import pytest
 
-from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.utils._score_aggregation import (
+from skchange.interval_scorers._base import BaseIntervalScorer
+from skchange.utils._score_aggregation import (
     aggregate_and_penalise,
     resolve_aggregation,
     resolve_penalty,
 )
-from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
+from skchange.utils._tags import IntervalScorerTags, SkchangeTags
 
 
 class _StubScorer(BaseIntervalScorer):

@@ -11,7 +11,7 @@ Tags
 ----
 Dataclasses that declare detector and interval-scorer capabilities.
 
-.. currentmodule:: skchange.new_api.utils
+.. currentmodule:: skchange.utils
 
 .. autosummary::
     :toctree: auto_generated/
@@ -26,7 +26,7 @@ Validation
 ----------
 Input and parameter validation helpers.
 
-.. currentmodule:: skchange.new_api.utils
+.. currentmodule:: skchange.utils
 
 .. autosummary::
     :toctree: auto_generated/
@@ -42,7 +42,7 @@ Segmentation
 Conversions between dense per-sample segment labels and sparse changepoint
 indices.
 
-.. currentmodule:: skchange.new_api.utils
+.. currentmodule:: skchange.utils
 
 .. autosummary::
     :toctree: auto_generated/

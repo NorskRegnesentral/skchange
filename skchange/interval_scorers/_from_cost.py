@@ -5,14 +5,14 @@ import warnings
 import numpy as np
 from sklearn.base import clone
 
-from skchange.new_api.interval_scorers._base import (
+from skchange.interval_scorers._base import (
     BaseChangeScore,
     BaseIntervalScorer,
     BaseTransientScore,
 )
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.types import ArrayLike, Self
+from skchange.utils import SkchangeTags
+from skchange.utils.validation import (
     check_interval_scorer,
     check_interval_specs,
     check_is_fitted,

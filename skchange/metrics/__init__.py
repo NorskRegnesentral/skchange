@@ -4,7 +4,7 @@
 - **Scorers** evaluate a fitted detector on data: ``(detector, X, y=None) -> float``.
 """
 
-from skchange.new_api.metrics._changepoint import (
+from skchange.metrics._changepoint import (
     adjusted_rand_index,
     changepoint_f1_score,
     changepoint_precision,
@@ -12,14 +12,14 @@ from skchange.new_api.metrics._changepoint import (
     hausdorff_metric,
     rand_index,
 )
-from skchange.new_api.metrics._scoring import (
+from skchange.metrics._scoring import (
     make_detector_scorer,
     n_changepoints,
     n_segment_anomalies,
     n_segments,
     resolve_scoring,
 )
-from skchange.new_api.metrics._segment_anomaly import (
+from skchange.metrics._segment_anomaly import (
     segment_anomaly_f1_score,
     segment_anomaly_precision,
     segment_anomaly_recall,

@@ -15,7 +15,7 @@ Changepoint metrics
 -------------------
 Compare predicted and true sets of changepoints.
 
-.. currentmodule:: skchange.new_api.metrics
+.. currentmodule:: skchange.metrics
 
 .. autosummary::
     :toctree: auto_generated/
@@ -32,7 +32,7 @@ Segment anomaly metrics
 -----------------------
 Compare predicted and true sets of anomalous segments.
 
-.. currentmodule:: skchange.new_api.metrics
+.. currentmodule:: skchange.metrics
 
 .. autosummary::
     :toctree: auto_generated/
@@ -46,7 +46,7 @@ Scorers
 -------
 Build and resolve sklearn-compatible scorers from metrics.
 
-.. currentmodule:: skchange.new_api.metrics
+.. currentmodule:: skchange.metrics
 
 .. autosummary::
     :toctree: auto_generated/

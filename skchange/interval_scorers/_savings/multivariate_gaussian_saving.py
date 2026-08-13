@@ -6,21 +6,21 @@ from numbers import Real
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseSaving
-from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
+from skchange.interval_scorers._base import BaseSaving
+from skchange.interval_scorers._costs.multivariate_gaussian_cost import (
     _multivariate_gaussian_cost_mle_from_cache,
     _multivariate_gaussian_precompute,
     _with_max_cov_cache_elements_doc,
 )
-from skchange.new_api.interval_scorers._savings._utils import (
+from skchange.interval_scorers._savings._utils import (
     resolve_baseline_location_and_scatter,
 )
-from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._param_validation import _fit_context
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.penalties import chi2_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit
+from skchange.utils._param_validation import _fit_context
+from skchange.utils._tags import SkchangeTags
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     validate_data,
@@ -187,7 +187,7 @@ class MultivariateGaussianSaving(BaseSaving):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import MultivariateGaussianSaving
+    >>> from skchange.interval_scorers import MultivariateGaussianSaving
     >>> X = np.random.default_rng(0).normal(size=(100, 3))
     >>> scorer = MultivariateGaussianSaving()
     >>> scorer.fit(X)

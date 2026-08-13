@@ -7,7 +7,7 @@ decorator, so all functions remain callable as plain Python.
 
 import numpy as np
 
-from skchange.new_api.utils._numba import njit
+from skchange.utils._numba import njit
 
 
 @njit(cache=True)

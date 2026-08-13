@@ -1,9 +1,9 @@
-"""Unit tests for skchange.new_api.interval_scorers._savings._utils."""
+"""Unit tests for skchange.interval_scorers._savings._utils."""
 
 import numpy as np
 import pytest
 
-from skchange.new_api.interval_scorers._savings._utils import (
+from skchange.interval_scorers._savings._utils import (
     resolve_baseline_location,
     resolve_baseline_location_and_scatter,
 )

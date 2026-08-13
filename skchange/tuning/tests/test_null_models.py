@@ -1,17 +1,17 @@
-"""Tests for ``skchange.new_api.tuning._null_models``."""
+"""Tests for ``skchange.tuning._null_models``."""
 
 import copy
 
 import numpy as np
 import pytest
 
-from skchange.new_api.tuning import (
+from skchange.tuning import (
     BaseNullSampler,
     BlockBootstrapSampler,
     GaussianSampler,
     PermutationSampler,
 )
-from skchange.new_api.tuning._null_models import (
+from skchange.tuning._null_models import (
     resolve_sampler,
     sampler_requires_data,
 )

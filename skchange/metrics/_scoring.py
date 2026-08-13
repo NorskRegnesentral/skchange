@@ -10,8 +10,8 @@ evaluates a fitted detector on data. This module provides:
 
 from typing import Any, Callable
 
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._param_validation import validate_params
+from skchange.types import ArrayLike
+from skchange.utils._param_validation import validate_params
 
 
 def n_changepoints(detector, X: ArrayLike, y: ArrayLike | None = None) -> float:
@@ -66,7 +66,7 @@ def make_detector_scorer(
     Parameters
     ----------
     metric : callable
-        A metric from :mod:`skchange.new_api.metrics` with signature
+        A metric from :mod:`skchange.metrics` with signature
         ``(y_true, y_pred, n_samples, ...)``.
     response_method : str, default="predict"
         Name of the detector method that supplies ``y_pred``. Typical

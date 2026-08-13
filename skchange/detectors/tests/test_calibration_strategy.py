@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 from sklearn.utils import get_tags
 
-from skchange.new_api.detectors import (
+from skchange.detectors import (
     CAPA,
     PELT,
     CircularBinarySegmentation,
     MovingWindow,
     SeededBinarySegmentation,
 )
-from skchange.new_api.detectors._base import BaseChangeDetector
+from skchange.detectors._base import BaseChangeDetector
 
 
 def _strategy(detector) -> str:

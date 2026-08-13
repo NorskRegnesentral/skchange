@@ -1,10 +1,10 @@
-"""Unit tests for skchange.new_api.utils.validation."""
+"""Unit tests for skchange.utils.validation."""
 
 import numpy as np
 import pytest
 from sklearn.base import BaseEstimator
 
-from skchange.new_api.utils.validation import (
+from skchange.utils.validation import (
     check_interval_specs,
     check_time_col,
     validate_data,

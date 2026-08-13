@@ -8,9 +8,9 @@ A python library for fast change point and segment anomaly detection.
 
 **Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
 See `Issue #120 <https://github.com/NorskRegnesentral/skchange/issues/120>`_ and the
-`migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/skchange/new_api/MIGRATION_GUIDE.md>`_ for details.
+`migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/skchange/MIGRATION_GUIDE.md>`_ for details.
 
-- **New API (recommended)** is previewed in ``skchange.new_api.*`` and becomes the default in 0.17.0, when the same names move to top-level (``skchange.detectors``, ``skchange.interval_scorers``, ``skchange.penalties``, ...). Drop ``new_api.`` from imports when upgrading.
+- **New API (recommended)** is previewed in ``skchange.*`` and becomes the default in 0.17.0, when the same names move to top-level (``skchange.detectors``, ``skchange.interval_scorers``, ``skchange.penalties``, ...). Drop ``new_api.`` from imports when upgrading.
 - **Current API** (``skchange.change_detectors``, ``skchange.costs``, ...) emits a ``FutureWarning`` in 0.16.x and is removed in 0.17.0.
 
 If you need stability and the old `sktime <https://www.sktime.net/>`_ compatibility, pin to a 0.15.x release:
@@ -55,8 +55,8 @@ Quick example
 
 .. code-block:: python
 
-    from skchange.new_api.datasets import generate_piecewise_normal_data
-    from skchange.new_api.detectors import MovingWindow
+    from skchange.datasets import generate_piecewise_normal_data
+    from skchange.detectors import MovingWindow
 
     df = generate_piecewise_normal_data(
         means=[0, 5, 10, 5, 0], lengths=[50] * 5, seed=1,

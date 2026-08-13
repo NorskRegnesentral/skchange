@@ -29,12 +29,12 @@ import warnings
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import (
+from skchange.interval_scorers._base import (
     BaseIntervalScorer,
     is_penalised_score,
 )
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils.validation import check_penalty
+from skchange.utils._numba import njit
+from skchange.utils.validation import check_penalty
 
 # User-facing aggregation choices for detectors' ``agg`` parameter.
 USER_AGG_CHOICES = ("sum", "max")
@@ -162,7 +162,7 @@ def resolve_aggregation(
         ``"sum"`` (the default), otherwise a ``ValueError`` is raised.
     penalty : float, np.ndarray or None
         Already-validated penalty (e.g. from
-        :func:`skchange.new_api.utils.validation.check_penalty`). ``None``
+        :func:`skchange.utils.validation.check_penalty`). ``None``
         signals that ``scorer`` is inherently penalised; in that case it must
         match ``is_penalised_score(scorer)``.
     n_features : int

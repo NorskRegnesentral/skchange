@@ -10,25 +10,25 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.detectors._pelt import (
+from skchange.detectors._base import BaseChangeDetector
+from skchange.detectors._pelt import (
     _run_pelt,
     _run_pelt_with_step_size,
 )
-from skchange.new_api.interval_scorers._base import BaseCost
-from skchange.new_api.interval_scorers._change_scores.continuous_linear_trend_score import (  # noqa: E501
+from skchange.interval_scorers._base import BaseCost
+from skchange.interval_scorers._change_scores.continuous_linear_trend_score import (  # noqa: E501
     _lin_reg_cont_piecewise_linear_trend_score,
 )
-from skchange.new_api.interval_scorers._costs.l2_cost import L2Cost
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils._param_validation import (
+from skchange.interval_scorers._costs.l2_cost import L2Cost
+from skchange.types import ArrayLike, Self
+from skchange.utils import SkchangeTags
+from skchange.utils._param_validation import (
     HasMethods,
     Interval,
     StrOptions,
     _fit_context,
 )
-from skchange.new_api.utils.validation import check_interval_scorer, validate_data
+from skchange.utils.validation import check_interval_scorer, validate_data
 
 
 def _resolve_cost(cost: BaseCost | None) -> BaseCost:
@@ -401,7 +401,7 @@ class CROPS(BaseChangeDetector):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import CROPS
+    >>> from skchange.detectors import CROPS
     >>> rng = np.random.default_rng(2)
     >>> X = np.concatenate([rng.normal(0, 1, (100, 1)),
     ...                     rng.normal(10, 1, (100, 1))])

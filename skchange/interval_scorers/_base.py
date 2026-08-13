@@ -25,9 +25,9 @@ import numpy as np
 from sklearn.base import BaseEstimator
 from sklearn.utils import get_tags
 
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.types import ArrayLike, Self
+from skchange.utils._tags import IntervalScorerTags, SkchangeTags
+from skchange.utils.validation import (
     check_is_fitted,
     validate_data,
 )
@@ -313,7 +313,7 @@ def is_cost(estimator) -> bool:
 
     Examples
     --------
-    >>> from skchange.new_api.interval_scorers import L2Cost, CUSUM
+    >>> from skchange.interval_scorers import L2Cost, CUSUM
     >>> is_cost(L2Cost())
     True
     >>> is_cost(CUSUM())
@@ -338,7 +338,7 @@ def is_change_score(estimator) -> bool:
 
     Examples
     --------
-    >>> from skchange.new_api.interval_scorers import L2Cost, CUSUM
+    >>> from skchange.interval_scorers import L2Cost, CUSUM
     >>> is_change_score(CUSUM())
     True
     >>> is_change_score(L2Cost())
@@ -397,7 +397,7 @@ def is_penalised_score(estimator) -> bool:
 
     Examples
     --------
-    >>> from skchange.new_api.interval_scorers import CUSUM, ESACScore
+    >>> from skchange.interval_scorers import CUSUM, ESACScore
     >>> is_penalised_score(ESACScore())
     True
     >>> is_penalised_score(CUSUM())

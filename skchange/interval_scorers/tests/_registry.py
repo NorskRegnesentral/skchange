@@ -1,6 +1,6 @@
-"""Test instances for interval scorers in ``skchange.new_api.interval_scorers``."""
+"""Test instances for interval scorers in ``skchange.interval_scorers``."""
 
-from skchange.new_api.interval_scorers import (
+from skchange.interval_scorers import (
     CUSUM,
     ContinuousLinearTrendScore,
     CostChangeScore,

@@ -1,11 +1,11 @@
-"""Tests for ``skchange.new_api.tuning._fwer_calibration``."""
+"""Tests for ``skchange.tuning._fwer_calibration``."""
 
 import numpy as np
 import pytest
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.detectors import (
+from skchange.detectors import (
     CAPA,
     CROPS,
     PELT,
@@ -13,13 +13,13 @@ from skchange.new_api.detectors import (
     MovingWindow,
     SeededBinarySegmentation,
 )
-from skchange.new_api.interval_scorers import ESACScore
-from skchange.new_api.tuning import (
+from skchange.interval_scorers import ESACScore
+from skchange.tuning import (
     CalibratedDetector,
     GaussianSampler,
     calibrate_penalty_scale,
 )
-from skchange.new_api.tuning._fwer_calibration import _discover_knob
+from skchange.tuning._fwer_calibration import _discover_knob
 
 # All supported detectors (simple knob, scalar penalty_)
 _ALL_SUPPORTED = [
@@ -267,7 +267,7 @@ def test_knob_discovery_skips_nested_penalty_scale_that_fails_to_fit():
 
 def test_max_score_crit_scale_matches_brute_force_on_scanner():
     """For SBS, c_b = max(S)/base must equal the scale from a fine penalty sweep."""
-    from skchange.new_api.tuning._fwer_calibration import (
+    from skchange.tuning._fwer_calibration import (
         _critical_scale_count,
         _critical_scale_max_score,
     )
@@ -286,7 +286,7 @@ def test_max_score_crit_scale_matches_brute_force_on_scanner():
 
 def test_max_score_returns_zero_when_silent_at_scale_zero():
     """If detector produces no scores at scale 0, c_b must be 0."""
-    from skchange.new_api.tuning._fwer_calibration import _critical_scale_max_score
+    from skchange.tuning._fwer_calibration import _critical_scale_max_score
 
     # Use a very long null series where any reasonable penalty kills detections.
     rng = np.random.default_rng(0)
@@ -308,8 +308,8 @@ def test_detection_count_handles_non_monotone_silent_at_zero():
     *not* monotone in ``penalty_scale``. The bisection must return the upper
     edge of the firing region, not collapse to ~0.
     """
-    from skchange.new_api.interval_scorers import L2Saving
-    from skchange.new_api.tuning._fwer_calibration import (
+    from skchange.interval_scorers import L2Saving
+    from skchange.tuning._fwer_calibration import (
         _BISECT_LO,
         _critical_scale_count,
     )
@@ -347,7 +347,7 @@ def test_detection_count_returns_max_scale_when_never_silent():
     strong change survives every scale up to the guard, the search stops and
     returns ``max_scale`` rather than looping forever.
     """
-    from skchange.new_api.tuning._fwer_calibration import _critical_scale_count
+    from skchange.tuning._fwer_calibration import _critical_scale_count
 
     rng = np.random.default_rng(0)
     X = (
@@ -371,7 +371,7 @@ def test_detection_count_returns_bisect_lo_when_detector_never_fires():
     enters its loop, the low bracket finds no firing scale on the geometric
     grid, and the routine returns the floor scale.
     """
-    from skchange.new_api.tuning._fwer_calibration import (
+    from skchange.tuning._fwer_calibration import (
         _BISECT_LO,
         _critical_scale_count,
     )

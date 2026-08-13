@@ -4,7 +4,7 @@ import numbers
 
 import numpy as np
 
-from skchange.new_api.utils._param_validation import Interval, validate_params
+from skchange.utils._param_validation import Interval, validate_params
 
 
 @validate_params(

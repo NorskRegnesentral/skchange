@@ -11,8 +11,8 @@ import time
 
 import numpy as np
 
-from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import L1Saving, L2Saving
+from skchange.detectors import CAPA
+from skchange.interval_scorers import L1Saving, L2Saving
 
 N_SAMPLES = 10_000
 SEED = 0

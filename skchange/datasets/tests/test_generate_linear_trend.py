@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skchange.new_api.datasets import generate_continuous_piecewise_linear_data
+from skchange.datasets import generate_continuous_piecewise_linear_data
 
 
 def test_generate_continuous_piecewise_linear_data_default():

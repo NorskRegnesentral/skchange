@@ -2,13 +2,13 @@
 
 import numpy as np
 
-from skchange.new_api.conftest import (
+from skchange.conftest import (
     CHANGEPOINT,
     make_no_change_X,
     make_single_change_X,
 )
-from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import LinearTrendSaving
+from skchange.detectors import CAPA
+from skchange.interval_scorers import LinearTrendSaving
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_SLOPE = 0.0

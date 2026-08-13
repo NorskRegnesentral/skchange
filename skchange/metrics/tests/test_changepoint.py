@@ -1,8 +1,8 @@
-"""Metric-specific tests for ``skchange.new_api.metrics._changepoint``."""
+"""Metric-specific tests for ``skchange.metrics._changepoint``."""
 
 import numpy as np
 
-from skchange.new_api.metrics import changepoint_f1_score
+from skchange.metrics import changepoint_f1_score
 
 
 def test_f1_score_zero_matches_returns_zero_without_dividing_by_zero():

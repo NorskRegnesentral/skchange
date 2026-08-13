@@ -3,13 +3,13 @@
 import numpy as np
 import pytest
 
-from skchange.new_api.conftest import (
+from skchange.conftest import (
     CHANGEPOINT,
     make_no_change_X,
     make_single_change_X,
 )
-from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import PoissonSaving
+from skchange.detectors import CAPA
+from skchange.interval_scorers import PoissonSaving
 
 # Baseline parameters — must match data-generation parameters in the sanity tests.
 BASELINE_RATE = 2.0

@@ -6,13 +6,13 @@ from numbers import Integral
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseChangeScore
-from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._param_validation import Interval, _fit_context
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.interval_scorers._base import BaseChangeScore
+from skchange.penalties import bic_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit
+from skchange.utils._param_validation import Interval, _fit_context
+from skchange.utils._tags import SkchangeTags
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     check_time_col,
@@ -247,7 +247,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import ContinuousLinearTrendScore
+    >>> from skchange.interval_scorers import ContinuousLinearTrendScore
     >>> X = np.random.default_rng(0).normal(size=(100, 2))
     >>> scorer = ContinuousLinearTrendScore()
     >>> scorer.fit(X)

@@ -10,10 +10,10 @@ from sklearn.utils.validation import check_array
 from sklearn.utils.validation import check_is_fitted as _sklearn_check_is_fitted
 from sklearn.utils.validation import validate_data as _sklearn_validate_data
 
-from skchange.new_api.types import ArrayLike
+from skchange.types import ArrayLike
 
 if TYPE_CHECKING:
-    from skchange.new_api.interval_scorers._base import BaseIntervalScorer
+    from skchange.interval_scorers._base import BaseIntervalScorer
 
 
 # Internal flag toggled by ``skip_validation()``. When active, ``validate_data``

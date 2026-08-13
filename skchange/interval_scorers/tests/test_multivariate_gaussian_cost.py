@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-from skchange.new_api.interval_scorers import (
+from skchange.interval_scorers import (
     MultivariateGaussianCost,
     MultivariateGaussianSaving,
     MultivariateGaussianScore,
 )
-from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
+from skchange.interval_scorers._costs.multivariate_gaussian_cost import (
     MAX_COV_CACHE_ELEMENTS,
 )
 

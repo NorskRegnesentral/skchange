@@ -6,8 +6,8 @@ import pytest
 plotly = pytest.importorskip("plotly")
 import plotly.graph_objects as go  # noqa: E402
 
-from skchange.new_api.utils import plot_detections, plot_segmentation  # noqa: E402
-from skchange.new_api.utils.plotting import (  # noqa: E402
+from skchange.utils import plot_detections, plot_segmentation  # noqa: E402
+from skchange.utils.plotting import (  # noqa: E402
     _BASELINE_COLOR,
     _BASELINE_LABEL,
 )

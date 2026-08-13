@@ -2,7 +2,7 @@
 
 Requires plotly to be installed. Plotly is imported lazily inside the
 plotting functions so importing this module (and therefore
-``skchange.new_api.utils``) does not require it.
+``skchange.utils``) does not require it.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 from numpy.typing import ArrayLike
 
-from skchange.new_api.utils.segmentation import changepoints_to_labels
+from skchange.utils.segmentation import changepoints_to_labels
 
 if TYPE_CHECKING:
     import plotly.graph_objects as go

@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 from sklearn.base import clone
 
-from skchange.new_api.detectors import PELT
-from skchange.new_api.tuning._fwer_calibration import (
+from skchange.detectors import PELT
+from skchange.tuning._fwer_calibration import (
     _BISECT_LO,
     _critical_scale_count,
     _critical_scale_path_search,

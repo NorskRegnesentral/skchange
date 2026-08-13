@@ -8,28 +8,28 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.interval_scorers._base import (
+from skchange.detectors._base import BaseChangeDetector
+from skchange.interval_scorers._base import (
     BaseIntervalScorer,
     is_aggregated_score,
     is_penalised_score,
 )
-from skchange.new_api.interval_scorers._savings.l1_saving import L1Saving
-from skchange.new_api.interval_scorers._savings.l2_saving import L2Saving
-from skchange.new_api.penalties import linear_chi2_penalty
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils._param_validation import (
+from skchange.interval_scorers._savings.l1_saving import L1Saving
+from skchange.interval_scorers._savings.l2_saving import L2Saving
+from skchange.penalties import linear_chi2_penalty
+from skchange.types import ArrayLike, Self
+from skchange.utils import SkchangeTags
+from skchange.utils._param_validation import (
     HasMethods,
     Interval,
     _fit_context,
 )
-from skchange.new_api.utils._score_aggregation import (
+from skchange.utils._score_aggregation import (
     aggregate_and_penalise,
     resolve_aggregation,
     resolve_penalty,
 )
-from skchange.new_api.utils.validation import (
+from skchange.utils.validation import (
     check_interval_scorer,
     skip_validation,
     validate_data,
@@ -365,7 +365,7 @@ class CAPA(BaseChangeDetector):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import CAPA
+    >>> from skchange.detectors import CAPA
     >>> rng = np.random.default_rng(2)
     >>> X = np.concatenate([rng.normal(0, 1, (100, 1)),
     ...                     rng.normal(10, 1, (20, 1)),
@@ -729,7 +729,7 @@ class CAPA(BaseChangeDetector):
         single-sample point interval that the dynamic programme actually
         visited. With pruning enabled, the set of evaluated segment intervals
         depends on the current ``segment_penalty_``; use
-        :func:`skchange.new_api.tuning.unpenalised_scores` (with the penalty
+        :func:`skchange.tuning.unpenalised_scores` (with the penalty
         zeroed) for an unpruned grid.
 
         Parameters

@@ -1,4 +1,4 @@
-"""Test instances for metrics in ``skchange.new_api.metrics``.
+"""Test instances for metrics in ``skchange.metrics``.
 
 Design
 ------
@@ -36,7 +36,7 @@ Each entry has the following keys:
 
 import numpy as np
 
-from skchange.new_api.metrics import (
+from skchange.metrics import (
     adjusted_rand_index,
     changepoint_f1_score,
     changepoint_precision,

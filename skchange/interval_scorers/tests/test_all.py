@@ -6,14 +6,14 @@ from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.conftest import make_no_change_X, make_single_change_X
-from skchange.new_api.interval_scorers._base import (
+from skchange.conftest import make_no_change_X, make_single_change_X
+from skchange.interval_scorers._base import (
     BaseIntervalScorer,
 )
-from skchange.new_api.interval_scorers.tests._registry import (
+from skchange.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
-from skchange.new_api.utils._tags import IntervalScorerTags
+from skchange.utils._tags import IntervalScorerTags
 
 # `estimator` is a pytest fixture defined in conftest.py that clones each
 # registry instance before passing it to the test, ensuring test isolation.

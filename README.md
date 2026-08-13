@@ -13,9 +13,9 @@
 
 **Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
 See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) and the
-[migration guide](https://github.com/NorskRegnesentral/skchange/blob/main/skchange/new_api/MIGRATION_GUIDE.md) for details.
+[migration guide](https://github.com/NorskRegnesentral/skchange/blob/main/skchange/MIGRATION_GUIDE.md) for details.
 
-- **New API (recommended)** is previewed in `skchange.new_api.*` and becomes the default in 0.17.0, when the same names move to top-level (`skchange.detectors`, `skchange.interval_scorers`, `skchange.penalties`, ...). Drop `new_api.` from imports when upgrading. Still experimental.
+- **New API (recommended)** is previewed in `skchange.*` and becomes the default in 0.17.0, when the same names move to top-level (`skchange.detectors`, `skchange.interval_scorers`, `skchange.penalties`, ...). Drop `new_api.` from imports when upgrading. Still experimental.
 - **Current API** (`skchange.change_detectors`, `skchange.costs`, ...) emits a `FutureWarning` in 0.16.x and is removed in 0.17.0.
 
 If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a 0.15.x release:
@@ -47,8 +47,8 @@ pip install skchange
 
 **New API**
 ```python
-from skchange.new_api.datasets import generate_piecewise_normal_data
-from skchange.new_api.detectors import MovingWindow
+from skchange.datasets import generate_piecewise_normal_data
+from skchange.detectors import MovingWindow
 
 X = generate_piecewise_normal_data(
     means=[0, 5, 10, 5, 0],
@@ -89,9 +89,9 @@ detector.fit_predict(df)
 
 **New API**
 ```python
-from skchange.new_api.datasets import generate_piecewise_normal_data
-from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import L2Saving
+from skchange.datasets import generate_piecewise_normal_data
+from skchange.detectors import CAPA
+from skchange.interval_scorers import L2Saving
 
 X = generate_piecewise_normal_data(
     means=[0, 8, 0, 5],

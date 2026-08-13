@@ -98,7 +98,7 @@ class PermutationSampler(BaseNullSampler):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.tuning import PermutationSampler
+    >>> from skchange.tuning import PermutationSampler
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(100, 2))
     >>> PermutationSampler().sample(X, 50, rng).shape
@@ -143,7 +143,7 @@ class GaussianSampler(BaseNullSampler):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.tuning import GaussianSampler
+    >>> from skchange.tuning import GaussianSampler
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(100, 2))
     >>> GaussianSampler().sample(X, 50, rng).shape
@@ -207,7 +207,7 @@ class BlockBootstrapSampler(BaseNullSampler):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.tuning import BlockBootstrapSampler
+    >>> from skchange.tuning import BlockBootstrapSampler
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(100, 2))
     >>> BlockBootstrapSampler(block_length=10).sample(X, 50, rng).shape

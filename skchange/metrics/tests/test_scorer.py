@@ -1,10 +1,10 @@
-"""Tests for ``skchange.new_api.metrics._scoring``."""
+"""Tests for ``skchange.metrics._scoring``."""
 
 import numpy as np
 import pytest
 
-from skchange.new_api.metrics import rand_index
-from skchange.new_api.metrics._scoring import (
+from skchange.metrics import rand_index
+from skchange.metrics._scoring import (
     BUILTIN_SCORERS,
     make_detector_scorer,
     n_segments,
@@ -50,8 +50,8 @@ def test_builtin_scorer_returns_nonneg_float(name, scorer):
     """Every built-in scorer returns a non-negative float when run against a
     fitted detector on real data.
     """
-    from skchange.new_api.conftest import make_single_change_X
-    from skchange.new_api.detectors import CAPA
+    from skchange.conftest import make_single_change_X
+    from skchange.detectors import CAPA
 
     detector = CAPA()
     X = make_single_change_X(detector)

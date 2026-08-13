@@ -14,7 +14,7 @@ from scipy.stats import (
     uniform,
 )
 
-from skchange.new_api.datasets import GENERATORS, generate_piecewise_data
+from skchange.datasets import GENERATORS, generate_piecewise_data
 
 
 @pytest.mark.parametrize("generate", GENERATORS)

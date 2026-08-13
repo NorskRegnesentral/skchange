@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skchange.new_api.datasets import generate_piecewise_normal_data
+from skchange.datasets import generate_piecewise_normal_data
 
 
 def test_generate_piecewise_normal_data_default_params():

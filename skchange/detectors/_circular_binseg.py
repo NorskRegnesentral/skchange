@@ -9,28 +9,28 @@ import numpy as np
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.detectors._seeded_binseg import make_seeded_intervals
-from skchange.new_api.interval_scorers._base import BaseIntervalScorer
-from skchange.new_api.interval_scorers._transient_scores.l2_transient_score import (
+from skchange.detectors._base import BaseChangeDetector
+from skchange.detectors._seeded_binseg import make_seeded_intervals
+from skchange.interval_scorers._base import BaseIntervalScorer
+from skchange.interval_scorers._transient_scores.l2_transient_score import (
     L2TransientScore,
 )
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils import SkchangeTags
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._param_validation import (
+from skchange.types import ArrayLike, Self
+from skchange.utils import SkchangeTags
+from skchange.utils._numba import njit
+from skchange.utils._param_validation import (
     HasMethods,
     Interval,
     StrOptions,
     _fit_context,
 )
-from skchange.new_api.utils._score_aggregation import (
+from skchange.utils._score_aggregation import (
     USER_AGG_CHOICES,
     aggregate_and_penalise,
     resolve_aggregation,
     resolve_penalty,
 )
-from skchange.new_api.utils.validation import (
+from skchange.utils.validation import (
     check_interval_scorer,
     validate_data,
 )
@@ -324,7 +324,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import CircularBinarySegmentation
+    >>> from skchange.detectors import CircularBinarySegmentation
     >>> rng = np.random.default_rng(2)
     >>> X = np.concatenate([
     ...     rng.normal(0, 1, (40, 1)),
@@ -553,7 +553,7 @@ class CircularBinarySegmentation(BaseChangeDetector):
         over via the greedy selection step, without the selection itself.
 
         For penalty calibration, use the free function
-        :func:`skchange.new_api.tuning.unpenalised_scores`, which fits a
+        :func:`skchange.tuning.unpenalised_scores`, which fits a
         clone of this detector with the penalty parameter set to zero and
         returns the resulting unpenalised scores.
 

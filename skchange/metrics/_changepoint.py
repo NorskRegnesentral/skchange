@@ -17,9 +17,9 @@ import numpy as np
 from sklearn.metrics import adjusted_rand_score as _adjusted_rand_score
 from sklearn.metrics import rand_score as _rand_score
 
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._param_validation import Interval, validate_params
-from skchange.new_api.utils.segmentation import changepoints_to_labels
+from skchange.types import ArrayLike
+from skchange.utils._param_validation import Interval, validate_params
+from skchange.utils.segmentation import changepoints_to_labels
 
 
 @validate_params(
@@ -286,7 +286,7 @@ def rand_index(
     """Compute the Rand index between two changepoint-defined segmentations.
 
     Inflates both changepoint arrays to per-sample segment labels via
-    :func:`skchange.new_api.utils.segmentation.changepoints_to_labels` and
+    :func:`skchange.utils.segmentation.changepoints_to_labels` and
     delegates to :func:`sklearn.metrics.rand_score`. Higher is better.
 
     Parameters
@@ -335,7 +335,7 @@ def adjusted_rand_index(
 
     Similar to :func:`rand_index` but adjusted for chance. Inflates both
     changepoint arrays to per-sample labels by
-    :func:`skchange.new_api.utils.segmentation.changepoints_to_labels`
+    :func:`skchange.utils.segmentation.changepoints_to_labels`
     and delegates to
     :func:`sklearn.metrics.adjusted_rand_score` for the computation.
 

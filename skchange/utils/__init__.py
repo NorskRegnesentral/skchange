@@ -1,20 +1,20 @@
 """General purpose utility functions."""
 
-from skchange.new_api.utils._tags import (
+from skchange.utils._tags import (
     ChangeDetectorTags,
     IntervalScorerTags,
     SkchangeInputTags,
     SkchangeTags,
 )
-from skchange.new_api.utils.plotting import (
+from skchange.utils.plotting import (
     plot_detections,
     plot_segmentation,
 )
-from skchange.new_api.utils.segmentation import (
+from skchange.utils.segmentation import (
     changepoints_to_labels,
     labels_to_changepoints,
 )
-from skchange.new_api.utils.validation import (
+from skchange.utils.validation import (
     check_interval_scorer,
     check_interval_specs,
     check_penalty,

@@ -1,6 +1,6 @@
-"""Test instances for change detectors in ``skchange.new_api.detectors``."""
+"""Test instances for change detectors in ``skchange.detectors``."""
 
-from skchange.new_api.detectors import (
+from skchange.detectors import (
     CAPA,
     CROPS,
     PELT,
@@ -8,7 +8,7 @@ from skchange.new_api.detectors import (
     MovingWindow,
     SeededBinarySegmentation,
 )
-from skchange.new_api.interval_scorers import (
+from skchange.interval_scorers import (
     CostTransientScore,
     GaussianCost,
     L1Saving,
@@ -18,7 +18,7 @@ from skchange.new_api.interval_scorers import (
     is_penalised_score,
     is_saving,
 )
-from skchange.new_api.interval_scorers.tests._registry import (
+from skchange.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
 

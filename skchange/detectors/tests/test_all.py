@@ -1,17 +1,17 @@
-"""Common contract tests for all change detectors in ``skchange.new_api.detectors``."""
+"""Common contract tests for all change detectors in ``skchange.detectors``."""
 
 import numpy as np
 import pytest
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 
-from skchange.new_api.conftest import (
+from skchange.conftest import (
     CHANGEPOINT,
     make_no_change_X,
     make_single_change_X,
 )
-from skchange.new_api.detectors._base import BaseChangeDetector
-from skchange.new_api.detectors.tests._registry import DETECTOR_TEST_INSTANCES
+from skchange.detectors._base import BaseChangeDetector
+from skchange.detectors.tests._registry import DETECTOR_TEST_INSTANCES
 
 # `estimator` is a pytest fixture defined in conftest.py that clones each
 # registry instance before passing it to the test, ensuring test isolation.

@@ -1,6 +1,6 @@
 import numpy as np
 
-from skchange.new_api.datasets import load_hvac_system_data
+from skchange.datasets import load_hvac_system_data
 
 
 def test_load_hvac_system_data():

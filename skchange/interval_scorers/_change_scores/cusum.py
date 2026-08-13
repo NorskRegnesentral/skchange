@@ -4,12 +4,12 @@ __author__ = ["Tveten"]
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseChangeScore
-from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._numeric import col_cumsum
-from skchange.new_api.utils.validation import (
+from skchange.interval_scorers._base import BaseChangeScore
+from skchange.penalties import bic_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit
+from skchange.utils._numeric import col_cumsum
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     validate_data,

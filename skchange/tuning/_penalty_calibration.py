@@ -7,9 +7,9 @@ from typing import Any, Callable
 import numpy as np
 from sklearn.base import clone
 
-from skchange.new_api.metrics._scoring import resolve_scoring
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._param_validation import (
+from skchange.metrics._scoring import resolve_scoring
+from skchange.types import ArrayLike
+from skchange.utils._param_validation import (
     HasMethods,
     Interval,
     validate_params,
@@ -72,8 +72,8 @@ def unpenalised_scores(
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import SeededBinarySegmentation
-    >>> from skchange.new_api.tuning import unpenalised_scores
+    >>> from skchange.detectors import SeededBinarySegmentation
+    >>> from skchange.tuning import unpenalised_scores
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(200, 3))
     >>> scores = unpenalised_scores(SeededBinarySegmentation(), X)
@@ -81,7 +81,7 @@ def unpenalised_scores(
 
     Disable two multiplicative scales (e.g. ESAC's):
 
-    >>> from skchange.new_api.interval_scorers import ESACScore
+    >>> from skchange.interval_scorers import ESACScore
     >>> detector = SeededBinarySegmentation(change_score=ESACScore())
     >>> scores = unpenalised_scores(
     ...     detector, X,
@@ -170,14 +170,14 @@ def penalty_curve(
 
     See Also
     --------
-    skchange.new_api.detectors.CROPS : Specialised PELT search for multiple
+    skchange.detectors.CROPS : Specialised PELT search for multiple
     changepoints.
 
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import SeededBinarySegmentation
-    >>> from skchange.new_api.tuning import penalty_curve
+    >>> from skchange.detectors import SeededBinarySegmentation
+    >>> from skchange.tuning import penalty_curve
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(200, 1))
     >>> penalty_range = np.array([1.0, 2.0, 3.0, 5.0])
@@ -188,9 +188,9 @@ def penalty_curve(
     >>> selected = penalty_range[counts <= 1].min()
 
     Supervised scoring against reference changepoints, using
-    :func:`~skchange.new_api.metrics.make_detector_scorer` to wrap a metric::
+    :func:`~skchange.metrics.make_detector_scorer` to wrap a metric::
 
-        from skchange.new_api.metrics import (
+        from skchange.metrics import (
             changepoint_f1_score,
             make_detector_scorer,
         )

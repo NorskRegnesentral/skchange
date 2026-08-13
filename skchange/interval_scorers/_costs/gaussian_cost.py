@@ -4,12 +4,12 @@ __author__ = ["Tveten"]
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseCost
-from skchange.new_api.penalties import bic_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._numeric import col_cumsum, truncate_below
-from skchange.new_api.utils.validation import (
+from skchange.interval_scorers._base import BaseCost
+from skchange.penalties import bic_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit
+from skchange.utils._numeric import col_cumsum, truncate_below
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     validate_data,
@@ -72,7 +72,7 @@ class GaussianCost(BaseCost):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import GaussianCost
+    >>> from skchange.interval_scorers import GaussianCost
     >>> X = np.random.default_rng(0).normal(size=(100, 2))
     >>> cost = GaussianCost()
     >>> cost.fit(X)

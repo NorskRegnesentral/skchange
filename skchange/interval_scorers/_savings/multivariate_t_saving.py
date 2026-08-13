@@ -6,27 +6,27 @@ from numbers import Integral, Real
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseSaving
-from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
+from skchange.interval_scorers._base import BaseSaving
+from skchange.interval_scorers._costs.multivariate_gaussian_cost import (
     _multivariate_gaussian_cost_mle,
 )
-from skchange.new_api.interval_scorers._costs.multivariate_t_cost import (
+from skchange.interval_scorers._costs.multivariate_t_cost import (
     _estimate_mv_t_dof,
     multivariate_t_cost_mle_params,
 )
-from skchange.new_api.interval_scorers._savings._utils import (
+from skchange.interval_scorers._savings._utils import (
     resolve_baseline_location_and_scatter,
 )
-from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving import (
+from skchange.interval_scorers._savings.multivariate_gaussian_saving import (
     _multivariate_gaussian_cost_fixed,
 )
-from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit, prange
-from skchange.new_api.utils._numeric import log_gamma
-from skchange.new_api.utils._param_validation import Interval, _fit_context
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.penalties import chi2_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit, prange
+from skchange.utils._numeric import log_gamma
+from skchange.utils._param_validation import Interval, _fit_context
+from skchange.utils._tags import SkchangeTags
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     validate_data,
@@ -174,7 +174,7 @@ class MultivariateTSaving(BaseSaving):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import MultivariateTSaving
+    >>> from skchange.interval_scorers import MultivariateTSaving
     >>> rng = np.random.default_rng(0)
     >>> X = rng.standard_t(df=5, size=(100, 3))
     >>> scorer = MultivariateTSaving()
@@ -255,7 +255,7 @@ class MultivariateTSaving(BaseSaving):
         if self.fixed_dof is None:
             refine_threshold = self.refine_dof_threshold
             if refine_threshold is None:
-                from skchange.new_api.utils._numba import numba_available
+                from skchange.utils._numba import numba_available
 
                 refine_threshold = 1000 if numba_available else 100
             self.dof_ = float(

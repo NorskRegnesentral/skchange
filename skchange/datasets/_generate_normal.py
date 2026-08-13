@@ -267,7 +267,7 @@ def generate_piecewise_normal_data(
 
     Examples
     --------
-    >>> from skchange.new_api.datasets import generate_piecewise_normal_data
+    >>> from skchange.datasets import generate_piecewise_normal_data
     >>> X = generate_piecewise_normal_data(
     ...     means=[0, 5], lengths=5, n_segments=2, n_variables=1, seed=0
     ... )

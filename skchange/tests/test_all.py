@@ -1,9 +1,9 @@
-"""Basic sklearn compatibility tests for estimators in ``skchange.new_api``."""
+"""Basic sklearn compatibility tests for estimators in ``skchange``."""
 
 from sklearn.utils.estimator_checks import parametrize_with_checks
 
-from skchange.new_api.detectors.tests._registry import DETECTOR_TEST_INSTANCES
-from skchange.new_api.interval_scorers.tests._registry import (
+from skchange.detectors.tests._registry import DETECTOR_TEST_INSTANCES
+from skchange.interval_scorers.tests._registry import (
     INTERVAL_SCORER_TEST_INSTANCES,
 )
 

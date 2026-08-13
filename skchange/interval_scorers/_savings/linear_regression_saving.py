@@ -6,13 +6,13 @@ from numbers import Integral, Real
 
 import numpy as np
 
-from skchange.new_api.interval_scorers._base import BaseSaving
-from skchange.new_api.penalties import chi2_penalty
-from skchange.new_api.types import ArrayLike
-from skchange.new_api.utils._numba import njit
-from skchange.new_api.utils._param_validation import Interval, _fit_context
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.interval_scorers._base import BaseSaving
+from skchange.penalties import chi2_penalty
+from skchange.types import ArrayLike
+from skchange.utils._numba import njit
+from skchange.utils._param_validation import Interval, _fit_context
+from skchange.utils._tags import SkchangeTags
+from skchange.utils.validation import (
     check_interval_specs,
     check_is_fitted,
     validate_data,
@@ -106,7 +106,7 @@ class LinearRegressionSaving(BaseSaving):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import LinearRegressionSaving
+    >>> from skchange.interval_scorers import LinearRegressionSaving
     >>> rng = np.random.default_rng(0)
     >>> X = np.column_stack([rng.normal(size=100), rng.normal(size=100)])
     >>> scorer = LinearRegressionSaving()

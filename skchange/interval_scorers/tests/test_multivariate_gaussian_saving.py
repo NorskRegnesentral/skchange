@@ -2,17 +2,17 @@
 
 import numpy as np
 
-from skchange.new_api.conftest import (
+from skchange.conftest import (
     CHANGEPOINT,
     make_no_change_X,
     make_single_change_X,
 )
-from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import MultivariateGaussianSaving
-from skchange.new_api.interval_scorers._costs.multivariate_gaussian_cost import (
+from skchange.detectors import CAPA
+from skchange.interval_scorers import MultivariateGaussianSaving
+from skchange.interval_scorers._costs.multivariate_gaussian_cost import (
     _multivariate_gaussian_precompute,
 )
-from skchange.new_api.interval_scorers._savings.multivariate_gaussian_saving import (
+from skchange.interval_scorers._savings.multivariate_gaussian_saving import (
     _multivariate_gaussian_cost_fixed,
     _multivariate_gaussian_cost_fixed_cached,
 )

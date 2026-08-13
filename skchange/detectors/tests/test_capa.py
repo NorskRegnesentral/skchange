@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skchange.new_api.detectors import CAPA
+from skchange.detectors import CAPA
 
 TRUE_POINT_ANOMALY = 20
 

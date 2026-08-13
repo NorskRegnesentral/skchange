@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from skchange.new_api.interval_scorers._base import (
+from skchange.interval_scorers._base import (
     BaseChangeScore,
     BaseCost,
     BaseIntervalScorer,
     BaseSaving,
     BaseTransientScore,
 )
-from skchange.new_api.utils._tags import IntervalScorerTags, SkchangeTags
+from skchange.utils._tags import IntervalScorerTags, SkchangeTags
 
 
 class _StubScorer(BaseIntervalScorer):

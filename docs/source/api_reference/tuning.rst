@@ -8,7 +8,7 @@ Hyperparameter tuning and penalty calibration utilities for detectors.
 Penalty calibration
 -------------------
 
-.. currentmodule:: skchange.new_api.tuning
+.. currentmodule:: skchange.tuning
 
 .. autosummary::
     :toctree: auto_generated/

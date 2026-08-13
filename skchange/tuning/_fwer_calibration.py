@@ -46,18 +46,18 @@ from sklearn.utils import get_tags
 from sklearn.utils.metaestimators import available_if
 from sklearn.utils.parallel import Parallel, delayed
 
-from skchange.new_api.tuning._null_models import (
+from skchange.tuning._null_models import (
     resolve_sampler,
     sampler_requires_data,
 )
-from skchange.new_api.tuning._penalty_calibration import unpenalised_scores
-from skchange.new_api.utils._param_validation import (
+from skchange.tuning._penalty_calibration import unpenalised_scores
+from skchange.utils._param_validation import (
     HasMethods,
     Interval,
     StrOptions,
     validate_params,
 )
-from skchange.new_api.utils.validation import check_is_fitted, validate_data
+from skchange.utils.validation import check_is_fitted, validate_data
 
 # --------------------------------------------------------------------------- #
 # Knob discovery
@@ -190,7 +190,7 @@ def _critical_scale_path_search(
     vertex for the current penalty, converging in ~3-6 PELT fits.
 
     This is the same cost-versus-number-of-changepoints secant walk that
-    :class:`~skchange.new_api.detectors.CROPS` uses to trace the full penalty
+    :class:`~skchange.detectors.CROPS` uses to trace the full penalty
     path (``threshold = (cost_high - cost_low) / (k_low - k_high)``), specialised
     here to the single top hull vertex ``β*`` rather than every vertex.
 
@@ -497,8 +497,8 @@ def calibrate_penalty_scale(
 
     Examples
     --------
-    >>> from skchange.new_api.detectors import SeededBinarySegmentation
-    >>> from skchange.new_api.tuning import calibrate_penalty_scale
+    >>> from skchange.detectors import SeededBinarySegmentation
+    >>> from skchange.tuning import calibrate_penalty_scale
     >>> scale = calibrate_penalty_scale(
     ...     SeededBinarySegmentation(), 150, 2,
     ...     sampler="gaussian", n_simulations=99, random_state=0,
@@ -632,8 +632,8 @@ class CalibratedDetector(BaseEstimator):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.detectors import SeededBinarySegmentation
-    >>> from skchange.new_api.tuning import CalibratedDetector
+    >>> from skchange.detectors import SeededBinarySegmentation
+    >>> from skchange.tuning import CalibratedDetector
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(150, 2))
     >>> cal = CalibratedDetector(

@@ -1,11 +1,11 @@
-"""Common contract tests for all metrics in ``skchange.new_api.metrics``."""
+"""Common contract tests for all metrics in ``skchange.metrics``."""
 
 import math
 
 import numpy as np
 import pytest
 
-from skchange.new_api.metrics.tests._registry import METRIC_TEST_CASES
+from skchange.metrics.tests._registry import METRIC_TEST_CASES
 
 _all_metrics = pytest.mark.parametrize(
     "case", METRIC_TEST_CASES, ids=[c["id"] for c in METRIC_TEST_CASES]
