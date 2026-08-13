@@ -11,7 +11,7 @@ Constant penalties
 ------------------
 The penalty for each additional changepoint is constant.
 
-.. currentmodule:: skchange.new_api.penalties
+.. currentmodule:: skchange.penalties
 
 .. autosummary::
     :toctree: auto_generated/
@@ -28,7 +28,7 @@ detectors use such penalties to identify the variables responsible for the
 change or anomaly. Penalised scores using linear penalties are faster to
 compute than non-linear penalties.
 
-.. currentmodule:: skchange.new_api.penalties
+.. currentmodule:: skchange.penalties
 
 .. autosummary::
     :toctree: auto_generated/
@@ -42,7 +42,7 @@ Nonlinear penalties
 The penalty for each additional changepoint is non-linear in the number of
 variables affected by the change. Only relevant for multivariate data.
 
-.. currentmodule:: skchange.new_api.penalties
+.. currentmodule:: skchange.penalties
 
 .. autosummary::
     :toctree: auto_generated/

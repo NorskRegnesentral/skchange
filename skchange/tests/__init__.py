@@ -1,1 +1,1 @@
-"""Tests for skchange module."""
+"""General tests across skchange."""

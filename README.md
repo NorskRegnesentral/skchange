@@ -8,27 +8,9 @@
 [![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
 
+Skchange provides fast and flexible changepoint detection algorithms within a [scikit-learn](https://scikit-learn.org/)-like API. See the [documentation](https://skchange.readthedocs.io/) for full details.
 
-<!-- [skchange]((https://skchange.readthedocs.io/en/latest/)) provides [scikit-learn](https://scikit-learn.org/)-like changepoint detection algorithms. -->
-
-**Breaking changes expected.** skchange is undergoing a significant API redesign in upcoming releases.
-See [Issue #120](https://github.com/NorskRegnesentral/skchange/issues/120) and the
-[migration guide](https://github.com/NorskRegnesentral/skchange/blob/main/skchange/new_api/MIGRATION_GUIDE.md) for details.
-
-- **New API (recommended)** is previewed in `skchange.new_api.*` and becomes the default in 0.17.0, when the same names move to top-level (`skchange.detectors`, `skchange.interval_scorers`, `skchange.penalties`, ...). Drop `new_api.` from imports when upgrading. Still experimental.
-- **Current API** (`skchange.change_detectors`, `skchange.costs`, ...) emits a `FutureWarning` in 0.16.x and is removed in 0.17.0.
-
-If you need stability and the old [sktime](https://www.sktime.net/) compatibility, pin to a 0.15.x release:
-> ```sh
-> pip install "skchange<0.16"
-> ```
-
-
-## Documentation
-
-* [Documentation](https://skchange.readthedocs.io/)
-* [Notebook tutorial](https://github.com/sktime/sktime-tutorial-pydata-global-2024)
-
+Users upgrading from version <0.17 should consult the [migration guide](MIGRATION_GUIDE.md).
 
 ## Installation
 It is recommended to install skchange with [numba](https://numba.readthedocs.io/en/stable/) for faster performance:
@@ -45,10 +27,9 @@ pip install skchange
 
 ### Changepoint detection / time series segmentation
 
-**New API**
 ```python
-from skchange.new_api.datasets import generate_piecewise_normal_data
-from skchange.new_api.detectors import MovingWindow
+from skchange.datasets import generate_piecewise_normal_data
+from skchange.detectors import MovingWindow
 
 X = generate_piecewise_normal_data(
     means=[0, 5, 10, 5, 0],
@@ -63,35 +44,43 @@ detector.fit_predict(X)
 array([ 50, 100, 150, 200])
 ```
 
-**Current API**
-```python
-from skchange.change_detectors import MovingWindow
-from skchange.datasets import generate_piecewise_normal_data
+### Automatic penalty calibration
 
-df = generate_piecewise_normal_data(
-    means=[0, 5, 10, 5, 0],
-    lengths=[50, 50, 50, 50, 50],
+```python
+import scipy.stats as st
+from skchange.datasets import generate_piecewise_data
+from skchange.detectors import SeededBinarySegmentation
+from skchange.tuning import CalibratedDetector
+
+# Change-free beta(2, 5) data used to calibrate the detection threshold.
+X_calib = generate_piecewise_data(st.beta(2, 5), lengths=300, seed=0)
+
+# Test data with two changepoints where the beta shape changes.
+X = generate_piecewise_data(
+    [st.beta(2, 5), st.beta(5, 2), st.beta(1, 10)],
+    lengths=100,
     seed=1,
 )
 
-detector = MovingWindow(bandwidth=20)
-detector.fit_predict(df)
+cal = CalibratedDetector(
+    SeededBinarySegmentation(),
+    level=0.05,
+    n_simulations=999,
+    random_state=0,
+)
+cal.fit(X_calib)
+cal.predict(X)
 ```
 ```text
-   ilocs
-0     50
-1    100
-2    150
-3    200
+array([100, 200])
 ```
 
 ### Multivariate segment anomaly detection
 
-**New API**
 ```python
-from skchange.new_api.datasets import generate_piecewise_normal_data
-from skchange.new_api.detectors import CAPA
-from skchange.new_api.interval_scorers import L2Saving
+from skchange.datasets import generate_piecewise_normal_data
+from skchange.detectors import CAPA
+from skchange.interval_scorers import L2Saving
 
 X = generate_piecewise_normal_data(
     means=[0, 8, 0, 5],
@@ -108,34 +97,6 @@ detector.predict_segment_anomalies(X)
 ```text
 array([[100, 120],
        [250, 300]])
-```
-
-**Current API**
-```python
-from skchange.anomaly_detectors import CAPA
-from skchange.anomaly_scores import L2Saving
-from skchange.compose.penalised_score import PenalisedScore
-from skchange.datasets import generate_piecewise_normal_data
-from skchange.penalties import make_linear_chi2_penalty
-
-df = generate_piecewise_normal_data(
-    means=[0, 8, 0, 5],
-    lengths=[100, 20, 130, 50],
-    proportion_affected=[1.0, 0.1, 1.0, 0.5],
-    n_variables=10,
-    seed=1,
-)
-
-score = L2Saving()
-penalty = make_linear_chi2_penalty(score.get_model_size(1), df.shape[0], df.shape[1])
-penalised_score = PenalisedScore(score, penalty)
-detector = CAPA(penalised_score, find_affected_components=True)
-detector.fit_predict(df)
-```
-```text
-        ilocs  labels         icolumns
-0  [100, 120)       1              [0]
-1  [250, 300)       2  [2, 0, 3, 1, 4]
 ```
 
 ## License

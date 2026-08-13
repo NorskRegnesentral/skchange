@@ -1,10 +1,9 @@
 """Data generators for regression data."""
 
 import numpy as np
-import pandas as pd
 from sklearn.datasets import make_regression
 
-from ..utils.validation.generation import check_random_generator, check_segment_lengths
+from ._utils import check_random_generator, check_segment_lengths
 
 
 def generate_piecewise_regression_data(
@@ -22,10 +21,7 @@ def generate_piecewise_regression_data(
     shuffle: bool = True,
     seed: int | np.random.Generator | None = None,
     return_params: bool = False,
-) -> (
-    tuple[pd.DataFrame, list[str], list[str]]
-    | tuple[pd.DataFrame, list[str], list[str], dict]
-):
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, dict]:
     """Generate piecewise linear regression data.
 
     Generate independent segments of data from `sklearn.datasets.make_regression`.
@@ -80,13 +76,10 @@ def generate_piecewise_regression_data(
 
     Returns
     -------
-    pd.DataFrame
-        The generated data as a DataFrame with columns named
-        "feature_0", "feature_1", ..., "target_0", "target_1", ...
-    list[str]
-        A list of feature column names.
-    list[str]
-        A list of target column names.
+    X : np.ndarray of shape (n_samples, n_features)
+        The generated feature matrix.
+    y : np.ndarray of shape (n_samples, n_targets)
+        The generated target matrix.
     dict, optional
         If `return_params` is True, a dictionary containing the parameters used to
         generate the data, including segment lengths, coefficients, change points,
@@ -98,7 +91,7 @@ def generate_piecewise_regression_data(
         lengths, n_segments, n_samples, seed=random_generator
     )
     n_segments = len(lengths)
-    n_samples = np.sum(lengths)
+    n_samples = int(np.sum(lengths))
 
     # make_regression requires a np.random.RandomState instance.
     random_generator = np.random.RandomState(random_generator.integers(0, 2**32 - 1))
@@ -127,13 +120,6 @@ def generate_piecewise_regression_data(
         generated_y[start:end, :] = y.reshape(segment_length, n_targets)
         coefs.append(coef)
 
-    feature_cols = [f"feature_{i}" for i in range(n_features)]
-    target_cols = [f"target_{i}" for i in range(n_targets)]
-    generated_df = pd.DataFrame(
-        np.concatenate((generated_x, generated_y), axis=1),
-        columns=feature_cols + target_cols,
-    )
-
     if return_params:
         params = {
             "n_segments": n_segments,
@@ -142,6 +128,6 @@ def generate_piecewise_regression_data(
             "coefs": coefs,
             "change_points": starts[1:],
         }
-        return generated_df, feature_cols, target_cols, params
+        return generated_x, generated_y, params
 
-    return generated_df, feature_cols, target_cols
+    return generated_x, generated_y

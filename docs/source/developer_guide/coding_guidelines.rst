@@ -153,10 +153,10 @@ Tests live next to the code they cover, in a ``tests/`` subpackage
 
 Each subpackage also contains a shared contract test module that exercises
 every implementation in that subpackage against a common set of API checks.
-These modules are named ``test_all.py`` in the new API
-(e.g. ``skchange/new_api/detectors/tests/test_all.py``,
-``skchange/new_api/interval_scorers/tests/test_all.py``,
-``skchange/new_api/metrics/tests/test_all.py``). The set of instances they run
+These modules are named ``test_all.py``
+(e.g. ``skchange/detectors/tests/test_all.py``,
+``skchange/interval_scorers/tests/test_all.py``,
+``skchange/metrics/tests/test_all.py``). The set of instances they run
 against is declared in a sibling ``_registry.py`` file. When you add a new
 detector, scorer, or metric, register a representative set of instances in the
 corresponding ``_registry.py`` so the shared checks are exercised against your

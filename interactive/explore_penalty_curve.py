@@ -3,9 +3,9 @@
 import numpy as np
 import plotly.express as px
 
-from skchange.new_api.datasets import load_hvac_system_data
-from skchange.new_api.detectors import SeededBinarySegmentation
-from skchange.new_api.tuning import penalty_curve
+from skchange.datasets import load_hvac_system_data
+from skchange.detectors import SeededBinarySegmentation
+from skchange.tuning import penalty_curve
 
 # ---------------------------------------------------------------------------
 # Load data — use unit 1 only (single contiguous time series)
