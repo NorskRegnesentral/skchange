@@ -153,7 +153,7 @@ Tests live next to the code they cover, in a ``tests/`` subpackage
 
 Each subpackage also contains a shared contract test module that exercises
 every implementation in that subpackage against a common set of API checks.
-These modules are named ``test_all.py`` in the new API
+These modules are named ``test_all.py``
 (e.g. ``skchange/detectors/tests/test_all.py``,
 ``skchange/interval_scorers/tests/test_all.py``,
 ``skchange/metrics/tests/test_all.py``). The set of instances they run

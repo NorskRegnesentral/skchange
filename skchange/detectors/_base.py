@@ -1,4 +1,4 @@
-"""Base class for all change and anomaly detectors in the new API."""
+"""Base class for change detectors."""
 
 __author__ = ["Tveten"]
 

@@ -1,4 +1,4 @@
-"""Tests for MultivariateTCost in the new API (translated from old API tests)."""
+"""Tests for MultivariateTCost."""
 
 from time import perf_counter
 

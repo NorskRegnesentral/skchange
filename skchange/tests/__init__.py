@@ -1,1 +1,1 @@
-"""General tests for the new API."""
+"""General tests across skchange."""

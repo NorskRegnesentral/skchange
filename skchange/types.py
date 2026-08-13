@@ -12,7 +12,7 @@ import numpy as np
 # numpy's ArrayLike definition can in some cases cause issues with type checkers,
 # but we find it more convenient than using Any. Defining it here allows us to easily
 # modify it in the future if needed, and provides a single source of truth for the
-# expected array-like types across the new API.
+# expected array-like types across the library.
 ArrayLike: TypeAlias = np.typing.ArrayLike
 
 __all__ = [
