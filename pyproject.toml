@@ -97,6 +97,7 @@ docs = [
   "nbstripout",
   "ipykernel",
   "nbformat>=4.2.0",
+  "pandas>=1.1",
   "plotly",
 ]
 
