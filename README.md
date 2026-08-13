@@ -8,9 +8,9 @@
 [![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
 
-Skchange provides fast and flexible changepoint detection algorithms within a [scikit-learn](https://scikit-learn.org/)-like API.
-See the [documentation](https://skchange.readthedocs.io/) for full details.
-Users upgrading from 0.15.x should consult the [migration guide](MIGRATION_GUIDE.md).
+Skchange provides fast and flexible changepoint detection algorithms within a [scikit-learn](https://scikit-learn.org/)-like API. See the [documentation](https://skchange.readthedocs.io/) for full details.
+
+Users upgrading from version <0.17 should consult the [migration guide](MIGRATION_GUIDE.md).
 
 ## Installation
 It is recommended to install skchange with [numba](https://numba.readthedocs.io/en/stable/) for faster performance:
