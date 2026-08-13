@@ -142,10 +142,12 @@ def _plot_time_series(
                 row=i + 1,
                 col=1,
             )
-    else:
-        fig = go.Figure()
+            fig.update_yaxes(title_text=name, row=i + 1, col=1)
+        fig.update_xaxes(title_text="index", row=n_cols, col=1)
+        fig.update_layout(legend_title_text="feature")
         for i, name in enumerate(columns):
             fig.add_trace(go.Scatter(x=x, y=arr_2d[:, i], mode=mode, name=name))
+        fig.update_layout(yaxis_title="value", legend_title_text="feature")
     if kwargs:
         fig.update_layout(**kwargs)
     return fig
@@ -400,7 +402,7 @@ def plot_segmentation(
         }
         fig = make_subplots(rows=n_vars, cols=1, shared_xaxes=True)
         shown_in_legend: set[str] = set()
-        for j in range(n_vars):
+        for j, col_name in enumerate(columns):
             for seg in unique_segs:
                 mask = segments == seg
                 fig.add_trace(
@@ -417,6 +419,9 @@ def plot_segmentation(
                     col=1,
                 )
                 shown_in_legend.add(seg)
+            fig.update_yaxes(title_text=col_name, row=j + 1, col=1)
+        fig.update_xaxes(title_text="index", row=n_vars, col=1)
+        fig.update_layout(legend_title_text="segment")
         return fig
 
     if y_var is None:
@@ -448,5 +453,7 @@ def plot_segmentation(
                 marker_color=seg_to_color[seg],
             )
         )
-    fig.update_layout(xaxis_title=x_name, yaxis_title=y_name)
+    fig.update_layout(
+        xaxis_title=x_name, yaxis_title=y_name, legend_title_text="segment"
+    )
     return fig
