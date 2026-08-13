@@ -11,8 +11,8 @@ import time
 
 import numpy as np
 
-from skchange.new_api.detectors import PELT
-from skchange.new_api.interval_scorers import L1Cost, L2Cost
+from skchange.detectors import PELT
+from skchange.interval_scorers import L1Cost, L2Cost
 
 N_SAMPLES = 10_000
 SEED = 0

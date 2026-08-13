@@ -11,7 +11,7 @@ Generate toy data
 Generators for piecewise-constant, piecewise-normal, piecewise-regression
 and piecewise-linear-trend data.
 
-.. currentmodule:: skchange.new_api.datasets
+.. currentmodule:: skchange.datasets
 
 .. autosummary::
     :toctree: auto_generated/
@@ -26,7 +26,7 @@ Load real datasets
 ------------------
 Loaders for real datasets bundled with Skchange.
 
-.. currentmodule:: skchange.new_api.datasets
+.. currentmodule:: skchange.datasets
 
 .. autosummary::
     :toctree: auto_generated/

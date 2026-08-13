@@ -12,8 +12,8 @@ import time
 
 import numpy as np
 
-from skchange.new_api.detectors import CircularBinarySegmentation
-from skchange.new_api.interval_scorers import (
+from skchange.detectors import CircularBinarySegmentation
+from skchange.interval_scorers import (
     CostTransientScore,
     L1Cost,
     L2TransientScore,

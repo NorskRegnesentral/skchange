@@ -3,11 +3,9 @@
 __author__ = ["Tveten"]
 
 import numpy as np
-import pandas as pd
 import scipy.stats
 
-from ..utils.validation.generation import check_random_generator, check_segment_lengths
-from ._utils import recycle_list
+from ._utils import check_random_generator, check_segment_lengths, recycle_list
 
 
 def _check_distributions(
@@ -97,7 +95,7 @@ def generate_piecewise_data(
     n_samples: int = 100,
     seed: int | np.random.Generator | None = None,
     return_params: bool = False,
-) -> pd.DataFrame | tuple[pd.DataFrame, dict]:
+) -> np.ndarray | tuple[np.ndarray, dict]:
     """Generate data with a piecewise constant distribution.
 
     Generate piecewise segments of data from `scipy.stats` distributions, where
@@ -139,8 +137,8 @@ def generate_piecewise_data(
 
     Returns
     -------
-    pd.DataFrame
-        Data frame with generated data.
+    np.ndarray of shape (n_samples, n_variables)
+        Array with generated data.
 
     dict, optional
         A dictionary containing the parameters used to generate the data. Only returned
@@ -164,62 +162,16 @@ def generate_piecewise_data(
     ...     lengths=[7, 3],
     ...     seed=1,
     ... )
-               0
-    0   0.345584
-    1   0.821618
-    2   0.330437
-    3  -1.303157
-    4   0.905356
-    5   0.446375
-    6  -0.536953
-    7  10.058112
-    8  10.036457
-    9  10.029413
-
-    >>> # Example 2: Two Poisson segments
-    >>> from scipy.stats import poisson
-    >>> generate_piecewise_data(
-    ...     distributions=[poisson(1), poisson(10)],
-    ...     lengths=[5, 5],
-    ...     seed=2,
-    ... )
-        0
-    0   0
-    1   0
-    2   1
-    3   2
-    4   0
-    5   8
-    6  11
-    7   9
-    8   9
-    9   9
-
-
-    >>> # Example 3: Specify int lengths and n_segments
-    >>> generate_piecewise_data(
-    ...     distributions=[norm(0), norm(5)],
-    ...     lengths=3,
-    ...     n_segments=3,
-    ...     seed=3,
-    ... )
-              0
-    0  2.040919
-    1 -2.555665
-    2  0.418099
-    3  4.432230
-    4  4.547351
-    5  4.784403
-    6 -2.019986
-    7 -0.231932
-    8 -0.865213
+    array([[ 0.345584...],
+           ...
+           [10.029413...]])
     """  # noqa: E501
     random_generator = check_random_generator(seed)
     lengths = check_segment_lengths(
         lengths, n_segments, n_samples, seed=random_generator
     )
     n_segments = len(lengths)
-    n_samples = np.sum(lengths)
+    n_samples = int(np.sum(lengths))
     distributions, n_variables, dtype = _check_distributions(distributions, n_segments)
 
     ends = np.cumsum(lengths)
@@ -230,8 +182,6 @@ def generate_piecewise_data(
         values = distribution.rvs(size=length, random_state=random_generator)
         generated_values[start:end, :] = values.reshape(length, n_variables)
 
-    generated_df = pd.DataFrame(generated_values)
-
     if return_params:
         params = {
             "n_segments": n_segments,
@@ -240,6 +190,6 @@ def generate_piecewise_data(
             "distributions": distributions,
             "change_points": starts[1:],
         }
-        return generated_df, params
+        return generated_values, params
 
-    return generated_df
+    return generated_values

@@ -1,0 +1,91 @@
+"""Test instances for interval scorers in ``skchange.interval_scorers``."""
+
+from skchange.interval_scorers import (
+    CUSUM,
+    ContinuousLinearTrendScore,
+    CostChangeScore,
+    CostTransientScore,
+    EDFCost,
+    ESACScore,
+    GaussianCost,
+    GaussianSaving,
+    L1Cost,
+    L1Saving,
+    L2Cost,
+    L2Saving,
+    L2TransientScore,
+    LaplaceCost,
+    LaplaceSaving,
+    LinearRegressionCost,
+    LinearRegressionSaving,
+    LinearTrendCost,
+    LinearTrendSaving,
+    MultivariateGaussianCost,
+    MultivariateGaussianSaving,
+    MultivariateGaussianScore,
+    MultivariateTCost,
+    MultivariateTSaving,
+    PoissonCost,
+    PoissonSaving,
+    RankCost,
+    RankScore,
+)
+
+# ---------------------------------------------------------------------------
+# Raw instances of each type of interval scorer
+# ---------------------------------------------------------------------------
+_COSTS = [
+    EDFCost(),
+    GaussianCost(),
+    L1Cost(),
+    L2Cost(),
+    LaplaceCost(),
+    LinearRegressionCost(),
+    LinearTrendCost(),
+    LinearTrendCost(time_col=0),
+    MultivariateGaussianCost(),
+    MultivariateTCost(),
+    PoissonCost(),
+    RankCost(),
+]
+_CHANGE_SCORES = [
+    CUSUM(),
+    ContinuousLinearTrendScore(),
+    ContinuousLinearTrendScore(time_col=0),
+    ESACScore(),
+    MultivariateGaussianScore(),
+    MultivariateGaussianScore(apply_bartlett_correction=False),
+    RankScore(),
+]
+_SAVINGS = [
+    GaussianSaving(),
+    L1Saving(),
+    L2Saving(),
+    LaplaceSaving(),
+    LinearRegressionSaving(),
+    LinearTrendSaving(),
+    MultivariateGaussianSaving(),
+    MultivariateTSaving(),
+    PoissonSaving(),
+]
+_TRANSIENT_SCORES = [
+    L2TransientScore(),
+]
+
+# ---------------------------------------------------------------------------
+# Composite instances
+# ---------------------------------------------------------------------------
+# Costs rejected by CostTransientScore (see its docstring): not subadditive
+# under the concatenated-surrounding baseline.
+_COST_COMPOSITES = [CostChangeScore(cost) for cost in _COSTS] + [
+    CostTransientScore(cost)
+    for cost in _COSTS
+    if type(cost).__name__ not in CostTransientScore._INCOMPATIBLE_COST_NAMES
+]
+
+# ---------------------------------------------------------------------------
+# All test instances
+# ---------------------------------------------------------------------------
+INTERVAL_SCORER_TEST_INSTANCES = (
+    _COSTS + _CHANGE_SCORES + _SAVINGS + _TRANSIENT_SCORES + _COST_COMPOSITES
+)

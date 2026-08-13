@@ -1,7 +1,7 @@
-"""Extension template for new-API interval scorers.
+"""Extension template for interval scorers.
 
 Generic template for implementing a new interval scorer in
-``skchange.new_api.interval_scorers``. Covers all four scorer types:
+``skchange.interval_scorers``. Covers all four scorer types:
 
 - **cost(start, end)**: Computes a cost over [start, end) intervals, with lower scores
   indicating better fit.
@@ -20,10 +20,10 @@ How to use this template
 1. Make a copy of this file in a suitable location. For an internal extension,
    copy it to one of the following and rename to ``<your_scorer_name>.py``::
 
-       skchange/new_api/interval_scorers/_costs/
-       skchange/new_api/interval_scorers/_change_scores/
-       skchange/new_api/interval_scorers/_savings/
-       skchange/new_api/interval_scorers/_transient_scores/
+       skchange/interval_scorers/_costs/
+       skchange/interval_scorers/_change_scores/
+       skchange/interval_scorers/_savings/
+       skchange/interval_scorers/_transient_scores/
 
 2. Work through every "todo" comment below.
 
@@ -33,35 +33,35 @@ copyright: skchange developers, BSD-3-Clause License (see LICENSE file)
 from numbers import Real
 
 import numpy as np
-from sklearn.utils.validation import check_is_fitted
 
 # todo: pick ONE base class from the four below and delete the others.
-from skchange.new_api.interval_scorers._base import (
+from skchange.interval_scorers._base import (
     BaseChangeScore,  # noqa: F401
     BaseCost,
     BaseSaving,  # noqa: F401
     BaseTransientScore,  # noqa: F401
 )
-from skchange.new_api.penalties import (
+from skchange.penalties import (
     bic_penalty,  # noqa: F401,  # todo: often needed for get_default_penalt, replace or delete as needed
 )
-from skchange.new_api.types import ArrayLike, Self
-from skchange.new_api.utils._numeric import (
+from skchange.types import ArrayLike, Self
+from skchange.utils._numeric import (
     col_cumsum,  # noqa: F401  # often handy, delete if not neeed
 )
-from skchange.new_api.utils._param_validation import (
+from skchange.utils._param_validation import (
     Interval,
     _fit_context,
 )
-from skchange.new_api.utils._tags import SkchangeTags
-from skchange.new_api.utils.validation import (
+from skchange.utils._tags import SkchangeTags
+from skchange.utils.validation import (
     check_interval_specs,
+    check_is_fitted,
     validate_data,
 )
 
 # External extension imports (when the file lives outside the skchange package),
 # use these instead of the _base import above:
-# from skchange.new_api.interval_scorers import (
+# from skchange.interval_scorers import (
 #     BaseChangeScore,
 #     BaseCost,
 #     BaseSaving,
@@ -104,7 +104,7 @@ class MyIntervalScorer(BaseCost):
     Examples
     --------
     >>> import numpy as np
-    >>> from skchange.new_api.interval_scorers import MyIntervalScorer
+    >>> from skchange.interval_scorers import MyIntervalScorer
     >>> X = np.random.default_rng(0).normal(size=(100, 2))
     >>> scorer = MyIntervalScorer().fit(X)
     >>> cache = scorer.precompute(X)
@@ -138,7 +138,7 @@ class MyIntervalScorer(BaseCost):
     # Optional: __sklearn_tags__
     # ------------------------------------------------------------------
     # Override only if the scorer deviate from the default tags.
-    # See skchange/new_api/utils/_tags.py for the full list of available tags
+    # See skchange/utils/_tags.py for the full list of available tags
     # (SkchangeInputTags, IntervalScorerTags) and their semantics and
     # defaults. Delete this method entirely if no overrides are needed.
     def __sklearn_tags__(self) -> SkchangeTags:
@@ -319,17 +319,17 @@ class MyIntervalScorer(BaseCost):
 
 # todo: for internal extensions, after implementing the scorer also:
 #  1. Export the class from
-#     skchange/new_api/interval_scorers/__init__.py — add the import in
+#     skchange/interval_scorers/__init__.py — add the import in
 #     alphabetic order within its scorer-type block and the name to __all__.
 #  2. Add an unfitted instance of the class to the appropriate list
 #     (_COSTS / _CHANGE_SCORES / _SAVINGS / _TRANSIENT_SCORES) in
-#     skchange/new_api/interval_scorers/tests/_registry.py. This is how your
+#     skchange/interval_scorers/tests/_registry.py. This is how your
 #     scorer is exercised by the common tests in
-#     skchange/new_api/interval_scorers/tests/test_all.py.
+#     skchange/interval_scorers/tests/test_all.py.
 #  3. If your scorer is a BaseCost that is NOT subadditive under the
 #     concatenated-surrounding baseline (required by CostTransientScore), add
 #     its class name to CostTransientScore._INCOMPATIBLE_COST_NAMES in
-#     skchange/new_api/interval_scorers/_from_cost.py.
+#     skchange/interval_scorers/_from_cost.py.
 #  4. Optional: Add a dedicated test file under
-#     skchange/new_api/interval_scorers/tests/ for any scorer-specific
+#     skchange/interval_scorers/tests/ for any scorer-specific
 #     behaviour not covered by test_all.py.

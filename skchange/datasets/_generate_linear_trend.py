@@ -5,11 +5,9 @@ __author__ = ["Tveten"]
 import numbers
 
 import numpy as np
-import pandas as pd
 import scipy.stats
 
-from ..utils.validation.generation import check_random_generator, check_segment_lengths
-from ._utils import recycle_list
+from ._utils import check_random_generator, check_segment_lengths, recycle_list
 
 
 def generate_continuous_piecewise_linear_data(
@@ -22,7 +20,7 @@ def generate_continuous_piecewise_linear_data(
     noise_std: float = 1.0,
     seed: int | None = None,
     return_params: bool = False,
-) -> pd.DataFrame | tuple[pd.DataFrame, dict]:
+) -> np.ndarray | tuple[np.ndarray, dict]:
     """Generate a continuous piecewise linear signal with noise.
 
     Parameters
@@ -63,8 +61,8 @@ def generate_continuous_piecewise_linear_data(
 
     Returns
     -------
-    pd.DataFrame
-        DataFrame with a single column containing the generated data.
+    np.ndarray of shape (n_samples, 1)
+        Array with a single column containing the generated data.
 
     dict, optional
         If `return_params` is True, a dictionary containing the parameters used to
@@ -119,7 +117,7 @@ def generate_continuous_piecewise_linear_data(
     signal += scipy.stats.norm.rvs(
         loc=0, scale=noise_std, size=n_samples, random_state=random_generator
     )
-    generated_df = pd.DataFrame(signal)
+    generated_array = signal.reshape(-1, 1)
     if return_params:
         params = {
             "n_segments": n_segments,
@@ -130,72 +128,6 @@ def generate_continuous_piecewise_linear_data(
             "noise_std": noise_std,
             "change_points": change_points,
         }
-        return generated_df, params
+        return generated_array, params
 
-    return generated_df
-
-
-def generate_continuous_piecewise_linear_signal(
-    change_points, slopes, intercept=0, n_samples=200, noise_std=0.1, random_seed=None
-):
-    """Generate a continuous piecewise linear signal with noise.
-
-    Parameters
-    ----------
-    change_points : list
-        List of indices where the slope changes (kink points)
-    slopes : list
-        List of slopes for each segment (should be one more than change_points)
-    intercept : float, default=0
-        Starting intercept value
-    n_samples : int, default=200
-        Total number of samples
-    noise_std : float, default=0.1
-        Standard deviation of the Gaussian noise to add
-    random_seed : int, optional
-        Random seed for reproducibility
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with the signal and corresponding time points
-    list
-        List of true change points (as indices)
-    """
-    if random_seed is not None:
-        np.random.seed(random_seed)
-
-    if len(slopes) != len(change_points) + 1:
-        raise ValueError(  # pragma: no cover
-            "Number of slopes must be one more than number of change points"
-        )
-
-    # Create time points and allocate signal
-    time = np.arange(n_samples)
-    signal = np.zeros(n_samples)
-
-    # First segment
-    signal[: change_points[0]] = intercept + slopes[0] * time[: change_points[0]]
-    current_value = signal[change_points[0] - 1]
-
-    # Middle segments
-    for i in range(len(change_points) - 1):
-        start_idx = change_points[i]
-        end_idx = change_points[i + 1]
-        segment_time = time[start_idx:end_idx] - time[start_idx]
-        signal[start_idx:end_idx] = current_value + slopes[i + 1] * segment_time
-        current_value = signal[end_idx - 1]
-
-    # Last segment
-    if len(change_points) > 0:
-        last_start = change_points[-1]
-        segment_time = time[last_start:] - time[last_start]
-        signal[last_start:] = current_value + slopes[-1] * segment_time
-
-    # Add noise
-    signal += np.random.normal(0, noise_std, n_samples)
-
-    # Convert to DataFrame
-    df = pd.DataFrame({"signal": signal})
-
-    return df
+    return generated_array

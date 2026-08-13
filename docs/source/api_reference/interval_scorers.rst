@@ -7,11 +7,11 @@ Interval scorers evaluate a scalar score on intervals of a time series. They
 are the building blocks of all detectors in Skchange and come in several
 flavours: costs, change scores, savings, and transient scores. All scorers
 share the common base class
-:class:`~skchange.new_api.interval_scorers.BaseIntervalScorer`.
+:class:`~skchange.interval_scorers.BaseIntervalScorer`.
 
 Base classes
 ------------
-.. currentmodule:: skchange.new_api.interval_scorers
+.. currentmodule:: skchange.interval_scorers
 
 .. autosummary::
     :toctree: auto_generated/
@@ -27,7 +27,7 @@ Costs
 -----
 A cost measures how well a single interval is fit by a parametric model.
 
-.. currentmodule:: skchange.new_api.interval_scorers
+.. currentmodule:: skchange.interval_scorers
 
 .. autosummary::
     :toctree: auto_generated/
@@ -50,7 +50,7 @@ Change scores
 A change score measures the evidence for a change between two adjacent
 intervals. :class:`CostChangeScore` adapts any cost into a change score.
 
-.. currentmodule:: skchange.new_api.interval_scorers
+.. currentmodule:: skchange.interval_scorers
 
 .. autosummary::
     :toctree: auto_generated/
@@ -68,7 +68,7 @@ Savings
 A saving measures the evidence that an interval deviates from a baseline
 model. Savings are used by segment-anomaly detectors such as CAPA.
 
-.. currentmodule:: skchange.new_api.interval_scorers
+.. currentmodule:: skchange.interval_scorers
 
 .. autosummary::
     :toctree: auto_generated/
@@ -91,7 +91,7 @@ interval. Transient scores are used by detectors that target point anomalies
 embedded in a longer segment. :class:`CostTransientScore` adapts any cost
 into a transient score.
 
-.. currentmodule:: skchange.new_api.interval_scorers
+.. currentmodule:: skchange.interval_scorers
 
 .. autosummary::
     :toctree: auto_generated/
@@ -104,7 +104,7 @@ Predicates
 ----------
 Type predicates for runtime checks on scorer instances.
 
-.. currentmodule:: skchange.new_api.interval_scorers
+.. currentmodule:: skchange.interval_scorers
 
 .. autosummary::
     :toctree: auto_generated/
