@@ -111,10 +111,8 @@ def _plot_time_series(
 ) -> go.Figure:
     """Create a plotly figure from a wide 2D array and column names.
 
-    Detector outputs are integer-positional, so the x-axis is always the
-    positional sample index. Column names are passed through to plotly via a
-    wide-form ``dict``, which preserves them as trace names (line, point) and
-    as the legend / facet label (``"variable"``).
+    Uses long-form keyword arrays so plotly does not require pandas.
+    Column names are used as trace names (line, point) and as facet labels.
     """
     import plotly.express as px
 
@@ -128,15 +126,19 @@ def _plot_time_series(
             labels={"x": "index", "y": "variable", "color": "value"},
             **kwargs,
         )
-    wide = {name: arr_2d[:, i] for i, name in enumerate(columns)}
+    # Use long-form keyword arrays so plotly does not need pandas.
+    n_samples = arr_2d.shape[0]
+    x = np.tile(np.arange(n_samples), len(columns))
+    y = arr_2d.T.ravel()
+    variable = np.repeat(columns, n_samples)
     if data_repr == "line":
-        return px.line(wide, **kwargs)
+        return px.line(x=x, y=y, color=variable, **kwargs)
     if data_repr == "subplot-line":
-        return px.line(wide, facet_row="variable", **kwargs)
+        return px.line(x=x, y=y, facet_row=variable, **kwargs)
     if data_repr == "point":
-        return px.scatter(wide, **kwargs)
+        return px.scatter(x=x, y=y, color=variable, **kwargs)
     if data_repr == "subplot-point":
-        return px.scatter(wide, facet_row="variable", **kwargs)
+        return px.scatter(x=x, y=y, facet_row=variable, **kwargs)
     raise ValueError(  # pragma: no cover - guarded by _resolve_data_repr
         f"Unknown data representation: {data_repr!r}."
     )
@@ -210,7 +212,7 @@ def plot_detections(
                     line_width=2,
                     line_dash="dash",
                     line_color="red",
-                    row=n_subplots - col,
+                    row=col + 1,
                     col=1,
                 )
         return fig
@@ -242,7 +244,7 @@ def plot_detections(
                 opacity=0.2,
                 line_width=0,
                 layer="below",
-                row=n_subplots - int(col),
+                row=int(col) + 1,
                 col=1,
             )
     return fig
@@ -380,19 +382,13 @@ def plot_segmentation(
     )
 
     if x_var == "index":
-        long = {
-            "index": np.tile(np.arange(n_samples), n_vars),
-            "value": arr_2d.T.ravel(),
-            "variable": np.repeat(np.asarray(columns), n_samples),
-            "segment": np.tile(segments, n_vars),
-        }
         return px.scatter(
-            long,
-            x="index",
-            y="value",
-            facet_row="variable",
-            color="segment",
+            x=np.tile(np.arange(n_samples), n_vars),
+            y=arr_2d.T.ravel(),
+            facet_row=np.repeat(np.asarray(columns), n_samples),
+            color=np.tile(segments, n_vars),
             color_discrete_map=color_map,
+            labels={"x": "index", "y": "value", "color": "segment"},
         )
 
     if y_var is None:
@@ -405,11 +401,10 @@ def plot_segmentation(
     x_name, y_name = columns[x_idx], columns[y_idx]
     if x_name == y_name:
         x_name, y_name = f"{x_name} (x)", f"{y_name} (y)"
-    data = {
-        x_name: arr_2d[:, x_idx],
-        y_name: arr_2d[:, y_idx],
-        "segment": segments,
-    }
     return px.scatter(
-        data, x=x_name, y=y_name, color="segment", color_discrete_map=color_map
+        x=arr_2d[:, x_idx],
+        y=arr_2d[:, y_idx],
+        color=segments,
+        color_discrete_map=color_map,
+        labels={"x": x_name, "y": y_name, "color": "segment"},
     )
