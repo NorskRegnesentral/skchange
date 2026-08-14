@@ -9,32 +9,41 @@ template: |
 
 categories:
   - title: 🏆 Highlights
-    labels:
-      - highlight
+    when:
+      labels:
+        - highlight
   - title: 💥 Breaking changes
-    labels:
-      - breaking
+    when:
+      labels:
+        - breaking
   - title: ⚠️ Deprecations
-    labels:
-      - deprecation
+    when:
+      labels:
+        - deprecation
   - title: 🚀 Performance improvements
-    labels:
-      - performance
+    when:
+      labels:
+        - performance
   - title: ✨ Enhancements
-    labels:
-      - enhancement
+    when:
+      labels:
+        - enhancement
   - title: 🐞 Bug fixes
-    labels:
-      - fix
+    when:
+      labels:
+        - fix
   - title: 📖 Documentation
-    labels:
-      - documentation
+    when:
+      labels:
+        - documentation
   - title: 📦 Build system
-    labels:
-      - build
+    when:
+      labels:
+        - build
   - title: 🛠️ Other improvements
-    labels:
-      - internal
+    when:
+      labels:
+        - internal
 
 change-template: '- $TITLE (#$NUMBER)'
 change-title-escapes: '\<*_&'
