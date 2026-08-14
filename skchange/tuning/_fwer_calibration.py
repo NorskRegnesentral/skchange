@@ -144,7 +144,7 @@ def _critical_scale_max_score(detector, X: np.ndarray, knob: str, base: float) -
     :func:`unpenalised_scores`. Valid for scan-and-threshold detectors, which
     threshold each interval score independently. Does not apply to PELT, whose
     joint optimisation makes the single-split score an underestimate (that case
-    is rejected upstream in :func:`calibrate_penalty_scale`).
+    is rejected upstream in :func:`calibrate_penalty_scale_fwer`).
 
     Parameters
     ----------
@@ -370,7 +370,7 @@ def _run_single_sim(
 ):
     """Execute one null-sample critical-scale simulation.
 
-    Called in parallel by ``calibrate_penalty_scale``. Each invocation draws
+    Called in parallel by ``calibrate_penalty_scale_fwer``. Each invocation draws
     its own null sample from an independent generator seeded by ``seed``
     (a ``numpy.random.SeedSequence`` child), so there is no shared mutable
     RNG state between parallel tasks.
@@ -397,7 +397,7 @@ def _run_single_sim(
     },
     prefer_skip_nested_validation=True,
 )
-def calibrate_penalty_scale(
+def calibrate_penalty_scale_fwer(
     detector,
     target_n_samples,
     target_n_features,
@@ -499,8 +499,8 @@ def calibrate_penalty_scale(
     Examples
     --------
     >>> from skchange.detectors import SeededBinarySegmentation
-    >>> from skchange.tuning import calibrate_penalty_scale
-    >>> scale = calibrate_penalty_scale(
+    >>> from skchange.tuning import calibrate_penalty_scale_fwer
+    >>> scale = calibrate_penalty_scale_fwer(
     ...     SeededBinarySegmentation(), 150, 2,
     ...     sampler="gaussian", n_simulations=99, random_state=0,
     ... )
@@ -587,12 +587,12 @@ def _detector_has(method: str):
     return check
 
 
-class CalibratedDetector(BaseEstimator):
-    """Wrap a detector and calibrate its ``penalty_scale`` for FWER control.
+class CalibratedDetectorFWER(BaseEstimator):
+    """Detector wrapper that tunes the penalty to control family-wise error rate.
 
     A meta-estimator like scikit-learn's ``CalibratedClassifierCV``. Here
     ``fit`` calibrates the wrapped detector's ``penalty_scale`` (via
-    :func:`calibrate_penalty_scale`), refits the detector with the calibrated
+    :func:`calibrate_penalty_scale_fwer`), refits the detector with the calibrated
     scale, and exposes it as ``detector_``. Prediction methods delegate to the
     calibrated detector.
 
@@ -618,16 +618,16 @@ class CalibratedDetector(BaseEstimator):
         Number of features in the data that will be passed to ``predict``.
         Defaults to ``X.shape[1]`` seen in ``fit``.
     sampler : str, sampler instance, or callable, default="permutation"
-        Null model passed to :func:`calibrate_penalty_scale`.
+        Null model passed to :func:`calibrate_penalty_scale_fwer`.
     level : float, default=0.05
         Target FWER.
     n_simulations : int, default=999
         Number of null samples.
     calibration_strategy : {"max_score", "detection_count", "path_search"} or None
         Override the detector's calibration strategy. See
-        :func:`calibrate_penalty_scale`.
+        :func:`calibrate_penalty_scale_fwer`.
     random_state : int, Generator, or None, default=None
-        Seed or generator. Passed to :func:`calibrate_penalty_scale`. Results
+        Seed or generator. Passed to :func:`calibrate_penalty_scale_fwer`. Results
         are reproducible and invariant to ``n_jobs``.
     n_jobs : int or None, default=None
         Number of parallel workers for the Monte-Carlo loop. ``None`` uses
@@ -644,10 +644,10 @@ class CalibratedDetector(BaseEstimator):
     --------
     >>> import numpy as np
     >>> from skchange.detectors import SeededBinarySegmentation
-    >>> from skchange.tuning import CalibratedDetector
+    >>> from skchange.tuning import CalibratedDetectorFWER
     >>> rng = np.random.default_rng(0)
     >>> X = rng.normal(size=(150, 2))
-    >>> cal = CalibratedDetector(
+    >>> cal = CalibratedDetectorFWER(
     ...     SeededBinarySegmentation(), n_simulations=99, random_state=0
     ... ).fit(X)
     >>> cal.penalty_scale_ > 0
@@ -678,7 +678,7 @@ class CalibratedDetector(BaseEstimator):
         self.random_state = random_state
         self.n_jobs = n_jobs
 
-    def fit(self, X, y=None) -> "CalibratedDetector":
+    def fit(self, X, y=None) -> "CalibratedDetectorFWER":
         """Calibrate and fit the wrapped detector on change-free data.
 
         Parameters
@@ -690,7 +690,7 @@ class CalibratedDetector(BaseEstimator):
 
         Returns
         -------
-        self : CalibratedDetector
+        self : CalibratedDetectorFWER
         """
         X = validate_data(self, X, reset=True, ensure_2d=True)
 
@@ -703,7 +703,7 @@ class CalibratedDetector(BaseEstimator):
             self.target_n_features if self.target_n_features is not None else X.shape[1]
         )
 
-        self.penalty_scale_ = calibrate_penalty_scale(
+        self.penalty_scale_ = calibrate_penalty_scale_fwer(
             self.detector,
             n_samples,
             n_features,
