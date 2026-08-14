@@ -178,7 +178,6 @@ jobs:
           tag: v${{ steps.read_version.outputs.version }}
           version: ${{ steps.read_version.outputs.version }}
           commitish: ${{ inputs.commit-sha || github.sha }}
-          disable-autolabeler: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
