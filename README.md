@@ -50,7 +50,7 @@ array([ 50, 100, 150, 200])
 import scipy.stats as st
 from skchange.datasets import generate_piecewise_data
 from skchange.detectors import SeededBinarySegmentation
-from skchange.tuning import CalibratedDetector
+from skchange.tuning import CalibratedDetectorFWER
 
 # Change-free beta(2, 5) data used to calibrate the detection threshold.
 X_calib = generate_piecewise_data(st.beta(2, 5), lengths=300, seed=0)
@@ -62,7 +62,7 @@ X = generate_piecewise_data(
     seed=1,
 )
 
-cal = CalibratedDetector(
+cal = CalibratedDetectorFWER(
     SeededBinarySegmentation(),
     level=0.05,
     n_simulations=999,

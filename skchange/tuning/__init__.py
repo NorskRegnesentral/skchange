@@ -1,8 +1,8 @@
 """Hyperparameter tuning and calibration utilities."""
 
 from skchange.tuning._fwer_calibration import (
-    CalibratedDetector,
-    calibrate_penalty_scale,
+    CalibratedDetectorFWER,
+    calibrate_penalty_scale_fwer,
 )
 from skchange.tuning._null_models import (
     BaseNullSampler,
@@ -18,10 +18,10 @@ from skchange.tuning._penalty_calibration import (
 __all__ = [
     "BaseNullSampler",
     "BlockBootstrapSampler",
-    "CalibratedDetector",
+    "CalibratedDetectorFWER",
     "GaussianSampler",
     "PermutationSampler",
-    "calibrate_penalty_scale",
+    "calibrate_penalty_scale_fwer",
     "penalty_curve",
     "unpenalised_scores",
 ]

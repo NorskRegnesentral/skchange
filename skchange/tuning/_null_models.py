@@ -30,7 +30,7 @@ class BaseNullSampler:
     * **Stateless config object.** Only hyperparameters live on ``self``. No
       ``fit``, no cached data, no RNG. Samplers are cheap to pickle and safe
       to share across ``joblib`` workers.
-    * **RNG per call.** The caller (e.g. ``CalibratedDetector``) owns the
+    * **RNG per call.** The caller (e.g. ``CalibratedDetectorFWER``) owns the
       master seed, spawns child seeds via ``SeedSequence.spawn()``, and
       passes a fresh ``Generator`` to each ``sample`` call. This keeps
       parallel draws independent and individual draws reproducible.

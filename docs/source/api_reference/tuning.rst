@@ -14,7 +14,7 @@ Calibrated detector
     :toctree: auto_generated/
     :template: class.rst
 
-    CalibratedDetector
+    CalibratedDetectorFWER
 
 Penalty calibration
 -------------------
@@ -23,7 +23,7 @@ Penalty calibration
     :toctree: auto_generated/
     :template: functions.rst
 
-    calibrate_penalty_scale
+    calibrate_penalty_scale_fwer
     penalty_curve
     unpenalised_scores
 

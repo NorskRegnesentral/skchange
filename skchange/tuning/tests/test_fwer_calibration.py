@@ -15,9 +15,9 @@ from skchange.detectors import (
 )
 from skchange.interval_scorers import ESACScore
 from skchange.tuning import (
-    CalibratedDetector,
+    CalibratedDetectorFWER,
     GaussianSampler,
-    calibrate_penalty_scale,
+    calibrate_penalty_scale_fwer,
 )
 from skchange.tuning._fwer_calibration import _discover_knob
 
@@ -54,7 +54,7 @@ def _calibrate(detector, X=None, *, X_calib=None, **kwargs):
         X = _null_X()
     target_n_samples, target_n_features = X.shape
     null = X_calib if X_calib is not None else X
-    return calibrate_penalty_scale(
+    return calibrate_penalty_scale_fwer(
         detector, target_n_samples, target_n_features, X=null, **kwargs
     )
 
@@ -66,7 +66,7 @@ def _calibrate(detector, X=None, *, X_calib=None, **kwargs):
 
 def test_calibrate_from_shape_alone_with_gaussian_sampler():
     """A parametric sampler needs no data: shape alone must suffice."""
-    scale = calibrate_penalty_scale(
+    scale = calibrate_penalty_scale_fwer(
         SeededBinarySegmentation(),
         60,
         2,
@@ -80,7 +80,7 @@ def test_calibrate_from_shape_alone_with_gaussian_sampler():
 def test_calibration_data_may_be_longer_than_target():
     """X may have more rows than n_samples; null draws use n_samples rows."""
     X_calib = _null_X(n=300, p=2)
-    scale = calibrate_penalty_scale(
+    scale = calibrate_penalty_scale_fwer(
         SeededBinarySegmentation(),
         60,
         2,
@@ -95,7 +95,7 @@ def test_calibration_data_may_be_longer_than_target():
 def test_data_sampler_without_calibration_data_raises():
     """A data-based sampler with X=None must raise a clear error."""
     with pytest.raises(ValueError, match="calibration data|`X`|requires data"):
-        calibrate_penalty_scale(
+        calibrate_penalty_scale_fwer(
             SeededBinarySegmentation(),
             60,
             2,
@@ -107,7 +107,7 @@ def test_data_sampler_without_calibration_data_raises():
 def test_calibration_data_wrong_n_features_raises():
     """X with a feature count different from n_features must raise."""
     with pytest.raises(ValueError, match="features"):
-        calibrate_penalty_scale(
+        calibrate_penalty_scale_fwer(
             SeededBinarySegmentation(),
             60,
             2,
@@ -120,7 +120,7 @@ def test_calibration_data_wrong_n_features_raises():
 def test_calibration_data_non_2d_raises():
     """A calibration array that is not 2-D must raise a clear error."""
     with pytest.raises(ValueError, match="2-D"):
-        calibrate_penalty_scale(
+        calibrate_penalty_scale_fwer(
             SeededBinarySegmentation(),
             60,
             2,
@@ -154,7 +154,7 @@ def test_base_penalty_depends_only_on_target_shape():
 def test_max_score_forced_on_pelt_raises():
     """Forcing max_score on PELT must raise, naming valid strategies."""
     with pytest.raises(ValueError, match="max_score"):
-        calibrate_penalty_scale(
+        calibrate_penalty_scale_fwer(
             PELT(),
             60,
             2,
@@ -166,7 +166,7 @@ def test_max_score_forced_on_pelt_raises():
 
 def test_pelt_default_strategy_still_calibrates():
     """PELT without an override still calibrates via path_search."""
-    scale = calibrate_penalty_scale(
+    scale = calibrate_penalty_scale_fwer(
         PELT(), 60, 2, X=_null_X(), n_simulations=_FAST_N_SIMS, random_state=0
     )
     assert scale > 0.0
@@ -388,7 +388,7 @@ def test_detection_count_returns_bisect_lo_when_detector_never_fires():
 
 
 # --------------------------------------------------------------------------- #
-# calibrate_penalty_scale: positive multiplier, level monotone,
+# calibrate_penalty_scale_fwer: positive multiplier, level monotone,
 # reproducibility, per-detector, CROPS rejection, ESAC works
 # --------------------------------------------------------------------------- #
 
@@ -538,12 +538,12 @@ def test_invalid_level_gt_one_raises():
 
 
 # --------------------------------------------------------------------------- #
-# CalibratedDetector
+# CalibratedDetectorFWER
 # --------------------------------------------------------------------------- #
 
 
 def test_calibrated_detector_fit_sets_attributes():
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(_null_X())
     check_is_fitted(cal)
@@ -555,14 +555,14 @@ def test_calibrated_detector_fit_sets_attributes():
 def test_calibrated_detector_predict_before_fit_raises():
     from sklearn.exceptions import NotFittedError
 
-    cal = CalibratedDetector(SeededBinarySegmentation())
+    cal = CalibratedDetectorFWER(SeededBinarySegmentation())
     with pytest.raises(NotFittedError):
         cal.predict(_null_X())
 
 
 def test_calibrated_detector_predicts():
     X = _null_X()
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(X)
     cps = cal.predict(X)
@@ -570,7 +570,9 @@ def test_calibrated_detector_predicts():
 
 
 def test_calibrated_detector_clone_and_params_roundtrip():
-    cal = CalibratedDetector(SeededBinarySegmentation(), level=0.10, n_simulations=50)
+    cal = CalibratedDetectorFWER(
+        SeededBinarySegmentation(), level=0.10, n_simulations=50
+    )
     cloned = clone(cal)
     assert cloned.get_params()["level"] == 0.10
     assert cloned.get_params()["n_simulations"] == 50
@@ -581,7 +583,7 @@ def test_calibrated_detector_x_calib_kwarg():
     rng = np.random.default_rng(0)
     X = rng.normal(size=(80, 2))
     X_clean = rng.normal(size=(300, 2))
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         SeededBinarySegmentation(),
         target_n_samples=X.shape[0],
         target_n_features=X.shape[1],
@@ -592,18 +594,18 @@ def test_calibrated_detector_x_calib_kwarg():
 
 
 def test_calibrated_detector_delegates_segment_anomalies():
-    cal_cbs = CalibratedDetector(
+    cal_cbs = CalibratedDetectorFWER(
         CircularBinarySegmentation(), n_simulations=20, random_state=0
     )
     assert hasattr(cal_cbs, "predict_segment_anomalies")
-    cal_sbs = CalibratedDetector(SeededBinarySegmentation())
+    cal_sbs = CalibratedDetectorFWER(SeededBinarySegmentation())
     assert not hasattr(cal_sbs, "predict_segment_anomalies")
 
 
 def test_calibrated_detector_predict_segment_anomalies_returns_prediction():
     """A fitted wrapper forwards predict_segment_anomalies to the detector."""
     X = _null_X()
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         CircularBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(X)
     out = cal.predict_segment_anomalies(X)
@@ -613,7 +615,7 @@ def test_calibrated_detector_predict_segment_anomalies_returns_prediction():
 def test_calibrated_detector_predict_scores_delegates():
     """A fitted wrapper forwards predict_scores to the calibrated detector."""
     X = _null_X()
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(X)
     assert hasattr(cal, "predict_scores")
@@ -627,7 +629,7 @@ def test_calibrated_detector_predict_scores_delegates():
 def test_calibrated_detector_predict_all_delegates():
     """A fitted wrapper forwards predict_all to the calibrated detector."""
     X = _null_X()
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         SeededBinarySegmentation(), n_simulations=_FAST_N_SIMS, random_state=0
     ).fit(X)
     assert hasattr(cal, "predict_all")
@@ -644,13 +646,13 @@ def test_calibrated_detector_predict_all_delegates():
 
 def test_calibrated_detector_crops_raises():
     with pytest.raises(ValueError, match="penalty_scale"):
-        CalibratedDetector(CROPS()).fit(_null_X())
+        CalibratedDetectorFWER(CROPS()).fit(_null_X())
 
 
 def test_calibrated_detector_pelt():
-    cal = CalibratedDetector(PELT(), n_simulations=_FAST_N_SIMS, random_state=0).fit(
-        _null_X()
-    )
+    cal = CalibratedDetectorFWER(
+        PELT(), n_simulations=_FAST_N_SIMS, random_state=0
+    ).fit(_null_X())
     assert cal.penalty_scale_ > 0.0
     assert hasattr(cal, "detector_")
 
@@ -807,9 +809,9 @@ def test_random_state_types_all_accepted():
 
 
 def test_calibrated_detector_n_jobs_fits_and_predicts():
-    """CalibratedDetector with n_jobs=2 must fit and produce valid predictions."""
+    """CalibratedDetectorFWER with n_jobs=2 must fit and produce valid predictions."""
     X = _null_X()
-    cal = CalibratedDetector(
+    cal = CalibratedDetectorFWER(
         SeededBinarySegmentation(), n_simulations=20, random_state=0, n_jobs=2
     ).fit(X)
     cps = cal.predict(X)
@@ -819,7 +821,7 @@ def test_calibrated_detector_n_jobs_fits_and_predicts():
 
 def test_calibrated_detector_n_jobs_get_params_roundtrip():
     """n_jobs must round-trip through get_params and clone."""
-    cal = CalibratedDetector(SeededBinarySegmentation(), n_jobs=2)
+    cal = CalibratedDetectorFWER(SeededBinarySegmentation(), n_jobs=2)
     assert cal.get_params()["n_jobs"] == 2
     cloned = clone(cal)
     assert cloned.get_params()["n_jobs"] == 2
