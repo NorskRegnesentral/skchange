@@ -53,23 +53,22 @@ from skchange.detectors import SeededBinarySegmentation
 from skchange.tuning import CalibratedDetectorFWER
 
 # Change-free beta(2, 5) data used to calibrate the detection threshold.
-X_calib = generate_piecewise_data(st.beta(2, 5), lengths=300, seed=0)
-
+X_train = generate_piecewise_data(st.beta(2, 5), lengths=300, seed=0)
 # Test data with two changepoints where the beta shape changes.
-X = generate_piecewise_data(
+X_test = generate_piecewise_data(
     [st.beta(2, 5), st.beta(5, 2), st.beta(1, 10)],
     lengths=100,
     seed=1,
 )
 
-cal = CalibratedDetectorFWER(
+detector = CalibratedDetectorFWER(
     SeededBinarySegmentation(),
     level=0.05,
     n_simulations=999,
     random_state=0,
 )
-cal.fit(X_calib)
-cal.predict(X)
+detector.fit(X_train)
+detector.predict(X_test)
 ```
 ```text
 array([100, 200])
