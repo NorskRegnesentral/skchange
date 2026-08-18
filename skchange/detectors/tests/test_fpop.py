@@ -79,6 +79,19 @@ def test_fit_idempotent(estimator):
 
 
 # ---------------------------------------------------------------------------
+# single-observation predict returns empty array
+# ---------------------------------------------------------------------------
+
+
+def test_predict_single_observation_returns_empty(estimator):
+    estimator.fit(X_UNIV)
+    X_single = RNG.standard_normal((1, 1))
+    cpts = estimator.predict(X_single)
+    assert isinstance(cpts, np.ndarray)
+    assert cpts.size == 0
+
+
+# ---------------------------------------------------------------------------
 # pickle round-trip
 # ---------------------------------------------------------------------------
 
