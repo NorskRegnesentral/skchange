@@ -3,6 +3,7 @@
 from skchange.detectors import (
     CAPA,
     CROPS,
+    FPOP,
     PELT,
     CircularBinarySegmentation,
     MovingWindow,
@@ -47,6 +48,12 @@ _CAPA_INSTANCES = [
         for scorer in INTERVAL_SCORER_TEST_INSTANCES
         if is_saving(scorer)
     ],
+]
+
+_FPOP_INSTANCES = [
+    FPOP(),
+    FPOP(penalty=10.0),
+    FPOP(penalty_scale=2.0),
 ]
 
 _PELT_INSTANCES = [
@@ -98,6 +105,7 @@ _CIRCULAR_BINSEG_INSTANCES = [
 ]
 
 DETECTOR_TEST_INSTANCES = [
+    *_FPOP_INSTANCES,
     *_MOVING_WINDOW_INSTANCES,
     *_CAPA_INSTANCES,
     *_PELT_INSTANCES,
