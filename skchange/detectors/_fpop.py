@@ -57,9 +57,6 @@ def _fpop_mean(y: np.ndarray, penalty: float) -> np.ndarray:
        and Computing, 27(2), 519-533.
     """
     n = len(y)
-    if n == 1:
-        return np.empty(0, dtype=np.intp)
-
     # Upper bound on pieces: each step adds at most one new quadratic piece.
     max_pieces = n + 2
 
@@ -340,6 +337,9 @@ class FPOP(BaseChangeDetector):
         """
         check_is_fitted(self)
         X = validate_data(self, X, reset=False, ensure_2d=True)
+
+        if X.shape[0] == 1:
+            return np.empty(0, dtype=np.intp)
 
         changepoints = _fpop_mean(X[:, 0], self.penalty_)
         return _backtrack(changepoints).astype(np.intp)
