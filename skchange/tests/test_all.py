@@ -41,6 +41,42 @@ def _expected_failed_checks(estimator):
         ),
     }
 
+    if not tags.input_tags.multivariate:
+        # sklearn's checks generate multivariate data and call fit; there is no
+        # sklearn tag to signal "univariate only", so we mark all affected checks.
+        # The most important of these are re-implemented for univariate data, currently
+        # only relevant for the FPOP detector in skchange/detectors/tests/test_fpop.py.
+        reason = (
+            "Estimator only accepts univariate input (n_features=1); "
+            "sklearn's checks pass multivariate data to fit."
+        )
+        failed.update(
+            dict.fromkeys(
+                (
+                    "check_dict_unchanged",
+                    "check_dont_overwrite_parameters",
+                    "check_dtype_object",
+                    "check_estimators_dtypes",
+                    "check_estimators_fit_returns_self",
+                    "check_estimators_nan_inf",
+                    "check_estimators_overwrite_params",
+                    "check_estimators_pickle",
+                    "check_f_contiguous_array_estimator",
+                    "check_fit2d_1sample",
+                    "check_fit2d_predict1d",
+                    "check_fit_check_is_fitted",
+                    "check_fit_idempotent",
+                    "check_fit_score_takes_y",
+                    "check_n_features_in",
+                    "check_n_features_in_after_fitting",
+                    "check_pipeline_consistency",
+                    "check_positive_only_tag_during_fit",
+                    "check_readonly_memmap_input",
+                ),
+                reason,
+            )
+        )
+
     return failed
 
 
