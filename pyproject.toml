@@ -1,6 +1,6 @@
 [project]
 name = "skchange"
-version = "0.17.0"
+version = "0.18.0"
 description = "A python library for fast and flexible changepoint detection"
 authors = [
     {name = "Martin Tveten", email = "tveten@nr.no"},
