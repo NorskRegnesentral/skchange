@@ -260,10 +260,10 @@ class MultivariateGaussianScore(BaseChangeScore):
         chi-squared distributed with :math:`p(p+3)/2` degrees of freedom. The
         Bartlett correction already normalises for model complexity, so only the
         changepoint location contributes to the BIC penalty, giving
-        :math:`\\log(n)`.
+        :math:`\log(n)`.
 
         Without the Bartlett correction the raw likelihood ratio scale is used and
-        the full BIC penalty :math:`(p + p(p+1)/2 + 1) \\log(n)` applies.
+        the full BIC penalty :math:`(p + p(p+1)/2 + 1) \log(n)` applies.
 
         Returns
         -------
