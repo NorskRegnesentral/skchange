@@ -123,11 +123,11 @@ class EDFCost(BaseCost):
     estimated using a quantile-based approximation of the EDF integral [1]_.
 
     .. math::
-        C(X_{s:e}) \\approx -2 \\cdot \\frac{c}{Q} \\sum_{q=1}^{Q}
-        \\hat{F}_n(t_q) \\log \\hat{F}_n(t_q)
-        + (1 - \\hat{F}_n(t_q)) \\log(1 - \\hat{F}_n(t_q))
+        C(X_{s:e}) \approx -2 \cdot \frac{c}{Q} \sum_{q=1}^{Q}
+        \hat{F}_n(t_q) \log \hat{F}_n(t_q)
+        + (1 - \hat{F}_n(t_q)) \log(1 - \hat{F}_n(t_q))
 
-    where :math:`\\hat{F}_n` is the empirical CDF of the segment,
+    where :math:`\hat{F}_n` is the empirical CDF of the segment,
     :math:`t_q` are quantile points derived from the training data, and
     :math:`c` is a scaling constant.
 

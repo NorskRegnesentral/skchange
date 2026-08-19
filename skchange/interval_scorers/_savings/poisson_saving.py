@@ -234,7 +234,7 @@ class PoissonSaving(BaseSaving):
     def get_default_penalty(self) -> np.ndarray:
         r"""Get the default penalty for the fitted Poisson saving.
 
-        The Poisson saving is asymptotically :math:`\\chi^2(1)` per feature
+        The Poisson saving is asymptotically :math:`\chi^2(1)` per feature
         under the null (correct baseline rate), so ``mvcapa_penalty`` with
         1 parameter per feature is used.
 

@@ -251,7 +251,7 @@ class LinearRegressionSaving(BaseSaving):
     def get_default_penalty(self) -> float:
         r"""Get the default penalty for the fitted linear regression saving.
 
-        The saving is asymptotically :math:`\\chi^2(n_{\\text{covariates}})` under
+        The saving is asymptotically :math:`\chi^2(n_{\text{covariates}})` under
         the null (correct baseline), so ``chi2_penalty`` is used as the default.
 
         Returns
