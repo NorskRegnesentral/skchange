@@ -32,6 +32,7 @@ Detectors that implement ``predict``.
     :template: class.rst
 
     CROPS
+    FPOP
     MovingWindow
     PELT
     SeededBinarySegmentation

@@ -48,6 +48,12 @@ Follow the detector link for a detailed discussion of the trade-offs.
       - no
       - no
       - low
+    * - :doc:`FPOP <fpop>`
+      - fast,
+      - fast,
+      - no
+      - no
+      - low
     * - :doc:`CROPS <crops>`
       - slow, :math:`O(n^2 \log n)`
       - medium, :math:`O(n \log n)`
@@ -84,6 +90,7 @@ Follow the detector link for a detailed discussion of the trade-offs.
     :hidden:
 
     pelt
+    fpop
     crops
     seeded_binseg
     moving_window
