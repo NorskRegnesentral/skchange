@@ -7,6 +7,7 @@
 [![!black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Python](https://img.shields.io/pypi/pyversions/skchange)](https://pypi.org/project/skchange/)
 [![PyPI Downloads](https://static.pepy.tech/badge/skchange)](https://pepy.tech/projects/skchange)
+[![PyPI Downloads](https://static.pepy.tech/badge/skchange/month)](https://pepy.tech/projects/skchange)
 
 Skchange provides fast and flexible changepoint detection algorithms within a [scikit-learn](https://scikit-learn.org/)-like API. See the [documentation](https://skchange.readthedocs.io/) for full details.
 
