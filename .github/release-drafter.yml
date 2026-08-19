@@ -13,6 +13,7 @@ categories:
       labels:
         - highlight
   - title: 💥 Breaking changes
+    semver-increment: "major"
     when:
       labels:
         - breaking
@@ -21,10 +22,12 @@ categories:
       labels:
         - deprecation
   - title: 🚀 Performance improvements
+    semver-increment: "minor"
     when:
       labels:
         - performance
   - title: ✨ Enhancements
+    semver-increment: "minor"
     when:
       labels:
         - enhancement
@@ -44,23 +47,17 @@ categories:
     when:
       labels:
         - internal
+  - type: "pre-exclude"
+    when:
+      labels:
+        - skip changelog
+        - release
 
 change-template: '- $TITLE (#$NUMBER)'
 change-title-escapes: '\<*_&'
 
 version-resolver:
-  major:
-    labels:
-      - breaking
-  minor:
-    labels:
-      - performance
-      - enhancement
   default: patch
-
-exclude-labels:
-  - skip changelog
-  - release
 
 replacers:
   # Remove conventional commits from titles
