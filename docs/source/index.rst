@@ -9,6 +9,16 @@ Skchange provides fast and flexible changepoint detection algorithms within a
 Users upgrading from version <0.17 should consult the
 `migration guide <https://github.com/NorskRegnesentral/skchange/blob/main/MIGRATION_GUIDE.md>`_.
 
+Citation
+--------
+If you use skchange in your research, please cite the `article <https://arxiv.org/abs/2608.19767>`_:
+
+.. code-block:: text
+
+    Tveten, M., Kolstø, J. V., & Moen, P. A. J. (2026). skchange: Fast and Flexible
+    Algorithms for Changepoint Detection. arXiv preprint arXiv:2608.19767.
+
+
 Installation
 ------------
 The library can be installed via pip:
