@@ -13,6 +13,15 @@ Skchange provides fast and flexible changepoint detection algorithms within a [s
 
 Users upgrading from version <0.17 should consult the [migration guide](MIGRATION_GUIDE.md).
 
+## Citation
+
+If you use skchange in your research, please cite the [article](https://arxiv.org/abs/2608.19767):
+
+```
+Tveten, M., Kolstø, J. V., & Moen, P. A. J. (2026). skchange: Fast and Flexible
+Algorithms for Changepoint Detection. arXiv preprint arXiv:2608.19767.
+```
+
 ## Installation
 It is recommended to install skchange with [numba](https://numba.readthedocs.io/en/stable/) for faster performance:
 ```sh
