@@ -1,0 +1,349 @@
+\documentclass[twoside,11pt]{article}
+
+\usepackage{blindtext}
+\usepackage{ulem}
+\normalem
+
+
+% Any additional packages needed should be included after jmlr2e.
+% Note that jmlr2e.sty includes epsfig, amssymb, natbib and graphicx,
+% and defines many common macros, such as 'proof' and 'example'.
+%
+% It also sets the bibliographystyle to plainnat; for more information on
+% natbib citation styles, see the natbib documentation, a copy of which
+% is archived at http://www.jmlr.org/format/natbib.pdf
+
+% Available options for package jmlr2e are:
+%
+%   - abbrvbib : use abbrvnat for the bibliography style
+%   - nohyperref : do not load the hyperref package
+%   - preprint : remove JMLR specific information from the template,
+%         useful for example for posting to preprint servers.
+
+\usepackage[preprint]{jmlr2e}
+% \usepackage{jmlr2e}
+
+% Definitions of handy macros can go here
+
+\newcommand{\dataset}{{\cal D}}
+\newcommand{\fracpartial}[2]{\frac{\partial #1}{\partial  #2}}
+
+% Heading arguments are {volume}{year}{pages}{date submitted}{date published}{paper id}{author-full-names}
+
+\usepackage{lastpage}
+
+\usepackage{xcolor}      % for colors
+\usepackage{minted}      % for code highlighting
+\usepackage{subcaption}
+
+% Define a subtle background color (adjust to taste)
+\definecolor{codebg}{RGB}{248,248,248}  % very light gray
+
+% Global style (optional)
+\setminted{
+  bgcolor=codebg,
+  frame=none,           % no frame
+  framerule=0pt,        % ensure no frame line
+  framesep=6pt,         % inner padding between code and background
+  fontsize=\small,
+  breaklines=true
+}
+
+% Johannes added packages:
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{listings}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\jmlrheading{23}{2022}{1-\pageref{LastPage}}{1/21; Revised 5/22}{9/22}{21-0000}{Martin Tveten and Johannes Voll Kolstø}
+
+% Short headings should be running head and authors last names
+
+\ShortHeadings{skchange}{Tveten, Kolstø, Moen}
+\firstpageno{1}
+
+
+\begin{document}
+
+\title{skchange: Fast and Flexible Algorithms for Change Detection}
+
+\author{\\
+    \name Martin Tveten$^{1}$ \hfill \email tveten@nr.no\\
+    \name Johannes Voll Kolstø$^{1}$ \hfill \email jvkolsto@nr.no\\
+    \name Per August Jarval Moen$^{2}$ \hfill \email pamoen@math.uio.no\\
+    \addr $^{1}$ Department of Statistics and Machine Learning, Norwegian Computing Center\\
+    \addr $^{2}$ Department of Mathematics, University of Oslo
+}
+
+\editor{My editor}
+
+\maketitle
+
+\begin{abstract}
+Skchange is an open-source Python library for detecting structural changes in time series.
+It implements modern change detection algorithms within a unified and extensible framework.
+The algorithms are modular and composable, and they include changepoint search methods based on both cost minimisation and statistical tests.
+Key features include
+the detection of anomalous segments in addition to changepoints;
+theoretically well-founded fast and approximate search methods;
+theoretically well-founded algorithms for high-dimensional data, covering settings where either few or many features change simultaneously;
+utilities for automatic and data-driven penalty calibration, which balances false alarms against missed detections;
+and a large collection of built-in costs and statistical tests.
+The design follows established scikit-learn conventions to streamline both user and contributor experience, and Numba is used extensively to achieve high computational performance.
+Source code and documentation are available at \url{https://github.com/NorskRegnesentral/skchange}.
+\end{abstract}
+
+% \begin{abstract}
+% Skchange is an open-source Python library for detecting structural changes and segment-level anomalies in time series. It implements modern algorithms for changepoint detection and segment anomaly detection within a unified and extensible framework. The design follows scikit-learn and sktime conventions, allowing integration into machine learning workflows. Algorithms are modular and accelerated with numba for high computational efficiency. Source code and documentation are available at \href{https://github.com/NorskRegnesentral/skchange}{GitHub}.
+% \end{abstract}
+
+% \begin{abstract}
+% Skchange is an open-source Python package for changepoint detection and segment anomaly detection in time series. Changepoint detection identifies points where the statistical properties of a sequence shift, while segment anomaly detection targets contiguous intervals that together form an anomalous pattern—unlike point anomaly detection, which focuses on isolated outliers. Skchange provides a unified and flexible framework for these tasks, supports both cost-based and statistical testing-based methods, and includes several state-of-the-art algorithms not currently available elsewhere in the Python ecosystem. High computational efficiency is achieved through numba-accelerated implementations, and the design follows scikit-learn and sktime conventions for seamless integration into machine learning workflows. The package is thoroughly tested, actively maintained, and documented with tutorials and examples. Skchange is distributed under the BSD 3-clause licence and is available at \url{https://github.com/NorskRegnesentral/skchange}.
+% \end{abstract}
+
+\begin{keywords}
+  Time series, changepoint, anomaly, segmentation, Python, scikit-learn.
+\end{keywords}
+
+% TODO list:
+
+% Review Criteria
+%
+% The following guidelines would be used to review submissions. While ideally submissions should satisfy all the criteria below, they are not necessary requirements.
+% The four page summary
+% 1) The quality of the four page description.
+%
+% The impact on the machine learning community
+% 1) The novelty, breadth, and significance of the contribution.
+% 2) Evidence of an active user community (documented in the cover letter, not the paper).
+% 3) The openness of the project, such as a public source code repository, bug tracker, mailing list/forum, that allows new developers to participate and contribute.
+% 4) The quality of comparison to previous (if any) related implementations, w.r.t. run-time, memory requirements, features, to explain that significant progress has been made.
+%
+% User documentation
+% In assessing the documentation, reviewers should consider presence and quality of:
+% 1) Installation instructions
+% 2) Tutorials to show simple use-cases and on-board new users.
+% 3) Non-trival examples of typical use-cases of the software.
+% 4) Full documentation of the API. Reviewers should also consider how easy it is to view the documentation, for example whether it is available as a website, or requires building documentation locally to view it.
+%
+% Openness to new developers / Ease of contribution / Sustainability
+% 1) How easy is it for new contributors to participate / contribute.
+% 2) The clarity of software design.
+% 3) The quality of the developer documentation (should enable easy modification and extension of the software, provide an API reference)
+%
+% Implementation and adoption of software development best practices
+% 1) Extensive unit and integration testing, and report of code coverage of tests. It is expected that test coverage is close to 100%.
+% 2) Continuous integration, ideally on all supported platforms and with multiple versions of potential dependencies.
+% 3) The breadth of platforms it can be used on (should include an open-source operating system).
+% 4) The freedom of the code (lack of dependence on proprietary software).
+
+\section{Introduction}
+\label{sec:intro}
+\thispagestyle{empty}
+
+
+Detecting structural changes in time series is a fundamental task in many machine learning applications, including personalised medicine \citep{li2026change}, condition monitoring of industrial equipment \citep{tveten2022scalable}, environmental monitoring \citep{gong2025changepoint}, and fraud detection \citep{rousseeuw2019robust}.
+The key problem is to detect the presence of \emph{changepoints} and estimate their locations, where a changepoint marks an abrupt change in the statistical properties of a sequence (Figure~\ref{fig:data_changepoints}).
+% The \emph{changepoint detection} problem is to  in this con Two key problems arise in this context: \emph{changepoint detection}, which identifies locations where the statistical properties of a sequence change, and \emph{segment anomaly detection}, which targets contiguous intervals that collectively exhibit abnormal behaviour among otherwise normal data. Figure~\ref{fig:data_example} illustrates the difference between these tasks.
+
+Recent advances in the statistics community have produced algorithms that are computationally efficient, theoretically well-founded, and flexible with respect to data-generating mechanisms. These methods are interpretable and can be tailored to specific domains. However, despite their practical relevance, most of these advances are not available in a user-friendly form in Python, limiting their adoption in machine learning pipelines.
+
+In this paper, we introduce skchange, an open-source Python library for changepoint detection that aims to be both efficient and easy to use and extend.
+We have developed an API for changepoint detection that follows scikit-learn conventions as closely as possible \citep{pedregosa2011scikit}.
+% We have developed a unified and flexible API for detection tasks in time series, following scikit-learn conventions \citep{pedregosa2011scikit}.
+Algorithms are implemented as modular compositions with clear extension patterns for core components, and computational performance is achieved through extensive use of Numba for just-in-time compilation.
+
+The closest previous work is the ruptures library \citep{truong2020selective}, which compiles several classical changepoint detection algorithms and provides a wide range of cost functions to be optimised.
+Compared to ruptures, the scope of skchange is broader. Firstly, it does not restrict algorithms to cost-minimisation frameworks, enabling implementation of recent research advances based on statistical tests.
+Among other advantages, such test-based methods are more suitable for high-dimensional data and can be more efficient to calibrate for a desired false alarm rate.
+Secondly, skchange supports segment anomaly detection, which can be viewed as a changepoint detection problem where the aim is to find segments that deviate from some baseline behaviour (Figure~\ref{fig:data_anomalies}).
+In addition, skchange features improved performance (see Section~\ref{sec:features}).
+% Other packages that
+
+\begin{figure}[t]
+    \centering
+    \captionsetup[subfigure]{skip=0pt, belowskip=0pt}
+    \begin{subfigure}[t]{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/data_with_change_points.png}
+        \caption{}
+        \label{fig:data_changepoints}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/data_with_segment_anomalies.png}
+        \caption{}
+        \label{fig:data_anomalies}
+    \end{subfigure}
+    \caption{Three-dimensional toy data with (a) three detected changepoints and (b) two detected segment anomalies as an alternative representation.}
+
+    \label{fig:data_example}
+\end{figure}
+
+
+\section{Design}
+\label{sec:design}
+
+\paragraph{Scikit-learn interface.}
+% Scikit-learn defines the de facto standard estimator API in Python machine learning.
+Skchange follows scikit-learn estimator conventions, including fit and predict semantics, and the separation of hyperparameters from learned attributes.
+The key difference from other scikit-learn estimators is that predict returns detected changepoints as integer sample indices.
+Figure~\ref{fig:code_example} shows a minimal code example of detecting changepoints in a dataset.
+This common interface supports interchangeable detector use and enables detector-agnostic tools for preprocessing, hyperparameter tuning, evaluation and visualisation.
+
+% Sktime provides a unified interface for related detection tasks, including changepoint detection and segment anomaly detection. Both tasks share common operations: fitting a detector to data, predicting event locations---such as changepoints or anomalous segments---and transforming time series into segment labels (see Figure~\ref{fig:code_example}).
+% The interface is implemented in the sktime base detector class, developed collaboratively by the skchange and sktime communities. All skchange detectors inherit from this class, ensuring compliance with both sktime and scikit-learn estimator patterns.
+
+\begin{figure}[t]
+\centering
+\begin{minted}[fontsize=\footnotesize]{python}
+from skchange.detectors import SeededBinarySegmentation
+from skchange.interval_scorers import CUSUM
+
+score = CUSUM()
+detector = SeededBinarySegmentation(score, penalty=5)
+detector.fit(X)
+changepoints = detector.predict(X)
+\end{minted}
+% \vspace{-24pt} % small negative space to tighten just this figure
+\caption{
+Code example of detecting changepoints in an array \texttt{X} using Seeded Binary Segmentation with a CUSUM score.
+}
+\label{fig:code_example}
+\end{figure}
+
+
+\paragraph{Composable detectors.}
+% Detectors in skchange are *search algorithms* com composable objects built from three core components: a search algorithm, an interval scorer, and a penalty.
+% We use the term “interval scorer” as an umbrella for both cost functions, test statistics, and any method that maps a candidate interval, possibly with inner split points, to a scalar value (CUSUM in Figure~\ref{fig:code_example}).
+% The search algorithm determines which intervals to assess and how to combine results into a final set of detections (SeededBinarySegmentation in Figure~\ref{fig:code_example}).
+% % The interval scorer  evaluates the evidence for a change in each candidate interval (CUSUM in Figure~\ref{fig:code_example}).
+% The penalty controls model complexity by regulating the number of detected events. This modular design allows new detectors to be constructed by combining existing components or introducing new ones without altering the surrounding workflow.
+Detectors in skchange are composed of three core components: a search algorithm, an interval scorer, and a penalty.
+In skchange, we introduce \emph{interval scorer} as an umbrella term for cost functions and test statistics, that is, any method that maps interval and/or split indices to a value quantifying evidence for change or model deviation within the interval.
+The search algorithm determines which intervals to assess and how to combine results into a final set of detections.
+In Figure~\ref{fig:code_example}, \texttt{CUSUM} is the interval scorer and \texttt{SeededBinarySegmentation} is the search algorithm.
+The penalty controls model complexity by regulating the number of detected events.
+This modular design allows new detectors to be constructed by combining existing components or introducing new ones without altering the surrounding workflow.
+
+\paragraph{Vectorised interval scorers with precomputation.}
+The computational bottleneck of most change detection algorithms is to evaluate an interval score over a large number of interval-split configurations, often with overlapping regions.
+The design of interval scorers provides two mechanisms for speeding this up.
+Firstly, they can precompute quantities that are reused across many interval-split configurations, such as cumulative sums and other sufficient statistics.
+Secondly, they are vectorised over interval-split configurations, enabling batch evaluation of large candidate sets with Numba-accelerated implementations.
+
+% The primary bottleneck in most detection algorithms is the evaluation of many candidate interval-split configurations, of which many intervals are overlapping.
+% To address this,
+% implements interval scorers that are vectorised over candidate intervals and/or split points, enabling batch evaluation of large candidate sets.
+
+% Interval scorers are a central and new abstraction in skchange that encompass both cost functions or one-sample statistical tests evaluated on intervals and two-sample statistical tests evaluated on intervals with one or several internal split points.
+% Conceptually, an interval scorer takes a dataset and interval-split specifications and returns a vector or scalar qu a scalar value quantifying evidence for a change.
+% This abstraction generalises both cost functions and statistical tests, enabling modular support for a significantly broader class of detectors than ruptures.
+% Like detectors, scorers are composable.
+% For example, cost functions can be combined to form statistical tests, allowing cost-based scorers to work with any search algorithm, including those requiring test statistics.
+% Scorers can also represent penalised scores, supporting recent algorithms for sparse changes in high-dimensional data.
+% To improve efficiency, scorers are implemented to be vectorised over interval-split configurations, enabling batch evaluation of large candidate sets—the primary bottleneck in most detection algorithms. Combined with Numba just-in-time compilation, this design substantially reduces computational overhead.
+
+
+
+\section{Features}
+\label{sec:features}
+This section summarises the features that distinguish skchange from other packages.
+
+\paragraph{State-of-the-art changepoint search methods.}
+Supported methods include a generalised version of the MOSUM algorithm \citep{eichinger2018mosum, meier2021mosum}, Seeded Binary Segmentation \citep{kovacs2023seeded}, PELT \citep{killick2012optimal}, and CROPS \citep{haynes2017crops}. Of these, only PELT and a basic version of MOSUM is also available in ruptures.
+MOSUM and Seeded Binary Segmentation are fast, statistical test-based algorithms with strong theoretical guarantees.
+CROPS efficiently solves a cost-minimisation problem across a range of penalties, enabling exploration of penalty choices.
+
+\paragraph{Segment anomaly detection.}
+Skchange implements two change detection algorithms that also support segment anomaly detection:
+CAPA and its multivariate extensions \citep{fisch2022capa, fisch2022mvcapa}, and Circular Binary Segmentation \citep{olshen2004circular}.
+For multivariate data, CAPA additionally identifies which variables are affected by an anomaly.
+
+\paragraph{Wide range of efficient scorers.}
+The package provides a broad set of interval scorers covering common modelling assumptions and distributional features.
+Nearly all cost functions in ruptures are reimplemented for higher performance using the vectorised scorer design combined with Numba.
+These include parametric likelihood-based costs, trend and regression costs, and nonparametric measures such as rank-based costs.
+In addition, skchange offers efficient implementations of scores based on statistical tests for changes in the mean (CUSUM), continuous linear trends, multivariate $t$-distributions, and more.
+
+\paragraph{High-dimensional data.}
+In high-dimensional settings, changes may be \emph{sparse} (affecting few variables) or \emph{dense} (affecting many). Classical statistical tests typically have power for only one regime.
+Skchange includes scores based on recent statistical tests that are sensitive to both regimes while remaining computationally efficient, such as ESAC \citep{moen2024esac} and SUBSET \citep{tickle2021computationally}.
+%Cost-minimisation approaches cannot address these problems effectively.
+
+\paragraph{Automatic penalty calibration.}
+As the penalty governs the trade-off between false alarms and missed detections, calibrating the penalty parameter of change detectors is a critical task before the detector can be used reliably in real settings.
+Skchange features data-driven tools for automatically calibrating the penalty to control the family-wise error rate.
+Examples include methods based on permutations or the block bootstrap.
+Utilities for qualitatively exploring the impact of different penalties are also provided.
+
+\paragraph{Run-time efficiency.}
+Skchange achieves significant speed-ups for many algorithms compared to ruptures. Figure~\ref{fig:runtime_evaluation} shows a run-time comparison of comparable algorithms in skchange and ruptures for common interval scores [TODO: Add final figure with more scores and right formatting.].
+% Compare computational performance with ruptures. Run-time in particular. Assess memory requirements as well, but perhaps put in appendix.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/runtime_l1_draft.png}
+    \caption{Run-time comparison of comparable algorithms in skchange and ruptures for the L1 cost function.}
+    \label{fig:runtime_evaluation}
+\end{figure}
+
+% To answer point 4 under Impact (\url{https://jmlr.org/mloss/mloss-info.html}): The quality of comparison to previous (if any) related implementations, w.r.t. run-time, memory requirements, features, to explain that significant progress has been made.
+
+% Compare computational performance with:
+% \begin{itemize}
+%     \item ruptures: \citet{truong2020selective}, changepoint yes, segment anomalies no, point anomalies no. Main competitor. Has a similar structure and similar algorithms.
+% \end{itemize}
+% % Mention changepoint package in R somewhere?
+
+% TODO: The below is currently part of the introduction. Move here?
+% Can discuss similarities and differences in terms of features with:
+% \begin{itemize}
+%     \item sktime: \citet{loning2019sktime}. changepoint yes, segment anomalies yes (through skchange), point anomalies yes. Has a broader scope. Includes more algorithms of other kinds.
+%     \item darts: \citet{herzen2022darts}. changepoint no, segment anomalies no, point anomalies yes.
+%     \item aeon: \citet{middlehurst2024aeon}. changepoint yes, segment anomalies no, point anomalies yes.
+% \end{itemize}
+
+\section{Contribution and Development Practices}
+\label{sec:contributions}
+% \begin{itemize}
+%     \item BSD 3-clause license.
+%     \item Repository: \url{https://github.com/NorskRegnesentral/skchange}
+%     \item Documentation: \url{https://skchange.readthedocs.io}. Thorough user and developer guides + API reference. Tutorial material.
+%     \item Ease of use / familiarity: Integrated in sktime, which is compliant with scikit-learn.
+%     \item Ease of extension for developers: Fill-in extension templates for creating new detectors and interval scorers ala sktime.
+%     \item Extensive testing, close to 100\% testing coverage.
+%     \item Used in production settings by partners in research projects. Battle-tested.
+%     \item Contributions from the open-source community is welcome.
+% \end{itemize}
+Skchange is released under the BSD 3-Clause license and is publicly available at \url{https://github.com/NorskRegnesentral/skchange}.
+Comprehensive documentation is available at \href{https://skchange.readthedocs.io}{\url{https://skchange.readthedocs.io}}, including user and developer guides, and a complete API reference.
+Reliability is ensured through near-complete test coverage and continuous integration across Python versions and platforms, including Linux and Windows.
+The library adheres to established software development best practices and has been deployed in production systems by industrial partners.
+The package follows familiar scikit-learn conventions, making it easy for new contributors to participate.
+Extension templates are provided for creating new detectors and interval scorers. Users can copy the template and fill in the missing components, enabling rapid prototyping and experimentation.
+Further contributions from students, researchers and the open-source community are highly welcome.
+
+
+% \section{Conclusion and Future Work}
+% Perhaps not necessary.
+
+% Acknowledgements and Disclosure of Funding should go at the end, before appendices and references
+
+% All acknowledgements go at the end of the paper before appendices and references.
+% Moreover, you are required to declare funding (financial activities supporting the
+% submitted work) and competing interests (related financial activities outside the submitted work).
+% More information about this disclosure can be found on the JMLR website.
+\acks{This project was supported by Norwegian Research Council grants 332645 (Integreat), 337085 (EarOnEdge) and 356322 (SODA).
+Various AI tools have been used for proofreading and language improvements of the manuscript, including Microsoft Copilot and Claude Sonnet 4.6.
+Thanks to Franz J. Király and the sktime community for valuable discussions during the early development of this work.
+}
+
+
+\vskip 0.2in
+\bibliography{main}
+
+
+\end{document}
