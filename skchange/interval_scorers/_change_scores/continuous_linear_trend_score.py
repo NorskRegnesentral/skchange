@@ -211,8 +211,167 @@ def _analytical_cont_piecewise_linear_trend_score(
     return scores
 
 
+@njit(cache=True)
+def _cumulative_sum_trend_score_run(
+    scores: np.ndarray,
+    row_start: int,
+    row_stop: int,
+    splits: np.ndarray,
+    start: int,
+    end: int,
+    X: np.ndarray,
+    times: np.ndarray,
+) -> None:
+    """Score all splits of a single interval ``[start, end)`` in O(1) per split.
+
+    With ``Z = [1, t]`` the no-kink design, ``h`` the kink regressor
+    ``(t - t_split)_+`` and ``G = Z'Z``, the Frisch-Waugh-Lovell identity gives
+
+        RSS_0 - RSS_1 = (h'x - c'G^{-1}g)^2 / (h'h - c'G^{-1}c),
+
+    with ``c = Z'h`` and ``g = Z'x``.
+
+    For numerical robustness, time is centred at the interval midpoint and the
+    data at the interval mean. The kink sums ``h'h``, ``h'1``, ``h'u`` and
+    ``h'x`` are accumulated from the right end, re-expressing the running sums
+    relative to each new split time. They are then sums of non-negative
+    kink values, and no differences of large cumulative sums are formed, which
+    would lose precision for long intervals or intervals far into a long series.
+
+    The rows ``row_start:row_stop`` of ``scores`` are filled.
+    """
+    n = end - start
+    n_features = X.shape[1]
+    t_mid = 0.5 * (times[start] + times[end - 1])
+
+    u = np.empty(n)
+    t1 = 0.0  # Sum of u.
+    t2 = 0.0  # Sum of u^2.
+    for i in range(n):
+        u[i] = times[start + i] - t_mid
+        t1 += u[i]
+        t2 += u[i] * u[i]
+    det_g = n * t2 - t1 * t1
+
+    # Kink sums that depend only on the time stamps, for each split position k.
+    h_sum = np.empty(n)  # 1'h
+    h_u = np.empty(n)  # u'h
+    h_h = np.empty(n)  # h'h
+    # Running sums over i >= k of (u_i - u_k)^a, a = 0, 1, 2.
+    count = 0.0
+    r1 = 0.0
+    r2 = 0.0
+    for k in range(n - 1, -1, -1):
+        if count > 0.0:
+            d = u[k + 1] - u[k]
+            r2 += d * (2.0 * r1 + count * d)
+            r1 += count * d
+        count += 1.0
+        h_sum[k] = r1
+        h_u[k] = r2 + u[k] * r1
+        h_h[k] = r2
+
+    x_c = np.empty(n)
+    for j in range(n_features):
+        x_mean = 0.0
+        for i in range(n):
+            x_mean += X[start + i, j]
+        x_mean /= n
+
+        g0 = 0.0  # 1'x
+        g1 = 0.0  # u'x
+        for i in range(n):
+            x_c[i] = X[start + i, j] - x_mean
+            g0 += x_c[i]
+            g1 += u[i] * x_c[i]
+        # G^{-1} Z'x via the closed-form 2x2 inverse.
+        ginv_g0 = (t2 * g0 - t1 * g1) / det_g
+        ginv_g1 = (n * g1 - t1 * g0) / det_g
+
+        # h'x for each split k, with running sums of x and (u_i - u_k) x over i >= k.
+        h_x = np.empty(n)
+        sx = 0.0
+        sdx = 0.0
+        for k in range(n - 1, -1, -1):
+            if k < n - 1:
+                sdx += (u[k + 1] - u[k]) * sx
+            sx += x_c[k]
+            h_x[k] = sdx
+
+        for row in range(row_start, row_stop):
+            k = splits[row] - start
+            c0 = h_sum[k]
+            c1 = h_u[k]
+            hh = h_h[k]
+
+            ginv_c0 = (t2 * c0 - t1 * c1) / det_g
+            ginv_c1 = (n * c1 - t1 * c0) / det_g
+            denominator = hh - (c0 * ginv_c0 + c1 * ginv_c1)
+            numerator = h_x[k] - (c0 * ginv_g0 + c1 * ginv_g1)
+
+            # Splits whose kink cannot be told apart from a straight line, to
+            # within roundoff, are not scored.
+            if denominator > 1e-14 * hh:
+                scores[row, j] = numerator * numerator / denominator
+            else:
+                scores[row, j] = 0.0
+
+
+@njit(cache=True)
+def _cumulative_sum_cont_piecewise_linear_trend_score(
+    starts: np.ndarray,
+    splits: np.ndarray,
+    ends: np.ndarray,
+    X: np.ndarray,
+    times: np.ndarray,
+) -> np.ndarray:
+    """Evaluate the continuous linear trend score with cumulative sums.
+
+    Rows with the same ``(start, end)`` that are adjacent share one pass over the
+    interval, after which each split costs O(1) per feature. Other rows form runs
+    of length one and cost O(interval length), as in a direct evaluation.
+
+    Parameters
+    ----------
+    starts : np.ndarray
+        Start indices of the intervals (inclusive).
+    splits : np.ndarray
+        Split indices (contained in the second part).
+    ends : np.ndarray
+        End indices of the intervals (exclusive).
+    X : np.ndarray
+        Data to evaluate. Must be a 2D array.
+    times : np.ndarray
+        Time stamps corresponding to the data points.
+
+    Returns
+    -------
+    scores : np.ndarray
+        A 2D array of scores. One row for each interval.
+    """
+    n_rows = len(starts)
+    scores = np.zeros((n_rows, X.shape[1]))
+
+    row = 0
+    while row < n_rows:
+        run_stop = row + 1
+        while (
+            run_stop < n_rows
+            and starts[run_stop] == starts[row]
+            and ends[run_stop] == ends[row]
+        ):
+            run_stop += 1
+
+        _cumulative_sum_trend_score_run(
+            scores, row, run_stop, splits, starts[row], ends[row], X, times
+        )
+        row = run_stop
+
+    return scores
+
+
 class ContinuousLinearTrendScore(BaseChangeScore):
-    """Continuous linear trend change score.
+    r"""Continuous linear trend change score.
 
     Calculates the difference in squared error between observed data and:
 
@@ -223,17 +382,20 @@ class ContinuousLinearTrendScore(BaseChangeScore):
     Baranowski et al. [1]_. Accessible within the ``SeededBinarySegmentation``
     change detector by passing ``selection_method="narrowest"``.
 
-    By default, time steps are assumed to be evenly spaced. In this case, an
-    analytical solution is used to calculate the score for each column in the
-    data, as described in [1]_.
+    The score is computed from sums of the form :math:`\sum t^a x`, :math:`a=0,1`,
+    and :math:`\sum t^a`, :math:`a=0,1,2`, within the interval. Evaluating
+    many splits of the same interval in one call (consecutive rows with equal
+    ``start`` and ``end``) costs O(1) per split after one pass over the
+    interval, as in ``SeededBinarySegmentation``. The result is identical to the
+    analytical formulation of [1]_ for evenly spaced time steps, and also holds for
+    irregular time stamps.
 
     Parameters
     ----------
     time_col : int or None, default=None
         Column index to use as time stamps for calculating the piecewise linear
-        trends. If ``None``, time steps are assumed to be evenly spaced and the
-        analytical formulation is used. The column must be strictly monotonically
-        increasing.
+        trends. If ``None``, time steps are assumed to be evenly spaced. The column
+        must be strictly monotonically increasing.
 
         .. experimental::
             Support for ``time_col`` is experimental and the API may change.
@@ -321,7 +483,7 @@ class ContinuousLinearTrendScore(BaseChangeScore):
             times = X[:, self.time_col].astype(np.float64)
             times = times - times[0]
         else:
-            times = None
+            times = np.arange(X.shape[0], dtype=np.float64)
 
         return {"X": data, "times": times}
 
@@ -346,17 +508,9 @@ class ContinuousLinearTrendScore(BaseChangeScore):
         splits = interval_specs[:, 1]
         ends = interval_specs[:, 2]
 
-        X = cache["X"]
-        times = cache["times"]
-
-        if times is None:
-            return _analytical_cont_piecewise_linear_trend_score(
-                starts, splits, ends, X
-            )
-        else:
-            return _lin_reg_cont_piecewise_linear_trend_score(
-                starts, splits, ends, X, times
-            )
+        return _cumulative_sum_cont_piecewise_linear_trend_score(
+            starts, splits, ends, cache["X"], cache["times"]
+        )
 
     def get_default_penalty(self) -> float:
         """Get the default BIC penalty.

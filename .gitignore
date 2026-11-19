@@ -1,3 +1,7 @@
+# Ignore agent instruction files:
+AGENTS.md
+.github/copilot-instructions.md
+
 # UV Lock file:
 uv.lock
 
